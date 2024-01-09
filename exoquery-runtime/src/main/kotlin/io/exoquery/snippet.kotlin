@@ -1,0 +1,37 @@
+
+
+    TableQuery<Person>().filter {}
+
+
+    select {
+      val p = from(Person())
+      val a = join(Address()) { a -> a().owner ?: "nobody" eq p().id }
+      Entity.Pair(p(), a())
+    }
+
+
+       TableQuery<Person>.filter {{p -> p.name == "Joe" }}
+       TableQuery<Person>.filter {p -> p.name == "Joe" }
+
+    select {
+      val p = from<Person>()
+      val a = join<Address>().on{{ a -> a.owner ?: "nobody" eq p.id }}
+      Entity.Pair(p, a)
+    }
+
+    Table<Person>.map[{p -> p.name}]
+    Table<Person>.map {p -> p.name}
+
+    select {
+      val p = from(Table<Person>())
+      val a = join(Table<Address>()).on[{ a -> a.owner ?: "nobody" eq p.id }]
+      Entity.Pair(p, a)
+    }
+
+    select {
+        val p = from<Person>()
+    }
+
+    Table<Person>
+    Person()
+
