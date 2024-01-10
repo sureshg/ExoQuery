@@ -22,19 +22,20 @@ class SelectClause<A> : ProgramBuilder<Query<A>, SqlVariable<A>>({ result -> Que
       QueryContainer<R>(XR.FlatMap(query.xr, ident, resultQuery.xr)) as Query<A> // TODO Unsafe cast, will this work?
     }
 
-  public suspend fun <Q: Query<R>, R, A> join(query: Q) = OnQuery(query, XR.JoinType.Inner, this)
+  public suspend fun <Q: Query<R>, R> join(query: Q) = JoinOn<Q, R, A>(query, XR.JoinType.Inner, this, null)
+
+  // TODO public suspend fun <Q: Query<R>, R, A> joinAliased(query: Q, alias: String) = JoinOn(query, XR.JoinType.Inner, this, alias)
 }
 
-class OnQuery<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.JoinType, private val selectClause: SelectClause<A>) {
-//    suspend fun on(cond: (R) -> Boolean) =
-//      perform { mapping ->
-//        FlatMap(Join(query, cond(query.ent)), mapping(query.ent.onBind()))
-//      }
+class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.JoinType, private val selectClause: SelectClause<A>, private val alias: String?) {
+  suspend fun on(cond: (R).() -> Boolean): SqlVariable<R> =
+    error("The join.on(...) expression of the Query was not inlined")
 
   // TODO some internal annotation?
   @OptIn(ExoInternal::class)
-  suspend fun onExpr(cond: Lambda1Expression, joinType: XR.JoinType): SqlVariable<R> =
+  suspend fun onExpr(cond: Lambda1Expression): SqlVariable<R> =
     with (selectClause) {
+      // TODO if (alias != null) beta-reduce 'this' to the alias
       perform { mapping ->
         val sqlVariable = SqlVariable<R>(cond.ident.name)
         val outputQuery = mapping(sqlVariable)

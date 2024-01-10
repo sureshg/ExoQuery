@@ -362,7 +362,7 @@ object Ir {
       operator fun <AP: Pattern<A>, A: List<IrStatement>> get(statements: AP) =
         customPattern1(statements) { it: IrBlockBody ->
           on(it).match(
-            case(BlockBody[Is()]).then { (statements) -> Components1(statements) }
+            case(BlockBody[Is()]).then { statements -> Components1(statements) }
           )
         }
     }

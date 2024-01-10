@@ -3,17 +3,46 @@ package io.exoquery.plugin.transform
 import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
+import io.exoquery.Lambda1Expression
 import io.exoquery.SqlVariable
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
-import io.exoquery.plugin.trees.ExtractorsDomain
-import io.exoquery.plugin.trees.ParserContext
-import io.exoquery.plugin.trees.TypeParser
-import io.exoquery.plugin.trees.simpleTypeArgs
+import io.exoquery.plugin.trees.*
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import io.exoquery.plugin.trees.ExtractorsDomain.Call.`join-on(expr)`
+import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
+
+class TransformJoinOn(override val ctx: TransformerOrigin, val replacementMethod: String): Transformer() {
+  context(ParserContext, BuilderContext, CompileLogger)
+  override fun matchesBase(expression: IrCall): Boolean =
+    `join-on(expr)`.matchesMethod(expression)
+
+  context(ParserContext, BuilderContext, CompileLogger)
+  override fun transformBase(expression: IrCall, superTransformer: io.exoquery.plugin.CaptureTransformer): IrExpression {
+    val (caller, funExpression, params, blockBody) =
+      on(expression).match(
+        case(`join-on(expr)`[Is()]).then { queryCallData -> queryCallData }
+      ) ?: parseFail("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
+
+    val lambdaArg = params.first()
+    // There actually IS a parameter to this function and it should be named $this$on
+    val paramIdentXR = run {
+      val name = lambdaArg.name.asString()
+      val tpe = TypeParser.parse(lambdaArg.type)
+      XR.Ident(name, tpe)
+    }
+
+    // parse the `on` clause of the join.on(...)
+    val onLambdaBody = Parser.parseFunctionBlockBody(blockBody)
+    val onLambda = Lambda1Expression(XR.Function1(paramIdentXR, onLambdaBody))
+    val onLambdaExpr = lifter.liftExpression(onLambda)
+
+    return caller.callMethod("onExpr").invoke(onLambdaExpr)
+  }
+}
 
 class TransformQueryFlatMap(override val ctx: TransformerOrigin, val replacementMethod: String): Transformer() {
   private val matcher = ExtractorsDomain.Call.QueryFlatMap

@@ -86,20 +86,10 @@ class CaptureTransformer(
         queryMapTransformer.transform(expression, this)
       }
 
-
-
-//      queryFlatMapTransformer.matches(expression) -> {
-//        compileLogger.warn("=========== Transforming FlatMap Map ========\n" + expression.dumpKotlinLike())
-//        queryFlatMapTransformer.transform(expression, this)
-//      }
-
       else ->
         // No additional data (i.e. Scope-Symbols) to add since none of the transformers was activated
         super.visitCall(expression, data)
     }
-
-    logger.warn("-------------- After Transform:\n" + out.dumpKotlinLike())
-
     return out
   }
 }
