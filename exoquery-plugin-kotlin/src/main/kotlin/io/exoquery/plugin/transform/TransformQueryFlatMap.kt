@@ -7,16 +7,19 @@ import io.exoquery.Lambda1Expression
 import io.exoquery.SqlVariable
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
+import io.exoquery.plugin.printing.dumpSimple
+import io.exoquery.plugin.safeName
 import io.exoquery.plugin.trees.*
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`join-on(expr)`
+import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 
-class TransformJoinOn(override val ctx: TransformerOrigin, val replacementMethod: String): Transformer() {
-  context(ParserContext, BuilderContext, CompileLogger)
+class TransformJoinOn(override val ctx: TransformerOrigin): Transformer() {
+  context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
     `join-on(expr)`.matchesMethod(expression)
 
@@ -27,27 +30,36 @@ class TransformJoinOn(override val ctx: TransformerOrigin, val replacementMethod
         case(`join-on(expr)`[Is()]).then { queryCallData -> queryCallData }
       ) ?: parseFail("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
 
-    val lambdaArg = params.first()
-    // There actually IS a parameter to this function and it should be named $this$on
-    val paramIdentXR = run {
-      val name = lambdaArg.name.asString()
-      val tpe = TypeParser.parse(lambdaArg.type)
-      XR.Ident(name, tpe)
+    //error("-------- Function:\n${funExpression.function.dumpSimple()}\n------------Params: ${funExpression.function.extensionReceiverParameter?.symbol?.safeName}")
+
+     //There actually IS a reciver to this function and it should be named $this$on
+    val reciverParam = funExpression.function.extensionReceiverParameter ?: illegalStruct("Extension Reciever for on-clause was null")
+    val reciverSymbol = reciverParam.symbol.safeName
+    val paramIdent = run {
+      val tpe = TypeParser.parse(reciverParam.type)
+      XR.Ident(reciverSymbol, tpe)
     }
 
     // parse the `on` clause of the join.on(...)
-    val onLambdaBody = Parser.parseFunctionBlockBody(blockBody)
-    val onLambda = Lambda1Expression(XR.Function1(paramIdentXR, onLambdaBody))
-    val onLambdaExpr = lifter.liftExpression(onLambda)
+    val onLambdaBody =
+      with(makeParserContext().copy(internalVars + ScopeSymbols(listOf(reciverParam.symbol)))) {
+        Parser.parseFunctionBlockBody(blockBody)
+      }
 
-    return caller.callMethod("onExpr").invoke(onLambdaExpr)
+    val onLambda = Lambda1Expression(XR.Function1(paramIdent, onLambdaBody))
+    val onLambdaExpr = lifter.liftExpression(onLambda)
+    // To transform the TableQuery etc... in the join(<Heree>).on clause before the `on`
+    // No scope symbols into caller since it comes Before the on-clause i.e. before any symbols could be created
+    val newCaller = caller.transform(superTransformer, internalVars)
+
+    return newCaller.callMethod("onExpr").invoke(onLambdaExpr)
   }
 }
 
 class TransformQueryFlatMap(override val ctx: TransformerOrigin, val replacementMethod: String): Transformer() {
   private val matcher = ExtractorsDomain.Call.QueryFlatMap
 
-  context(ParserContext, BuilderContext, CompileLogger)
+  context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
     matcher.matchesMethod(expression)
 

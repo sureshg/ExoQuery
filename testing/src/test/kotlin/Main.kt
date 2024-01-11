@@ -18,14 +18,15 @@ data class Name(val first: String)
 fun main() {
   val p = Person(111, Name("Joe"), 123)
 
-  val x = printSource {
+  val x = //printSource {
     select {
       val k = join(TableQuery<Address>()).on { street == "someplace" }
       k
     }
-  }
+  //}
 
-  println(x)
+  //println(x)
+  println(pprint(x, defaultShowFieldNames = false, defaultWidth = 200))
 
 //  val v =
 //    select {

@@ -41,7 +41,7 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
         val outputQuery = mapping(sqlVariable)
         val ident = XR.Ident(sqlVariable.getVariableName(), outputQuery.xr.type)
         QueryContainer<R>(XR.FlatMap(
-          XR.FlatJoin(joinType, query.xr, cond.ident, cond.xr), ident, outputQuery.xr)
+          XR.FlatJoin(joinType, query.xr, cond.ident, cond.xr.body), ident, outputQuery.xr)
         ) as Query<A>
       }
     }

@@ -95,7 +95,7 @@ object Parser {
 
       },
       case(Ir.Const[Is()]).thenThis {
-        parse(this)
+        parseConst(this)
       },
       case(Ir.Call.Property[Is(), Is()]).then { expr, name ->
         XR.Property(parse(expr), name)
@@ -133,7 +133,7 @@ object Parser {
          |
       """.trimMargin())
 
-  context (CompileLogger) fun parse(irConst: IrConst<*>): XR =
+  context (CompileLogger) fun parseConst(irConst: IrConst<*>): XR =
     if (irConst.value == null) XR.Const.Null
     else when (irConst.kind) {
       IrConstKind.Null -> XR.Const.Null

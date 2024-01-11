@@ -57,6 +57,7 @@ class CaptureTransformer(
     val queryMapTransformer = TransformQueryMap(transformerCtx, ExtractorsDomain.Call.QueryMap, "mapExpr")
     val queryFlatMapTransformer = TransformQueryFlatMap(transformerCtx, "flatMapInternal")
     val makeTableTransformer = TransformTableQuery(transformerCtx)
+    val joinOnTransformer = TransformJoinOn(transformerCtx)
 
     // TODO Create a 'transformer' for SelectClause that will just collect
     //      the variables declared there and propagate them to clauses defined inside of that
@@ -69,6 +70,15 @@ class CaptureTransformer(
     //compileLogger.warn("---------- Call Checking:\n" + expression.dumpKotlinLike())
 
     val out = when {
+      // 1st that that runs here because printed stuff should not be transformed
+      // (and this does not recursively transform stuff inside)
+      transformPrint.matches(expression) -> {
+        transformPrint.transform(expression)
+      }
+
+      joinOnTransformer.matches(expression) ->
+        joinOnTransformer.transform(expression, this)
+
       queryFlatMapTransformer.matches(expression) ->
         queryFlatMapTransformer.transform(expression, this)
 
@@ -77,12 +87,8 @@ class CaptureTransformer(
         makeTableTransformer.transform(expression)
       }
 
-      transformPrint.matches(expression) -> {
-        transformPrint.transform(expression)
-      }
-
       queryMapTransformer.matches(expression) -> {
-        compileLogger.warn("=========== Transforming Map ========\n" + expression.dumpKotlinLike())
+        //compileLogger.warn("=========== Transforming Map ========\n" + expression.dumpKotlinLike())
         queryMapTransformer.transform(expression, this)
       }
 
