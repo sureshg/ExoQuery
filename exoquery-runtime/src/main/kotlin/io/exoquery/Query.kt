@@ -1,6 +1,7 @@
 package io.exoquery
 
 import io.exoquery.annotation.ExoInternal
+import io.exoquery.select.InnerMost
 import io.exoquery.select.SelectClause
 import io.exoquery.select.program
 import io.exoquery.xr.XR
@@ -123,8 +124,9 @@ public fun <T, Q: Query<T>> select(block: suspend SelectClause<T>.() -> SqlVaria
     ) as Query<T>
 
   // TODO Need to change the innermost map into a flatMap
-  return q as Q
-  //return InnerMost.mark(q) as Q
+  //return q as Q
+  val markedXR = InnerMost.mark(q.xr)
+  return QueryContainer<T>(markedXR) as Q
 }
 
 //data class Table<T>(override val xt: XR): Query<T>

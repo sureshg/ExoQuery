@@ -19,7 +19,7 @@ dependencies {
     compileOnly("com.google.auto.service:auto-service-annotations:1.0.1")
     implementation("com.facebook:ktfmt:0.43")
 
-    implementation("io.exoquery:decomat-core:0.0.3")
+    implementation("io.exoquery:decomat-core:0.0.4")
     implementation("com.tylerthrailkill.helpers:pretty-print:2.0.2")
     api(kotlin("reflect"))
 }

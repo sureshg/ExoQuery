@@ -1,15 +1,18 @@
 package io.exoquery.select
 
+import io.decomat.*
 import io.exoquery.Lambda1Expression
 import io.exoquery.Query
 import io.exoquery.QueryContainer
 import io.exoquery.SqlVariable
 import io.exoquery.annotation.ExoInternal
+import io.exoquery.xr.Is
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
+import io.exoquery.xr.get
 
 @OptIn(ExoInternal::class) // TODO Not sure if the output here QueryContainer(Ident(SqlVariable)) is right need to look into the shape
-class SelectClause<A> : ProgramBuilder<Query<A>, SqlVariable<A>>({ result -> QueryContainer<A>(XR.Ident(result.getVariableName(), XRType.Generic))  }) {
+class SelectClause<A> : ProgramBuilder<Query<A>, SqlVariable<A>>({ result -> QueryContainer<A>(XR.Marker(XR.Ident(result.getVariableName(), XRType.Generic)))  }) {
 
   public suspend fun <R> from(query: Query<R>): SqlVariable<R> =
     fromAliased(query, "x")
@@ -45,6 +48,25 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
         ) as Query<A>
       }
     }
+}
+
+object InnerMost {
+  fun mark(xr: XR) =
+    when(xr) {
+      is XR.FlatMap -> markFlatMap2(xr)
+      else -> xr
+    }
+
+  private fun markFlatMap2(q: XR.FlatMap): XR =
+    on(q).match(
+      // if head is a map it's something like FlatMap(FlatMap(...FlatMap), ...) so get to innermost one on head & mark
+      // then recurse back from the outer structure
+      case(XR.FlatMap[XR.FlatMap.Is, Is()]).thenThis { head, body -> XR.FlatMap(mark(head), this.ident, mark(body)) },
+      // If the tail is a flatMap e.g. FlatMap(?, FlatMap(?, FlatMap(...)))) recurse into the last one in the chain
+      case(XR.FlatMap[Is(), XR.FlatMap.Is]).thenThis { head, body -> XR.FlatMap(head, this.ident, mark(body)) },
+      // If we are here than we are at the deepest flatMap in the chain since we have reached the marked-value
+      case(XR.FlatMap[Is(), XR.Marker[Is()]]).thenThis { head, (nestedValue) -> XR.Map(head, this.ident, nestedValue) }
+    ) ?: q
 }
 
 /**

@@ -127,7 +127,7 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
       is Const -> this.lift() // points to the Const.lift() function above
       is Property -> make<Property>(this.component1().lift(), this.component2().lift())
       is Block -> make<Block>(this.component1().lift { it.lift() }, this.component2().lift())
-      is When -> make<When>(this.component1().lift { it.lift() })
+      is When -> make<When>(this.component1().lift { it.lift() }, this.component2().lift())
       is Branch -> make<Branch>(this.component1().lift(), this.component2().lift())
       is Variable -> make<Variable>(this.component1().lift(), this.component2().lift())
       is Function1 -> make<Function1>(this.component1().lift(), this.component2().lift())
@@ -135,7 +135,11 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
       is FlatJoin -> make<FlatJoin>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
       is FlatMap -> make<FlatMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is XR.Map -> make<XR.Map>(this.component1().lift(), this.component2().lift(), this.component3().lift())
-      is UnaryOp -> make<XR.UnaryOp>(this.component1().lift(), this.component2().lift())
+      is UnaryOp -> make<UnaryOp>(this.component1().lift(), this.component2().lift())
+      is FunctionN -> make<FunctionN>(this.component1().lift { it.lift() }, this.component2().lift())
+      is Filter -> make<Filter>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is Marker -> make<Marker>(this.component1().lift())
+      is Nested -> make<Nested>(this.component1().lift())
     }
 
   fun XR.JoinType.lift(): IrExpression =

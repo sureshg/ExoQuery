@@ -121,9 +121,11 @@ object Parser {
       case(Ir.Block[Is(), Is()]).then { stmts, ret ->
         XR.Block(stmts.map { parseBlockStatement(it) }, parse(ret))
       },
-      case(Ir.When[Is()]).then { cases ->
-        val casesAst = cases.map { parseBranch(it) }
-        XR.When(casesAst)
+      case(Ir.When[Is()]).thenThis { cases ->
+        val elseBranch = cases.find { it is IrElseBranch }?.let { parseBranch(it) }
+        val casesAst = cases.filterNot { it is IrElseBranch }.map { parseBranch(it) }
+        val elseBranchOrLast = elseBranch ?: casesAst.lastOrNull() ?: parseFail("Empty when expression not allowed:\n${this.dumpKotlinLike()}")
+        XR.When(casesAst, elseBranchOrLast)
       }
     ) ?: parseFail(
       """|======= Could not parse expression from: =======
