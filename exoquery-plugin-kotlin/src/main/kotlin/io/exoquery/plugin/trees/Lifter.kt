@@ -120,26 +120,59 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
       Const.Null -> makeObject<Const.Null>() // Does this actually work?
     }
 
-  fun XR.lift(): IrExpression =
-    when (this) {
+  fun XR.Expression.lift(): IrExpression =
+    when(this) {
       is BinaryOp -> make<BinaryOp>(this.component1().lift(), this.component2().lift(), this.component3().lift())
-      is Ident -> make<Ident>(this.component1().lift(), this.component2().lift())
       is Const -> this.lift() // points to the Const.lift() function above
+      is FunctionApply -> make<FunctionApply>(this.component1().lift(), this.component2().lift { it.lift() })
+      is Ident -> make<Ident>(this.component1().lift(), this.component2().lift())
       is Property -> make<Property>(this.component1().lift(), this.component2().lift())
-      is Block -> make<Block>(this.component1().lift { it.lift() }, this.component2().lift())
+      is UnaryOp -> make<UnaryOp>(this.component1().lift(), this.component2().lift())
+      Const.Null -> makeObject<Const.Null>()
       is When -> make<When>(this.component1().lift { it.lift() }, this.component2().lift())
-      is Branch -> make<Branch>(this.component1().lift(), this.component2().lift())
-      is Variable -> make<Variable>(this.component1().lift(), this.component2().lift())
-      is Function1 -> make<Function1>(this.component1().lift(), this.component2().lift())
-      is Entity -> make<Entity>(this.component1().lift(), this.component2().lift())
-      is FlatJoin -> make<FlatJoin>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
+      // The below must go in Function/Query/Expression/Action lift clauses
+      is Marker -> make<Marker>(this.component1().lift())
+    }
+
+  fun XR.Query.lift(): IrExpression =
+    when(this) {
       is FlatMap -> make<FlatMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is XR.Map -> make<XR.Map>(this.component1().lift(), this.component2().lift(), this.component3().lift())
-      is UnaryOp -> make<UnaryOp>(this.component1().lift(), this.component2().lift())
-      is FunctionN -> make<FunctionN>(this.component1().lift { it.lift() }, this.component2().lift())
+      is Entity -> make<Entity>(this.component1().lift(), this.component2().lift())
       is Filter -> make<Filter>(this.component1().lift(), this.component2().lift(), this.component3().lift())
-      is Marker -> make<Marker>(this.component1().lift())
+      is Union -> make<Union>(this.component1().lift(), this.component2().lift())
+      is UnionAll -> make<UnionAll>(this.component1().lift(), this.component2().lift())
+      is Distinct -> make<Distinct>(this.component1().lift())
+      is DistinctOn -> make<DistinctOn>(this.component1().lift(), this.component2().lift())
+      is Drop -> make<Drop>(this.component1().lift(), this.component2().lift())
+      is SortBy -> make<SortBy>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is Take -> make<Take>(this.component1().lift(), this.component2().lift())
+      is FlatJoin -> make<FlatJoin>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
+      is ConcatMap -> make<ConcatMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is GroupByMap -> make<GroupByMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is Aggregation -> make<Aggregation>(this.component1().lift(), this.component2().lift())
       is Nested -> make<Nested>(this.component1().lift())
+      // The below must go in Function/Query/Expression/Action lift clauses
+      is Marker -> make<Marker>(this.component1().lift())
+    }
+
+  fun XR.Function.lift() =
+    when (this) {
+      is Function1 -> make<Function1>(this.component1().lift(), this.component2().lift())
+      is FunctionN -> make<FunctionN>(this.component1().lift { it.lift() }, this.component2().lift())
+      // The below must go in Function/Query/Expression/Action lift clauses
+      is Marker -> make<Marker>(this.component1().lift())
+    }
+
+  fun XR.lift(): IrExpression =
+    when (this) {
+      is XR.Expression -> this.lift()
+      is Query -> this.lift()
+      is XR.Function -> this.lift()
+      // is XR.Action -> this.lift()
+      is Block -> make<Block>(this.component1().lift { it.lift() }, this.component2().lift())
+      is Branch -> make<Branch>(this.component1().lift(), this.component2().lift())
+      is Variable -> make<Variable>(this.component1().lift(), this.component2().lift())
     }
 
   fun XR.JoinType.lift(): IrExpression =

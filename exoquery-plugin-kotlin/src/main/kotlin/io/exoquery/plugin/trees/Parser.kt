@@ -21,27 +21,40 @@ data class ParserContext(val internalVars: ScopeSymbols, val currentFile: IrFile
 
 object Parser {
 
+  context(ParserContext, CompileLogger) inline fun <reified T> parseAs(expr: IrExpression): T {
+    val parsedExpr = parse(expr)
+    return if (parsedExpr is T) parsedExpr
+    else parseFail(
+      """|Could not parse the type expected type ${T::class.qualifiedName} (actual was ${parsedExpr::class.qualifiedName}) 
+         |${expr.dumpKotlinLike()}
+      """.trimMargin()
+    )
+  }
+
+  context(ParserContext, CompileLogger) fun parseExpr(expr: IrExpression): XR.Expression =
+    parseAs<XR.Expression>(expr)
+
   context(ParserContext, CompileLogger) fun parseBlockStatement(expr: IrStatement): XR.Variable =
     on(expr).match(
       case(Ir.Variable[Is(), Is()]).then { name, rhs ->
-        XR.Variable(name, parse(rhs))
+        XR.Variable(name, parseExpr(rhs))
       }
     ) ?: parseFail("Could not parse Ir Variable statement from:\n${expr.dumpSimple()}")
 
   context(ParserContext, CompileLogger) fun parseBranch(expr: IrBranch): XR.Branch =
     on(expr).match(
       case(Ir.Branch[Is(), Is()]).then { cond, then ->
-        XR.Branch(parse(cond), parse(then))
+        XR.Branch(parseExpr(cond), parseExpr(then))
       }
     ) ?: parseFail("Could not parse Branch from: ${expr.dumpSimple()}")
 
-  context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): XR =
-    on(blockBody).match<XR>(
+  context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): XR.Expression =
+    on(blockBody).match<XR.Expression>(
       // TODO use Ir.BlockBody.ReturnOnly
       case(Ir.BlockBody[List1[Ir.Return[Is()]]])
         .then { (irReturn) ->
           val returnExpression = irReturn.value
-          parse(returnExpression)
+          parseExpr(returnExpression)
         }
     ) ?: parseFail("Could not parse IrBlockBody:\n${blockBody.dumpKotlinLike()}")
 
@@ -53,6 +66,8 @@ object Parser {
 //      }
 //    }"
 
+
+
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR =
     // adding the type annotation <Ast> seems to improve the type inference performance
 
@@ -62,12 +77,12 @@ object Parser {
       // Binary Operators
       case(ExtractorsDomain.Call.`x op y`[Is()]).thenThis { opCall ->
         val (x, op, y) = opCall
-        XR.BinaryOp(parse(x), op, parse(y))
+        XR.BinaryOp(parseAs<XR.Expression>(x), op, parseAs<XR.Expression>(y))
       },
       // Unary Operators
       case(ExtractorsDomain.Call.`(op)x`[Is()]).thenThis { opCall ->
         val (x, op) = opCall
-        XR.UnaryOp(op, parse(x))
+        XR.UnaryOp(op, parseAs<XR.Expression>(x))
       },
 
       // TODO also need unary operator
@@ -98,7 +113,7 @@ object Parser {
         parseConst(this)
       },
       case(Ir.Call.Property[Is(), Is()]).then { expr, name ->
-        XR.Property(parse(expr), name)
+        XR.Property(parseExpr(expr), name)
       },
       case(Ir.Call.FunctionUntethered1[Is()]).thenIfThis { list ->
         this.symbol.safeName == "getSqlVar"
@@ -119,7 +134,7 @@ object Parser {
       // }
       // ,
       case(Ir.Block[Is(), Is()]).then { stmts, ret ->
-        XR.Block(stmts.map { parseBlockStatement(it) }, parse(ret))
+        XR.Block(stmts.map { parseBlockStatement(it) }, parseExpr(ret))
       },
       case(Ir.When[Is()]).thenThis { cases ->
         val elseBranch = cases.find { it is IrElseBranch }?.let { parseBranch(it) }

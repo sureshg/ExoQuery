@@ -5,6 +5,7 @@ import io.exoquery.select.InnerMost
 import io.exoquery.select.SelectClause
 import io.exoquery.select.program
 import io.exoquery.xr.XR
+import java.util.*
 
 fun <T> getSqlVar(name: String): T =
   throw IllegalArgumentException("something meaningful")
@@ -57,7 +58,7 @@ class SqlVariable<T>(variableName: String /* don't want this to intersect with e
 
 
 sealed interface Query<T> {
-  val xr: XR
+  val xr: XR.Query
 
 //  val map get() = MapClause<T>(xr)
 
@@ -98,7 +99,7 @@ sealed interface Query<T> {
 //  fun onExpr(f: Lambda1Expression): Query<T> =  error("The join-on expression of the Query was not inlined")
 //}
 
-data class QueryContainer<T>(override val xr: XR): Query<T>
+data class QueryContainer<T>(override val xr: XR.Query): Query<T>
 
 // TODO make this constructor private? Shuold have a TableQuery.fromExpr constructor
 class TableQuery<T> private constructor (override val xr: XR.Entity): Query<T> {
@@ -117,15 +118,16 @@ public fun <T, Q: Query<T>> select(block: suspend SelectClause<T>.() -> SqlVaria
     f: suspend T.() -> Result
 ): Action
    */
+  val markerId = UUID.randomUUID().toString()
   val q =
     program<Query<T>, SqlVariable<T>, SelectClause<T>>(
-      machine = SelectClause<T>(),
+      machine = SelectClause<T>(markerId),
       f = block
     ) as Query<T>
 
   // TODO Need to change the innermost map into a flatMap
   //return q as Q
-  val markedXR = InnerMost.mark(q.xr)
+  val markedXR = InnerMost(markerId).findAndMark(q.xr)
   return QueryContainer<T>(markedXR) as Q
 }
 
