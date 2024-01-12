@@ -132,6 +132,8 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
       is When -> make<When>(this.component1().lift { it.lift() }, this.component2().lift())
       // The below must go in Function/Query/Expression/Action lift clauses
       is Marker -> make<Marker>(this.component1().lift())
+      // TODO need to implement product lifting
+      is Product -> TODO()
     }
 
   fun XR.Query.lift(): IrExpression =
@@ -192,6 +194,7 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
       XRType.Value -> makeObject<XRType.Value>()
       XRType.Unknown -> makeObject<XRType.Unknown>()
       XRType.Generic -> makeObject<XRType.Generic>()
+      XRType.Null -> makeObject<XRType.Null>()
     }
 
 

@@ -1,30 +1,7 @@
 package io.exoquery.plugin.trees
 
+import io.exoquery.xr.*
 import io.exoquery.xr.XR.*
-import io.exoquery.xr.XR
-
-// I think beta reduction should be used for XR.Expression in all the cases, shuold
-// move forward and find out if this is actually the case. If it is not, can probably
-// just add `case ast if map.contains(ast) =>` to the apply for Query, Function, etc...
-// maybe should have separate maps for Query, Function, etc... for that reason if those cases even exist
-data class BetaReduction(val map: Map<XR.Expression, XR.Expression>): StatelessTransformer {
-  override fun apply(xr: XR.Expression): XR.Expression =
-    when {
-      map.contains(xr) -> {
-        val rep = BetaReduction(map - xr - map[xr]!!).apply(map[xr]!!)
-        when {
-
-        }
-
-        TODO()
-      }
-
-      else -> TODO()
-    }
-
-
-}
-
 
 interface StatelessTransformer {
 
@@ -53,6 +30,7 @@ interface StatelessTransformer {
         is UnaryOp -> UnaryOp(op, apply(expr))
         Const.Null -> this
         is When -> When(branches.map { apply(it) }, apply(orElse))
+        is Product -> Product(name, fields.map { it.first to apply(it.second) })
         // The below must go in Function/Query/Expression/Action apply clauses
         is Marker -> this
       }
@@ -98,5 +76,4 @@ interface StatelessTransformer {
         is XR.Variable -> apply(this)
       }
     }
-
 }

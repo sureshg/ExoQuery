@@ -6,31 +6,6 @@ import io.decomat.productComponentsOf as productOf
 import io.decomat.HasProductClass as PC
 
 
-sealed class XRType {
-  data class Product(val name: String, val fields: List<Pair<String, XRType>>): XRType() {
-    private val fieldsHash by lazy { fields.toMap() }
-    fun getField(name: String) =
-      if (fields.size < 5)
-        fields.find { it.first == name }?.second
-      else
-        fieldsHash.get(name)
-  }
-
-  sealed class Boolean: XRType()
-  object BooleanValue: Boolean()
-  object BooleanExpression: Boolean()
-
-  object Unknown: XRType()
-  object Generic: XRType()
-
-  object Value: XRType() {
-    override fun toString(): String {
-      return "Value"
-    }
-  }
-}
-
-
 /**
  * This is the core syntax tree there are essentially three primary concepts represented here:
  * 1. XR.Query - These are Entity, Map, FlatMap, etc... that represent the building blocks of the `from` clause
@@ -57,6 +32,8 @@ sealed interface XR {
   // The primary types of XR are Query, Expression, Function, and Action
   // there are additional values that are useful for pattern matching in various situations
   object Labels {
+    // Things that store their own XRType. Right now this is just an Ident but in the future
+    // it will also be a lifted value.
     sealed interface Terminal: Expression, XR
   }
 
@@ -129,7 +106,7 @@ sealed interface XR {
 
   data class Aggregation(val operator: AggregationOperator, @Slot val body: XR.Expression): Query, PC<Aggregation> {
     override val productComponents = productOf(this, body)
-    override val type get() =
+    override val type by lazy {
       when (operator) {
         AggregationOperator.`min` -> body.type
         AggregationOperator.`max` -> body.type
@@ -137,6 +114,7 @@ sealed interface XR {
         AggregationOperator.`sum` -> XRType.Value
         AggregationOperator.`size` -> XRType.Value
       }
+    }
     companion object {}
   }
 
@@ -249,22 +227,24 @@ sealed interface XR {
   @Mat
   data class BinaryOp(@Slot val a: XR, val op: BinaryOperator, @Slot val b: XR.Expression) : Expression, PC<BinaryOp> {
     override val productComponents = productOf(this, a, b)
-    override val type get() =
+    override val type by lazy {
       when (op) {
         is YieldsBool -> XRType.BooleanExpression
         else -> XRType.Value
       }
+    }
     companion object {}
   }
 
   @Mat
   data class UnaryOp(val op: UnaryOperator, @Slot val expr: XR.Expression) : Expression, PC<UnaryOp> {
     override val productComponents = productOf(this, expr)
-    override val type get() =
+    override val type by lazy {
       when (op) {
         is YieldsBool -> XRType.BooleanExpression
         else -> XRType.Value
       }
+    }
     companion object {}
   }
 
@@ -276,9 +256,15 @@ sealed interface XR {
   data class Ident(@Slot val name: String, override val type: XRType) : XR, Labels.Terminal, PC<Ident> {
     override val productComponents = productOf(this, name)
     companion object {}
+
+    data class Id(val name: String)
+    private val id = Id(name)
+
+    override fun hashCode() = id.hashCode()
+    override fun equals(other: Any?) = other is Ident && other.id == id
   }
 
-  sealed class Const: Expression, Labels.Terminal {
+  sealed class Const: Expression {
     override val type = XRType.Value
 
     data class Boolean(val value: kotlin.Boolean) : Const()
@@ -295,43 +281,65 @@ sealed interface XR {
     }
   }
 
+  data class Product(val name: String, @Slot val fields: List<Pair<String, XR.Expression>>): Expression, PC<Product> {
+    override val productComponents = productOf(this, fields)
+    override val type by lazy { XRType.Product(name, fields.map { it.first to it.second.type }) }
+    companion object {}
+
+    data class Id(val fields : List<Pair<String, XR.Expression>>)
+    private val id = Id(fields)
+    override fun hashCode() = id.hashCode()
+    override fun equals(other: Any?) = other is Product && other.id == id
+  }
+
   @Mat
-  data class Property(@Slot val of: XR.Expression, @Slot val name: String) : XR, Labels.Terminal, PC<Property> {
+  data class Property(@Slot val of: XR.Expression, @Slot val name: String) : XR.Expression, PC<Property> {
     override val productComponents = productOf(this, of, name)
-    override val type: XRType
-      get() =
+    override val type: XRType by lazy {
       when (val tpe = of.type) {
         is XRType.Product -> tpe.getField(name) ?: XRType.Unknown
         else -> XRType.Unknown
       }
+    }
     companion object {}
   }
 
   @Mat
   data class Block(@Slot val stmts: List<Variable>, @Slot val output: XR.Expression) : XR, PC<Block> {
     override val productComponents = productOf(this, stmts, output)
-    override val type: XRType get() = output.type
+    override val type: XRType by lazy { output.type }
     companion object {}
   }
 
   @Mat
   data class When(@Slot val branches: List<Branch>, @Slot val orElse: XR.Expression) : Expression, PC<When> {
     override val productComponents = productOf(this, branches, orElse)
-    override val type: XRType get() = branches.lastOrNull()?.type ?: XRType.Unknown
+    override val type: XRType by lazy { branches.lastOrNull()?.type ?: XRType.Unknown }
     companion object {}
   }
 
   @Mat
   data class Branch(@Slot val cond: XR.Expression, @Slot val then: XR.Expression) : XR, PC<Branch> {
     override val productComponents = productOf(this, cond, then)
-    override val type: XRType get() = then.type
+    override val type: XRType by lazy { then.type }
     companion object {}
   }
 
   @Mat
   data class Variable(@Slot val name: String, @Slot val rhs: XR.Expression): XR, PC<Variable> {
     override val productComponents = productOf(this, name, rhs)
-    override val type: XRType get() = rhs.type
+    override val type: XRType by lazy { rhs.type }
     companion object {}
   }
 }
+
+fun XR.isBottomTypedTerminal() =
+  this is XR.Labels.Terminal && (this.type is XRType.Null || this.type is XRType.Generic || this.type is XRType.Unknown)
+
+fun XR.isTerminal() =
+  this is XR.Labels.Terminal
+
+fun XR.Labels.Terminal.withType(type: XRType) =
+  when (this) {
+    is XR.Ident -> XR.Ident(name, type)
+  }
