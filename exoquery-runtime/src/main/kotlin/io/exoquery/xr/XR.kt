@@ -83,7 +83,7 @@ sealed interface XR {
   }
 
   @Mat
-  data class Filter private constructor (@Slot val a: XR.Query, val ident: Ident, @Slot val b: XR.Expression): Query, PC<Filter> {
+  data class Filter(@Slot val a: XR.Query, val ident: Ident, @Slot val b: XR.Expression): Query, PC<Filter> {
     override val productComponents = productOf(this, a, b)
     override val type get() = a.type
     companion object {}
@@ -315,7 +315,7 @@ sealed interface XR {
   }
 
   @Mat
-  data class When(@Slot val branches: List<Branch>, @Slot val orElse: Branch) : Expression, PC<When> {
+  data class When(@Slot val branches: List<Branch>, @Slot val orElse: XR.Expression) : Expression, PC<When> {
     override val productComponents = productOf(this, branches, orElse)
     override val type: XRType get() = branches.lastOrNull()?.type ?: XRType.Unknown
     companion object {}

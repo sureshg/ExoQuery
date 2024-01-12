@@ -140,7 +140,7 @@ object Parser {
         val elseBranch = cases.find { it is IrElseBranch }?.let { parseBranch(it) }
         val casesAst = cases.filterNot { it is IrElseBranch }.map { parseBranch(it) }
         val elseBranchOrLast = elseBranch ?: casesAst.lastOrNull() ?: parseFail("Empty when expression not allowed:\n${this.dumpKotlinLike()}")
-        XR.When(casesAst, elseBranchOrLast)
+        XR.When(casesAst, elseBranchOrLast.then)
       }
     ) ?: parseFail(
       """|======= Could not parse expression from: =======
