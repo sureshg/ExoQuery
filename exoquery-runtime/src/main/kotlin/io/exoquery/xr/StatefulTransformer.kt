@@ -1,7 +1,6 @@
-package io.exoquery.plugin.trees
+package io.exoquery.xr
 
 import io.exoquery.xr.XR.*
-import io.exoquery.xr.XR
 
 
 /**
@@ -26,6 +25,12 @@ interface StatefulTransformerSingleRoot<T>: StatefulTransformer<T> {
 
   private fun invokeSuper(xr: Query): Pair<Query, StatefulTransformer<T>> = super.invoke(xr)
   override fun invoke(xr: Query): Pair<Query, StatefulTransformer<T>> {
+    val (a, stateA) = root(xr)
+    return stateA.invokeSuper(a)
+  }
+
+  private fun invokeSuper(xr: XR.Function): Pair<XR.Function, StatefulTransformer<T>> = super.invoke(xr)
+  override fun invoke(xr: XR.Function): Pair<XR.Function, StatefulTransformer<T>> {
     val (a, stateA) = root(xr)
     return stateA.invokeSuper(a)
   }
@@ -219,7 +224,7 @@ interface StatefulTransformer<T> {
       }
     }
 
-  fun <U, R> applyList(list: List<U>, f: (StatefulTransformer<T>, U) -> Pair<R, StatefulTransformer<T>>): Pair<List<R>,  StatefulTransformer<T>> {
+  fun <U, R> applyList(list: List<U>, f: (StatefulTransformer<T>, U) -> Pair<R, StatefulTransformer<T>>): Pair<List<R>, StatefulTransformer<T>> {
     val (newList, transformer) =
       list.fold(Pair(mutableListOf<R>(), this)) { (values, t), v ->
         val (vt, vtt) = f(t, v)

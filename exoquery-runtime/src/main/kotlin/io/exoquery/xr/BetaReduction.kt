@@ -1,6 +1,6 @@
-package io.exoquery.plugin.trees
+package io.exoquery.xr
 
-import io.exoquery.plugin.tail
+import io.exoquery.util.tail
 import io.exoquery.xr.*
 
 sealed interface TypeBehavior {
@@ -120,8 +120,9 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
       }
     }
 
+  // Needed for FuncitonApply[FunctionApply(fun(a) -> fun(b), [...]), [...])
   override fun invoke(xr: XR.Function): XR.Function {
-    fun mapParams(params: List<XR.Ident>, body: XR.Expression) =
+    fun mapParams(params: List<XR.Ident>) =
       params.map { p ->
         when (val v = map.get(p)) {
           // Not null and its an identifier
@@ -132,11 +133,11 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
     return with(xr) {
       when(this) {
         is XR.Function1 -> {
-          val newParams = mapParams(params, body)
+          val newParams = mapParams(params)
           XR.Function1(newParams.first(), BetaReduce(map + params.zip(newParams))(body))
         }
         is XR.FunctionN -> {
-          val newParams = mapParams(params, body)
+          val newParams = mapParams(params)
           XR.FunctionN(newParams, BetaReduce(map + params.zip(newParams))(body))
         }
         is XR.Marker -> this
@@ -159,7 +160,7 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
                 val reduct: XR.Variable = BetaReduce(map)(line)
                 // If the beta reduction is a some 'val x=t', add x->t to the beta reductions map
                 val newMap = map + Pair(reduct.name, reduct.rhs)
-                val newStmt = BetaReduce(newMap).invoke(stmt as XR)
+                val newStmt = BetaReduce(newMap).invoke(stmt as XR) // Need to widen for the beta-reduction to be right!
                 Pair(newMap, newStmt)
               }.second
           invoke(output)
@@ -169,6 +170,28 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
     }
 
 
+  companion object {
+    operator fun invoke(ast: XR, vararg t: Pair<XR.Expression, XR.Expression>): XR =
+      invoke(ast, TypeBehavior.SubstituteSubtypes, EmptyProductQuatBehavior.Ignore, *t)
 
+    operator fun invoke(ast: XR, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductQuatBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR {
+      // TODO When it's Substitute types we should do a checkTypes
+      val output = invoke(ast, t.toMap(), typeBehavior, emptyBehavior)
+      return output
+    }
+
+    internal operator fun invoke(ast: XR, replacements: Map<XR.Expression, XR.Expression>, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductQuatBehavior): XR {
+      // TODO When it's Substitute types we should do a checkTypes
+      val reducedAst = BetaReduction(replacements, typeBehavior, emptyBehavior).invoke(ast)
+      return when {
+        // Since it is possible for the AST to match but the match not be exactly the same (e.g.
+        // if a AST property not in the product cases comes up (e.g. Ident's quat.rename etc...) make
+        // sure to return the actual AST that was matched as opposed to the one passed in.
+        reducedAst == ast -> reducedAst
+        // Perform an additional beta reduction on the reduced XR since it may not have been fully reduced yet
+        else -> invoke(reducedAst, mapOf<XR.Expression, XR.Expression>(), typeBehavior, emptyBehavior)
+      }
+    }
+  }
 
 }

@@ -1,7 +1,4 @@
-package io.exoquery.plugin.trees
-
-import io.exoquery.xr.XR
-import org.jetbrains.kotlin.js.inline.util.collectAccessors
+package io.exoquery.xr
 
 class CollectXR<T>(private val collect: (XR) -> T?): StatefulTransformerSingleRoot<MutableList<T>> {
 

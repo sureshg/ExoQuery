@@ -1,18 +1,20 @@
-package io.exoquery.plugin.trees
+package io.exoquery.xr
 
-import io.exoquery.xr.*
 import io.exoquery.xr.XR.*
 
-interface StatelessTransformer {
+interface StatelessTransformerSingleRoot: StatelessTransformer {
+  fun <X> root(xr: X): X where X: XR
 
-  operator fun invoke(xr: XR.Function): XR.Function =
-    with(xr) {
-      when (this) {
-        is Function1 -> Function1(param, invoke(body))
-        is FunctionN -> FunctionN(params, invoke(body))
-        is Marker -> this
-      }
-    }
+  // Need to override the things that otherwise wouldn't go through the root
+  override fun invoke(xr: Expression): Expression = super.invoke(root(xr))
+  override fun invoke(xr: Query): Query = super.invoke(root(xr))
+  override fun invoke(xr: Branch): Branch = super.invoke(root(xr))
+  override fun invoke(xr: XR.Function): XR.Function = super.invoke(root(xr))
+  override fun invoke(xr: Variable): Variable = super.invoke(root(xr))
+  override fun invoke(xr: XR): XR = super.invoke(root(xr))
+}
+
+interface StatelessTransformer {
 
   operator fun invoke(xr: XR.Expression): XR.Expression =
     with(xr) {
@@ -42,15 +44,24 @@ interface StatelessTransformer {
         is UnionAll -> UnionAll(invoke(a), invoke(b))
         is Distinct -> Distinct(invoke(query))
         is DistinctOn -> DistinctOn(invoke(query), alias, invoke(by))
-        is Drop -> Drop(invoke(query), num)
+        is Drop -> Drop(invoke(query), invoke(num))
         is SortBy -> SortBy(invoke(query), alias, invoke(criteria), ordering)
-        is Take -> Take(invoke(query), num)
+        is Take -> Take(invoke(query), invoke(num))
         is FlatJoin -> FlatJoin(joinType, invoke(a), aliasA, invoke(on))
         is ConcatMap -> ConcatMap(invoke(a), ident, invoke(b))
         is GroupByMap -> GroupByMap(invoke(query), byAlias, invoke(byBody), mapAlias, invoke(mapBody))
-        is Aggregation -> Aggregation(operator, body)
+        is Aggregation -> Aggregation(operator, invoke(body))
         is Nested -> Nested(invoke(query))
         // The below must go in Function/Query/Expression/Action invoke clauses
+        is Marker -> this
+      }
+    }
+
+  operator fun invoke(xr: XR.Function): XR.Function =
+    with(xr) {
+      when (this) {
+        is Function1 -> Function1(param, invoke(body))
+        is FunctionN -> FunctionN(params, invoke(body))
         is Marker -> this
       }
     }
