@@ -112,6 +112,68 @@ class StatelessTransformerSpec : FreeSpec({
         Subject(Ident("a") to Ident("a'"), Ident("b") to Ident("b'"), Ident("c") to Ident("c'"))(ast) shouldBe
           Product("CC", listOf("foo" to Ident("a'"), "bar" to Ident("b'"), "baz" to Ident("c'")))
       }
+      "ident" {
+        val ast: XR = Ident("a")
+        Subject(Ident("a") to Ident("a'"))(ast) shouldBe
+          Ident("a'")
+      }
+      "property" {
+        val ast: XR = Property(Ident("a"), "b")
+        Subject(Ident("a") to Ident("a'"))(ast) shouldBe
+          Property(Ident("a'"), "b")
+      }
+      "when" {
+        val ast: XR = When(listOf(
+          Branch(Ident("a"), Ident("b")),
+          Branch(Ident("c"), Ident("d"))
+        ), Ident("e"))
+        Subject(
+          Ident("a") to Ident("a'"),
+          Ident("b") to Ident("b'"),
+          Ident("c") to Ident("c'"),
+          Ident("d") to Ident("d'"),
+          Ident("e") to Ident("e'"))(ast) shouldBe
+            When(listOf(
+              Branch(Ident("a'"), Ident("b'")),
+              Branch(Ident("c'"), Ident("d'"))
+            ), Ident("e'"))
+      }
+    }
+
+    // When a variable declartion is reduced the actual variable should not change, only the right-hand-side
+    "variable" {
+      val ast: XR = XR.Variable(Ident("x"), Ident("a"))
+      Subject(Ident("a") to Ident("a'"), Ident("x") to Ident("x'"))(ast) shouldBe
+        XR.Variable(Ident("x"), Ident("a'"))
+    }
+    // Same thing with functions
+    "function1" {
+      val ast: XR = XR.Function1(Ident("a"), Ident("a"))
+      Subject(Ident("a") to Ident("a'"))(ast) shouldBe
+        XR.Function1(Ident("a"), Ident("a'"))
+    }
+    "functionN" {
+      val ast: XR = XR.FunctionN(listOf(Ident("a"), Ident("b")), Ident("a"))
+      Subject(Ident("a") to Ident("a'"), Ident("b") to Ident("b'"))(ast) shouldBe
+        XR.FunctionN(listOf(Ident("a"), Ident("b")), Ident("a'"))
+    }
+    // Same thing with blocks, only the value should be replaced, not the variable
+    "block" {
+      val ast: XR = Block(
+        listOf(
+          Variable(Ident("a"), Ident("a")),
+          Variable(Ident("b"), Ident("b"))
+        ),
+        Ident("a") `+==+` Ident("b")
+      )
+      Subject(Ident("a") to Ident("a'"), Ident("b") to Ident("b'"))(ast) shouldBe
+        Block(
+          listOf(
+            Variable(Ident("a"), Ident("a'")),
+            Variable(Ident("b"), Ident("b'"))
+          ),
+          Ident("a'") `+==+` Ident("b'")
+        )
     }
   }
 })
