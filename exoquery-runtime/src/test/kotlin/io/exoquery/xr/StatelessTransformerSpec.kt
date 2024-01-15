@@ -96,7 +96,7 @@ class StatelessTransformerSpec : FreeSpec({
         val fun1 = XR.Function1(Ident("a"), Ident("a"))
         val fun1Prime = XR.Function1(Ident("'a"), Ident("'a"))
         val ast: XR = FunctionApply(fun1, listOf(Ident("b"), Ident("c")))
-        Subject(Ident("a") to Ident("a'"), Ident("b") to Ident("b'"), Ident("c") to Ident("c'"))(ast) shouldBe
+        Subject(fun1 to fun1Prime, Ident("b") to Ident("b'"), Ident("c") to Ident("c'"))(ast) shouldBe
           FunctionApply(fun1Prime, listOf(Ident("b'"), Ident("c'")))
       }
       "constant" {
