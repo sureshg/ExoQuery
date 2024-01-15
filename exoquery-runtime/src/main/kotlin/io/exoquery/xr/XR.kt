@@ -46,7 +46,10 @@ sealed interface XR {
 
   sealed interface Expression: XR
   sealed interface Query: XR
-  sealed interface Function: XR
+  sealed interface Function: XR {
+    val params: List<XR.Ident>
+    val body: XR.Expression
+  }
 
   // *******************************************************************************************
   // ****************************************** Query ******************************************
@@ -194,6 +197,9 @@ sealed interface XR {
     override val productComponents = productOf(this, name)
     override val type get() = XRType.Generic
     companion object {}
+    // Not useful, just needed to fulfil the contract of "Function"
+    override val params get() = listOf<XR.Ident>()
+    override val body: Expression = Ident(name, XRType.Generic)
   }
 
 
@@ -201,14 +207,16 @@ sealed interface XR {
   // ****************************************** Function ********************************************
   // ************************************************************************************************
   @Mat
-  data class Function1(val param: Ident, @Slot val body: XR.Expression): Function, PC<Function1> {
+  data class Function1(val param: Ident, @Slot override val body: XR.Expression): Function, PC<Function1> {
     override val productComponents = productOf(this, body)
     override val type get() = body.type
     companion object {}
+
+    override val params get() = listOf(param)
   }
 
   @Mat
-  data class FunctionN(val params: List<Ident>, @Slot val body: XR.Expression): Function, PC<FunctionN> {
+  data class FunctionN(override val params: List<Ident>, @Slot override val body: XR.Expression): Function, PC<FunctionN> {
     override val productComponents = productOf(this, body)
     override val type get() = body.type
     companion object {}
@@ -326,7 +334,7 @@ sealed interface XR {
   }
 
   @Mat
-  data class Variable(@Slot val name: String, @Slot val rhs: XR.Expression): XR, PC<Variable> {
+  data class Variable(@Slot val name: Ident, @Slot val rhs: XR.Expression): XR, PC<Variable> {
     override val productComponents = productOf(this, name, rhs)
     override val type: XRType by lazy { rhs.type }
     companion object {}

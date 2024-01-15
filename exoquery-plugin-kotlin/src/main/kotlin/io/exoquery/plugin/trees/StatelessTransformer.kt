@@ -5,75 +5,71 @@ import io.exoquery.xr.XR.*
 
 interface StatelessTransformer {
 
-  fun apply(xr: XR.Branch): XR.Branch =
-    with(xr) {
-      XR.Branch(apply(cond), apply(then))
-    }
-
-  fun apply(xr: XR.Function): XR.Function =
+  operator fun invoke(xr: XR.Function): XR.Function =
     with(xr) {
       when (this) {
-        is Function1 -> Function1(param, apply(body))
-        is FunctionN -> FunctionN(params, apply(body))
+        is Function1 -> Function1(param, invoke(body))
+        is FunctionN -> FunctionN(params, invoke(body))
         is Marker -> this
       }
     }
 
-  fun apply(xr: XR.Expression): XR.Expression =
+  operator fun invoke(xr: XR.Expression): XR.Expression =
     with(xr) {
       when (this) {
-        is BinaryOp -> BinaryOp(apply(a), op, apply(b))
+        is BinaryOp -> BinaryOp(invoke(a), op, invoke(b))
         is Const -> this
-        is FunctionApply -> FunctionApply(apply(function), args.map { apply(it) })
+        is FunctionApply -> FunctionApply(invoke(function), args.map { invoke(it) })
         is Ident -> this
-        is Property -> Property(apply(of), name)
-        is UnaryOp -> UnaryOp(op, apply(expr))
+        is Property -> Property(invoke(of), name)
+        is UnaryOp -> UnaryOp(op, invoke(expr))
         Const.Null -> this
-        is When -> When(branches.map { apply(it) }, apply(orElse))
-        is Product -> Product(name, fields.map { it.first to apply(it.second) })
-        // The below must go in Function/Query/Expression/Action apply clauses
+        is When -> When(branches.map { invoke(it) }, invoke(orElse))
+        is Product -> Product(name, fields.map { it.first to invoke(it.second) })
+        // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
       }
     }
 
-  fun apply(xr: XR.Query): XR.Query =
+  operator fun invoke(xr: XR.Query): XR.Query =
     with(xr) {
       when (this) {
-        is FlatMap -> FlatMap(apply(a), ident, apply(b))
-        is XR.Map -> XR.Map(apply(a), ident, apply(b))
+        is FlatMap -> FlatMap(invoke(a), ident, invoke(b))
+        is XR.Map -> XR.Map(invoke(a), ident, invoke(b))
         is Entity -> this
-        is Filter -> Filter(apply(a), ident, apply(b))
-        is Union -> Union(apply(a), apply(b))
-        is UnionAll -> UnionAll(apply(a), apply(b))
-        is Distinct -> Distinct(apply(query))
-        is DistinctOn -> DistinctOn(apply(query), alias, apply(by))
-        is Drop -> Drop(apply(query), num)
-        is SortBy -> SortBy(apply(query), alias, apply(criteria), ordering)
-        is Take -> Take(apply(query), num)
-        is FlatJoin -> FlatJoin(joinType, apply(a), aliasA, apply(on))
-        is ConcatMap -> ConcatMap(apply(a), ident, apply(b))
-        is GroupByMap -> GroupByMap(apply(query), byAlias, apply(byBody), mapAlias, apply(mapBody))
+        is Filter -> Filter(invoke(a), ident, invoke(b))
+        is Union -> Union(invoke(a), invoke(b))
+        is UnionAll -> UnionAll(invoke(a), invoke(b))
+        is Distinct -> Distinct(invoke(query))
+        is DistinctOn -> DistinctOn(invoke(query), alias, invoke(by))
+        is Drop -> Drop(invoke(query), num)
+        is SortBy -> SortBy(invoke(query), alias, invoke(criteria), ordering)
+        is Take -> Take(invoke(query), num)
+        is FlatJoin -> FlatJoin(joinType, invoke(a), aliasA, invoke(on))
+        is ConcatMap -> ConcatMap(invoke(a), ident, invoke(b))
+        is GroupByMap -> GroupByMap(invoke(query), byAlias, invoke(byBody), mapAlias, invoke(mapBody))
         is Aggregation -> Aggregation(operator, body)
-        is Nested -> Nested(apply(query))
-        // The below must go in Function/Query/Expression/Action apply clauses
+        is Nested -> Nested(invoke(query))
+        // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
       }
     }
 
-  fun apply(xr: XR.Variable): XR.Variable = with(xr) { Variable(name, apply(rhs)) }
-  fun apply(xr: XR.Block): XR.Block = with(xr) { Block(stmts.map { apply(it) }, apply(output)) }
+  operator fun invoke(xr: XR.Variable): XR.Variable = with(xr) { Variable(name, invoke(rhs)) }
+  operator fun invoke(xr: XR.Branch): XR.Branch = with(xr) { XR.Branch(invoke(cond), invoke(then)) }
+  operator fun invoke(xr: XR.Block): XR.Block = with(xr) { Block(stmts.map { invoke(it) }, invoke(output)) }
 
 
-  fun apply(xr: XR): XR =
+  operator fun invoke(xr: XR): XR =
     with(xr) {
       when (this) {
-        is XR.Expression -> apply(this)
-        is XR.Query -> apply(this)
-        is XR.Function -> apply(this)
+        is XR.Expression -> invoke(this)
+        is XR.Query -> invoke(this)
+        is XR.Function -> invoke(this)
         // is XR.Action -> this.lift()
-        is XR.Block -> apply(this)
-        is XR.Branch -> apply(this)
-        is XR.Variable -> apply(this)
+        is XR.Block -> invoke(this)
+        is XR.Branch -> invoke(this)
+        is XR.Variable -> invoke(this)
       }
     }
 }

@@ -12,6 +12,11 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     }
 }
 
+// Needed for Kotest
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+}
+
 repositories {
     mavenCentral()
     mavenLocal()
@@ -22,11 +27,8 @@ application {
 }
 
 dependencies {
-    testImplementation(kotlin("test"))
+    testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
     implementation("io.exoquery:pprint-kotlin:1.0")
 }
 
-tasks.test {
-    useJUnitPlatform()
-}
