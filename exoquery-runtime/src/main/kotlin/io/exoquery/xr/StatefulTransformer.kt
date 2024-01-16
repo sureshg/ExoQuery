@@ -15,34 +15,40 @@ import io.exoquery.xr.XR.*
  * branch-level invoke functions.
  */
 interface StatefulTransformerSingleRoot<T>: StatefulTransformer<T> {
-  fun <X> root(xr: X): Pair<X, StatefulTransformer<T>, > where X: XR
+  fun <X> root(xr: X): Pair<X, StatefulTransformerSingleRoot<T>, > where X: XR
 
+  private fun invokeSuper(xr: Expression): Pair<Expression, StatefulTransformer<T>> = super.invoke(xr)
   override fun invoke(xr: Expression): Pair<Expression, StatefulTransformer<T>> {
     val (a, stateA) = root(xr)
     return stateA.invokeSuper(a)
   }
 
+  private fun invokeSuper(xr: Query): Pair<Query, StatefulTransformer<T>> = super.invoke(xr)
   override fun invoke(xr: Query): Pair<Query, StatefulTransformer<T>> {
     val (a, stateA) = root(xr)
     return stateA.invokeSuper(a)
   }
 
+  private fun invokeSuper(xr: XR.Function): Pair<XR.Function, StatefulTransformer<T>> = super.invoke(xr)
   override fun invoke(xr: XR.Function): Pair<XR.Function, StatefulTransformer<T>> {
     val (a, stateA) = root(xr)
     return stateA.invokeSuper(a)
   }
 
+  private fun invokeSuper(xr: Branch): Pair<Branch, StatefulTransformer<T>> = super.invoke(xr)
   override fun invoke(xr: Branch): Pair<Branch, StatefulTransformer<T>> {
     val (a, stateA) = root(xr)
     return stateA.invokeSuper(a)
   }
 
+  private fun invokeSuper(xr: Variable): Pair<Variable, StatefulTransformer<T>> = super.invoke(xr)
   override fun invoke(xr: Variable): Pair<Variable, StatefulTransformer<T>> {
     val (a, stateA) = root(xr)
     return stateA.invokeSuper(a)
   }
 
-  override operator fun invoke(xr: XR): Pair<XR, StatefulTransformer<T>> {
+  private fun invokeSuper(xr: XR): Pair<XR, StatefulTransformer<T>> = super.invoke(xr)
+  override fun invoke(xr: XR): Pair<XR, StatefulTransformer<T>> {
     val (a, stateA) = root(xr)
     return stateA.invokeSuper(a)
   }
@@ -51,8 +57,7 @@ interface StatefulTransformerSingleRoot<T>: StatefulTransformer<T> {
 interface StatefulTransformer<T> {
   val state: T
 
-  operator fun invoke(xr: XR.Expression): Pair<XR.Expression, StatefulTransformer<T>> = invokeBase(xr)
-  private fun invokeBase(xr: XR.Expression): Pair<XR.Expression, StatefulTransformer<T>> =
+  operator fun invoke(xr: XR.Expression): Pair<XR.Expression, StatefulTransformer<T>> =
     with(xr) {
       when (this) {
         is BinaryOp -> {
@@ -91,8 +96,7 @@ interface StatefulTransformer<T> {
       }
     }
 
-  operator fun invoke(xr: XR.Query): Pair<XR.Query, StatefulTransformer<T>> = invokeBase(xr)
-  private fun invokeBase(xr: XR.Query): Pair<XR.Query, StatefulTransformer<T>> =
+  operator fun invoke(xr: XR.Query): Pair<XR.Query, StatefulTransformer<T>> =
     with(xr) {
       when (this) {
         is FlatMap -> {
@@ -174,8 +178,7 @@ interface StatefulTransformer<T> {
       }
     }
 
-  operator fun invoke(xr: XR.Function): Pair<XR.Function, StatefulTransformer<T>> = invokeBase(xr)
-  private fun invokeBase(xr: XR.Function): Pair<XR.Function, StatefulTransformer<T>> =
+  operator fun invoke(xr: XR.Function): Pair<XR.Function, StatefulTransformer<T>> =
     with(xr) {
       when (this) {
         is Function1 -> {
@@ -190,31 +193,27 @@ interface StatefulTransformer<T> {
       }
     }
 
-  operator fun invoke(xr: XR.Block): Pair<XR.Block, StatefulTransformer<T>> = invokeBase(xr)
-  private fun invokeBase(xr: XR.Block): Pair<XR.Block, StatefulTransformer<T>> =
+  operator fun invoke(xr: XR.Block): Pair<XR.Block, StatefulTransformer<T>> =
     with(xr) {
       val (stmtsA, stateA) = applyList(stmts) { t, v -> t.invoke(v) }
       val (outputA, stateB) = stateA.invoke(output)
       Block(stmtsA, outputA) to stateB
     }
 
-  operator fun invoke(xr: XR.Branch): Pair<XR.Branch, StatefulTransformer<T>> = invokeBase(xr)
-  private fun invokeBase(xr: XR.Branch): Pair<XR.Branch, StatefulTransformer<T>> =
+  operator fun invoke(xr: XR.Branch): Pair<XR.Branch, StatefulTransformer<T>> =
     with(xr) {
       val (condA, stateA) = invoke(cond)
       val (thenA, stateB) = stateA.invoke(then)
       Branch(condA, thenA) to stateB
     }
 
-  operator fun invoke(xr: XR.Variable): Pair<XR.Variable, StatefulTransformer<T>> = invokeBase(xr)
-  private fun invokeBase(xr: XR.Variable): Pair<XR.Variable, StatefulTransformer<T>> =
+  operator fun invoke(xr: XR.Variable): Pair<XR.Variable, StatefulTransformer<T>> =
     with(xr) {
       val (rhsA, stateA) = invoke(rhs)
       Variable(name, rhsA) to stateA
     }
 
-  fun invoke(xr: XR): Pair<XR, StatefulTransformer<T>> = invokeBase(xr)
-  private fun invokeBase(xr: XR): Pair<XR, StatefulTransformer<T>> =
+  operator fun invoke(xr: XR): Pair<XR, StatefulTransformer<T>> =
     with(xr) {
       when (this) {
         is XR.Expression -> invoke(this)
@@ -237,12 +236,4 @@ interface StatefulTransformer<T> {
 
     return Pair(newList.toList(), transformer)
   }
-
-  // Helper methods so that implementor can call super.invoke on different XR types
-  fun invokeSuper(xr: Expression): Pair<Expression, StatefulTransformer<T>> = invokeBase(xr)
-  fun invokeSuper(xr: Query): Pair<Query, StatefulTransformer<T>> = invokeBase(xr)
-  fun invokeSuper(xr: XR.Function): Pair<XR.Function, StatefulTransformer<T>> = invokeBase(xr)
-  fun invokeSuper(xr: Branch): Pair<Branch, StatefulTransformer<T>> = invokeBase(xr)
-  fun invokeSuper(xr: Variable): Pair<Variable, StatefulTransformer<T>> = invokeBase(xr)
-  fun invokeSuper(xr: XR): Pair<XR, StatefulTransformer<T>> = invokeBase(xr)
 }
