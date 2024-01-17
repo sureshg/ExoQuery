@@ -4,6 +4,7 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.SqlVariable
+import io.exoquery.parseError
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.trees.*
@@ -22,7 +23,7 @@ class TransformQueryFlatMap(override val ctx: TransformerOrigin, val replacement
 
   private fun onlyOneParam(params: List<IrValueParameter>): IrValueParameter =
     if (params.size != 1)
-      parseFail("Number of val-parameters needs to be one")
+      parseError("Number of val-parameters needs to be one")
     else
       params.first()
 
@@ -32,7 +33,7 @@ class TransformQueryFlatMap(override val ctx: TransformerOrigin, val replacement
     val (caller, funExpression, params, blockBody) =
       on(expression).match(
         case(matcher[Is()]).then { queryCallData -> queryCallData }
-      ) ?: parseFail("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
+      ) ?: parseError("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
 
     // TODO Needs to convey SourceLocation coordinates, look into the 'warn/error' thing to see how to do that
     //      also, should generally just return the expression instead of throwing exceptions in the compiler

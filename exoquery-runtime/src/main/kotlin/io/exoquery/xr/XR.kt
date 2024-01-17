@@ -62,7 +62,7 @@ sealed interface XR {
 
   // TODO XRType needs to be Product
   @Mat
-  data class Entity(@Slot val name: String, override val type: XRType): Query, PC<Entity> {
+  data class Entity(@Slot val name: String, override val type: XRType.Product): Query, PC<Entity> {
     override val productComponents = productOf(this, name)
     companion object {}
   }

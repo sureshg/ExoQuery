@@ -4,6 +4,8 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.Lambda1Expression
+import io.exoquery.structError
+import io.exoquery.parseError
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.safeName
@@ -11,7 +13,6 @@ import io.exoquery.plugin.trees.*
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.util.addArguments
 
 class TransformJoinOn(override val ctx: TransformerOrigin): Transformer() {
   context(BuilderContext, CompileLogger)
@@ -23,12 +24,12 @@ class TransformJoinOn(override val ctx: TransformerOrigin): Transformer() {
     val (caller, funExpression, params, blockBody) =
       on(expression).match(
         case(ExtractorsDomain.Call.`join-on(expr)`[Is()]).then { queryCallData -> queryCallData }
-      ) ?: parseFail("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
+      ) ?: parseError("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
 
     //error("-------- Function:\n${funExpression.function.dumpSimple()}\n------------Params: ${funExpression.function.extensionReceiverParameter?.symbol?.safeName}")
 
      //There actually IS a reciver to this function and it should be named $this$on
-    val reciverParam = funExpression.function.extensionReceiverParameter ?: illegalStruct("Extension Reciever for on-clause was null")
+    val reciverParam = funExpression.function.extensionReceiverParameter ?: structError("Extension Reciever for on-clause was null")
     val reciverSymbol = reciverParam.symbol.safeName
     val paramIdent = run {
       val tpe = TypeParser.parse(reciverParam.type)

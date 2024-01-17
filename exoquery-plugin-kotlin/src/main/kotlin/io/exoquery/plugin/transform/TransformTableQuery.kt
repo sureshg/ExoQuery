@@ -6,8 +6,10 @@ import io.decomat.on
 import io.exoquery.EntityExpression
 import io.exoquery.xr.XR
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.printing.DomainErrors
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.trees.*
+import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.expressions.IrCall
@@ -52,10 +54,17 @@ class TransformTableQuery(val ctx: TransformerOrigin) {
       }
     }
 
+  fun XRType.productOrFail(originalType: IrType): XRType.Product =
+    when(this) {
+      is XRType.Product -> this
+      else -> DomainErrors.NotProductTypeParsedFromType(this, originalType)
+
+    }
+
   context(ParserContext, CompileLogger) fun transformInternal(expression: IrCall): IrExpression =
     on(expression).match(
       case(ExtractorsDomain.Call.MakeTable[Is()]).thenThis { entityClass ->
-        val xrType = TypeParser.parse(entityClass)
+        val xrType = TypeParser.parse(entityClass).productOrFail(entityClass)
         val xr = XR.Entity(entityClass.classOrFail("Error derving class of TableQuery").safeName, xrType)
         val (lifter, builder) = lifterAndBuilder(expression)
         val caller = this.dispatchReceiver ?: kotlin.error("Dispatch reciever of the following expression was null. This should not be possible:\n" + expression.dumpKotlinLike())

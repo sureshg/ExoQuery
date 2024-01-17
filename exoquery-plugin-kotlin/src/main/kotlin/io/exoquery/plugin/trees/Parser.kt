@@ -4,18 +4,13 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.BID
-import io.exoquery.DynamicBinds
-import io.exoquery.RuntimeBindValue
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.printing.Errors
+import io.exoquery.plugin.printing.DomainErrors
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.safeName
-import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.transform.ScopeSymbols
-import io.exoquery.plugin.transform.callMethod
-import io.exoquery.plugin.transform.parseFail
-import io.exoquery.pprint
+import io.exoquery.parseError
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrFile
@@ -39,7 +34,7 @@ private class ParserCollector {
   context(ParserContext, CompileLogger) inline fun <reified T> parseAs(expr: IrExpression): T {
     val parsedExpr = parse(expr)
     return if (parsedExpr is T) parsedExpr
-    else parseFail(
+    else parseError(
       """|Could not parse the type expected type ${T::class.qualifiedName} (actual was ${parsedExpr::class.qualifiedName}) 
          |${expr.dumpKotlinLike()}
       """.trimMargin()
@@ -55,14 +50,14 @@ private class ParserCollector {
         val irType = TypeParser.parse(type)
         XR.Variable(XR.Ident(name, irType), parseExpr(rhs))
       }
-    ) ?: parseFail("Could not parse Ir Variable statement from:\n${expr.dumpSimple()}")
+    ) ?: parseError("Could not parse Ir Variable statement from:\n${expr.dumpSimple()}")
 
   context(ParserContext, CompileLogger) fun parseBranch(expr: IrBranch): XR.Branch =
     on(expr).match(
       case(Ir.Branch[Is(), Is()]).then { cond, then ->
         XR.Branch(parseExpr(cond), parseExpr(then))
       }
-    ) ?: parseFail("Could not parse Branch from: ${expr.dumpSimple()}")
+    ) ?: parseError("Could not parse Branch from: ${expr.dumpSimple()}")
 
   context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): XR.Expression =
     on(blockBody).match<XR.Expression>(
@@ -72,7 +67,7 @@ private class ParserCollector {
           val returnExpression = irReturn.value
           parseExpr(returnExpression)
         }
-    ) ?: parseFail("Could not parse IrBlockBody:\n${blockBody.dumpKotlinLike()}")
+    ) ?: parseError("Could not parse IrBlockBody:\n${blockBody.dumpKotlinLike()}")
 
 //  fun ownerChain(symbol: IrSymbol) =
 //    "------ Ownership Chain: ${symbol.safeName} -> ${symbol.owner.dumpKotlinLike()} -> ${
@@ -111,7 +106,7 @@ private class ParserCollector {
         warn("=================== Making new Bind: ${bindId} ===================")
         binds.add(
           bindId, /*the SqlVariable instance*/
-          this.dispatchReceiver?.let { RuntimeBindValueExpr.SqlVariableIdentExpr(it) } ?: Errors.NoDispatchRecieverFoundForSqlVarCall(this)
+          this.dispatchReceiver?.let { RuntimeBindValueExpr.SqlVariableIdentExpr(it) } ?: DomainErrors.NoDispatchRecieverFoundForSqlVarCall(this)
         )
         warn(binds.show().toString())
         XR.IdentOrigin(bindId, symName, TypeParser.parse(this.type))
@@ -146,7 +141,7 @@ private class ParserCollector {
         val argValue =
           when (arg) {
             is IrConst<*> -> arg.value.toString()
-            else -> parseFail("Illegal argument in the `getSqlVar` function:\n${this.dumpKotlinLike()}")
+            else -> parseError("Illegal argument in the `getSqlVar` function:\n${this.dumpKotlinLike()}")
           }
 
         XR.Ident(argValue, TypeParser.parse(this.type))
@@ -164,10 +159,10 @@ private class ParserCollector {
       case(Ir.When[Is()]).thenThis { cases ->
         val elseBranch = cases.find { it is IrElseBranch }?.let { parseBranch(it) }
         val casesAst = cases.filterNot { it is IrElseBranch }.map { parseBranch(it) }
-        val elseBranchOrLast = elseBranch ?: casesAst.lastOrNull() ?: parseFail("Empty when expression not allowed:\n${this.dumpKotlinLike()}")
+        val elseBranchOrLast = elseBranch ?: casesAst.lastOrNull() ?: parseError("Empty when expression not allowed:\n${this.dumpKotlinLike()}")
         XR.When(casesAst, elseBranchOrLast.then)
       }
-    ) ?: parseFail(
+    ) ?: parseError(
       """|======= Could not parse expression from: =======
          |${expr.dumpKotlinLike()}
          |--------- With the Tree ---------
@@ -188,7 +183,7 @@ private class ParserCollector {
       IrConstKind.String -> XR.Const.String(irConst.value as kotlin.String)
       IrConstKind.Float -> XR.Const.Float(irConst.value as kotlin.Float)
       IrConstKind.Double -> XR.Const.Double(irConst.value as kotlin.Double)
-      else -> parseFail("Unknown IrConstKind: ${irConst.kind}")
+      else -> parseError("Unknown IrConstKind: ${irConst.kind}")
     }
 
 

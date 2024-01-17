@@ -2,8 +2,8 @@ package io.exoquery.plugin.transform
 
 import io.decomat.*
 import io.exoquery.Lambda1Expression
+import io.exoquery.parseError
 import io.exoquery.xr.XR
-import io.exoquery.plugin.*
 import io.exoquery.plugin.trees.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
@@ -30,7 +30,7 @@ class TransformQueryMap(override val ctx: TransformerOrigin, val matcher: Extrac
       on(expression).match(
         // e.g. QueryMap[Is()]
         case(matcher[Is()]).then { queryCallData -> queryCallData }
-      ) ?: parseFail("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
+      ) ?: parseError("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
       // TODO Needs to convey SourceLocation coordinates, look into the 'warn/error' thing to see how to do that
       //      also, should generally just return the expression instead of throwing exceptions in the compiler
       //      perhaps use some kind of FP either-like structure here???

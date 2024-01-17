@@ -1,6 +1,7 @@
 package io.exoquery.xr
 
 sealed class XRType {
+
   data class Product(val name: String, val fields: List<Pair<String, XRType>>): XRType() {
     private val fieldsHash by lazy { fields.toMap() }
     fun fieldsHash() = fieldsHash
@@ -23,6 +24,16 @@ sealed class XRType {
     override fun toString(): String {
       return "Value"
     }
+  }
+
+  fun shortString(): String = when(this) {
+    is XRType.Product -> "${name}(${fields.map { (k, v) -> "${k}:${v.shortString()}" }.joinToString(",")})"
+    is XRType.Generic           -> "<G>"
+    is XRType.Unknown           -> "<U>"
+    is XRType.Value             -> "V"
+    is XRType.Null              -> "N"
+    is XRType.BooleanValue      -> "BV"
+    is XRType.BooleanExpression -> "BE"
   }
 }
 

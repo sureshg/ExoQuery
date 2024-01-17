@@ -3,11 +3,11 @@ package io.exoquery.plugin.transform
 import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
+import io.exoquery.parseError
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.printing.dumpSimple
-import io.exoquery.plugin.trees.simpleValueArgs
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.config.CompilerConfiguration
@@ -49,7 +49,7 @@ class TransformPrintSource(
 //            listOf(args)
 //          }
         )
-      } ?: parseFail("Parsing Failed\n================== The expresson was not a Global Function (with one argument-block): ==================\n" + expression.dumpKotlinLike() + "\n--------------------------\n" + expression.dumpSimple())
+      } ?: parseError("Parsing Failed\n================== The expresson was not a Global Function (with one argument-block): ==================\n" + expression.dumpKotlinLike() + "\n--------------------------\n" + expression.dumpSimple())
 
     val printSourceExpr = context
       .referenceFunctions(

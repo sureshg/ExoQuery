@@ -4,7 +4,7 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.transform.parseFail
+import io.exoquery.parseError
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isBoolean
@@ -33,6 +33,6 @@ object TypeParser {
           XRType.Value
       }
 
-    ) ?: parseFail("Could not parse type from: ${expr.dumpKotlinLike()}")
+    ) ?: parseError("Could not parse type from: ${expr.dumpKotlinLike()}")
 
 }

@@ -7,7 +7,7 @@ import io.exoquery.plugin.dataClassProperties
 import io.exoquery.plugin.isDataClass
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.safeName
-import io.exoquery.plugin.transform.parseFail
+import io.exoquery.parseError
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.*
@@ -139,7 +139,7 @@ object Ir {
         } else {
           val msg = "Could not find a right-hand-side for the variable:${it.dumpKotlinLike()}"
           error(msg)
-          parseFail(msg)
+          parseError(msg)
         }
       }
   }
@@ -423,7 +423,7 @@ object Ir {
           when (val body = it.body) {
             // Ignore context-parameters here
             is IrBlockBody -> Components2(it.simpleValueParams, body)
-            else -> parseFail("The function ${it.name} body was not a blockBody")
+            else -> parseError("The function ${it.name} body was not a blockBody")
           }
 
         }

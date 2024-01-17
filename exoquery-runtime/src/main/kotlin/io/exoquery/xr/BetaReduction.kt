@@ -1,23 +1,20 @@
 package io.exoquery.xr
 
-import io.exoquery.util.tail
-import io.exoquery.xr.*
-
 sealed interface TypeBehavior {
   object SubstituteSubtypes: TypeBehavior
   object ReplaceWithReduction: TypeBehavior
 }
 
-sealed interface EmptyProductQuatBehavior {
-  object Fail: EmptyProductQuatBehavior
-  object Ignore: EmptyProductQuatBehavior
+sealed interface EmptyProductTypeBehavior {
+  object Fail: EmptyProductTypeBehavior
+  object Ignore: EmptyProductTypeBehavior
 }
 
 // I think beta reduction should be used for XR.Expression in all the cases, shuold
 // move forward and find out if this is actually the case. If it is not, can probably
 // just add `case ast if map.contains(ast) =>` to the apply for Query, Function, etc...
 // maybe should have separate maps for Query, Function, etc... for that reason if those cases even exist
-data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBehavior: TypeBehavior, val emptyBehavior: EmptyProductQuatBehavior):
+data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBehavior: TypeBehavior, val emptyBehavior: EmptyProductTypeBehavior):
   StatelessTransformer {
 
   private fun replaceWithReduction() = typeBehavior == TypeBehavior.ReplaceWithReduction
@@ -172,17 +169,17 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
 
   companion object {
     operator fun invoke(ast: XR, vararg t: Pair<XR.Expression, XR.Expression>): XR =
-      invoke(ast, TypeBehavior.SubstituteSubtypes, EmptyProductQuatBehavior.Ignore, *t)
+      invoke(ast, TypeBehavior.SubstituteSubtypes, EmptyProductTypeBehavior.Ignore, *t)
 
-    operator fun invoke(ast: XR, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductQuatBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR {
+    operator fun invoke(ast: XR, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR {
       // TODO When it's Substitute types we should do a checkTypes
       val output = invoke(ast, t.toMap(), typeBehavior, emptyBehavior)
       return output
     }
 
-    internal operator fun invoke(ast: XR, replacements: Map<XR.Expression, XR.Expression>, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductQuatBehavior): XR {
-      // TODO When it's Substitute types we should do a checkTypes
+    internal operator fun invoke(ast: XR, replacements: Map<XR.Expression, XR.Expression>, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior): XR {
       val reducedAst = BetaReduction(replacements, typeBehavior, emptyBehavior).invoke(ast)
+      if (typeBehavior == TypeBehavior.SubstituteSubtypes) checkTypes(ast, replacements.toList(), emptyBehavior)
       return when {
         // Since it is possible for the AST to match but the match not be exactly the same (e.g.
         // if a AST property not in the product cases comes up (e.g. Ident's quat.rename etc...) make
@@ -192,6 +189,29 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
         else -> invoke(reducedAst, mapOf<XR.Expression, XR.Expression>(), typeBehavior, emptyBehavior)
       }
     }
+
+    private fun checkTypes(body: XR, replacements: List<Pair<XR, XR>>, emptyBehavior: EmptyProductTypeBehavior) =
+      replacements.forEach { (orig, rep) ->
+        val repType    = rep.type
+        val origType   = orig.type
+        val leastUpper = repType.leastUpperType(origType)
+        if (emptyBehavior == EmptyProductTypeBehavior.Fail) {
+          when(leastUpper) {
+            is XRType.Product ->
+              if (leastUpper.fields.isEmpty())
+                throw IllegalArgumentException(
+                  "Reduction of $origType and $repType yielded an empty Quat product!\n" +
+                    "That means that they represent types that cannot be reduced!"
+                )
+            // Otherwise no error, do nothing
+            else -> {}
+          }
+        }
+        if (leastUpper == null)
+          throw IllegalArgumentException(
+            "Cannot beta reduce [this:$rep <- with:$orig] within [$body] because ${repType.shortString()} of [this:${rep}] is not a subtype of ${origType.shortString()} of [with:${orig}]"
+          )
+      }
   }
 
 }
