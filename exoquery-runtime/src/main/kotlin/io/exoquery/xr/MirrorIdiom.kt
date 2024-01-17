@@ -103,7 +103,7 @@ object MirrorIdiom {
 
   val Query.token get(): String =
     when(this) {
-      is Entity -> """"$name""""
+      is Entity -> """query("$name")"""
       is Filter -> "${a.token}.filter(${ident.token} => ${b.token})"
       is XR.Map -> "${a.token}.map(${ident.token} => ${b.token})"
       is FlatMap -> "${a.token}.flatMap(${ident.token} => ${b.token})"

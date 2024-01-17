@@ -41,10 +41,6 @@ context(EnclosedExpression) fun <T> param(value: T): T = error("Lifting... toto 
 class SqlVariable<T>(variableName: String /* don't want this to intersect with extension function properties*/) {
   private val _variableName = variableName
 
-  // can this be internal if it's replaced in the transformers
-  @ExoInternal
-  fun withName(newName: String) = SqlVariable<T>(newName)
-
   @ExoInternal
   fun getVariableName() = _variableName
 

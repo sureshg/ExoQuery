@@ -18,13 +18,17 @@ data class Name(val first: String)
 fun main() {
   val p = Person(111, Name("Joe"), 123)
 
+  // Problem of "p" vs "x". Ident needs to get the runtime value of the variable
+  // That means we need a separate binding map for runtime values or an expression-container
   val x =
     select {
-      val k = join(TableQuery<Address>()).on { street == "someplace" }
+      val p = from(TableQuery<Person>())
+      val k = join(TableQuery<Address>()).on { street == p().name.first }
       k
     }
 
-  println(pprint(x, defaultShowFieldNames = false, defaultWidth = 200))
+  //println(pprint(x, defaultShowFieldNames = false, defaultWidth = 200))
+  println(x.xr.show())
 
 //  println(
 //    printSource {

@@ -39,8 +39,8 @@ sealed interface XR {
   }
 
   abstract val type: XRType
-//  override fun toString(): String =
-//    with (MirrorIdiom) { this.token }
+  fun show(): String =
+    with (MirrorIdiom) { this@XR.token }
 
   sealed class JoinType {
     object Inner: JoinType()
@@ -265,7 +265,7 @@ sealed interface XR {
   // **********************************************************************************************
 
   @Mat
-  data class Ident(@Slot val name: String, override val type: XRType) : XR, Labels.Terminal, PC<Ident> {
+  data class Ident(@Slot val name: String, override val type: XRType, val visibility: Visibility = Visibility.Visible) : XR, Labels.Terminal, PC<Ident> {
     override val productComponents = productOf(this, name)
     companion object {}
 
@@ -304,16 +304,13 @@ sealed interface XR {
     override fun equals(other: Any?) = other is Product && other.id == id
   }
 
-  // TODO Need to introduce Visibility into Property and Ident
-  //      don't need Property.Renameable since we are assuming all renames will be done from case-class annotations
-  //      before transformations begin.
-  //      sealed interface Visibility {
-  //        object Hidden: Visibility
-  //        object Visible: Visibility
-  //      }
+  sealed interface Visibility {
+    object Hidden: Visibility
+    object Visible: Visibility
+  }
 
   @Mat
-  data class Property(@Slot val of: XR.Expression, @Slot val name: String) : XR.Expression, PC<Property> {
+  data class Property(@Slot val of: XR.Expression, @Slot val name: String, val visibility: Visibility = Visibility.Visible) : XR.Expression, PC<Property> {
     override val productComponents = productOf(this, of, name)
     override val type: XRType by lazy {
       when (val tpe = of.type) {
@@ -321,6 +318,12 @@ sealed interface XR {
         else -> XRType.Unknown
       }
     }
+
+    data class Id(val of: XR.Expression, val name: String)
+    private val id = Id(of, name)
+    override fun hashCode() = id.hashCode()
+    override fun equals(other: Any?) = other is Property && other.id == id
+
     companion object {}
   }
 

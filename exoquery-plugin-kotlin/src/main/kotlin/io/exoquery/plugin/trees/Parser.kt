@@ -36,8 +36,9 @@ object Parser {
 
   context(ParserContext, CompileLogger) fun parseBlockStatement(expr: IrStatement): XR.Variable =
     on(expr).match(
-      case(Ir.Variable[Is(), Is()]).then { name, rhs ->
-        XR.Variable(name, parseExpr(rhs))
+      case(Ir.Variable[Is(), Is()]).thenThis { name, rhs ->
+        val irType = TypeParser.parse(type)
+        XR.Variable(XR.Ident(name, irType), parseExpr(rhs))
       }
     ) ?: parseFail("Could not parse Ir Variable statement from:\n${expr.dumpSimple()}")
 
@@ -88,7 +89,7 @@ object Parser {
       // TODO also need unary operator
 
 
-      // TODO exclude anything here that's an SqlVariable
+      // TODO exclude anything here that's not an SqlVariable
       case (ExtractorsDomain.Call.InvokeSqlVariable[Is()]).thenThis { symName ->
         XR.Ident(symName, TypeParser.parse(this.type))
       },

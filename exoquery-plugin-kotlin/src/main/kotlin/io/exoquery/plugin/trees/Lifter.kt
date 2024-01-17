@@ -129,13 +129,19 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
       Const.Null -> makeObject<Const.Null>() // Does this actually work?
     }
 
+  fun XR.Visibility.lift(): IrExpression =
+    when (this) {
+      is XR.Visibility.Visible -> makeObject<XR.Visibility.Visible>()
+      is XR.Visibility.Hidden -> makeObject<XR.Visibility.Hidden>()
+    }
+
   fun XR.Expression.lift(): IrExpression =
     when(this) {
       is BinaryOp -> make<BinaryOp>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is Const -> this.lift() // points to the Const.lift() function above
       is FunctionApply -> make<FunctionApply>(this.component1().lift(), this.component2().lift { it.lift() })
-      is Ident -> make<Ident>(this.component1().lift(), this.component2().lift())
-      is Property -> make<Property>(this.component1().lift(), this.component2().lift())
+      is Ident -> make<Ident>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is Property -> make<Property>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is UnaryOp -> make<UnaryOp>(this.component1().lift(), this.component2().lift())
       Const.Null -> makeObject<Const.Null>()
       is When -> make<When>(this.component1().lift { it.lift() }, this.component2().lift())

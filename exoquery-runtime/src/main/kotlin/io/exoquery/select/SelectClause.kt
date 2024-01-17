@@ -1,10 +1,7 @@
 package io.exoquery.select
 
 import io.decomat.*
-import io.exoquery.Lambda1Expression
-import io.exoquery.Query
-import io.exoquery.QueryContainer
-import io.exoquery.SqlVariable
+import io.exoquery.*
 import io.exoquery.annotation.ExoInternal
 import io.exoquery.xr.Is
 import io.exoquery.xr.XR
@@ -14,6 +11,7 @@ import io.exoquery.xr.get
 @OptIn(ExoInternal::class) // TODO Not sure if the output here QueryContainer(Ident(SqlVariable)) is right need to look into the shape
 class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlVariable<A>>({ result -> QueryContainer<A>(XR.Marker(markerName))  }) {
 
+  // TODO search for this call in the IR and see if there's a Val-def on the other side of it and call fromAliased with the name of that
   public suspend fun <R> from(query: Query<R>): SqlVariable<R> =
     fromAliased(query, "x")
 
@@ -31,7 +29,7 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlVariable
 }
 
 class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.JoinType, private val selectClause: SelectClause<A>, private val alias: String?) {
-  suspend fun on(cond: (R).() -> Boolean): SqlVariable<R> =
+  suspend fun on(cond: context(EnclosedExpression) (R).() -> Boolean): SqlVariable<R> =
     error("The join.on(...) expression of the Query was not inlined")
 
   // TODO some internal annotation?
