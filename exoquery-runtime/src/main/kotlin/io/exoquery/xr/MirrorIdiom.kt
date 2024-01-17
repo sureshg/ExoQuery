@@ -15,7 +15,7 @@ object MirrorIdiom {
     }
 
   val Ident.token get(): String = name
-  val IdentOrigin.token get(): String = "Ido(${runtimeName})"
+  val IdentOrigin.token get(): String = """Ido(${name}->"${runtimeName.value}")"""
   val Operator.token get(): String = symbol
 
   val XR.Function.token get(): String =

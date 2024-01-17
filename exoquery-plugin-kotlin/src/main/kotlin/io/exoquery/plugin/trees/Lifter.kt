@@ -155,7 +155,7 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
       is Const -> this.lift() // points to the Const.lift() function above
       is FunctionApply -> make<FunctionApply>(this.component1().lift(), this.component2().lift { it.lift() })
       is Ident -> make<Ident>(this.component1().lift(), this.component2().lift(), this.component3().lift())
-      is IdentOrigin -> make<IdentOrigin>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is IdentOrigin -> make<IdentOrigin>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
       is Property -> make<Property>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is UnaryOp -> make<UnaryOp>(this.component1().lift(), this.component2().lift())
       Const.Null -> makeObject<Const.Null>()

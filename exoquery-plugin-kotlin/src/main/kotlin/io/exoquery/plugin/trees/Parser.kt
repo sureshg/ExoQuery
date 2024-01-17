@@ -131,7 +131,7 @@ private class ParserCollector {
         warn("=================== Making new Bind: ${bindId} ===================")
         binds.add(bindId, /*the SqlVariable instance*/ this.dispatchReceiver ?: Errors.NoDispatchRecieverFoundForSqlVarCall(this))
         warn(binds.show().toString())
-        XR.IdentOrigin(bindId, TypeParser.parse(this.type))
+        XR.IdentOrigin(bindId, symName, TypeParser.parse(this.type))
       },
 
       // Other situations where you might have an identifier which is not an SqlVar e.g. with variable bindings in a Block (inside an expression)

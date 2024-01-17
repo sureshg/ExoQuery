@@ -266,7 +266,7 @@ sealed interface XR {
   // **********************************************************************************************
 
   @Mat
-  data class IdentOrigin(@Slot val runtimeName: BID, override val type: XRType, val visibility: Visibility = Visibility.Visible) : XR, Labels.Terminal, PC<IdentOrigin> {
+  data class IdentOrigin(@Slot val runtimeName: BID, val name: String, override val type: XRType, val visibility: Visibility = Visibility.Visible) : XR, Labels.Terminal, PC<IdentOrigin> {
 
     override val productComponents = productOf(this, runtimeName)
     companion object {}
@@ -380,5 +380,5 @@ fun XR.isTerminal() =
 fun XR.Labels.Terminal.withType(type: XRType): XR.Expression =
   when (this) {
     is XR.Ident -> XR.Ident(name, type)
-    is XR.IdentOrigin -> XR.IdentOrigin(runtimeName, type)
+    is XR.IdentOrigin -> XR.IdentOrigin(runtimeName, name, type)
   }
