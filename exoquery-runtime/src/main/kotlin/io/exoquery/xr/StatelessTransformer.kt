@@ -28,6 +28,7 @@ interface StatelessTransformer {
         is UnaryOp -> UnaryOp(op, invoke(expr))
         Const.Null -> this
         is When -> When(branches.map { invoke(it) }, invoke(orElse))
+        is XR.Block -> invoke(this)
         is Product -> Product(name, fields.map { it.first to invoke(it.second) })
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
@@ -79,7 +80,6 @@ interface StatelessTransformer {
         is XR.Query -> invoke(this)
         is XR.Function -> invoke(this)
         // is XR.Action -> this.lift()
-        is XR.Block -> invoke(this)
         is XR.Branch -> invoke(this)
         is XR.Variable -> invoke(this)
       }

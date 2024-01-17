@@ -39,7 +39,6 @@ class Lifter(val builderCtx: BuilderContext) {
       is Query -> this.lift()
       is XR.Function -> this.lift()
       // is XR.Action -> this.lift()
-      is Block -> make<Block>(this.component1().lift { it.lift() }, this.component2().lift())
       is Branch -> make<Branch>(this.component1().lift(), this.component2().lift())
       is Variable -> make<Variable>(this.component1().lift(), this.component2().lift())
     }
@@ -124,6 +123,7 @@ class Lifter(val builderCtx: BuilderContext) {
       is UnaryOp -> make<UnaryOp>(this.component1().lift(), this.component2().lift())
       Const.Null -> makeObject<Const.Null>()
       is When -> make<When>(this.component1().lift { it.lift() }, this.component2().lift())
+      is Block -> make<Block>(this.component1().lift { it.lift() }, this.component2().lift())
       // The below must go in Function/Query/Expression/Action lift clauses
       is Marker -> make<Marker>(this.component1().lift())
       // TODO need to implement product lifting

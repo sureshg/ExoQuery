@@ -6,6 +6,19 @@ import io.exoquery.xr.XR
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 
+fun XR.Product.Companion.TupleN(elements: List<XR.Expression>) =
+  when(elements.size) {
+    0 -> XR.Product("Empty", listOf())
+    1 -> XR.Product("Single", listOf("first" to elements[0]))
+    2 -> XR.Product("Pair", listOf("first" to elements[0], "second" to elements[1]))
+    3 -> XR.Product("Triple", listOf("first" to elements[0], "second" to elements[1], "third" to elements[2]))
+    4 -> XR.Product("Tuple4", listOf("first" to elements[0], "second" to elements[1], "third" to elements[2], "fourth" to elements[3]))
+    5 -> XR.Product("Tuple5", listOf("first" to elements[0], "second" to elements[1], "third" to elements[2], "fourth" to elements[3], "fifth" to elements[4]))
+    6 -> XR.Product("Tuple6", listOf("first" to elements[0], "second" to elements[1], "third" to elements[2], "fourth" to elements[3], "fifth" to elements[4], "sixth" to elements[5]))
+    else -> throw IllegalArgumentException("Only up to 6 elements are supported for this operation")
+  }
+
+
 class BetaReductionSpec : FreeSpec({
   // TODO do properties need visible/fixed
   "simplifies the ast by applying functions" - {
@@ -50,66 +63,48 @@ class BetaReductionSpec : FreeSpec({
       )
       BetaReduction.invoke(block) shouldBe Property(root, "foo")
     }
-  }
 
-  /*
-    "with inline" - {
-      val entity = Entity("a", Nil, QEP)
-      // Entity Idents
-      val (aE, bE, cE, dE) = tupleOf(Ident("a", QEP), Ident("b", QEP), Ident("c", QEP), Ident("d", QEP))
-      // Value Idents
-      val (a, b, c, d) = tupleOf(Ident("a", QV), Ident("b", QV), Ident("c", QV), Ident("d", QV))
-      val (c1, c2, c3) = tupleOf(Constant.auto(1), Constant.auto(2), Constant.auto(3))
-
-      "top level block" in {
-        val block = Block(
-          List(
-            Val(aE, entity),
-            Val(bE, aE),
-            Map(bE, dE, c1)
-          )
-        )
-        BetaReduction.AllowEmpty(block) mustEqual Map(entity, dE, c1)
-      }
-      "nested blocks" in {
-        val inner = Block(
-          List(
-            Val(aE, entity),
-            Val(b, c2),
-            Val(c, c3),
-            Tuple(List(aE, bE, cE))
-          )
-        )
-        val outer = Block(
-          List(
-            Val(aE, inner),
-            Val(bE, aE),
-            Val(cE, bE),
-            cE
-          )
-        )
-        BetaReduction.AllowEmpty(outer) mustEqual Tuple(List(entity, c2, c3))
-      }
-      "nested blocks caseclass" in {
-        val inner = Block(
-          List(
-            Val(aE, entity),
-            Val(b, c2),
-            Val(c, c3),
-            CaseClass("CC", List(("foo", aE), ("bar", bE), ("baz", cE)))
-          )
-        )
-        val outer = Block(
-          List(
-            Val(aE, inner),
-            Val(bE, aE),
-            Val(cE, bE),
-            cE
-          )
-        )
-        BetaReduction.AllowEmpty(outer) mustEqual CaseClass("CC", List(("foo", entity), ("bar", c2), ("baz", c3)))
-      }
+    "nested blocks" {
+      val inner = Block(
+        listOf(
+          Variable(aE, root),
+          Variable(b, c2),
+          Variable(c, c3)
+        ),
+        XR.Product.TupleN(listOf(aE, bE, cE))
+      )
+      val outer = Block(
+        listOf(
+          Variable(aE, inner),
+          Variable(bE, aE),
+          Variable(cE, bE)
+        ),
+        cE
+      )
+      BetaReduction.invoke(outer).show() shouldBe XR.Product.TupleN(listOf(root, c2, c3)).show()
     }
 
-   */
+    "nested blocks product" {
+      val inner = Block(
+        listOf(
+          Variable(aE, root),
+          Variable(b, c2),
+          Variable(c, c3)
+        ),
+        XR.Product("CC", listOf("foo" to aE, "bar" to bE, "baz" to cE))
+      )
+      val outer = Block(
+        listOf(
+          Variable(aE, inner),
+          Variable(bE, aE),
+          Variable(cE, bE)
+        ),
+        cE
+      )
+      BetaReduction.invoke(outer) shouldBe XR.Product("CC", listOf("foo" to root, "bar" to c2, "baz" to c3))
+    }
+  }
+
+
+
 })

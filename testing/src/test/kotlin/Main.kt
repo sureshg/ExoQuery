@@ -1,6 +1,4 @@
 import io.exoquery.*
-import io.exoquery.xr.XR
-import io.exoquery.xr.XRType
 import io.exoquery.annotation.ExoInternal
 
 data class Person(val id: Int, val name: Name, val age: Int) {
@@ -22,8 +20,8 @@ fun main() {
   // That means we need a separate binding map for runtime values or an expression-container
   val x =
     select {
-      val p = from(TableQuery<Person>())
-      val k = join(TableQuery<Address>()).on { street == p().name.first }
+      val p = from(Table<Person>())
+      val a = join(Table<Address>()).on { ownerId == p().id }
       p
     }
 

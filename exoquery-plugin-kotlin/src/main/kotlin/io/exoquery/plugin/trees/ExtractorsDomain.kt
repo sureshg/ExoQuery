@@ -3,7 +3,7 @@ package io.exoquery.plugin.trees
 import io.decomat.*
 import io.exoquery.Query
 import io.exoquery.SqlVariable
-import io.exoquery.TableQuery
+import io.exoquery.Table
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.qualifiedNameForce
 import io.exoquery.plugin.safeName
@@ -133,7 +133,7 @@ object ExtractorsDomain {
     }
 
     object MakeTable {
-      val TableQueryCompanionFqName = TableQuery.Companion::class.qualifiedName.toString()
+      val TableQueryCompanionFqName = Table.Companion::class.qualifiedName.toString()
 
       context (CompileLogger) operator fun <AP: Pattern<IrType>> get(statements: AP) =
         customPattern1(statements) { it: IrCall ->

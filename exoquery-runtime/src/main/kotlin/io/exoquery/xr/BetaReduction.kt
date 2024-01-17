@@ -97,6 +97,25 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
         // to just a beta-reduced body
         invoke(BetaReduce(map + newParamsMap).invoke(bodyr))
       }
+
+      // Reduce a block and all variables inside to a single statement
+      xr is XR.Block -> with (xr) {
+        // Walk through the statements, last to the first (in this case 'output' is the last statement in the block)
+        val output =
+          stmts.reversed()
+            // Important to go down to invoke(XR) recursively here since we are reducing
+            //   XR.Block -> XR.Statement and that is only possible on the root-level
+            .fold(Pair(mapOf<XR.Expression, XR.Expression>(), output)) { (map, stmt), line ->
+              // Beta-reduce the statements from the end to the beginning
+              val reduct: XR.Variable = BetaReduce(map)(line)
+              // If the beta reduction is a some 'val x=t', add x->t to the beta reductions map
+              val newMap = map + Pair(reduct.name, reduct.rhs)
+              val newStmt = BetaReduce(newMap).invoke(stmt) // Need to widen for the beta-reduction to be right!
+              Pair(newMap, newStmt)
+            }.second
+        invoke(output)
+      }
+
       else -> super.invoke(xr)
     }
   }
@@ -141,31 +160,6 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
       }
     }
   }
-
-  override fun invoke(xr: XR): XR =
-    with (xr) {
-      when (this) {
-        // Reduce a block and all variables inside to a single statement
-        is XR.Block -> {
-          // Walk through the statements, last to the first (in this case 'output' is the last statement in the block)
-          val output =
-            stmts.reversed()
-              // Important to go down to invoke(XR) recursively here since we are reducing
-              //   XR.Block -> XR.Statement and that is only possible on the root-level
-              .fold(Pair(mapOf<XR.Expression, XR.Expression>(), output as XR)) { (map, stmt), line ->
-                // Beta-reduce the statements from the end to the beginning
-                val reduct: XR.Variable = BetaReduce(map)(line)
-                // If the beta reduction is a some 'val x=t', add x->t to the beta reductions map
-                val newMap = map + Pair(reduct.name, reduct.rhs)
-                val newStmt = BetaReduce(newMap).invoke(stmt as XR) // Need to widen for the beta-reduction to be right!
-                Pair(newMap, newStmt)
-              }.second
-          invoke(output)
-        }
-        else -> super.invoke(xr)
-      }
-    }
-
 
   companion object {
     operator fun invoke(ast: XR, vararg t: Pair<XR.Expression, XR.Expression>): XR =

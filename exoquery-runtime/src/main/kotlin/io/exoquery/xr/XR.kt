@@ -343,7 +343,7 @@ sealed interface XR {
   }
 
   @Mat
-  data class Block(@Slot val stmts: List<Variable>, @Slot val output: XR.Expression) : XR, PC<Block> {
+  data class Block(@Slot val stmts: List<Variable>, @Slot val output: XR.Expression) : XR.Expression, PC<Block> {
     override val productComponents = productOf(this, stmts, output)
     override val type: XRType by lazy { output.type }
     companion object {}

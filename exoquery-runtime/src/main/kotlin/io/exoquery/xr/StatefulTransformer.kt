@@ -57,6 +57,18 @@ interface StatefulTransformerSingleRoot<T>: StatefulTransformer<T> {
 interface StatefulTransformer<T> {
   val state: T
 
+  operator fun invoke(xr: XR): Pair<XR, StatefulTransformer<T>> =
+    with(xr) {
+      when (this) {
+        is XR.Expression -> invoke(this)
+        is XR.Query -> invoke(this)
+        is XR.Function -> invoke(this)
+        // is XR.Action -> this.lift()
+        is XR.Branch -> invoke(this)
+        is XR.Variable -> invoke(this)
+      }
+    }
+
   operator fun invoke(xr: XR.Expression): Pair<XR.Expression, StatefulTransformer<T>> =
     with(xr) {
       when (this) {
@@ -88,6 +100,7 @@ interface StatefulTransformer<T> {
           val (valuesA, stateA) = applyList(values) { t, v -> t.invoke(v) }
           Product(name, keys zip valuesA) to stateA
         }
+        is XR.Block -> invoke(this)
         is Const -> this to this@StatefulTransformer
         is Ident -> this to this@StatefulTransformer
         is IdentOrigin -> this to this@StatefulTransformer
@@ -212,19 +225,6 @@ interface StatefulTransformer<T> {
     with(xr) {
       val (rhsA, stateA) = invoke(rhs)
       Variable(name, rhsA) to stateA
-    }
-
-  operator fun invoke(xr: XR): Pair<XR, StatefulTransformer<T>> =
-    with(xr) {
-      when (this) {
-        is XR.Expression -> invoke(this)
-        is XR.Query -> invoke(this)
-        is XR.Function -> invoke(this)
-        // is XR.Action -> this.lift()
-        is XR.Block -> invoke(this)
-        is XR.Branch -> invoke(this)
-        is XR.Variable -> invoke(this)
-      }
     }
 
   fun <U, R> applyList(list: List<U>, f: (StatefulTransformer<T>, U) -> Pair<R, StatefulTransformer<T>>): Pair<List<R>, StatefulTransformer<T>> {

@@ -9,7 +9,6 @@ object MirrorIdiom {
       is XR.Expression -> token
       is Query -> token
       is XR.Function -> token
-      is Block -> token
       is Branch -> token
       is Variable -> token
     }
@@ -17,6 +16,7 @@ object MirrorIdiom {
   val Ident.token get(): String = name
   val IdentOrigin.token get(): String = """Ido(${name}->"${runtimeName.value}")"""
   val Operator.token get(): String = symbol
+  val Variable.token get(): String = "val ${name.name} = ${rhs.token}"
 
   val XR.Function.token get(): String =
     "(${params.token { it.token }}) -> ${body.token}"
@@ -60,10 +60,11 @@ object MirrorIdiom {
       is When ->
         if (branches.size == 1) {
           val b = branches.first()
-          "if (${b.cond}) ${b.then} else ${orElse}"
+          "if (${b.cond.token}) ${b.then.token} else ${orElse.token}"
         } else {
-          "when { ${branches.map { it.token }.joinToString("; ")}; else -> ${orElse} }"
+          "when { ${branches.map { it.token }.joinToString("; ")}; else -> ${orElse.token} }"
         }
+      is Block -> "block { ${stmts.map { it.token }.joinToString("; ")}; ${output.token} }"
       is FunctionApply -> "${function.tokenScoped}.apply(${args.token { it.token }})"
       is Product -> "${name}(${fields.map { (k, v) -> "${k}: ${v.token}" }.joinToString(", ")})"
       is Property -> "${of.tokenScoped}.${name}"
