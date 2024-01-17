@@ -18,7 +18,7 @@ data class BuilderContext(
 ) {
   val logger = CompileLogger(compilerConfig)
   val builder = DeclarationIrBuilder(pluginCtx, scopeOwner, currentExpr.startOffset, currentExpr.endOffset)
-  val lifter = Lifter(builder, pluginCtx, logger)
+  fun makeLifter() = Lifter(this)
 }
 
 data class TransformerOrigin(

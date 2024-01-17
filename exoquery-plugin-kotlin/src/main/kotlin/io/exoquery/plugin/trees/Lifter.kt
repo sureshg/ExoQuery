@@ -5,6 +5,8 @@ import io.exoquery.Expression
 import io.exoquery.annotation.ExoInternal
 import io.exoquery.xr.XR.*
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.transform.BuilderContext
+import io.exoquery.plugin.transform.callMethod
 import io.exoquery.xr.*
 import io.exoquery.xr.*
 import io.exoquery.xr.XR.Query
@@ -27,7 +29,10 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, val logger: CompileLogger) {
+class Lifter(val builderCtx: BuilderContext) {
+  val irBuilder = builderCtx.builder
+  val context = builderCtx.pluginCtx
+
   fun XR.lift(): IrExpression =
     when (this) {
       is XR.Expression -> this.lift()
@@ -39,55 +44,14 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
       is Variable -> make<Variable>(this.component1().lift(), this.component2().lift())
     }
 
-  fun KType.fullPathOfBasic() =
-    when(val cls = this.classifier) {
-      is KClass<*> -> cls.qualifiedName ?: throw RuntimeException("Qualified name of class $cls was null")
-      else -> throw RuntimeException("Invalid list class: $cls")
-    }
-
-  // TODO this can probably make both objects and types if we check the attributes of the reified type T
-  //      should look into that
-  inline fun <reified T> make(vararg args: IrExpression): IrConstructorCall {
-    val fullPath = typeOf<T>().fullPathOfBasic()
-    return makeClassFromString(fullPath, args.toList())
-  }
-
-  private inline fun <reified T> makeWithTypes(types: List<IrType>, args: List<IrExpression>): IrConstructorCall {
-    val fullPath = typeOf<T>().fullPathOfBasic()
-    return makeClassFromString(fullPath, args.toList(), types.toList())
-  }
-
-  inline fun <reified T> makeObject(): IrGetObjectValue {
-    val fullPath = typeOf<T>().fullPathOfBasic()
-    return makeObjectFromString(fullPath)
-  }
-
-
+  inline fun <reified T> make(vararg args: IrExpression): IrConstructorCall = with(builderCtx) { io.exoquery.plugin.trees.make<T>(*args) }
+  inline fun <reified T> makeObject(): IrGetObjectValue = with(builderCtx) { io.exoquery.plugin.trees.makeObject<T>() }
   fun makeClassFromString(fullPath: String, args: List<IrExpression>, types: List<IrType> = listOf()) =
-    context.referenceConstructors(ClassId.topLevel(FqName("$fullPath"))).first()
-      .let { ctor -> irBuilder.irCall(ctor) }
-      .also { ctorCall ->
-        args.withIndex().map { (i, arg) ->
-          ctorCall.putValueArgument(i, arg)
-        }
-        types.withIndex().map { (i, arg) ->
-          ctorCall.putTypeArgument(i, arg)
-        }
-      }
-
-  fun makeObjectFromString(fullPath: String): IrGetObjectValue {
-    val cls = ClassId.topLevel(FqName("$fullPath"))
-    val clsSym = context.referenceClass(cls) ?: throw RuntimeException("Could not find the reference for the class $cls in the context")
-    val tpe = clsSym.owner.defaultType
-    return irBuilder.irGetObjectValue(tpe, clsSym)
-  }
-    //irBuilder.irGetObjectValue()
-    //irBuilder.irGetObjectValue(IrType)
-
-//  fun blah() {
-//    context.referenceConstructors()
-//  }
-
+    with(builderCtx) { io.exoquery.plugin.trees.makeClassFromString(fullPath, args, types) }
+  fun makeObjectFromString(fullPath: String): IrGetObjectValue =
+    with(builderCtx) { io.exoquery.plugin.trees.makeObjectFromString(fullPath) }
+  inline fun <reified T> makeWithTypes(types: List<IrType>, args: List<IrExpression>): IrConstructorCall =
+    with(builderCtx) { io.exoquery.plugin.trees.makeWithTypes<T>(types, args) }
 
   fun Boolean.lift(): IrExpression = irBuilder.irBoolean(this)
   fun Byte.lift(): IrExpression = IrConstImpl.byte(irBuilder.startOffset, irBuilder.endOffset, context.irBuiltIns.byteType, this)

@@ -63,12 +63,19 @@ data class DynamicBinds(val list: List<Pair<BID, RuntimeBindValue>>) {
     fun empty() = DynamicBinds(listOf())
   }
 
+  fun allVals() = list.map { it.second }.filterIsInstance<RuntimeBindValue.SqlVariableIdent>().map { it.value }
+
   operator fun plus(other: DynamicBinds) = DynamicBinds(this.list + other.list)
+  operator fun plus(other: Pair<BID, RuntimeBindValue>) = DynamicBinds(this.list + other)
+  operator fun minus(other: DynamicBinds) = DynamicBinds(this.list - other.list)
+  operator fun minus(bid: BID) = DynamicBinds(this.list.filter { it.first != bid })
+  // Note: Might want to use a hash set of `bids` if the list gets big
+  operator fun minus(bids: List<BID>) = DynamicBinds(this.list.filter { !bids.contains(it.first) })
 }
 // The contents of this constructed directly as Kotlin IR nodes with the expressions dynamically inside e.g.
 // IrCall(IrConstructor(Sym("RuntimeBindValue.String"), listOf(IrString("Joe")))
 sealed interface RuntimeBindValue {
-  data class String(val value: kotlin.String): RuntimeBindValue
+  data class SqlVariableIdent(val value: kotlin.String): RuntimeBindValue
 }
 
 

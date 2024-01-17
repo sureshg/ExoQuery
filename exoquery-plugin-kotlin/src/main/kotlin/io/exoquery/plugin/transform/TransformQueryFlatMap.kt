@@ -52,6 +52,8 @@ class TransformQueryFlatMap(override val ctx: TransformerOrigin, val replacement
     val newFunExpression = funExpression.transform(superTransformer, ctx.parentScopeSymbols)
     // (p:class).invoke(...)
 
+    val lifter = makeLifter()
+
     val applyLambda =
       // TODO Add a type for R?
       newFunExpression.callMethod("invoke")(

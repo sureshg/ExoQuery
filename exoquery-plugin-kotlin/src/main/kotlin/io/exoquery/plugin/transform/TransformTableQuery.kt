@@ -30,8 +30,9 @@ class TransformTableQuery(val ctx: TransformerOrigin) {
   }
 
   fun lifterAndBuilder(expr: IrCall): Pair<Lifter, DeclarationIrBuilder> {
-    val builder = ctx.makeBuilderContext(expr).builder //DeclarationIrBuilder(context, scopeOwner, expr.startOffset, expr.endOffset)
-    val lifter = Lifter(builder, ctx.pluginCtx, compileLogger)
+    val builderCtx = ctx.makeBuilderContext(expr)
+    val builder = builderCtx.builder //DeclarationIrBuilder(context, scopeOwner, expr.startOffset, expr.endOffset)
+    val lifter = Lifter(builderCtx)
     return Pair(lifter, builder)
   }
 

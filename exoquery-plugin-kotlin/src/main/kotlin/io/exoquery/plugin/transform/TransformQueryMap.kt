@@ -46,7 +46,7 @@ class TransformQueryMap(override val ctx: TransformerOrigin, val matcher: Extrac
     val (bodyXR, bindsAccum) = Parser.parseFunctionBlockBody(blockBody)
 
     val expr = Lambda1Expression(XR.Function1(paramIdentXR, bodyXR))
-    val liftedExpr = lifter.liftExpression(expr)
+    val liftedExpr = makeLifter().liftExpression(expr)
 
 //    val mapExprFunction = caller.type.findMethodOrFail(replacementMethod)
 
@@ -58,7 +58,7 @@ class TransformQueryMap(override val ctx: TransformerOrigin, val matcher: Extrac
     //      that we've collected here, then make the recursive call
     val transformedCaller = caller.transform(superTransformer, decls)
 
-    val bindsList = bindsAccum.toDynamicBindsExpr()
+    val bindsList = bindsAccum.makeDynamicBindsIr()
 
     val expressionCall =
       // for:  query.map(p -> p.name)

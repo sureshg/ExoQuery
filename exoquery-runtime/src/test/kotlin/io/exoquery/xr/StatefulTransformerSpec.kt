@@ -8,8 +8,9 @@ import io.exoquery.xr.XR.*
 
 class StatefulTransformerSpec : FreeSpec({
   class Subject(override val state: List<XR>, vararg val replace: Pair<XR, XR>): StatefulTransformerSingleRoot<List<XR>> {
-    override fun <X : XR> root(e: X): Pair<X, StatefulTransformer<List<XR>>> {
+    override fun <X : XR> root(e: X): Pair<X, StatefulTransformerSingleRoot<List<XR>>> {
       @Suppress("UNCHECKED_CAST")
+
       fun assertIsTypeX(tree: XR) =
         if(!tree::class.isSubclassOf(e::class))
           throw IllegalArgumentException("Cannot replace ${e}:${e::class.simpleName} with ${tree}:${tree::class.simpleName} since they have different types")

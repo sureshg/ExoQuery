@@ -5,6 +5,7 @@ import io.decomat.case
 import io.decomat.on
 import io.exoquery.BID
 import io.exoquery.DynamicBinds
+import io.exoquery.RuntimeBindValue
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.Errors
@@ -20,27 +21,6 @@ import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-
-class DynamicBindsAccum {
-  private val binds = mutableListOf<Pair<BID, IrExpression>>()
-
-  fun add(bindId: BID, sqlVariable: IrExpression) {
-    binds.add(bindId to sqlVariable)
-  }
-
-  context(BuilderContext) fun toDynamicBindsExpr(): IrExpression {
-    return with (lifter) {
-      val bindsList = binds.map { pair -> pair.lift({bid -> bid.lift()}, { it.callMethod("getVariableName")() }) }
-      make<DynamicBinds>(bindsList.liftExpr<Pair<BID, IrExpression>>())
-    }
-  }
-
-  fun show() = pprint(binds)
-
-  companion object {
-    fun empty() = DynamicBindsAccum()
-  }
-}
 
 data class ParserContext(val internalVars: ScopeSymbols, val currentFile: IrFile)
 
@@ -129,7 +109,10 @@ private class ParserCollector {
         // Add the bind to the parser context to be returned when parsing is done
         val bindId = BID.new()
         warn("=================== Making new Bind: ${bindId} ===================")
-        binds.add(bindId, /*the SqlVariable instance*/ this.dispatchReceiver ?: Errors.NoDispatchRecieverFoundForSqlVarCall(this))
+        binds.add(
+          bindId, /*the SqlVariable instance*/
+          this.dispatchReceiver?.let { RuntimeBindValueExpr.SqlVariableIdentExpr(it) } ?: Errors.NoDispatchRecieverFoundForSqlVarCall(this)
+        )
         warn(binds.show().toString())
         XR.IdentOrigin(bindId, symName, TypeParser.parse(this.type))
       },

@@ -7,13 +7,11 @@ import io.exoquery.Lambda1Expression
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.safeName
-import io.exoquery.plugin.trees.ExtractorsDomain
-import io.exoquery.plugin.trees.Parser
-import io.exoquery.plugin.trees.ParserContext
-import io.exoquery.plugin.trees.TypeParser
+import io.exoquery.plugin.trees.*
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.util.addArguments
 
 class TransformJoinOn(override val ctx: TransformerOrigin): Transformer() {
   context(BuilderContext, CompileLogger)
@@ -44,14 +42,14 @@ class TransformJoinOn(override val ctx: TransformerOrigin): Transformer() {
       }
 
     val onLambda = Lambda1Expression(XR.Function1(paramIdent, onLambdaBody))
-    val onLambdaExpr = lifter.liftExpression(onLambda)
+    val onLambdaExpr = makeLifter().liftExpression(onLambda)
     // To transform the TableQuery etc... in the join(<Heree>).on clause before the `on`
     // No scope symbols into caller since it comes Before the on-clause i.e. before any symbols could be created
     val newCaller = caller.transform(superTransformer, internalVars)
 
     warn("------------ Binds Accum -----------\n" + bindsAccum.show())
 
-    val bindsList = bindsAccum.toDynamicBindsExpr()
+    val bindsList = bindsAccum.makeDynamicBindsIr()
 
     return newCaller.callMethod("onExpr").invoke(onLambdaExpr, bindsList)
   }

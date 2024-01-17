@@ -3,22 +3,40 @@ package io.exoquery.select
 import io.decomat.*
 import io.exoquery.*
 import io.exoquery.annotation.ExoInternal
-import io.exoquery.xr.Is
-import io.exoquery.xr.XR
-import io.exoquery.xr.XRType
-import io.exoquery.xr.get
+import io.exoquery.xr.*
+
+fun <T> Query<T>.freshIdent(prefix: String = "x"): String {
+  // Also considering binds despite the fact that OrigIdent should not even be there in the Ast anymore
+  val allBindVars = CollectXR.byType<XR.Ident>(xr).map { it.name } + binds.allVals().toSet()
+  var index = 0
+  var highest = prefix
+  while (allBindVars.contains(highest)) {
+    index++
+    highest = "${prefix}${index}"
+  }
+  // once we found a variable that's not contained in the tree, return it
+  // (since this is the highest-numbered identifier with the prefix)
+  return highest
+}
+
+fun <T> Query<T>.withReifiedIdents(): Query<T> {
+  val (reifiedXR, bindIds) = ReifyIdents.ofQuery(binds, xr)
+  return QueryContainer<T>(reifiedXR, binds - bindIds)
+}
+
 
 @OptIn(ExoInternal::class) // TODO Not sure if the output here QueryContainer(Ident(SqlVariable)) is right need to look into the shape
 class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlVariable<A>>({ result -> QueryContainer<A>(XR.Marker(markerName), DynamicBinds.empty())  }) {
 
   // TODO search for this call in the IR and see if there's a Val-def on the other side of it and call fromAliased with the name of that
   public suspend fun <R> from(query: Query<R>): SqlVariable<R> =
-    fromAliased(query, "x")
+    // Note find the out the class of R (use an inline?) and make the 1st letter based on it?
+    fromAliased(query, query.freshIdent())
 
   public suspend fun <R> fromAliased(query: Query<R>, alias: String): SqlVariable<R> =
     perform { mapping ->
       val sqlVar = SqlVariable<R>(alias)
-      val resultQuery = mapping(sqlVar)
+      val resultQuery = mapping(sqlVar).withReifiedIdents()
       val ident = XR.Ident(sqlVar.getVariableName(), resultQuery.xr.type)
       // No quoted context in this case so only the inner query of this has dynamic binds, we just get those
       QueryContainer<R>(XR.FlatMap(query.xr, ident, resultQuery.xr), query.binds + resultQuery.binds) as Query<A> // TODO Unsafe cast, will this work?
