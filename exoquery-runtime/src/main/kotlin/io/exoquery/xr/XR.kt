@@ -1,5 +1,6 @@
 package io.exoquery.xr
 
+import io.exoquery.xr.MirrorIdiom.token
 import io.decomat.Matchable as Mat
 import io.decomat.Component as Slot
 import io.decomat.productComponentsOf as productOf
@@ -38,6 +39,8 @@ sealed interface XR {
   }
 
   abstract val type: XRType
+//  override fun toString(): String =
+//    with (MirrorIdiom) { this.token }
 
   sealed class JoinType {
     object Inner: JoinType()
@@ -56,6 +59,7 @@ sealed interface XR {
   // *******************************************************************************************
 
 
+  // TODO XRType needs to be Product
   @Mat
   data class Entity(@Slot val name: String, override val type: XRType): Query, PC<Entity> {
     override val productComponents = productOf(this, name)
@@ -299,6 +303,14 @@ sealed interface XR {
     override fun hashCode() = id.hashCode()
     override fun equals(other: Any?) = other is Product && other.id == id
   }
+
+  // TODO Need to introduce Visibility into Property and Ident
+  //      don't need Property.Renameable since we are assuming all renames will be done from case-class annotations
+  //      before transformations begin.
+  //      sealed interface Visibility {
+  //        object Hidden: Visibility
+  //        object Visible: Visibility
+  //      }
 
   @Mat
   data class Property(@Slot val of: XR.Expression, @Slot val name: String) : XR.Expression, PC<Property> {

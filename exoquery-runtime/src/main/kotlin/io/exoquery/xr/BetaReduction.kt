@@ -150,12 +150,12 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
       when (this) {
         // Reduce a block and all variables inside to a single statement
         is XR.Block -> {
-          // Walk through the statements, last to the first
+          // Walk through the statements, last to the first (in this case 'output' is the last statement in the block)
           val output =
-            stmts.reversed().tail()
+            stmts.reversed()
               // Important to go down to invoke(XR) recursively here since we are reducing
               //   XR.Block -> XR.Statement and that is only possible on the root-level
-              .fold(Pair(mapOf<XR.Expression, XR.Expression>(), stmts.last() as XR)) { (map, stmt), line ->
+              .fold(Pair(mapOf<XR.Expression, XR.Expression>(), output as XR)) { (map, stmt), line ->
                 // Beta-reduce the statements from the end to the beginning
                 val reduct: XR.Variable = BetaReduce(map)(line)
                 // If the beta reduction is a some 'val x=t', add x->t to the beta reductions map

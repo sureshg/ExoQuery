@@ -29,7 +29,16 @@ import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, val logger: CompileLogger) {
-  val pack = "io.exoquery.xr"
+  fun XR.lift(): IrExpression =
+    when (this) {
+      is XR.Expression -> this.lift()
+      is Query -> this.lift()
+      is XR.Function -> this.lift()
+      // is XR.Action -> this.lift()
+      is Block -> make<Block>(this.component1().lift { it.lift() }, this.component2().lift())
+      is Branch -> make<Branch>(this.component1().lift(), this.component2().lift())
+      is Variable -> make<Variable>(this.component1().lift(), this.component2().lift())
+    }
 
   fun KType.fullPathOfBasic() =
     when(val cls = this.classifier) {
@@ -164,17 +173,6 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
       is FunctionN -> make<FunctionN>(this.component1().lift { it.lift() }, this.component2().lift())
       // The below must go in Function/Query/Expression/Action lift clauses
       is Marker -> make<Marker>(this.component1().lift())
-    }
-
-  fun XR.lift(): IrExpression =
-    when (this) {
-      is XR.Expression -> this.lift()
-      is Query -> this.lift()
-      is XR.Function -> this.lift()
-      // is XR.Action -> this.lift()
-      is Block -> make<Block>(this.component1().lift { it.lift() }, this.component2().lift())
-      is Branch -> make<Branch>(this.component1().lift(), this.component2().lift())
-      is Variable -> make<Variable>(this.component1().lift(), this.component2().lift())
     }
 
   fun XR.JoinType.lift(): IrExpression =
