@@ -90,6 +90,7 @@ interface StatefulTransformer<T> {
         }
         is Const -> this to this@StatefulTransformer
         is Ident -> this to this@StatefulTransformer
+        is IdentOrigin -> this to this@StatefulTransformer
         Const.Null -> this to this@StatefulTransformer
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this to this@StatefulTransformer

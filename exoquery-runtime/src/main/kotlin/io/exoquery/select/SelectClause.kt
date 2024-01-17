@@ -9,7 +9,7 @@ import io.exoquery.xr.XRType
 import io.exoquery.xr.get
 
 @OptIn(ExoInternal::class) // TODO Not sure if the output here QueryContainer(Ident(SqlVariable)) is right need to look into the shape
-class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlVariable<A>>({ result -> QueryContainer<A>(XR.Marker(markerName))  }) {
+class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlVariable<A>>({ result -> QueryContainer<A>(XR.Marker(markerName), DynamicBinds.empty())  }) {
 
   // TODO search for this call in the IR and see if there's a Val-def on the other side of it and call fromAliased with the name of that
   public suspend fun <R> from(query: Query<R>): SqlVariable<R> =
@@ -20,7 +20,8 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlVariable
       val sqlVar = SqlVariable<R>(alias)
       val resultQuery = mapping(sqlVar)
       val ident = XR.Ident(sqlVar.getVariableName(), resultQuery.xr.type)
-      QueryContainer<R>(XR.FlatMap(query.xr, ident, resultQuery.xr)) as Query<A> // TODO Unsafe cast, will this work?
+      // No quoted context in this case so only the inner query of this has dynamic binds, we just get those
+      QueryContainer<R>(XR.FlatMap(query.xr, ident, resultQuery.xr), query.binds + resultQuery.binds) as Query<A> // TODO Unsafe cast, will this work?
     }
 
   public suspend fun <Q: Query<R>, R> join(query: Q) = JoinOn<Q, R, A>(query, XR.JoinType.Inner, this, null)
@@ -34,7 +35,7 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
 
   // TODO some internal annotation?
   @OptIn(ExoInternal::class)
-  suspend fun onExpr(cond: Lambda1Expression): SqlVariable<R> =
+  suspend fun onExpr(cond: Lambda1Expression, binds: DynamicBinds): SqlVariable<R> =
     with (selectClause) {
       // TODO if (alias != null) beta-reduce 'this' to the alias
       perform { mapping ->
@@ -42,7 +43,7 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
         val outputQuery = mapping(sqlVariable)
         val ident = XR.Ident(sqlVariable.getVariableName(), outputQuery.xr.type)
         QueryContainer<R>(XR.FlatMap(
-          XR.FlatJoin(joinType, query.xr, cond.ident, cond.xr.body), ident, outputQuery.xr)
+          XR.FlatJoin(joinType, query.xr, cond.ident, cond.xr.body), ident, outputQuery.xr), query.binds + binds
         ) as Query<A>
       }
     }

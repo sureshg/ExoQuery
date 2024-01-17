@@ -1,14 +1,13 @@
 package io.exoquery.plugin.trees
 
-import io.exoquery.EntityExpression
+import io.exoquery.*
 import io.exoquery.Expression
-import io.exoquery.Lambda1Expression
-import io.exoquery.SqlVariable
 import io.exoquery.annotation.ExoInternal
 import io.exoquery.xr.XR.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.xr.*
 import io.exoquery.xr.*
+import io.exoquery.xr.XR.Query
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 
@@ -48,7 +47,7 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
 
   // TODO this can probably make both objects and types if we check the attributes of the reified type T
   //      should look into that
-  private inline fun <reified T> make(vararg args: IrExpression): IrConstructorCall {
+  inline fun <reified T> make(vararg args: IrExpression): IrConstructorCall {
     val fullPath = typeOf<T>().fullPathOfBasic()
     return makeClassFromString(fullPath, args.toList())
   }
@@ -64,7 +63,7 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
   }
 
 
-  private fun makeClassFromString(fullPath: String, args: List<IrExpression>, types: List<IrType> = listOf()) =
+  fun makeClassFromString(fullPath: String, args: List<IrExpression>, types: List<IrType> = listOf()) =
     context.referenceConstructors(ClassId.topLevel(FqName("$fullPath"))).first()
       .let { ctor -> irBuilder.irCall(ctor) }
       .also { ctorCall ->
@@ -106,11 +105,26 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
       .first { it.owner.valueParameters.firstOrNull()?.isVararg ?: false }
 
   inline fun <reified T> List<T>.lift(elementLifter: (T) -> IrExpression): IrExpression {
-    val fullPath = typeOf<T>().fullPathOfBasic()
+    val elementType = typeOf<T>()
+    if (elementType == typeOf<IrExpression>()) {
+      throw IllegalStateException("Cannot lift IrExpression with this. Use liftExpr")
+    } else {
+      val fullPath = elementType.fullPathOfBasic()
+      val classId = ClassId.topLevel(FqName(fullPath))
+      val expressionType = context.referenceConstructors(classId).first().owner.returnType
+      val expressions = this.map { elementLifter(it) }
+      val variadics = irBuilder.irVararg(expressionType, expressions)
+      val listOfCall = irBuilder.irCall(listOfRef).apply { putValueArgument(0, variadics) }
+      return listOfCall
+    }
+  }
+
+  inline fun <reified T> List<IrExpression>.liftExpr(): IrExpression {
+    val elementType = typeOf<T>()
+    val fullPath = elementType.fullPathOfBasic()
     val classId = ClassId.topLevel(FqName(fullPath))
     val expressionType = context.referenceConstructors(classId).first().owner.returnType
-    val expressions = this.map { elementLifter(it) }
-    val variadics = irBuilder.irVararg(expressionType, expressions)
+    val variadics = irBuilder.irVararg(expressionType, this)
     val listOfCall = irBuilder.irCall(listOfRef).apply { putValueArgument(0, variadics) }
     return listOfCall
   }
@@ -141,6 +155,7 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
       is Const -> this.lift() // points to the Const.lift() function above
       is FunctionApply -> make<FunctionApply>(this.component1().lift(), this.component2().lift { it.lift() })
       is Ident -> make<Ident>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is IdentOrigin -> make<IdentOrigin>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is Property -> make<Property>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is UnaryOp -> make<UnaryOp>(this.component1().lift(), this.component2().lift())
       Const.Null -> makeObject<Const.Null>()
@@ -251,4 +266,7 @@ class Lifter(val irBuilder: DeclarationIrBuilder, val context: IrPluginContext, 
       is EntityExpression -> make<EntityExpression>(this.component1().lift())
       else -> error("Error parsing expression: ${this}")
     }
+
+  fun BID.lift(): IrExpression =
+    make<BID>(irBuilder.irString(this.component1()))
 }

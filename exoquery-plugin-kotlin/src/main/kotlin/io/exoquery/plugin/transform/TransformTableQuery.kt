@@ -4,13 +4,10 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.EntityExpression
-import io.exoquery.plugin.trees.ExtractorsDomain
-import io.exoquery.plugin.trees.ParserContext
-import io.exoquery.plugin.trees.TypeParser
 import io.exoquery.xr.XR
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.safeName
-import io.exoquery.plugin.trees.Lifter
+import io.exoquery.plugin.trees.*
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.expressions.IrCall

@@ -19,6 +19,7 @@ class TransformQueryMap(override val ctx: TransformerOrigin, val matcher: Extrac
   context(ParserContext, BuilderContext, CompileLogger)
   override fun transformBase(expression: IrCall, superTransformer: io.exoquery.plugin.CaptureTransformer): IrExpression {
 
+    // TODO use the parserCtx from the ParserContext input
     val decls = ScopeSymbols(CollectDecls.from(expression)) + ctx.parentScopeSymbols
     val parserCtx = ParserContext(decls, ctx.currentFile)
 
@@ -42,7 +43,7 @@ class TransformQueryMap(override val ctx: TransformerOrigin, val matcher: Extrac
       XR.Ident(name, tpe)
     }
 
-    val bodyXR = Parser.parseFunctionBlockBody(blockBody)
+    val (bodyXR, bindsAccum) = Parser.parseFunctionBlockBody(blockBody)
 
     val expr = Lambda1Expression(XR.Function1(paramIdentXR, bodyXR))
     val liftedExpr = lifter.liftExpression(expr)
@@ -57,10 +58,12 @@ class TransformQueryMap(override val ctx: TransformerOrigin, val matcher: Extrac
     //      that we've collected here, then make the recursive call
     val transformedCaller = caller.transform(superTransformer, decls)
 
+    val bindsList = bindsAccum.toDynamicBindsExpr()
+
     val expressionCall =
       // for:  query.map(p -> p.name)
-      // it would be:  (query).callMethodWithType("map", <String>)(XR.Function1(Id(p), Prop(p, name))
-      transformedCaller.callMethodWithType(replacementMethod, expression.type)(liftedExpr)
+      // it would be:  (query).callMethodWithType("map", <String>. bindsList())(XR.Function1(Id(p), Prop(p, name))
+      transformedCaller.callMethodWithType(replacementMethod, expression.type)(liftedExpr, bindsList)
 
     return expressionCall
   }

@@ -21,5 +21,6 @@ dependencies {
 
     implementation("io.exoquery:decomat-core:0.0.4")
     implementation("com.tylerthrailkill.helpers:pretty-print:2.0.2")
+    implementation("io.exoquery:pprint-kotlin:1.0")
     api(kotlin("reflect"))
 }

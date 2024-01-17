@@ -24,6 +24,7 @@ dependencies {
     api(kotlin("reflect"))
     testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
     ksp("io.exoquery:decomat-ksp:0.0.4")
+    implementation("io.exoquery:pprint-kotlin:1.0")
     implementation("io.exoquery:decomat-core:0.0.4")
 }
 

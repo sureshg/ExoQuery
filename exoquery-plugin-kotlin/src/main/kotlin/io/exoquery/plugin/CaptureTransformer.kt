@@ -76,8 +76,11 @@ class CaptureTransformer(
         transformPrint.transform(expression)
       }
 
-      joinOnTransformer.matches(expression) ->
-        joinOnTransformer.transform(expression, this)
+      joinOnTransformer.matches(expression) -> {
+        val out = joinOnTransformer.transform(expression, this)
+        logger.warn("----------------- Output ----------------\n" + out.dumpKotlinLike())
+        out
+      }
 
       queryFlatMapTransformer.matches(expression) ->
         queryFlatMapTransformer.transform(expression, this)

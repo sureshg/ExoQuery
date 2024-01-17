@@ -1,5 +1,6 @@
 package io.exoquery.xr
 
+import io.exoquery.BID
 import io.exoquery.xr.MirrorIdiom.token
 import io.decomat.Matchable as Mat
 import io.decomat.Component as Slot
@@ -265,7 +266,21 @@ sealed interface XR {
   // **********************************************************************************************
 
   @Mat
+  data class IdentOrigin(@Slot val runtimeName: BID, override val type: XRType, val visibility: Visibility = Visibility.Visible) : XR, Labels.Terminal, PC<IdentOrigin> {
+
+    override val productComponents = productOf(this, runtimeName)
+    companion object {}
+
+    data class Id(val name: String)
+    private val id = Id(runtimeName.value)
+
+    override fun hashCode() = id.hashCode()
+    override fun equals(other: Any?) = other is IdentOrigin && other.id == id
+  }
+
+  @Mat
   data class Ident(@Slot val name: String, override val type: XRType, val visibility: Visibility = Visibility.Visible) : XR, Labels.Terminal, PC<Ident> {
+
     override val productComponents = productOf(this, name)
     companion object {}
 
@@ -362,7 +377,8 @@ fun XR.isBottomTypedTerminal() =
 fun XR.isTerminal() =
   this is XR.Labels.Terminal
 
-fun XR.Labels.Terminal.withType(type: XRType) =
+fun XR.Labels.Terminal.withType(type: XRType): XR.Expression =
   when (this) {
     is XR.Ident -> XR.Ident(name, type)
+    is XR.IdentOrigin -> XR.IdentOrigin(runtimeName, type)
   }

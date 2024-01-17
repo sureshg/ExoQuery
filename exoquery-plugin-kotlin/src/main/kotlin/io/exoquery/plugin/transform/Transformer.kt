@@ -2,6 +2,7 @@ package io.exoquery.plugin.transform
 
 import io.exoquery.plugin.CaptureTransformer
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.trees.DynamicBindsAccum
 import io.exoquery.plugin.trees.ParserContext
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression

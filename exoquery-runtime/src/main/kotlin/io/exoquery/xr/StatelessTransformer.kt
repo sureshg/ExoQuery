@@ -23,6 +23,7 @@ interface StatelessTransformer {
         is Const -> this
         is FunctionApply -> FunctionApply(invoke(function), args.map { invoke(it) })
         is Ident -> this
+        is IdentOrigin -> this
         is Property -> Property(invoke(of), name)
         is UnaryOp -> UnaryOp(op, invoke(expr))
         Const.Null -> this

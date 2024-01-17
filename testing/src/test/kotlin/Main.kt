@@ -24,11 +24,12 @@ fun main() {
     select {
       val p = from(TableQuery<Person>())
       val k = join(TableQuery<Address>()).on { street == p().name.first }
-      k
+      p
     }
 
   //println(pprint(x, defaultShowFieldNames = false, defaultWidth = 200))
   println(x.xr.show())
+  println(pprint(x.binds, defaultShowFieldNames = false, defaultWidth = 200))
 
 //  println(
 //    printSource {

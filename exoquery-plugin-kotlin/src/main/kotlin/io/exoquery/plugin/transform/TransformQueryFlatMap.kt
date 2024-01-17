@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`join-on(expr)`
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 class TransformJoinOn(override val ctx: TransformerOrigin): Transformer() {
   context(BuilderContext, CompileLogger)
@@ -41,7 +42,7 @@ class TransformJoinOn(override val ctx: TransformerOrigin): Transformer() {
     }
 
     // parse the `on` clause of the join.on(...)
-    val onLambdaBody =
+    val (onLambdaBody, bindsAccum) =
       with(makeParserContext().copy(internalVars + ScopeSymbols(listOf(reciverParam.symbol)))) {
         Parser.parseFunctionBlockBody(blockBody)
       }
@@ -52,7 +53,11 @@ class TransformJoinOn(override val ctx: TransformerOrigin): Transformer() {
     // No scope symbols into caller since it comes Before the on-clause i.e. before any symbols could be created
     val newCaller = caller.transform(superTransformer, internalVars)
 
-    return newCaller.callMethod("onExpr").invoke(onLambdaExpr)
+    warn("------------ Binds Accum -----------\n" + bindsAccum.show())
+
+    val bindsList = bindsAccum.toDynamicBindsExpr()
+
+    return newCaller.callMethod("onExpr").invoke(onLambdaExpr, bindsList)
   }
 }
 

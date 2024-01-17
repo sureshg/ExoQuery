@@ -52,9 +52,29 @@ class SqlVariable<T>(variableName: String /* don't want this to intersect with e
     throw IllegalStateException("meaningful error about how can't use a sql variable in a runtime context and it should be impossible anyway becuase its not an EnclosedExpression")
 }
 
+// A runtime bind IDBindsAcc
+data class BID(val value: String) {
+  companion object {
+    fun new() = BID(UUID.randomUUID().toString())
+  }
+}
+data class DynamicBinds(val list: List<Pair<BID, RuntimeBindValue>>) {
+  companion object {
+    fun empty() = DynamicBinds(listOf())
+  }
+
+  operator fun plus(other: DynamicBinds) = DynamicBinds(this.list + other.list)
+}
+// The contents of this constructed directly as Kotlin IR nodes with the expressions dynamically inside e.g.
+// IrCall(IrConstructor(Sym("RuntimeBindValue.String"), listOf(IrString("Joe")))
+sealed interface RuntimeBindValue {
+  data class String(val value: kotlin.String): RuntimeBindValue
+}
+
 
 sealed interface Query<T> {
   val xr: XR.Query
+  val binds: DynamicBinds
 
 //  val map get() = MapClause<T>(xr)
 
@@ -66,8 +86,8 @@ sealed interface Query<T> {
 
   fun <R> map(f: context(EnclosedExpression) (SqlVariable<T>) -> R): Query<T> = error("The map expression of the Query was not inlined")
   // TODO Need to understand how this would be parsed if the function body had val-assignments
-  fun <R> mapExpr(f: Lambda1Expression): Query<R> =
-    QueryContainer(XR.Map(this.xr, f.ident, f.xr.body))
+  fun <R> mapExpr(f: Lambda1Expression, binds: DynamicBinds): Query<R> =
+    QueryContainer(XR.Map(this.xr, f.ident, f.xr.body), binds)
 
 
   // Search for every Ident (i.e. GetValue) that has @SqlVariable in it's type
@@ -78,8 +98,8 @@ sealed interface Query<T> {
 
   fun <R> flatMap(f: (SqlVariable<T>) -> Query<R>): Query<R> = error("needs to be replaced by compiler")
   // TODO Make the compiler plug-in a SqlVariable that it creates based on the variable name in f
-  fun <R> flatMapInternal(ident: XR.Ident, body: Query<R>): Query<R> =
-    QueryContainer(XR.FlatMap(this.xr, ident, body.xr))
+  fun <R> flatMapInternal(ident: XR.Ident, body: Query<R>, binds: DynamicBinds): Query<R> =
+    QueryContainer(XR.FlatMap(this.xr, ident, body.xr), binds)
 
 
 
@@ -95,14 +115,14 @@ sealed interface Query<T> {
 //  fun onExpr(f: Lambda1Expression): Query<T> =  error("The join-on expression of the Query was not inlined")
 //}
 
-data class QueryContainer<T>(override val xr: XR.Query): Query<T>
+data class QueryContainer<T>(override val xr: XR.Query, override val binds: DynamicBinds): Query<T>
 
 // TODO make this constructor private? Shuold have a TableQuery.fromExpr constructor
-class TableQuery<T> private constructor (override val xr: XR.Entity): Query<T> {
+class TableQuery<T> private constructor (override val xr: XR.Entity, override val binds: DynamicBinds): Query<T> {
   companion object {
     // TODO need to implement this in the plugin
     operator fun <T> invoke(): TableQuery<T> = error("The TableQuery create-table expression was not inlined")
-    fun <T> fromExpr(entity: EntityExpression) = TableQuery<T>(entity.xr)
+    fun <T> fromExpr(entity: EntityExpression) = TableQuery<T>(entity.xr, DynamicBinds.empty())
   }
 }
 
@@ -124,7 +144,7 @@ public fun <T, Q: Query<T>> select(block: suspend SelectClause<T>.() -> SqlVaria
   // TODO Need to change the innermost map into a flatMap
   //return q as Q
   val markedXR = InnerMost(markerId).findAndMark(q.xr)
-  return QueryContainer<T>(markedXR) as Q
+  return QueryContainer<T>(markedXR, q.binds) as Q
 }
 
 //data class Table<T>(override val xt: XR): Query<T>

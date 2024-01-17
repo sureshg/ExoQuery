@@ -3,23 +3,58 @@ package io.exoquery.plugin.trees
 import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
+import io.exoquery.BID
+import io.exoquery.DynamicBinds
 import io.exoquery.plugin.location
-import io.exoquery.xr.*
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.printing.Errors
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.safeName
+import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.transform.ScopeSymbols
+import io.exoquery.plugin.transform.callMethod
 import io.exoquery.plugin.transform.parseFail
+import io.exoquery.pprint
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
+class DynamicBindsAccum {
+  private val binds = mutableListOf<Pair<BID, IrExpression>>()
+
+  fun add(bindId: BID, sqlVariable: IrExpression) {
+    binds.add(bindId to sqlVariable)
+  }
+
+  context(BuilderContext) fun toDynamicBindsExpr(): IrExpression {
+    return with (lifter) {
+      val bindsList = binds.map { pair -> pair.lift({bid -> bid.lift()}, { it.callMethod("getVariableName")() }) }
+      make<DynamicBinds>(bindsList.liftExpr<Pair<BID, IrExpression>>())
+    }
+  }
+
+  fun show() = pprint(binds)
+
+  companion object {
+    fun empty() = DynamicBindsAccum()
+  }
+}
 
 data class ParserContext(val internalVars: ScopeSymbols, val currentFile: IrFile)
 
 object Parser {
+  context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR.Expression, DynamicBindsAccum> =
+    ParserCollector().let { par -> Pair(par.parseFunctionBlockBody(blockBody), par.binds) }
+}
+
+/**
+ * Parses the tree and collets dynamic binds as it goes. The parser should be exposed
+ * as stateless to client functions so everything should go through the `Parser` object instead of this.
+ */
+private class ParserCollector {
+  val binds = DynamicBindsAccum.empty()
 
   context(ParserContext, CompileLogger) inline fun <reified T> parseAs(expr: IrExpression): T {
     val parsedExpr = parse(expr)
@@ -91,9 +126,15 @@ object Parser {
 
       // TODO exclude anything here that's not an SqlVariable
       case (ExtractorsDomain.Call.InvokeSqlVariable[Is()]).thenThis { symName ->
-        XR.Ident(symName, TypeParser.parse(this.type))
+        // Add the bind to the parser context to be returned when parsing is done
+        val bindId = BID.new()
+        warn("=================== Making new Bind: ${bindId} ===================")
+        binds.add(bindId, /*the SqlVariable instance*/ this.dispatchReceiver ?: Errors.NoDispatchRecieverFoundForSqlVarCall(this))
+        warn(binds.show().toString())
+        XR.IdentOrigin(bindId, TypeParser.parse(this.type))
       },
 
+      // Other situations where you might have an identifier which is not an SqlVar e.g. with variable bindings in a Block (inside an expression)
       case(Ir.GetValue[Is()]).thenThis { sym ->
         // Every single instance of this should should be a getSqlVar
 

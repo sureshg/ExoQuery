@@ -15,6 +15,7 @@ object MirrorIdiom {
     }
 
   val Ident.token get(): String = name
+  val IdentOrigin.token get(): String = "Ido(${runtimeName})"
   val Operator.token get(): String = symbol
 
   val XR.Function.token get(): String =
@@ -67,6 +68,7 @@ object MirrorIdiom {
       is Product -> "${name}(${fields.map { (k, v) -> "${k}: ${v.token}" }.joinToString(", ")})"
       is Property -> "${of.tokenScoped}.${name}"
       is Ident -> token
+      is IdentOrigin -> token
       is Const -> token
       is Marker -> token
     }
