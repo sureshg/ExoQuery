@@ -26,6 +26,7 @@ dependencies {
     ksp("io.exoquery:decomat-ksp:0.0.4")
     implementation("io.exoquery:pprint-kotlin:1.0")
     implementation("io.exoquery:decomat-core:0.0.4")
+    implementation("com.facebook:ktfmt:0.43")
 }
 
 // Needed for Kotest

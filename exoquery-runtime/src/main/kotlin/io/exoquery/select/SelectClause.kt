@@ -82,7 +82,10 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
         }
         val freshCondBody = BetaReduction(cond.xr.body, cond.ident to freshIdentForCond)
         QueryContainer<R>(XR.FlatMap(
-          XR.FlatJoin(joinType, query.xr, freshIdentForCond, freshCondBody), ident, outputQuery.xr), query.binds + binds
+          //XR.FlatJoin(joinType, query.xr, freshIdentForCond, freshCondBody), ident, outputQuery.xr), query.binds + binds
+          // Good example of beta reduction
+          // TODO top line should work normally but there should be some kind of global-flag to disable reduction here
+          XR.FlatJoin(joinType, query.xr, cond.ident, cond.xr.body), ident, outputQuery.xr), query.binds + binds
         ) as Query<A>
       }
     }

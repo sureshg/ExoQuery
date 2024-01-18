@@ -21,6 +21,7 @@ object MirrorIdiom {
     when (this) {
       is XR.Labels.Function -> "(${this.token})"
       is BinaryOp -> "(${this.token})"
+      is When -> "(${this.token})"
       else -> this.token
     }
 
@@ -105,20 +106,20 @@ object MirrorIdiom {
   val Query.token get(): String =
     when(this) {
       is Entity -> """query("$name")"""
-      is Filter -> "${a.token}.filter(${ident.token} => ${b.token})"
-      is XR.Map -> "${a.token}.map(${ident.token} => ${b.token})"
-      is FlatMap -> "${a.token}.flatMap(${ident.token} => ${b.token})"
-      is ConcatMap -> "${a.token}.concatMap(${ident.token} => ${b.token})"
-      is SortBy -> "${query.token}.sortBy(${alias.token} => ${criteria.token})(${ordering.token})"
-      is GroupByMap -> "${query.token}.groupByMap(${byAlias.token} => ${byBody.token})(${mapAlias.token} => ${mapBody.token})"
+      is Filter -> "${a.token}.filter { ${ident.token} -> ${b.token} }"
+      is XR.Map -> "${a.token}.map { ${ident.token} -> ${b.token} }"
+      is FlatMap -> "${a.token}.flatMap { ${ident.token} -> ${b.token} }"
+      is ConcatMap -> "${a.token}.concatMap { ${ident.token} -> ${b.token} }"
+      is SortBy -> "${query.token}.sortBy { ${alias.token} -> ${criteria.token})(${ordering.token} }"
+      is GroupByMap -> "${query.token}.groupByMap { ${byAlias.token} -> ${byBody.token} } { ${mapAlias.token} -> ${mapBody.token} }"
       is Aggregation -> "${body.token}.${operator.token}"
       is Take -> "${query.token}.take(${num.token})"
       is Drop -> "${query.token}.drop(${num.token})"
       is Union -> "${a.token}.union(${b.token})"
       is UnionAll -> "${a.token}.unionAll(${b.token})"
-      is FlatJoin -> "${a.token}.${joinType.token}(${aliasA.token} => ${on.token})"
+      is FlatJoin -> "${a.token}.${joinType.token} { ${aliasA.token} -> ${on.token} }"
       is Distinct -> "${query.token}.distinct"
-      is DistinctOn -> "${query.token}.distinctOn(${alias.token} => ${by.token})"
+      is DistinctOn -> "${query.token}.distinctOn { ${alias.token} -> ${by.token} }"
       is Nested -> "${query.token}.nested"
       is Marker -> "(MARKER)"
     }

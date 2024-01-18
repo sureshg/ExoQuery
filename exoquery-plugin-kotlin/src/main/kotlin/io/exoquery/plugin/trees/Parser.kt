@@ -13,7 +13,9 @@ import io.exoquery.plugin.transform.ScopeSymbols
 import io.exoquery.parseError
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
@@ -116,7 +118,8 @@ private class ParserCollector {
       case(Ir.GetValue[Is()]).thenThis { sym ->
         // Every single instance of this should should be a getSqlVar
 
-        if (!internalVars.contains(sym)) {
+        //  let-alises e.g: tmp0_safe_receiver since can't error on them
+        if (!internalVars.contains(sym) && !(sym.owner.let { it is IrVariable && it.origin == IrDeclarationOrigin.IR_TEMPORARY_VARIABLE }) ) {
           val loc = this.location()
           // TODO Need much longer and better error message (need to say what the clause is)
           error("The symbol `${sym.safeName}` is external. Cannot find it in the symbols-list belonging to the clause ${internalVars.symbols.map { it.safeName }}", loc)
