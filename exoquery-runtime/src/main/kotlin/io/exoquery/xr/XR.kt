@@ -1,6 +1,8 @@
 package io.exoquery.xr
 
 import io.exoquery.BID
+import io.exoquery.pprint
+import io.exoquery.printing.format
 import io.exoquery.xr.MirrorIdiom.token
 import io.decomat.Matchable as Mat
 import io.decomat.Component as Slot
@@ -43,8 +45,21 @@ sealed interface XR {
   }
 
   abstract val type: XRType
-  fun show(): String =
-    with (MirrorIdiom) { this@XR.token }
+
+  fun show(pretty: Boolean = false): String {
+    val code = with (MirrorIdiom) { this@XR.token }
+    return if (pretty)
+      format(code)
+    else
+      code
+  }
+
+  fun showRaw(color: Boolean = true): String {
+    val str = pprint(this, defaultShowFieldNames = false, defaultWidth = 200)
+    return if (color) str.toString() else str.plainText
+  }
+
+
 
   sealed class JoinType {
     object Inner: JoinType()
@@ -197,7 +212,7 @@ sealed interface XR {
   // }
 
   @Mat
-  data class Marker(@Slot val name: String): Query, Expression, PC<Marker> {
+  data class Marker(@Slot val name: String, val expr: XR.Expression?): Query, Expression, PC<Marker> {
     override val productComponents = productOf(this, name)
     override val type get() = XRType.Generic
     companion object {}

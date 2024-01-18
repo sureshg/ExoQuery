@@ -40,12 +40,15 @@ fun <T> Query<T>.withReifiedIdents(): Query<T> {
 
 
 @OptIn(ExoInternal::class) // TODO Not sure if the output here QueryContainer(Ident(SqlVariable)) is right need to look into the shape
-class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlVariable<A>>({ result -> QueryContainer<A>(XR.Marker(markerName), DynamicBinds.empty())  }) {
+class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlVariable<A>>({ result -> QueryContainer<A>(XR.Marker(markerName, XR.Ident(result.getVariableName(), XRType.Generic)), DynamicBinds.empty())  }) {
 
   // TODO search for this call in the IR and see if there's a Val-def on the other side of it and call fromAliased with the name of that
   public suspend fun <R> from(query: Query<R>): SqlVariable<R> =
     // Note find the out the class of R (use an inline?) and make the 1st letter based on it?
     fromAliased(query, query.freshIdent())
+
+  // Need some kind of expression parking for this
+  //public suspend fun <R> yield(query: Query<R>): SqlVariable<R> =
 
   public suspend fun <R> fromAliased(query: Query<R>, alias: String): SqlVariable<R> =
     perform { mapping ->
@@ -108,7 +111,7 @@ class InnerMost(private val markerId: String) {
       // If the tail is a flatMap e.g. FlatMap(?, FlatMap(?, FlatMap(...)))) recurse into the last one in the chain
       case(XR.FlatMap[Is(), XR.FlatMap.Is]).thenThis { head, body -> XR.FlatMap(head, this.ident, mark(body)) },
       // If we are here than we are at the deepest flatMap in the chain since we have reached the marked-value
-      case(XR.FlatMap[Is(), XR.Marker[Is(markerId)]]).thenThis { head, (nestedValue) -> XR.Map(head, this.ident, this.ident) }
+      case(XR.FlatMap[Is(), XR.Marker[Is(markerId)]]).thenThis { head, (nestedValue) -> XR.Map(head, this.ident, (this.b as XR.Marker).expr!!) }
     ) ?: q
 
 }

@@ -126,10 +126,14 @@ class Lifter(val builderCtx: BuilderContext) {
       is When -> make<When>(this.component1().lift { it.lift() }, this.component2().lift())
       is Block -> make<Block>(this.component1().lift { it.lift() }, this.component2().lift())
       // The below must go in Function/Query/Expression/Action lift clauses
-      is Marker -> make<Marker>(this.component1().lift())
+      is Marker -> make<Marker>(this.component1().lift(), this.component2().liftOrNull { it.lift() } )
       // TODO need to implement product lifting
       is Product -> TODO()
     }
+
+  fun <T> T?.liftOrNull(lifter: (T) -> IrExpression) =
+    if (this == null) builderCtx.builder.irNull()
+    else lifter(this)
 
   fun XR.Query.lift(): IrExpression =
     when(this) {

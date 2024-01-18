@@ -75,7 +75,11 @@ object MirrorIdiom {
 
   val Branch.token get(): String = "${cond} -> ${then}"
 
-  val Marker.token get(): String = "MARKER($name)"
+  val Marker.token get(): String {
+    val elem = this.expr
+    val elemPrint = if (elem == null) "" else "->${elem.token}"
+    return "MARKER(${name}${elemPrint})"
+  }
 
   val Ordering.token get(): String =
     when(this) {
@@ -121,7 +125,7 @@ object MirrorIdiom {
       is Distinct -> "${query.token}.distinct"
       is DistinctOn -> "${query.token}.distinctOn { ${alias.token} -> ${by.token} }"
       is Nested -> "${query.token}.nested"
-      is Marker -> "(MARKER)"
+      is Marker -> token
     }
 
 }
