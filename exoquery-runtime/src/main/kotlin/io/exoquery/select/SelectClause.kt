@@ -47,6 +47,8 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlVariable
     // Note find the out the class of R (use an inline?) and make the 1st letter based on it?
     fromAliased(query, query.freshIdent())
 
+  // TODO test select inside select
+
   // Need some kind of expression parking for this
   //public suspend fun <R> yield(query: Query<R>): SqlVariable<R> =
 
