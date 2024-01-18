@@ -51,7 +51,7 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
       //   bar
       xr is XR.Property && xr.of is XR.Product -> {
         val fields = (xr.of as XR.Product).fields.toMap()
-        fields[xr.name]!!
+        invoke(fields[xr.name]!!)
       }
 
       // case FunctionApply(Function(params, body), values) =>
