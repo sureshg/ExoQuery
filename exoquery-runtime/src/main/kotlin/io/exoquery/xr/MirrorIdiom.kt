@@ -8,7 +8,6 @@ object MirrorIdiom {
     when(this) {
       is XR.Expression -> token
       is Query -> token
-      is XR.Function -> token
       is Branch -> token
       is Variable -> token
     }
@@ -18,12 +17,9 @@ object MirrorIdiom {
   val Operator.token get(): String = symbol
   val Variable.token get(): String = "val ${name.name} = ${rhs.token}"
 
-  val XR.Function.token get(): String =
-    "(${params.token { it.token }}) -> ${body.token}"
-
   val XR.tokenScoped get(): String =
     when (this) {
-      is XR.Function -> "(${this.token})"
+      is XR.Labels.Function -> "(${this.token})"
       is BinaryOp -> "(${this.token})"
       else -> this.token
     }
@@ -65,6 +61,8 @@ object MirrorIdiom {
           "when { ${branches.map { it.token }.joinToString("; ")}; else -> ${orElse.token} }"
         }
       is Block -> "block { ${stmts.map { it.token }.joinToString("; ")}; ${output.token} }"
+      is Function1 -> "(${params.token { it.token }}) -> ${body.token}"
+      is FunctionN -> "(${params.token { it.token }}) -> ${body.token}"
       is FunctionApply -> "${function.tokenScoped}.apply(${args.token { it.token }})"
       is Product -> "${name}(${fields.map { (k, v) -> "${k}: ${v.token}" }.joinToString(", ")})"
       is Property -> "${of.tokenScoped}.${name}"

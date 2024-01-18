@@ -55,7 +55,7 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
       }
 
       // case FunctionApply(Function(params, body), values) =>
-      xr is XR.FunctionApply -> {
+      xr is XR.FunctionApply && xr.function is XR.Labels.Function -> {
         val params = xr.function.params
         val body = xr.function.body
         val values = xr.args
@@ -116,6 +116,30 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
         invoke(output)
       }
 
+      xr is XR.Labels.Function -> {
+        fun mapParams(params: List<XR.Ident>) =
+          params.map { p ->
+            when (val v = map.get(p)) {
+              // Not null and its an identifier
+              is XR.Ident -> v
+              else -> p
+            }
+          }
+        return with(xr) {
+          when(this) {
+            is XR.Function1 -> {
+              val newParams = mapParams(params)
+              XR.Function1(newParams.first(), BetaReduce(map + params.zip(newParams))(body))
+            }
+            is XR.FunctionN -> {
+              val newParams = mapParams(params)
+              XR.FunctionN(newParams, BetaReduce(map + params.zip(newParams))(body))
+            }
+            else -> throw IllegalStateException("Function must be Function1 or FunctionN")
+          }
+        }
+      }
+
       else -> super.invoke(xr)
     }
   }
@@ -135,31 +159,6 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
         else -> super.invoke(this)
       }
     }
-
-  // Needed for FuncitonApply[FunctionApply(fun(a) -> fun(b), [...]), [...])
-  override fun invoke(xr: XR.Function): XR.Function {
-    fun mapParams(params: List<XR.Ident>) =
-      params.map { p ->
-        when (val v = map.get(p)) {
-          // Not null and its an identifier
-          is XR.Ident -> v
-          else -> p
-        }
-      }
-    return with(xr) {
-      when(this) {
-        is XR.Function1 -> {
-          val newParams = mapParams(params)
-          XR.Function1(newParams.first(), BetaReduce(map + params.zip(newParams))(body))
-        }
-        is XR.FunctionN -> {
-          val newParams = mapParams(params)
-          XR.FunctionN(newParams, BetaReduce(map + params.zip(newParams))(body))
-        }
-        is XR.Marker -> this
-      }
-    }
-  }
 
   companion object {
     operator fun invoke(ast: XR, vararg t: Pair<XR.Expression, XR.Expression>): XR =

@@ -9,18 +9,34 @@ interface StatelessTransformerSingleRoot: StatelessTransformer {
   override fun invoke(xr: Expression): Expression = super.invoke(root(xr))
   override fun invoke(xr: Query): Query = super.invoke(root(xr))
   override fun invoke(xr: Branch): Branch = super.invoke(root(xr))
-  override fun invoke(xr: XR.Function): XR.Function = super.invoke(root(xr))
   override fun invoke(xr: Variable): Variable = super.invoke(root(xr))
   override fun invoke(xr: XR): XR = super.invoke(root(xr))
 }
 
 interface StatelessTransformer {
 
+  operator fun invoke(xr: XR): XR =
+    with(xr) {
+      when (this) {
+        is XR.Expression -> invoke(this)
+        is XR.Query -> invoke(this)
+        // is XR.Action -> this.lift()
+        is XR.Branch -> invoke(this)
+        is XR.Variable -> invoke(this)
+      }
+    }
+
+  operator fun invoke(xr: XR.Variable): XR.Variable = with(xr) { Variable(name, invoke(rhs)) }
+  operator fun invoke(xr: XR.Branch): XR.Branch = with(xr) { XR.Branch(invoke(cond), invoke(then)) }
+  operator fun invoke(xr: XR.Block): XR.Block = with(xr) { Block(stmts.map { invoke(it) }, invoke(output)) }
+
   operator fun invoke(xr: XR.Expression): XR.Expression =
     with(xr) {
       when (this) {
         is BinaryOp -> BinaryOp(invoke(a), op, invoke(b))
         is Const -> this
+        is Function1 -> Function1(param, invoke(body))
+        is FunctionN -> FunctionN(params, invoke(body))
         is FunctionApply -> FunctionApply(invoke(function), args.map { invoke(it) })
         is Ident -> this
         is IdentOrigin -> this
@@ -56,32 +72,6 @@ interface StatelessTransformer {
         is Nested -> Nested(invoke(query))
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
-      }
-    }
-
-  operator fun invoke(xr: XR.Function): XR.Function =
-    with(xr) {
-      when (this) {
-        is Function1 -> Function1(param, invoke(body))
-        is FunctionN -> FunctionN(params, invoke(body))
-        is Marker -> this
-      }
-    }
-
-  operator fun invoke(xr: XR.Variable): XR.Variable = with(xr) { Variable(name, invoke(rhs)) }
-  operator fun invoke(xr: XR.Branch): XR.Branch = with(xr) { XR.Branch(invoke(cond), invoke(then)) }
-  operator fun invoke(xr: XR.Block): XR.Block = with(xr) { Block(stmts.map { invoke(it) }, invoke(output)) }
-
-
-  operator fun invoke(xr: XR): XR =
-    with(xr) {
-      when (this) {
-        is XR.Expression -> invoke(this)
-        is XR.Query -> invoke(this)
-        is XR.Function -> invoke(this)
-        // is XR.Action -> this.lift()
-        is XR.Branch -> invoke(this)
-        is XR.Variable -> invoke(this)
       }
     }
 }

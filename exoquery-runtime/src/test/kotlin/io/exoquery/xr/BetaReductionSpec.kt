@@ -6,19 +6,6 @@ import io.exoquery.xr.XR
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 
-fun XR.Product.Companion.TupleN(elements: List<XR.Expression>) =
-  when(elements.size) {
-    0 -> XR.Product("Empty", listOf())
-    1 -> XR.Product("Single", listOf("first" to elements[0]))
-    2 -> XR.Product("Pair", listOf("first" to elements[0], "second" to elements[1]))
-    3 -> XR.Product("Triple", listOf("first" to elements[0], "second" to elements[1], "third" to elements[2]))
-    4 -> XR.Product("Tuple4", listOf("first" to elements[0], "second" to elements[1], "third" to elements[2], "fourth" to elements[3]))
-    5 -> XR.Product("Tuple5", listOf("first" to elements[0], "second" to elements[1], "third" to elements[2], "fourth" to elements[3], "fifth" to elements[4]))
-    6 -> XR.Product("Tuple6", listOf("first" to elements[0], "second" to elements[1], "third" to elements[2], "fourth" to elements[3], "fifth" to elements[4], "sixth" to elements[5]))
-    else -> throw IllegalArgumentException("Only up to 6 elements are supported for this operation")
-  }
-
-
 class BetaReductionSpec : FreeSpec({
   // TODO do properties need visible/fixed
   "simplifies the ast by applying functions" - {
@@ -105,6 +92,119 @@ class BetaReductionSpec : FreeSpec({
     }
   }
 
+  "replaces idents unless in outer scope" - {
+    "filter" {
+      val ast: XR = Filter(Entity("a"), Ident("b"), Ident("b"))
+      BetaReduction(ast, Ident("b") to Ident("b'")) shouldBe ast
+    }
+    "filter - replace" {
+      val ast: XR = Filter(Entity("a"), Ident("x"), Ident("b"))
+      BetaReduction(ast, Ident("b") to Ident("b'")) shouldBe Filter(Entity("a"), Ident("x"), Ident("b'"))
+    }
+    "map" {
+      val ast: XR = XR.Map(Entity("a"), Ident("b"), Ident("b"))
+      BetaReduction(ast, Ident("b") to Ident("b'")) shouldBe ast
+    }
+    "map - replace" {
+      val ast: XR = XR.Map(Entity("a"), Ident("x"), Ident("b"))
+      BetaReduction(ast, Ident("b") to Ident("b'")) shouldBe XR.Map(Entity("a"), Ident("x"), Ident("b'"))
+    }
+    "flatMap" {
+      val ast: XR = FlatMap(Entity("a"), Ident("b"), Entity("b"))
+      BetaReduction(ast, Ident("b") to Ident("b'")) shouldBe ast
+    }
+    "concatMap" {
+      val ast: XR = ConcatMap(Entity("a"), Ident("b"), Ident("b"))
+      BetaReduction(ast, Ident("b") to Ident("b'")) shouldBe ast
+    }
+    "concatMap - replace" {
+      val ast: XR = ConcatMap(Entity("a"), Ident("x"), Ident("b"))
+      BetaReduction(ast, Ident("b") to Ident("b'")) shouldBe ConcatMap(Entity("a"), Ident("x"), Ident("b'"))
+    }
+    "sortBy" {
+      val ast: XR = SortBy(Entity("a"), Ident("b"), Ident("b"), Ordering.AscNullsFirst)
+      BetaReduction(ast, Ident("b") to Ident("b'")) shouldBe ast
+    }
+    "groupByMap" {
+      val ast: XR = GroupByMap(Entity("a"), Ident("b"), Ident("b"), Ident("b"), Ident("b"))
+      BetaReduction(ast, Ident("b") to Ident("b'")) shouldBe ast
+    }
+    "groupByMap - replace" {
+      val ast: XR = GroupByMap(Entity("a"), Ident("x"), Ident("b"), Ident("y"), Ident("c"))
+      BetaReduction(ast, Ident("b") to Ident("b'"), Ident("c") to Ident("c'")) shouldBe GroupByMap(Entity("a"), Ident("x"), Ident("b'"), Ident("y"), Ident("c'"))
+    }
+    "groupByMap - replace2" {
+      val ast: XR = GroupByMap(Entity("a"), Ident("x"), Ident("b"), Ident("y"), Ident("c"))
+      BetaReduction(ast, Ident("b") to Ident("b'")) shouldBe GroupByMap(Entity("a"), Ident("x"), Ident("b'"), Ident("y"), Ident("c"))
+    }
+    "groupByMap - replace3" {
+      val ast: XR = GroupByMap(Entity("a"), Ident("x"), Ident("b"), Ident("y"), Ident("c"))
+      BetaReduction(ast, Ident("c") to Ident("c'")) shouldBe GroupByMap(Entity("a"), Ident("x"), Ident("b"), Ident("y"), Ident("c'"))
+    }
+    "outer join" {
+      val ast: XR =
+        FlatJoin(JoinType.Inner, Entity("a"), Ident("b"), Ident("b"))
+      BetaReduction(ast, Ident("b") to Ident("b'")) shouldBe ast
+    }
+    "outer join - replae" {
+      val ast: XR =
+        FlatJoin(JoinType.Inner, Entity("a"), Ident("x"), Ident("b"))
+      BetaReduction(ast, Ident("b") to Ident("b'")) shouldBe FlatJoin(JoinType.Inner, Entity("a"), Ident("x"), Ident("b'"))
+    }
+  }
 
+  "doesn't shadow identifiers" - {
+    "function apply" {
+      val ast: XR = FunctionApply(
+        FunctionN(listOf(Ident("a"), Ident("b")), BinaryOp(Ident("a"), NumericOperator.div, Ident("b"))),
+        listOf(Ident("b"), Ident("a"))
+      )
+      BetaReduction(ast) shouldBe BinaryOp(Ident("b"), NumericOperator.div, Ident("a"))
+    }
+    "nested function apply" {
+      // (b) => a/b
+      val f1 = FunctionN(listOf(Ident("b")), BinaryOp(Ident("a"), NumericOperator.div, Ident("b")))
+      // (a) => (b) => a/b
+      val f2 = FunctionN(listOf(Ident("a")), f1)
+      // ((a) => (b) => a/b).apply(b).apply(a) ->
+      //   (tmp_b) => a/tmp_b ->
+      //       b/tmp_b ->
+      //         b/a
+      val ast: XR = FunctionApply(FunctionApply(f2, listOf(Ident("b"))), listOf(Ident("a")))
+      BetaReduction(ast) shouldBe BinaryOp(Ident("b"), NumericOperator.div, Ident("a"))
+    }
+  }
+
+  "treats duplicate aliases normally" {
+    val property: XR = Property(Product.TupleN(listOf(Ident("a"), Ident("a"))), "first")
+    BetaReduction(property, Ident("a") to Ident("a'")) shouldBe
+      Ident("a'")
+  }
+
+  "treats duplicate aliases normally - (no property redunction)" {
+    val property: XR = Product.TupleN(listOf(Ident("a"), Ident("a")))
+    BetaReduction(property, Ident("a") to Ident("a'")) shouldBe
+      Product.TupleN(listOf(Ident("a'"), Ident("a'")))
+  }
+
+  "reapplies the beta reduction if the structure changes" {
+    val quat = XRType.LeafTuple(1)
+    val ast: XR = Property(Ident("a", quat), "first")
+    BetaReduction(ast, Ident("a", quat) to Product.TupleN(listOf(Ident("a'")))) shouldBe
+      Ident("a'")
+  }
+
+  "reapplies the beta reduction if the structure changes caseclass" {
+    val quat = XRType.LeafProduct("foo")
+    val ast: XR = Property(Ident("a", quat), "foo")
+    BetaReduction(ast, Ident("a", quat) to Product("CC", listOf(("foo" to Ident("a'"))))) shouldBe
+      Ident("a'")
+  }
+
+  "applies reduction only once" {
+    val ast: XR = Ident("a")
+    BetaReduction(ast, Ident("a") to Ident("b"), Ident("b") to Ident("c")) shouldBe
+      Ident("b")
+  }
 
 })

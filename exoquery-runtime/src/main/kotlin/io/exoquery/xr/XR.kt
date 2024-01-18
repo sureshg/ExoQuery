@@ -12,13 +12,12 @@ import io.decomat.HasProductClass as PC
  * This is the core syntax tree there are essentially three primary concepts represented here:
  * 1. XR.Query - These are Entity, Map, FlatMap, etc... that represent the building blocks of the `from` clause
  *    of SQL statements.
- * 2. XR.Expression - These are values like Ident, Const, etc... as well as applied operators and functions.
- * 3. XR.Function - These are functions, more particular lambdas which have not been applied yet but can be via the
- *    FunctionApply construct.
- * 4. Actions - These are Sql Insert, Delete, Update and possibly corresponding batch actions.
+ * 2. XR.Expression - These are values like Ident, Const, etc... as well as XR.Function (which are essentially lambdas
+ *    that are invoked via FunctionApplly), operators and functions.
+ * 3. Actions - These are Sql Insert, Delete, Update and possibly corresponding batch actions.
  *
  * This only exceptions to this rule are Infix and Marker blocks that are used as any of the above four.
- * Infix in particular is represented as so sql("any_${}_sql_${}_here").as[Query/Expression/Function/Action]
+ * Infix in particular is represented as so sql("any_${}_sql_${}_here").as[Query/Expression/Action]
  *
  * The other miscellaneous elements are Branch, Block, and Variable which are used in the `when` clause i.e. XR.When
  * The type Ordering is used in the `sortBy` clause i.e. XR.SortBy is technically not part of the XR but closely related
@@ -37,6 +36,10 @@ sealed interface XR {
     // Things that store their own XRType. Right now this is just an Ident but in the future
     // it will also be a lifted value.
     sealed interface Terminal: Expression, XR
+    sealed interface Function: XR {
+      val params: List<XR.Ident>
+      val body: XR.Expression
+    }
   }
 
   abstract val type: XRType
@@ -50,10 +53,6 @@ sealed interface XR {
 
   sealed interface Expression: XR
   sealed interface Query: XR
-  sealed interface Function: XR {
-    val params: List<XR.Ident>
-    val body: XR.Expression
-  }
 
   // *******************************************************************************************
   // ****************************************** Query ******************************************
@@ -198,21 +197,22 @@ sealed interface XR {
   // }
 
   @Mat
-  data class Marker(@Slot val name: String): Query, Expression, Function, PC<Marker> {
+  data class Marker(@Slot val name: String): Query, Expression, PC<Marker> {
     override val productComponents = productOf(this, name)
     override val type get() = XRType.Generic
     companion object {}
-    // Not useful, just needed to fulfil the contract of "Function"
-    override val params get() = listOf<XR.Ident>()
-    override val body: Expression = Ident(name, XRType.Generic)
   }
 
 
   // ************************************************************************************************
   // ****************************************** Function ********************************************
   // ************************************************************************************************
+
+  // Functions are essentially lambdas that are invoked via FunctionApply. Since they can be written into
+  // expresison-variables (inside of Encode-Expressions) etc... so they need to be subtypes of XR.Expression.
+
   @Mat
-  data class Function1(val param: Ident, @Slot override val body: XR.Expression): Function, PC<Function1> {
+  data class Function1(val param: Ident, @Slot override val body: XR.Expression): Expression, Labels.Function, PC<Function1> {
     override val productComponents = productOf(this, body)
     override val type get() = body.type
     companion object {}
@@ -221,7 +221,7 @@ sealed interface XR {
   }
 
   @Mat
-  data class FunctionN(override val params: List<Ident>, @Slot override val body: XR.Expression): Function, PC<FunctionN> {
+  data class FunctionN(override val params: List<Ident>, @Slot override val body: XR.Expression): Expression, Labels.Function, PC<FunctionN> {
     override val productComponents = productOf(this, body)
     override val type get() = body.type
     companion object {}
@@ -231,7 +231,10 @@ sealed interface XR {
   // ****************************************** Expression ******************************************
   // ************************************************************************************************
 
-  data class FunctionApply(@Slot val function: Function, @Slot val args: List<XR.Expression>): Expression, PC<FunctionApply> {
+  /**
+   * Note that the `function` slot can be an expression but in practice its almost always a function
+   */
+  data class FunctionApply(@Slot val function: Expression, @Slot val args: List<XR.Expression>): Expression, PC<FunctionApply> {
     override val productComponents = productOf(this, function, args)
     override val type get() = function.type
     companion object {}

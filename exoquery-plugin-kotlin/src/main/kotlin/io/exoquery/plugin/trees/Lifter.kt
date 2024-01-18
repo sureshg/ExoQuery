@@ -37,7 +37,6 @@ class Lifter(val builderCtx: BuilderContext) {
     when (this) {
       is XR.Expression -> this.lift()
       is Query -> this.lift()
-      is XR.Function -> this.lift()
       // is XR.Action -> this.lift()
       is Branch -> make<Branch>(this.component1().lift(), this.component2().lift())
       is Variable -> make<Variable>(this.component1().lift(), this.component2().lift())
@@ -116,6 +115,8 @@ class Lifter(val builderCtx: BuilderContext) {
     when(this) {
       is BinaryOp -> make<BinaryOp>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is Const -> this.lift() // points to the Const.lift() function above
+      is Function1 -> make<Function1>(this.component1().lift(), this.component2().lift())
+      is FunctionN -> make<FunctionN>(this.component1().lift { it.lift() }, this.component2().lift())
       is FunctionApply -> make<FunctionApply>(this.component1().lift(), this.component2().lift { it.lift() })
       is Ident -> make<Ident>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is IdentOrigin -> make<IdentOrigin>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
@@ -148,14 +149,6 @@ class Lifter(val builderCtx: BuilderContext) {
       is GroupByMap -> make<GroupByMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is Aggregation -> make<Aggregation>(this.component1().lift(), this.component2().lift())
       is Nested -> make<Nested>(this.component1().lift())
-      // The below must go in Function/Query/Expression/Action lift clauses
-      is Marker -> make<Marker>(this.component1().lift())
-    }
-
-  fun XR.Function.lift() =
-    when (this) {
-      is Function1 -> make<Function1>(this.component1().lift(), this.component2().lift())
-      is FunctionN -> make<FunctionN>(this.component1().lift { it.lift() }, this.component2().lift())
       // The below must go in Function/Query/Expression/Action lift clauses
       is Marker -> make<Marker>(this.component1().lift())
     }

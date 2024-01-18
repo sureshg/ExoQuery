@@ -35,6 +35,8 @@ sealed class XRType {
     is XRType.BooleanValue      -> "BV"
     is XRType.BooleanExpression -> "BE"
   }
+
+  companion object {}
 }
 
 fun XRType.leastUpperType(other: XRType): XRType? =

@@ -29,12 +29,6 @@ interface StatefulTransformerSingleRoot<T>: StatefulTransformer<T> {
     return stateA.invokeSuper(a)
   }
 
-  private fun invokeSuper(xr: XR.Function): Pair<XR.Function, StatefulTransformer<T>> = super.invoke(xr)
-  override fun invoke(xr: XR.Function): Pair<XR.Function, StatefulTransformer<T>> {
-    val (a, stateA) = root(xr)
-    return stateA.invokeSuper(a)
-  }
-
   private fun invokeSuper(xr: Branch): Pair<Branch, StatefulTransformer<T>> = super.invoke(xr)
   override fun invoke(xr: Branch): Pair<Branch, StatefulTransformer<T>> {
     val (a, stateA) = root(xr)
@@ -62,7 +56,6 @@ interface StatefulTransformer<T> {
       when (this) {
         is XR.Expression -> invoke(this)
         is XR.Query -> invoke(this)
-        is XR.Function -> invoke(this)
         // is XR.Action -> this.lift()
         is XR.Branch -> invoke(this)
         is XR.Variable -> invoke(this)
@@ -76,6 +69,14 @@ interface StatefulTransformer<T> {
           val (a, stateA) = invoke(a)
           val (b, stateB) = stateA.invoke(b)
           BinaryOp(a, op, b) to stateB
+        }
+        is Function1 -> {
+          val (bodyA, stateBody) = invoke(body)
+          Function1(param, bodyA) to stateBody
+        }
+        is FunctionN -> {
+          val (bodyA, stateBody) = invoke(body)
+          FunctionN(params, bodyA) to stateBody
         }
         is FunctionApply -> {
           val (functionA, stateA) = invoke(function)
@@ -188,21 +189,6 @@ interface StatefulTransformer<T> {
           Nested(queryA) to stateA
         }
         // The below must go in Function/Query/Expression/Action invoke clauses
-        is Marker -> this to this@StatefulTransformer
-      }
-    }
-
-  operator fun invoke(xr: XR.Function): Pair<XR.Function, StatefulTransformer<T>> =
-    with(xr) {
-      when (this) {
-        is Function1 -> {
-          val (bodyA, stateBody) = invoke(body)
-          Function1(param, bodyA) to stateBody
-        }
-        is FunctionN -> {
-          val (bodyA, stateBody) = invoke(body)
-          FunctionN(params, bodyA) to stateBody
-        }
         is Marker -> this to this@StatefulTransformer
       }
     }
