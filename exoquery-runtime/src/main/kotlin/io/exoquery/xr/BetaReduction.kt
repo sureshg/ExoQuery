@@ -164,14 +164,24 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
     operator fun invoke(ast: XR, vararg t: Pair<XR.Expression, XR.Expression>): XR =
       invoke(ast, TypeBehavior.SubstituteSubtypes, EmptyProductTypeBehavior.Ignore, *t)
 
-    operator fun invoke(ast: XR, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR {
-      // TODO When it's Substitute types we should do a checkTypes
-      val output = invoke(ast, t.toMap(), typeBehavior, emptyBehavior)
-      return output
-    }
+    operator fun invoke(ast: XR.Expression, vararg t: Pair<XR.Expression, XR.Expression>): XR.Expression =
+      invoke(ast, TypeBehavior.SubstituteSubtypes, EmptyProductTypeBehavior.Ignore, *t)
 
-    internal operator fun invoke(ast: XR, replacements: Map<XR.Expression, XR.Expression>, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior): XR {
-      val reducedAst = BetaReduction(replacements, typeBehavior, emptyBehavior).invoke(ast)
+    operator fun invoke(ast: XR, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR =
+      invokeTyped(ast, t.toMap(), typeBehavior, emptyBehavior, { be, ir -> be.invoke(ir) })
+
+    operator fun invoke(ast: XR.Expression, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR.Expression =
+      invokeTyped(ast, t.toMap(), typeBehavior, emptyBehavior, { be, ir -> be.invoke(ir) })
+
+
+    internal fun <X: XR> invokeTyped(
+      ast: X,
+      replacements: Map<XR.Expression, XR.Expression>,
+      typeBehavior: TypeBehavior,
+      emptyBehavior: EmptyProductTypeBehavior,
+      astLevelInvoker: (BetaReduction, X) -> X
+    ): X {
+      val reducedAst = astLevelInvoker(BetaReduction(replacements, typeBehavior, emptyBehavior), ast)
       if (typeBehavior == TypeBehavior.SubstituteSubtypes) checkTypes(ast, replacements.toList(), emptyBehavior)
       return when {
         // Since it is possible for the AST to match but the match not be exactly the same (e.g.
@@ -179,7 +189,7 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
         // sure to return the actual AST that was matched as opposed to the one passed in.
         reducedAst == ast -> reducedAst
         // Perform an additional beta reduction on the reduced XR since it may not have been fully reduced yet
-        else -> invoke(reducedAst, mapOf<XR.Expression, XR.Expression>(), typeBehavior, emptyBehavior)
+        else -> invokeTyped<X>(reducedAst, mapOf<XR.Expression, XR.Expression>(), typeBehavior, emptyBehavior, astLevelInvoker)
       }
     }
 

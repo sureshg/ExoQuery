@@ -20,9 +20,9 @@ fun main() {
   // That means we need a separate binding map for runtime values or an expression-container
   val x =
     select {
-      val p = from(Table<Person>())
-      val a = join(Table<Address>()).on { ownerId == p().id }
-      p
+      val x = from(Table<Person>())
+      val a = join(Table<Address>()).on { ownerId == x().id }
+      x
     }
 
   //println(pprint(x, defaultShowFieldNames = false, defaultWidth = 200))

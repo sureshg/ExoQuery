@@ -5,9 +5,23 @@ import io.exoquery.*
 import io.exoquery.annotation.ExoInternal
 import io.exoquery.xr.*
 
-fun <T> Query<T>.freshIdent(prefix: String = "x"): String {
+
+fun XR.collectBinds() =
+  CollectXR.byType<XR.Ident>(this).map { it.name }
+
+fun <T> Query<T>.freshIdent(prefix: String = "x") =
+  freshIdent(prefix, listOf(), listOf(this))
+
+fun freshIdent(prefix: String = "x", xrs: List<XR> = listOf(), queries: List<Query<*>> = listOf(), binds: List<DynamicBinds> = listOf()): String =
+  freshIdentFrom(prefix,
+    (
+      xrs.flatMap { it.collectBinds() } +
+        queries.flatMap { it.xr.collectBinds() + it.binds.allVals() } +
+        binds.flatMap { it.sqlVars() }
+      ).toSet())
+
+private fun freshIdentFrom(prefix: String = "x", allBindVars: Set<String>): String {
   // Also considering binds despite the fact that OrigIdent should not even be there in the Ast anymore
-  val allBindVars = CollectXR.byType<XR.Ident>(xr).map { it.name } + binds.allVals().toSet()
   var index = 0
   var highest = prefix
   while (allBindVars.contains(highest)) {
@@ -60,8 +74,15 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
         val sqlVariable = SqlVariable<R>(cond.ident.name)
         val outputQuery = mapping(sqlVariable)
         val ident = XR.Ident(sqlVariable.getVariableName(), outputQuery.xr.type)
+        // TODO variable name of the table?
+        val freshIdentForCond = run {
+          // Need to consider all the alises that could come from any of the other sources before making a new variable for the element.
+          val name = freshIdent("x", listOf(cond.xr), listOf(query, outputQuery), listOf(binds))
+          XR.Ident(name, cond.ident.type)
+        }
+        val freshCondBody = BetaReduction(cond.xr.body, cond.ident to freshIdentForCond)
         QueryContainer<R>(XR.FlatMap(
-          XR.FlatJoin(joinType, query.xr, cond.ident, cond.xr.body), ident, outputQuery.xr), query.binds + binds
+          XR.FlatJoin(joinType, query.xr, freshIdentForCond, freshCondBody), ident, outputQuery.xr), query.binds + binds
         ) as Query<A>
       }
     }

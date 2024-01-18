@@ -59,6 +59,9 @@ data class BID(val value: String) {
   }
 }
 data class DynamicBinds(val list: List<Pair<BID, RuntimeBindValue>>) {
+
+  fun sqlVars() = list.map { it.second }.filterIsInstance<RuntimeBindValue.SqlVariableIdent>().map { it.value }
+
   companion object {
     fun empty() = DynamicBinds(listOf())
   }
