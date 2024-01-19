@@ -29,7 +29,7 @@ class TransformQueryFlatMap(override val ctx: BuilderContext, val replacementMet
 
   // in a flatMap not running the parser, just looking that the symbols used
   context(ParserContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrCall, superTransformer: io.exoquery.plugin.VisitTransformExpressions): IrExpression {
+  override fun transformBase(expression: IrCall, superTransformer: VisitTransformExpressions): IrExpression {
     val (caller, funExpression, params, blockBody) =
       on(expression).match(
         case(matcher[Is()]).then { queryCallData -> queryCallData }

@@ -1,9 +1,8 @@
-package io.exoquery.plugin
+package io.exoquery.plugin.transform
 
 import com.tylerthrailkill.helpers.prettyprint.pp
 import io.exoquery.plugin.trees.ExtractorsDomain
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.transform.*
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation

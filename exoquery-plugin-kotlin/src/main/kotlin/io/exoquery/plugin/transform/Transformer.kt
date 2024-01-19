@@ -14,7 +14,7 @@ abstract class Transformer {
   abstract protected fun matchesBase(expression: IrCall): Boolean
 
   context(ParserContext, BuilderContext, CompileLogger)
-  abstract protected fun transformBase(expression: IrCall, superTransformer: io.exoquery.plugin.VisitTransformExpressions): IrExpression
+  abstract protected fun transformBase(expression: IrCall, superTransformer: VisitTransformExpressions): IrExpression
 
   open fun makeParserContext(): ParserContext = ParserContext(ctx.parentScopeSymbols, ctx.currentFile)
 
@@ -23,7 +23,7 @@ abstract class Transformer {
       with (logger) { matchesBase(expression) }
     }
 
-  fun transform(expression: IrCall, superTransformer: io.exoquery.plugin.VisitTransformExpressions): IrExpression =
+  fun transform(expression: IrCall, superTransformer: VisitTransformExpressions): IrExpression =
     with(makeParserContext()) {
       with(ctx) {
         with (logger) { transformBase(expression, superTransformer) }
