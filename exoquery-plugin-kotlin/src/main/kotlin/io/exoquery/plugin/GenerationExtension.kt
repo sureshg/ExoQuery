@@ -16,11 +16,11 @@ class GenerationExtension(
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         moduleFragment
             .transform(
-                io.exoquery.plugin.VariablePropagatingVisitor(pluginContext, config, projectDir),
+                io.exoquery.plugin.VisitPropagateVariables(pluginContext, config, projectDir),
                 null
             )
             .transform(
-                io.exoquery.plugin.CaptureTransformer(pluginContext, config, projectDir),
+                io.exoquery.plugin.VisitTransformExpressions(pluginContext, config, projectDir),
                 ScopeSymbols(listOf())
             )
     }

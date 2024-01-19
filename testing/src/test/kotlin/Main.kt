@@ -71,6 +71,7 @@ object Model3 {
   fun use() {
     val p = Person(111, "Joe", 123)
 
+    // TODO Need to try a nested `select {  }` inside of from and `join`
     val x =
       select {
         val p = from(Table<Person>())

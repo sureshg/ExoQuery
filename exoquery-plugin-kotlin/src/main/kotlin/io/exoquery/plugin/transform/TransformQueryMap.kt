@@ -17,7 +17,7 @@ class TransformQueryMap(override val ctx: BuilderContext, val matcher: Extractor
     matcher.matchesMethod(expression)
 
   context(ParserContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrCall, superTransformer: io.exoquery.plugin.CaptureTransformer): IrExpression {
+  override fun transformBase(expression: IrCall, superTransformer: io.exoquery.plugin.VisitTransformExpressions): IrExpression {
 
     // TODO use the parserCtx from the ParserContext input
     val decls = ScopeSymbols(CollectDecls.from(expression)) + ctx.parentScopeSymbols

@@ -20,7 +20,7 @@ class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
     ExtractorsDomain.Call.`join-on(expr)`.matchesMethod(expression)
 
   context(ParserContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrCall, superTransformer: io.exoquery.plugin.CaptureTransformer): IrExpression {
+  override fun transformBase(expression: IrCall, superTransformer: io.exoquery.plugin.VisitTransformExpressions): IrExpression {
     val (caller, funExpression, params, blockBody) =
       on(expression).match(
         case(ExtractorsDomain.Call.`join-on(expr)`[Is()]).then { queryCallData -> queryCallData }

@@ -15,16 +15,11 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import java.nio.file.Path
 import io.decomat.*
-import io.exoquery.plugin.printing.DomainErrors
-import io.exoquery.plugin.printing.dumpSimple
-import io.exoquery.plugin.printing.renderClassFqn
 import io.exoquery.plugin.trees.isClass
 import io.exoquery.select.SelectClause
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.irString
-import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.util.*
-import org.jetbrains.kotlin.util.Logger
 
 
 /**
@@ -57,7 +52,7 @@ import org.jetbrains.kotlin.util.Logger
  *   b. Reset the variable and propagate into the expression inside the from/join/etc... since
  *      there could be sub queries in there.
  */
-class VariablePropagatingVisitor(
+class VisitPropagateVariables(
   private val context: IrPluginContext,
   private val config: CompilerConfiguration,
   private val projectDir: Path
@@ -111,7 +106,7 @@ class VariablePropagatingVisitor(
   }
 }
 
-class CaptureTransformer(
+class VisitTransformExpressions(
   private val context: IrPluginContext,
   private val config: CompilerConfiguration,
   private val projectDir: Path
