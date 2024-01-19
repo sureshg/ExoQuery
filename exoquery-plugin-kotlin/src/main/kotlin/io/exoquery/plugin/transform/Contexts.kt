@@ -14,20 +14,23 @@ data class BuilderContext(
   val compilerConfig: CompilerConfiguration,
   val scopeOwner: IrSymbol,
   val currentFile: IrFile,
-  val currentExpr: IrExpression
+  val currentExpr: IrExpression,
+  val parentScopeSymbols: ScopeSymbols
 ) {
   val logger = CompileLogger(compilerConfig)
   val builder = DeclarationIrBuilder(pluginCtx, scopeOwner, currentExpr.startOffset, currentExpr.endOffset)
   fun makeLifter() = Lifter(this)
 }
 
+fun <R> BuilderContext.withCtxAndLogger(f: context(BuilderContext, CompileLogger) () -> R): R = f(this, logger)
+
 data class TransformerOrigin(
   val pluginCtx: IrPluginContext,
   val config: CompilerConfiguration,
-  val scopeOwner: IrSymbol,
   val currentFile: IrFile,
   val parentScopeSymbols: ScopeSymbols
 ) {
-  fun makeBuilderContext(expr: IrExpression) =
-    BuilderContext(pluginCtx, config, scopeOwner, currentFile, expr)
+  val logger = CompileLogger(config)
+  fun makeBuilderContext(expr: IrExpression, scopeOwner: IrSymbol) =
+    BuilderContext(pluginCtx, config, scopeOwner, currentFile, expr, parentScopeSymbols)
 }

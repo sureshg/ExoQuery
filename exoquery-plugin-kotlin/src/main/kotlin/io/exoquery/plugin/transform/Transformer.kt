@@ -9,8 +9,8 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 
 abstract class Transformer {
   // properties that are dependent on ctx need lazy initialization
-  abstract val ctx: TransformerOrigin
-  private val logger by lazy { CompileLogger(ctx.config) }
+  abstract val ctx: BuilderContext
+  private val logger by lazy { CompileLogger(ctx.compilerConfig) }
 
   context(BuilderContext, CompileLogger)
   abstract protected fun matchesBase(expression: IrCall): Boolean
@@ -21,13 +21,13 @@ abstract class Transformer {
   open fun makeParserContext(): ParserContext = ParserContext(ctx.parentScopeSymbols, ctx.currentFile)
 
   fun matches(expression: IrCall): Boolean =
-    with(ctx.makeBuilderContext(expression)) {
+    with(ctx) {
       with (logger) { matchesBase(expression) }
     }
 
   fun transform(expression: IrCall, superTransformer: io.exoquery.plugin.CaptureTransformer): IrExpression =
     with(makeParserContext()) {
-      with(ctx.makeBuilderContext(expression)) {
+      with(ctx) {
         with (logger) { transformBase(expression, superTransformer) }
       }
     }

@@ -105,12 +105,12 @@ private class ParserCollector {
       case (ExtractorsDomain.Call.InvokeSqlVariable[Is()]).thenThis { symName ->
         // Add the bind to the parser context to be returned when parsing is done
         val bindId = BID.new()
-        warn("=================== Making new Bind: ${bindId} ===================")
+        //warn("=================== Making new Bind: ${bindId} ===================")
         binds.add(
           bindId, /*the SqlVariable instance*/
           this.dispatchReceiver?.let { RuntimeBindValueExpr.SqlVariableIdentExpr(it) } ?: DomainErrors.NoDispatchRecieverFoundForSqlVarCall(this)
         )
-        warn(binds.show().toString())
+        //warn(binds.show().toString())
         XR.IdentOrigin(bindId, symName, TypeParser.parse(this.type))
       },
 

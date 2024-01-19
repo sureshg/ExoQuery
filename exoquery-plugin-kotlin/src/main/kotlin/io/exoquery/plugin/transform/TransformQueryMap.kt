@@ -11,7 +11,7 @@ import io.exoquery.plugin.printing.CollectDecls
 import org.jetbrains.kotlin.ir.expressions.*
 
 
-class TransformQueryMap(override val ctx: TransformerOrigin, val matcher: ExtractorsDomain.QueryFunction, val replacementMethod: String): Transformer() {
+class TransformQueryMap(override val ctx: BuilderContext, val matcher: ExtractorsDomain.QueryFunction, val replacementMethod: String): Transformer() {
   context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
     matcher.matchesMethod(expression)

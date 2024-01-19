@@ -13,7 +13,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
-class TransformQueryFlatMap(override val ctx: TransformerOrigin, val replacementMethod: String): Transformer() {
+class TransformQueryFlatMap(override val ctx: BuilderContext, val replacementMethod: String): Transformer() {
   private val matcher = ExtractorsDomain.Call.QueryFlatMap
 
   context(BuilderContext, CompileLogger)

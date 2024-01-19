@@ -10,10 +10,12 @@ import io.exoquery.plugin.safeName
 import io.exoquery.plugin.transform.BinaryOperators
 import io.exoquery.plugin.transform.UnaryOperators
 import io.exoquery.select.JoinOn
+import io.exoquery.select.SelectClause
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.UnaryOperator
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.types.IrType
@@ -24,6 +26,11 @@ import org.jetbrains.kotlin.ir.util.superTypes
 inline fun <reified T> IrExpression.isClass(): Boolean {
   val className = T::class.qualifiedNameForce
   return className == this.type.classFqName.toString() || type.superTypes().any { it.classFqName.toString() == className }
+}
+
+inline fun <reified T> IrType.isClass(): Boolean {
+  val className = T::class.qualifiedNameForce
+  return className == this.classFqName.toString() || this.superTypes().any { it.classFqName.toString() == className }
 }
 
 inline fun <reified T> IrCall.reciverIs(methodName: String) =
@@ -62,6 +69,25 @@ object ExtractorsDomain {
     data class OperatorCall(val x: IrExpression, val op: BinaryOperator, val y: IrExpression)
     data class UnaryOperatorCall(val x: IrExpression, val op: UnaryOperator)
 
+    // TODO refactor in to SelectClause function to include join & other things?
+    object `from(expr)` {
+      context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
+        // E.g. is Query."map"
+        it.reciverIs<SelectClause<*>>("from") && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
+
+      context (CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
+        customPattern2(x, y) { it: IrCall ->
+          if (matchesMethod(it)) {
+            on(it).match(
+              // (SelectValue).from(innerQuery) <- FunctionMem1, `from` is a member of SelectValue
+              case(Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
+                Components2(reciver, expression)
+              }
+            )
+          } else null
+        }
+    }
+
     object `join-on(expr)` {
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
@@ -71,8 +97,8 @@ object ExtractorsDomain {
         customPattern1(x) { it: IrCall ->
           if (matchesMethod(it)) {
             on(it).match(
-              // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
-              case( /* .flatMap */ Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
+              // (joinClause).on { stuff } <- FunctionMem1, `on` is a member of joinClause
+              case(Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
                 on(expression).match(
                   case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
                     val funExpression = this

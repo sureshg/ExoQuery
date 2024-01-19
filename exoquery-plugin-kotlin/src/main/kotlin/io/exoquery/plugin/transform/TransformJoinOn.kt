@@ -14,7 +14,7 @@ import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
-class TransformJoinOn(override val ctx: TransformerOrigin): Transformer() {
+class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
   context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
     ExtractorsDomain.Call.`join-on(expr)`.matchesMethod(expression)
@@ -48,7 +48,7 @@ class TransformJoinOn(override val ctx: TransformerOrigin): Transformer() {
     // No scope symbols into caller since it comes Before the on-clause i.e. before any symbols could be created
     val newCaller = caller.transform(superTransformer, internalVars)
 
-    warn("------------ Binds Accum -----------\n" + bindsAccum.show())
+    //warn("------------ Binds Accum -----------\n" + bindsAccum.show())
 
     val bindsList = bindsAccum.makeDynamicBindsIr()
 

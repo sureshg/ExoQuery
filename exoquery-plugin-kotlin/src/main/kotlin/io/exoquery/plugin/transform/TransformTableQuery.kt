@@ -20,8 +20,8 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
 
-class TransformTableQuery(val ctx: TransformerOrigin) {
-  private val compileLogger = CompileLogger(ctx.config)
+class TransformTableQuery(val ctx: BuilderContext) {
+  private val compileLogger = CompileLogger(ctx.compilerConfig)
 
   fun matches(expression: IrCall): Boolean = run {
     with(compileLogger) {
@@ -29,13 +29,6 @@ class TransformTableQuery(val ctx: TransformerOrigin) {
         case(ExtractorsDomain.Call.MakeTable[Is()]).then { true }
       ) ?: false
     }
-  }
-
-  fun lifterAndBuilder(expr: IrCall): Pair<Lifter, DeclarationIrBuilder> {
-    val builderCtx = ctx.makeBuilderContext(expr)
-    val builder = builderCtx.builder //DeclarationIrBuilder(context, scopeOwner, expr.startOffset, expr.endOffset)
-    val lifter = Lifter(builderCtx)
-    return Pair(lifter, builder)
   }
 
   fun IrType.classOrFail(msg: String): IrClassSymbol {
@@ -64,9 +57,11 @@ class TransformTableQuery(val ctx: TransformerOrigin) {
   context(ParserContext, CompileLogger) fun transformInternal(expression: IrCall): IrExpression =
     on(expression).match(
       case(ExtractorsDomain.Call.MakeTable[Is()]).thenThis { entityClass ->
+        val lifter = ctx.makeLifter()
+        val builder = ctx.builder
+
         val xrType = TypeParser.parse(entityClass).productOrFail(entityClass)
         val xr = XR.Entity(entityClass.classOrFail("Error derving class of TableQuery").safeName, xrType)
-        val (lifter, builder) = lifterAndBuilder(expression)
         val caller = this.dispatchReceiver ?: kotlin.error("Dispatch reciever of the following expression was null. This should not be possible:\n" + expression.dumpKotlinLike())
 
         val entityExpression = EntityExpression(xr)
