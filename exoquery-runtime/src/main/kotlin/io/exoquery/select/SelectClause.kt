@@ -61,12 +61,16 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlVariable
       QueryContainer<R>(XR.FlatMap(query.xr, ident, resultQuery.xr), query.binds + resultQuery.binds) as Query<A> // TODO Unsafe cast, will this work?
     }
 
-  public suspend fun <Q: Query<R>, R> join(query: Q) = JoinOn<Q, R, A>(query, XR.JoinType.Inner, this, null)
+  public suspend fun <Q: Query<R>, R> join(query: Q) =
+    joinAliased(query, "x")
+
+  public suspend fun <Q: Query<R>, R> joinAliased(query: Q, alias: String) =
+    JoinOn<Q, R, A>(query, XR.JoinType.Inner, this, alias)
 
   // TODO public suspend fun <Q: Query<R>, R, A> joinAliased(query: Q, alias: String) = JoinOn(query, XR.JoinType.Inner, this, alias)
 }
 
-class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.JoinType, private val selectClause: SelectClause<A>, private val alias: String?) {
+class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.JoinType, private val selectClause: SelectClause<A>, private val alias: String) {
   suspend fun on(cond: context(EnclosedExpression) (R).() -> Boolean): SqlVariable<R> =
     error("The join.on(...) expression of the Query was not inlined")
 
@@ -74,7 +78,6 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
   @OptIn(ExoInternal::class)
   suspend fun onExpr(cond: Lambda1Expression, binds: DynamicBinds): SqlVariable<R> =
     with (selectClause) {
-      // TODO if (alias != null) beta-reduce 'this' to the alias
       perform { mapping ->
         val sqlVariable = SqlVariable<R>(cond.ident.name)
         val outputQuery = mapping(sqlVariable)
@@ -82,7 +85,7 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
         // TODO variable name of the table?
         val freshIdentForCond = run {
           // Need to consider all the alises that could come from any of the other sources before making a new variable for the element.
-          val name = freshIdent("x", listOf(cond.xr), listOf(query, outputQuery), listOf(binds))
+          val name = freshIdent(alias, listOf(cond.xr), listOf(query, outputQuery), listOf(binds))
           XR.Ident(name, cond.ident.type)
         }
         val freshCondBody = BetaReduction(cond.xr.body, cond.ident to freshIdentForCond)

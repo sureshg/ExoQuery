@@ -78,7 +78,7 @@ object Model3 {
         val a = join(Table<Address>()).on { street == p().name }
         p
       }
-    println(x.xr.show(true))
+    println(x.xr.showRaw())
   }
 }
 

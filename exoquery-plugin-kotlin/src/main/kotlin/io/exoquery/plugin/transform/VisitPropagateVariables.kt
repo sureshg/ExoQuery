@@ -68,10 +68,15 @@ class VisitPropagateVariables(
     // NOTE proabably it's a good idea to only propate variable names starting from the SelectClause but
     // the from/join/etc... can Only be inside of a SelectClause so this shouldn't be an issue
     return on(expression).match(
-      case(ExtractorsDomain.Call.`from(expr)`[Is(), Is()]).thenThis { reciever, expression ->
+      case(ExtractorsDomain.Call.`from(expr)`[Is(), Is()]).thenThis { reciever, expr ->
         // Recurse inside the from in-case there's a query inside a query
-        val newExpression = super.visitExpression(expression, null)
+        val newExpression = super.visitExpression(expr, null)
         reciever.callMethod("fromAliased").invoke(newExpression, builder.irString(varName))
+      },
+      case(ExtractorsDomain.Call.`join(expr)`[Is(), Is()]).thenThis { reciever, expr ->
+        // Recurse inside the from in-case there's a query inside a query
+        val newExpression = super.visitExpression(expr, null)
+        reciever.callMethod("joinAliased").invoke(newExpression, builder.irString(varName))
       },
       // This should be the catch-all but does it actully work?
       case(Is<Any>()).then {

@@ -10,8 +10,8 @@ sealed interface BinaryOperator: Operator
 sealed interface YieldsBool
 
 sealed interface EqualityOperator: BinaryOperator {
-  /*data*/ object `==`: EqualityOperator, YieldsBool { override val symbol = "==" }
-  /*data*/ object `!=`: EqualityOperator, YieldsBool { override val symbol = "!=" }
+  /*data*/ object `==`: EqualityOperator, YieldsBool { override val symbol = "=="; override fun toString() = symbol }
+  /*data*/ object `!=`: EqualityOperator, YieldsBool { override val symbol = "!="; override fun toString() = symbol }
 }
 
 object BooleanOperator {

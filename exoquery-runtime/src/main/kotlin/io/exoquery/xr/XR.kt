@@ -1,13 +1,19 @@
 package io.exoquery.xr
 
 import io.exoquery.BID
+import io.exoquery.fansi.Attrs
+import io.exoquery.fansi.Color
+import io.exoquery.fansi.Str
 import io.exoquery.pprint
+import io.exoquery.pprint.*
 import io.exoquery.printing.format
 import io.exoquery.xr.MirrorIdiom.token
 import io.decomat.Matchable as Mat
 import io.decomat.Component as Slot
 import io.decomat.productComponentsOf as productOf
 import io.decomat.HasProductClass as PC
+
+
 
 
 /**
@@ -62,8 +68,8 @@ sealed interface XR {
 
 
   sealed class JoinType {
-    object Inner: JoinType()
-    object Left: JoinType()
+    object Inner: JoinType() { override fun toString() = "Inner" }
+    object Left: JoinType() { override fun toString() = "Left" }
   }
 
   sealed interface Expression: XR
@@ -338,8 +344,8 @@ sealed interface XR {
   }
 
   sealed interface Visibility {
-    object Hidden: Visibility
-    object Visible: Visibility
+    object Hidden: Visibility { override fun toString() = "Hidden" }
+    object Visible: Visibility { override fun toString() = "Visible" }
   }
 
   @Mat

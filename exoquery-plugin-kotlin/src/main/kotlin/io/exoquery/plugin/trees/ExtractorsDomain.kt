@@ -65,15 +65,17 @@ object ExtractorsDomain {
   object Call {
     val QueryMap = QueryFunction("map")
     val QueryFlatMap = QueryFunction("flatMap")
+    val `from(expr)` = BindExpression("from")
+    val `join(expr)` = BindExpression("join")
 
     data class OperatorCall(val x: IrExpression, val op: BinaryOperator, val y: IrExpression)
     data class UnaryOperatorCall(val x: IrExpression, val op: UnaryOperator)
 
-    // TODO refactor in to SelectClause function to include join & other things?
-    object `from(expr)` {
+    // I.e. a bind expression like from/join in a SelectClause
+    class BindExpression(val memberName: String) {
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
-        it.reciverIs<SelectClause<*>>("from") && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
+        it.reciverIs<SelectClause<*>>(memberName) && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
 
       context (CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
         customPattern2(x, y) { it: IrCall ->
