@@ -3,32 +3,34 @@ import io.exoquery.annotation.ExoInternal
 import io.exoquery.printing.format
 import io.exoquery.xr.BetaReduction
 
-//object Model1 {
-//  data class Person(val id: Int, val name: Name?, val age: Int)
-//  data class Address(val ownerId: Int, val street: String, val zip: Int)
-//  data class Name(val first: First?)
-//  data class First(val name: String)
-//
-//  fun use() {
-//    val p = Person(111, Name(First("Joe")), 123)
-//
-//    // Problem of "p" vs "x". Ident needs to get the runtime value of the variable
-//    // That means we need a separate binding map for runtime values or an expression-container
-//    val x =
-//      select {
-//        val x = from(Table<Person>())
-//        val a = join(Table<Address>()).on { street == x().name?.first?.name }
-//        x
-//      }
-//
-//    println(format(x.xr.show()))
-//
-//    val reduction = BetaReduction(x.xr)
-//    println("-------------- Reduction -------------\n" + format(reduction.show()))
-//
-//    println(pprint(x.binds, defaultShowFieldNames = false, defaultWidth = 200))
-//  }
-//}
+object Model1 {
+  data class Person(val id: Int, val name: Name?, val age: Int)
+  data class Address(val ownerId: Int, val street: String, val zip: Int)
+  data class Name(val first: First?)
+  data class First(val name: String)
+
+  fun use() {
+    val p = Person(111, Name(First("Joe")), 123)
+
+    // Problem of "p" vs "x". Ident needs to get the runtime value of the variable
+    // That means we need a separate binding map for runtime values or an expression-container
+    val x =
+      select {
+        val x = from(Table<Person>())
+        val a = join(Table<Address>()).on { street == x().name?.first?.name }
+        x
+      }
+
+    println(format(x.xr.show()))
+
+    //val reduction = BetaReduction(x.xr)
+    //println("-------------- Reduction -------------\n" + format(reduction.show()))
+
+    println(pprint(x.binds, defaultShowFieldNames = false, defaultWidth = 200))
+  }
+}
+
+
 //
 //// TODO Need test name:String? because it doesn't work with XRType
 //
@@ -78,9 +80,15 @@ object Model3 {
         val a = join(Table<Address>()).on { street == p().name }
         p
       }
-    println(x.xr.showRaw())
+
+    println("=============== Raw ===============\n" + x.xr.showRaw())
+    println("=============== Code ===============\n" + x.xr.show(true))
   }
 }
+
+fun main() {
+  Model1.use()
+
 
 //object PrintSource1 {
 //  data class Person(val firstName: String, val lastName: String, val age: Int)
@@ -97,10 +105,19 @@ object Model3 {
 //}
 
 
-@OptIn(ExoInternal::class)
-fun main() {
 
-  Model3.use()
+
+//@OptIn(ExoInternal::class)
+//fun main() {
+//  val x = 123
+//  val y = 456
+//
+//  printSource {
+//    "hello $x$y how ${123 + 456} are you $y"
+//  }
+
+
+  //Model3.use()
 
 
 

@@ -8,7 +8,7 @@ fun format(code: String): String {
     Formatter.GOOGLE_FORMAT.copy(
       maxWidth = 100, blockIndent = 2
     )
-  val codeToFormat = "fun stuff() = ${code.toString()}".replace("$", "")
+  val codeToFormat = /*"fun stuff() =*/ "${code.toString()}".replace("$", "")
   return try {
     Formatter.format(format, codeToFormat)
   } catch (e: ParseError) {

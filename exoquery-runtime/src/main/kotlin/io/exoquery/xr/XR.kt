@@ -6,6 +6,7 @@ import io.exoquery.fansi.Color
 import io.exoquery.fansi.Str
 import io.exoquery.pprint
 import io.exoquery.pprint.*
+import io.exoquery.printing.PrintXR
 import io.exoquery.printing.format
 import io.exoquery.xr.MirrorIdiom.token
 import io.decomat.Matchable as Mat
@@ -61,7 +62,7 @@ sealed interface XR {
   }
 
   fun showRaw(color: Boolean = true): String {
-    val str = pprint(this, defaultShowFieldNames = false, defaultWidth = 200)
+    val str = PrintXR()(this)
     return if (color) str.toString() else str.plainText
   }
 

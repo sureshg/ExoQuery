@@ -40,13 +40,13 @@ fun IrClassSymbol.dataClassProperties() =
   else sequenceOf()
 
 val IrSymbol.safeName get() =
-  if (owner is IrFunction && (owner as IrFunction).isPropertyAccessor) {
+  (if (owner is IrFunction && (owner as IrFunction).isPropertyAccessor) {
     (owner as IrFunction).name.asStringStripSpecialMarkers().removePrefix("get-")
   } else if (isBound) {
     (owner as? IrDeclarationWithName)?.name?.asString() ?: "<???>"
   } else {
     "<???>"
-  }
+  }).replace("$", "")
 
 fun IrElement.location(fileEntry: IrFileEntry): CompilerMessageSourceLocation {
   val irElement = this
