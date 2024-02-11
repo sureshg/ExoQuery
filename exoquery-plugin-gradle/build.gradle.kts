@@ -7,6 +7,10 @@ plugins {
     id("com.github.gmazzo.buildconfig") version "3.1.0"
 }
 
+kotlin {
+    jvmToolchain(11)
+}
+
 buildConfig {
     buildConfigField("String", "VERSION", "\"${project.version}\"")
 }
