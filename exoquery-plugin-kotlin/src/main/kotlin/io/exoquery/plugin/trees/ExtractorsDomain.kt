@@ -1,6 +1,7 @@
 package io.exoquery.plugin.trees
 
 import io.decomat.*
+import io.exoquery.Interpolator
 import io.exoquery.Query
 import io.exoquery.SqlVariable
 import io.exoquery.Table
@@ -21,6 +22,7 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.superTypes
 
 inline fun <reified T> IrExpression.isClass(): Boolean {
@@ -63,6 +65,8 @@ object ExtractorsDomain {
   }
 
   object Call {
+
+
     val QueryMap = QueryFunction("map")
     val QueryFlatMap = QueryFunction("flatMap")
     val `from(expr)` = BindExpression("from")
@@ -70,6 +74,31 @@ object ExtractorsDomain {
 
     data class OperatorCall(val x: IrExpression, val op: BinaryOperator, val y: IrExpression)
     data class UnaryOperatorCall(val x: IrExpression, val op: UnaryOperator)
+
+    object InterpolateInvoke {
+      context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
+        it.reciverIs<Interpolator<*, *>>("invoke") //&& it.simpleValueArgsCount == 2 && it.valueArguments.all{ it != null }
+
+      context (CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<List<IrExpression>>> get(reciver: AP, terpComps: BP) =
+        customPattern2(reciver, terpComps) { call: IrCall ->
+          val caller = call.dispatchReceiver.also { if (it == null) error("Dispatch reciver of the Interpolator invocation `${call.dumpKotlinLike()}` was null. This should not be possible.") }
+          if (matchesMethod(call) && caller != null) {
+            val x = call.simpleValueArgs.first()
+            on(x).match(
+              case(Ir.StringConcatenation[Is()]).then { components ->
+                Components2(caller, components)
+              },
+              // it's a single string-const in this case
+//              case(Ir.Const[Is()]).then { const ->
+//                Components2(caller, listOf(const))
+//              }
+            )
+          } else {
+            null
+          }
+        }
+
+    }
 
     // I.e. a bind expression like from/join in a SelectClause
     class BindExpression(val memberName: String) {

@@ -50,10 +50,11 @@ class VisitTransformExpressions(
     val stack = RuntimeException()
     //compileLogger.warn(stack.stackTrace.map { it.toString() }.joinToString("\n"))
 
-
     val transformPrint = TransformPrintSource(context, config, scopeOwner)
     val transformerCtx = TransformerOrigin(context, config, this.currentFile, data)
+
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
+    val transformInterpolations = TransformInterepolatorInvoke(builderContext)
     val queryMapTransformer = TransformQueryMap(builderContext, ExtractorsDomain.Call.QueryMap, "mapExpr")
     val queryFlatMapTransformer = TransformQueryFlatMap(builderContext, "flatMapInternal")
     val makeTableTransformer = TransformTableQuery(builderContext)
@@ -74,6 +75,10 @@ class VisitTransformExpressions(
       // (and this does not recursively transform stuff inside)
       transformPrint.matches(expression) -> {
         transformPrint.transform(expression)
+      }
+
+      transformInterpolations.matches(expression) -> {
+        transformInterpolations.transform(expression)
       }
 
       joinOnTransformer.matches(expression) -> {

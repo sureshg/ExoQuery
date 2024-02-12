@@ -14,12 +14,15 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 
 import org.jetbrains.kotlin.ir.builders.*
+import org.jetbrains.kotlin.ir.declarations.path
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetObjectValue
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isVararg
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -69,7 +72,11 @@ class Lifter(val builderCtx: BuilderContext) {
   inline fun <reified T> List<T>.lift(elementLifter: (T) -> IrExpression): IrExpression {
     val elementType = typeOf<T>()
     if (elementType == typeOf<IrExpression>()) {
-      throw IllegalStateException("Cannot lift IrExpression with this. Use liftExpr")
+      // the input arg is already an expression. At this point it's more of a mapper than a lifter
+      // (because the user could still call a map function and modify the expression in some way)
+      // so at that point just do the map and call it
+      val exprs = this.map(elementLifter)
+      return exprs.liftExpr<Any>()
     } else {
       val fullPath = elementType.fullPathOfBasic()
       val classId = ClassId.topLevel(FqName(fullPath))
@@ -87,7 +94,21 @@ class Lifter(val builderCtx: BuilderContext) {
     val classId = ClassId.topLevel(FqName(fullPath))
     val expressionType = context.referenceConstructors(classId).first().owner.returnType
     val variadics = irBuilder.irVararg(expressionType, this)
-    val listOfCall = irBuilder.irCall(listOfRef).apply { putValueArgument(0, variadics) }
+    //builderCtx.logger.error("--------------- Expression Type -------------: ${expressionType.dumpKotlinLike()}")
+    val listOfCall = irBuilder.irCall(listOfRef, context.symbols.list.typeWith(expressionType)).apply {
+      putTypeArgument(0, expressionType)
+      putValueArgument(0, variadics)
+    }
+    //builderCtx.logger.error("--------------- List Expression Type -------------: ${listOfCall.type.dumpKotlinLike()}\n=== ${builderCtx.currentFile.path} ===")
+    return listOfCall
+  }
+
+  fun List<IrExpression>.liftExprTyped(elementType: IrType): IrExpression {
+    val variadics = irBuilder.irVararg(elementType, this)
+    val listOfCall = irBuilder.irCall(listOfRef, context.symbols.list.typeWith(elementType)).apply {
+      putTypeArgument(0, elementType)
+      putValueArgument(0, variadics)
+    }
     return listOfCall
   }
 
@@ -177,6 +198,8 @@ class Lifter(val builderCtx: BuilderContext) {
       XRType.Null -> makeObject<XRType.Null>()
     }
 
+
+  //fun <T> liftList(list: List<T>, elementLifter: (T) -> IrExpression) =
 
 
   fun liftXR(xr: XR) = xr.lift()

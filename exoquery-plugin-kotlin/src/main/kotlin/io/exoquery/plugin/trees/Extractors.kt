@@ -58,6 +58,20 @@ val IrType.simpleTypeArgs: List<IrType> get() =
   }
 
 object Ir {
+  object StringConcatenation {
+    // Can't do just get(components: Pattern<List<IrExpression>) need to do:
+    // <AP: Pattern<List<IrExpression>>> get(components: AP) or it doesn't work because
+    // it needs to have a concrete pattern instance
+    context(CompileLogger) operator fun <AP: Pattern<List<IrExpression>>> get(components: AP) =
+      customPattern1(components) { it: IrExpression ->
+        if (it is IrStringConcatenation) {
+          Components1(it.arguments)
+        } else {
+          null
+        }
+      }
+  }
+
   object Type {
 
     object SqlVariable {
