@@ -1,5 +1,6 @@
 package io.exoquery.xr
 
+import io.exoquery.printing.PrintXR
 import io.exoquery.tupleOf
 import io.exoquery.xr.XR.*
 import io.exoquery.xr.XR
@@ -150,6 +151,22 @@ class BetaReductionSpec : FreeSpec({
       val ast: XR =
         FlatJoin(JoinType.Inner, Entity("a"), Ident("x"), Ident("b"))
       BetaReduction(ast, Ident("b") to Ident("b'")) shouldBe FlatJoin(JoinType.Inner, Entity("a"), Ident("x"), Ident("b'"))
+    }
+  }
+
+  "function reduction" - {
+    "function1" {
+      val ast: XR =
+        Function1(Ident("a"), BinaryOp(Ident("a"), NumericOperator.plus, XR.Const.Int(123)))
+
+      BetaReduction(ast, Ident("a") to Ident("aa")) shouldBe Function1(Ident("aa"), BinaryOp(Ident("aa"), NumericOperator.plus, XR.Const.Int(123)))
+    }
+
+    "functionN" {
+      val ast: XR =
+        FunctionN(listOf(Ident("a"), Ident("b")), BinaryOp(Ident("a"), NumericOperator.plus, Ident("b")))
+
+      BetaReduction(ast, Ident("a") to Ident("aa")) shouldBe FunctionN(listOf(Ident("aa"), Ident("b")), BinaryOp(Ident("aa"), NumericOperator.plus, Ident("b")))
     }
   }
 

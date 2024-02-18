@@ -46,6 +46,8 @@ interface StatelessTransformer {
         is When -> When(branches.map { invoke(it) }, invoke(orElse))
         is XR.Block -> invoke(this)
         is Product -> Product(name, fields.map { it.first to invoke(it.second) })
+        // Infix can both be Expression and Query
+        is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type)
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
       }
@@ -54,22 +56,24 @@ interface StatelessTransformer {
   operator fun invoke(xr: XR.Query): XR.Query =
     with(xr) {
       when (this) {
-        is FlatMap -> FlatMap(invoke(a), ident, invoke(b))
-        is XR.Map -> XR.Map(invoke(a), ident, invoke(b))
+        is FlatMap -> FlatMap(invoke(head), id, invoke(body))
+        is XR.Map -> XR.Map(invoke(head), id, invoke(body))
         is Entity -> this
-        is Filter -> Filter(invoke(a), ident, invoke(b))
+        is Filter -> Filter(invoke(head), id, invoke(body))
         is Union -> Union(invoke(a), invoke(b))
-        is UnionAll -> UnionAll(invoke(a), invoke(b))
-        is Distinct -> Distinct(invoke(query))
-        is DistinctOn -> DistinctOn(invoke(query), alias, invoke(by))
-        is Drop -> Drop(invoke(query), invoke(num))
-        is SortBy -> SortBy(invoke(query), alias, invoke(criteria), ordering)
-        is Take -> Take(invoke(query), invoke(num))
-        is FlatJoin -> FlatJoin(joinType, invoke(a), aliasA, invoke(on))
-        is ConcatMap -> ConcatMap(invoke(a), ident, invoke(b))
-        is GroupByMap -> GroupByMap(invoke(query), byAlias, invoke(byBody), mapAlias, invoke(mapBody))
+        is UnionAll -> UnionAll(invoke(head), invoke(body))
+        is Distinct -> Distinct(invoke(head))
+        is DistinctOn -> DistinctOn(invoke(head), id, invoke(by))
+        is Drop -> Drop(invoke(head), invoke(num))
+        is SortBy -> SortBy(invoke(head), id, invoke(criteria), ordering)
+        is Take -> Take(invoke(head), invoke(num))
+        is FlatJoin -> FlatJoin(joinType, invoke(head), id, invoke(on))
+        is ConcatMap -> ConcatMap(invoke(head), id, invoke(body))
+        is GroupByMap -> GroupByMap(invoke(head), byAlias, invoke(byBody), mapAlias, invoke(mapBody))
         is Aggregation -> Aggregation(operator, invoke(body))
-        is Nested -> Nested(invoke(query))
+        is Nested -> Nested(invoke(head))
+        // Infix can both be Expression and Query
+        is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type)
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
       }

@@ -101,6 +101,11 @@ interface StatefulTransformer<T> {
           val (valuesA, stateA) = applyList(values) { t, v -> t.invoke(v) }
           Product(name, keys zip valuesA) to stateA
         }
+        // Infix can be both a Query and Expression
+        is Infix -> {
+          val (paramsA, stateA) = applyList(params) { t, v -> t.invoke(v) }
+          Infix(parts, paramsA, pure, transparent, type) to stateA
+        }
         is XR.Block -> invoke(this)
         is Const -> this to this@StatefulTransformer
         is Ident -> this to this@StatefulTransformer
@@ -115,20 +120,20 @@ interface StatefulTransformer<T> {
     with(xr) {
       when (this) {
         is FlatMap -> {
-          val (aA, stateA) = invoke(a)
-          val (bA, stateB) = stateA.invoke(b)
-          FlatMap(aA, ident, bA) to stateB
+          val (aA, stateA) = invoke(head)
+          val (bA, stateB) = stateA.invoke(body)
+          FlatMap(aA, id, bA) to stateB
         }
         is XR.Map -> {
-          val (aA, stateA) = invoke(a)
-          val (bA, stateB) = stateA.invoke(b)
-          XR.Map(aA, ident, bA) to stateB
+          val (aA, stateA) = invoke(head)
+          val (bA, stateB) = stateA.invoke(body)
+          XR.Map(aA, id, bA) to stateB
         }
         is Entity -> this to this@StatefulTransformer
         is Filter -> {
-          val (aA, stateA) = invoke(a)
-          val (bA, stateB) = stateA.invoke(b)
-          Filter(aA, ident, bA) to stateB
+          val (aA, stateA) = invoke(head)
+          val (bA, stateB) = stateA.invoke(body)
+          Filter(aA, id, bA) to stateB
         }
         is Union -> {
           val (aA, stateA) = invoke(a)
@@ -136,46 +141,46 @@ interface StatefulTransformer<T> {
           Union(aA, bA) to stateB
         }
         is UnionAll -> {
-          val (aA, stateA) = invoke(a)
-          val (bA, stateB) = stateA.invoke(b)
+          val (aA, stateA) = invoke(head)
+          val (bA, stateB) = stateA.invoke(body)
           UnionAll(aA, bA) to stateB
         }
         is Distinct -> {
-          val (queryA, stateA) = invoke(query)
+          val (queryA, stateA) = invoke(head)
           Distinct(queryA) to stateA
         }
         is DistinctOn -> {
-          val (queryA, stateA) = invoke(query)
+          val (queryA, stateA) = invoke(head)
           val (byA, stateB) = stateA.invoke(by)
-          DistinctOn(queryA, alias, byA) to stateB
+          DistinctOn(queryA, id, byA) to stateB
         }
         is Drop -> {
-          val (queryA, stateA) = invoke(query)
+          val (queryA, stateA) = invoke(head)
           val (numB, stateB) = stateA.invoke(num)
           Drop(queryA, numB) to stateB
         }
         is SortBy -> {
-          val (queryA, stateA) = invoke(query)
+          val (queryA, stateA) = invoke(head)
           val (criteriaA, stateB) = stateA.invoke(criteria)
-          SortBy(queryA, alias, criteriaA, ordering) to stateB
+          SortBy(queryA, id, criteriaA, ordering) to stateB
         }
         is Take -> {
-          val (queryA, stateA) = invoke(query)
+          val (queryA, stateA) = invoke(head)
           val (numB, stateB) = stateA.invoke(num)
           Take(queryA, numB) to stateB
         }
         is FlatJoin -> {
-          val (aA, stateA) = invoke(a)
+          val (aA, stateA) = invoke(head)
           val (onA, stateB) = stateA.invoke(on)
-          FlatJoin(joinType, aA, aliasA, onA) to stateB
+          FlatJoin(joinType, aA, id, onA) to stateB
         }
         is ConcatMap -> {
-          val (aA, stateA) = invoke(a)
-          val (bA, stateB) = stateA.invoke(b)
-          ConcatMap(aA, ident, bA) to stateB
+          val (aA, stateA) = invoke(head)
+          val (bA, stateB) = stateA.invoke(body)
+          ConcatMap(aA, id, bA) to stateB
         }
         is GroupByMap -> {
-          val (queryA, stateA) = invoke(query)
+          val (queryA, stateA) = invoke(head)
           val (byBodyA, stateB) = stateA.invoke(byBody)
           val (mapBodyA, stateC) = stateB.invoke(mapBody)
           GroupByMap(queryA, byAlias, byBodyA, mapAlias, mapBodyA) to stateC
@@ -185,8 +190,13 @@ interface StatefulTransformer<T> {
           Aggregation(operator, bodyA) to stateA
         }
         is Nested -> {
-          val (queryA, stateA) = invoke(query)
+          val (queryA, stateA) = invoke(head)
           Nested(queryA) to stateA
+        }
+        // Infix can be both a Query and Expression
+        is Infix -> {
+          val (paramsA, stateA) = applyList(params) { t, v -> t.invoke(v) }
+          Infix(parts, paramsA, pure, transparent, type) to stateA
         }
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this to this@StatefulTransformer

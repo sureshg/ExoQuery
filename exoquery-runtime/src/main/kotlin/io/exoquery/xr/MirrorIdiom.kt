@@ -1,5 +1,6 @@
 package io.exoquery.xr
 
+import io.exoquery.terpal.Interpolator
 import io.exoquery.xr.XR.*
 
 object MirrorIdiom {
@@ -71,7 +72,21 @@ object MirrorIdiom {
       is IdentOrigin -> token
       is Const -> token
       is Marker -> token
+      is Infix -> token
     }
+
+  val Infix.token get(): String {
+    fun tokenParam(xr: XR) =
+      when (xr) {
+        is Ident -> "$" + xr.name
+        else -> "$" + "{${xr.token}}"
+      }
+
+    val parts = this.parts
+    val params = params.map { tokenParam(it) }
+    val body = Interpolator.interlace(parts, params, {""}, { it }, { a, b -> a + b })
+    return """infix"${body}""""
+  }
 
   val Branch.token get(): String = "${cond} -> ${then}"
 
@@ -110,22 +125,23 @@ object MirrorIdiom {
   val Query.token get(): String =
     when(this) {
       is Entity -> """query("$name")"""
-      is Filter -> "${a.token}.filter { ${ident.token} -> ${b.token} }"
-      is XR.Map -> "${a.token}.map { ${ident.token} -> ${b.token} }"
-      is FlatMap -> "${a.token}.flatMap { ${ident.token} -> ${b.token} }"
-      is ConcatMap -> "${a.token}.concatMap { ${ident.token} -> ${b.token} }"
-      is SortBy -> "${query.token}.sortBy { ${alias.token} -> ${criteria.token})(${ordering.token} }"
-      is GroupByMap -> "${query.token}.groupByMap { ${byAlias.token} -> ${byBody.token} } { ${mapAlias.token} -> ${mapBody.token} }"
+      is Filter -> "${head.token}.filter { ${id.token} -> ${body.token} }"
+      is XR.Map -> "${head.token}.map { ${id.token} -> ${body.token} }"
+      is FlatMap -> "${head.token}.flatMap { ${id.token} -> ${body.token} }"
+      is ConcatMap -> "${head.token}.concatMap { ${id.token} -> ${body.token} }"
+      is SortBy -> "${head.token}.sortBy { ${id.token} -> ${criteria.token})(${ordering.token} }"
+      is GroupByMap -> "${head.token}.groupByMap { ${byAlias.token} -> ${byBody.token} } { ${mapAlias.token} -> ${mapBody.token} }"
       is Aggregation -> "${body.token}.${operator.token}"
-      is Take -> "${query.token}.take(${num.token})"
-      is Drop -> "${query.token}.drop(${num.token})"
+      is Take -> "${head.token}.take(${num.token})"
+      is Drop -> "${head.token}.drop(${num.token})"
       is Union -> "${a.token}.union(${b.token})"
-      is UnionAll -> "${a.token}.unionAll(${b.token})"
-      is FlatJoin -> "${a.token}.${joinType.token} { ${aliasA.token} -> ${on.token} }"
-      is Distinct -> "${query.token}.distinct"
-      is DistinctOn -> "${query.token}.distinctOn { ${alias.token} -> ${by.token} }"
-      is Nested -> "${query.token}.nested"
+      is UnionAll -> "${head.token}.unionAll(${body.token})"
+      is FlatJoin -> "${head.token}.${joinType.token} { ${id.token} -> ${on.token} }"
+      is Distinct -> "${head.token}.distinct"
+      is DistinctOn -> "${head.token}.distinctOn { ${id.token} -> ${by.token} }"
+      is Nested -> "${head.token}.nested"
       is Marker -> token
+      is Infix -> token
     }
 
 }

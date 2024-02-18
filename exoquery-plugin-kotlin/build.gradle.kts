@@ -25,7 +25,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 }
 
 dependencies {
-    implementation("io.exoquery:exoquery-runtime")
+    api("io.exoquery:exoquery-runtime")
 
     compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable")
 

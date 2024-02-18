@@ -22,7 +22,7 @@ class CollectXR<T>(private val collect: (XR) -> T?): StatefulTransformerSingleRo
         }
       }.root(xr).second.state
 
-    fun <T> invoke(xr: XR, collect: (XR) -> T?): List<T> where T: XR =
+    operator fun <T> invoke(xr: XR, collect: (XR) -> T?): List<T> where T: XR =
       CollectXR<T>(collect).root(xr).second.state
   }
 

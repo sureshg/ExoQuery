@@ -1,14 +1,8 @@
 package io.exoquery.xr
 
 import io.exoquery.BID
-import io.exoquery.fansi.Attrs
-import io.exoquery.fansi.Color
-import io.exoquery.fansi.Str
-import io.exoquery.pprint
-import io.exoquery.pprint.*
 import io.exoquery.printing.PrintXR
 import io.exoquery.printing.format
-import io.exoquery.xr.MirrorIdiom.token
 import io.decomat.Matchable as Mat
 import io.decomat.Component as Slot
 import io.decomat.MiddleComponent as MSlot
@@ -87,34 +81,39 @@ sealed interface XR {
   data class Entity(@Slot val name: String, override val type: XRType.Product): Query, PC<Entity> {
     override val productComponents = productOf(this, name)
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
-  data class Filter(@Slot val a: XR.Query, @MSlot val ident: XR.Ident, @Slot val b: XR.Expression): Query, PC<Filter> {
-    override val productComponents = productOf(this, a, ident, b)
-    override val type get() = a.type
+  data class Filter(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression): Query, PC<Filter> {
+    override val productComponents = productOf(this, head, id, body)
+    override val type get() = head.type
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
-  data class Map(@Slot val a: XR.Query, @MSlot val ident: XR.Ident, @Slot val b: XR.Expression): Query, PC<Map> {
-    override val productComponents = productOf(this, a, ident, b)
-    override val type get() = b.type
+  data class Map(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression): Query, PC<Map> {
+    override val productComponents = productOf(this, head, id, body)
+    override val type get() = body.type
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
-  data class ConcatMap(@Slot val a: XR.Query, @MSlot val ident: XR.Ident, @Slot val b: XR.Expression): Query, PC<ConcatMap> {
-    override val productComponents = productOf(this, a, ident, b)
-    override val type get() = b.type
+  data class ConcatMap(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression): Query, PC<ConcatMap> {
+    override val productComponents = productOf(this, head, id, body)
+    override val type get() = body.type
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
-  data class SortBy(@Slot val query: XR.Query, @MSlot val alias: XR.Ident, @Slot val criteria: XR.Expression, val ordering: XR.Ordering): Query, PC<SortBy> {
-    override val productComponents = productOf(this, query, criteria, ordering)
-    override val type get() = query.type
+  data class SortBy(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val criteria: XR.Expression, val ordering: XR.Ordering): Query, PC<SortBy> {
+    override val productComponents = productOf(this, head, criteria, ordering)
+    override val type get() = head.type
     companion object {}
+    override fun toString() = show()
   }
 
   // Ordering elements are technically not part of the XR but closely related
@@ -131,10 +130,11 @@ sealed interface XR {
 
   // Treat this as a 2-slot use mapBody for matching since by-body is usually the less-important one
   @Mat
-  data class GroupByMap(@Slot val query: XR.Query, val byAlias: Ident, val byBody: XR.Expression, val mapAlias: Ident, @Slot val mapBody: XR.Expression): Query, PC<GroupByMap> {
-    override val productComponents = productOf(this, query, mapBody)
-    override val type get() = query.type
+  data class GroupByMap(@Slot val head: XR.Query, val byAlias: Ident, val byBody: XR.Expression, val mapAlias: Ident, @Slot val mapBody: XR.Expression): Query, PC<GroupByMap> {
+    override val productComponents = productOf(this, head, mapBody)
+    override val type get() = head.type
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
@@ -150,20 +150,23 @@ sealed interface XR {
       }
     }
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
-  data class Take(@Slot val query: XR.Query, @Slot val num: XR.Expression): Query, PC<Take> {
-    override val productComponents = productOf(this, query, num)
-    override val type get() = query.type
+  data class Take(@Slot val head: XR.Query, @Slot val num: XR.Expression): Query, PC<Take> {
+    override val productComponents = productOf(this, head, num)
+    override val type get() = head.type
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
-  data class Drop(@Slot val query: XR.Query, @Slot val num: XR.Expression): Query, PC<Drop> {
-    override val productComponents = productOf(this, query, num)
-    override val type get() = query.type
+  data class Drop(@Slot val head: XR.Query, @Slot val num: XR.Expression): Query, PC<Drop> {
+    override val productComponents = productOf(this, head, num)
+    override val type get() = head.type
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
@@ -171,65 +174,75 @@ sealed interface XR {
     override val productComponents = productOf(this, a, b)
     override val type get() = a.type
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
-  data class UnionAll(@Slot val a: XR.Query, @Slot val b: XR.Query): Query, PC<UnionAll> {
-    override val productComponents = productOf(this, a, b)
-    override val type get() = a.type
+  data class UnionAll(@Slot val head: XR.Query, @Slot val body: XR.Query): Query, PC<UnionAll> {
+    override val productComponents = productOf(this, head, body)
+    override val type get() = head.type
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
-  data class FlatMap(@Slot val a: XR.Query, @MSlot val ident: XR.Ident, @Slot val b: XR.Query): Query, PC<FlatMap> {
-    override val productComponents = productOf(this, a, ident, b)
-    override val type get() = b.type
+  data class FlatMap(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Query): Query, PC<FlatMap> {
+    override val productComponents = productOf(this, head, id, body)
+    override val type get() = body.type
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
-  data class FlatJoin(val joinType: JoinType, @Slot val a: XR.Query, @MSlot val aliasA: XR.Ident, @Slot val on: XR.Expression): Query, PC<FlatJoin> {
-    override val productComponents = productOf(this, a, aliasA, on)
-    override val type get() = a.type
+  data class FlatJoin(val joinType: JoinType, @Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val on: XR.Expression): Query, PC<FlatJoin> {
+    override val productComponents = productOf(this, head, id, on)
+    override val type get() = head.type
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
-  data class Distinct(@Slot val query: XR.Query): Query, PC<Distinct> {
-    override val productComponents = productOf(this, query)
-    override val type get() = query.type
+  data class Distinct(@Slot val head: XR.Query): Query, PC<Distinct> {
+    override val productComponents = productOf(this, head)
+    override val type get() = head.type
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
-  data class DistinctOn(@Slot val query: XR.Query, @MSlot val alias: XR.Ident, @Slot val by: XR.Expression): Query, PC<DistinctOn> {
-    override val productComponents = productOf(this, query, alias, by)
-    override val type get() = query.type
+  data class DistinctOn(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val by: XR.Expression): Query, PC<DistinctOn> {
+    override val productComponents = productOf(this, head, id, by)
+    override val type get() = head.type
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
-  data class Nested(@Slot val query: XR.Query): XR.Query, PC<Nested> {
-    override val productComponents = productOf(this, query)
-    override val type get() = query.type
+  data class Nested(@Slot val head: XR.Query): XR.Query, PC<Nested> {
+    override val productComponents = productOf(this, head)
+    override val type get() = head.type
     companion object {}
+    override fun toString() = show()
   }
 
   // ************************************************************************************************
   // ****************************************** Infix ********************************************
   // ************************************************************************************************
 
-  // data class Infix(@Slot val parts: List<String>, @Slot val params: List<XR>, val pure: Boolean, val transparent: Boolean): Query, Expression, Function, PC<Infix> {
-  //   override val productComponents = productOf(this, params)
-  //   override val type get() = XRType.Value
-  //   companion object {}
-  // }
+  // TODO could it also be a XR.Function1/FunctionN?
+  @Mat
+  data class Infix(@Slot val parts: List<String>, @Slot val params: List<XR>, val pure: Boolean, val transparent: Boolean, override val type: XRType): Query, Expression, PC<Infix> {
+   override val productComponents = productOf(this, parts, params)
+   companion object {}
+    override fun toString() = show()
+  }
 
   @Mat
   data class Marker(@Slot val name: String, val expr: XR.Expression?): Query, Expression, PC<Marker> {
     override val productComponents = productOf(this, name)
     override val type get() = XRType.Generic
     companion object {}
+    override fun toString() = show()
   }
 
 
@@ -247,6 +260,7 @@ sealed interface XR {
     companion object {}
 
     override val params get() = listOf(param)
+    override fun toString() = show()
   }
 
   @Mat
@@ -254,6 +268,7 @@ sealed interface XR {
     override val productComponents = productOf(this, body)
     override val type get() = body.type
     companion object {}
+    override fun toString() = show()
   }
 
   // ************************************************************************************************
@@ -268,6 +283,7 @@ sealed interface XR {
     override val productComponents = productOf(this, function, args)
     override val type get() = function.type
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
@@ -280,6 +296,7 @@ sealed interface XR {
       }
     }
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
@@ -292,12 +309,18 @@ sealed interface XR {
       }
     }
     companion object {}
+    override fun toString() = show()
   }
 
   // **********************************************************************************************
   // ****************************************** Terminal ******************************************
   // **********************************************************************************************
 
+  /**
+   * Class representing an identifier that was syntheized at compile-time that will become
+   * a identifier at runtime. This is because things like SqlVariable need to be transformed
+   * at runtime to have the name that was assigned to them at compile-time.
+   */
   @Mat
   data class IdentOrigin(@Slot val runtimeName: BID, val name: String, override val type: XRType, val visibility: Visibility = Visibility.Visible) : XR, Labels.Terminal, PC<IdentOrigin> {
 
@@ -309,6 +332,7 @@ sealed interface XR {
 
     override fun hashCode() = id.hashCode()
     override fun equals(other: Any?) = other is IdentOrigin && other.id == id
+    override fun toString() = show()
   }
 
   @Mat
@@ -322,6 +346,7 @@ sealed interface XR {
 
     override fun hashCode() = id.hashCode()
     override fun equals(other: Any?) = other is XR.Ident && other.id == id
+    override fun toString() = show()
   }
 
   sealed class Const: Expression {
@@ -339,18 +364,34 @@ sealed interface XR {
     object Null: Const() {
       override fun toString(): kotlin.String = "Null"
     }
+    override fun toString() = show()
   }
 
   @Mat
   data class Product(val name: String, @Slot val fields: List<Pair<String, XR.Expression>>): Expression, PC<Product> {
     override val productComponents = productOf(this, fields)
     override val type by lazy { XRType.Product(name, fields.map { it.first to it.second.type }) }
-    companion object {}
+    companion object {
+      // Used by the SqlQuery clauses to wrap identifiers into a row-class
+      fun fromType(type: XRType, identName: String): XR.Product {
+        val id = XR.Ident(identName, type)
+        return when (type) {
+          // tpe: XRType.Prod(a->V,b->V), id: Id("foo",tpe) ->
+          //   XR.Prod(id, a->Prop(id,"a"), b->Prop(id,"b"))
+          is XRType.Product ->
+            Product(identName, type.fields.map { (fieldName, _) -> fieldName to XR.Property(id, fieldName) })
+          else ->
+            // Not sure if this case is possible
+            Product("<Generated>", listOf(identName to id))
+        }
+      }
+    }
 
     data class Id(val fields : List<Pair<String, XR.Expression>>)
     private val id = Id(fields)
     override fun hashCode() = id.hashCode()
     override fun equals(other: Any?) = other is Product && other.id == id
+    override fun toString() = show()
   }
 
   sealed interface Visibility {
@@ -374,6 +415,7 @@ sealed interface XR {
     override fun equals(other: Any?) = other is Property && other.id == id
 
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
@@ -381,6 +423,7 @@ sealed interface XR {
     override val productComponents = productOf(this, stmts, output)
     override val type: XRType by lazy { output.type }
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
@@ -388,6 +431,7 @@ sealed interface XR {
     override val productComponents = productOf(this, branches, orElse)
     override val type: XRType by lazy { branches.lastOrNull()?.type ?: XRType.Unknown }
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
@@ -395,6 +439,7 @@ sealed interface XR {
     override val productComponents = productOf(this, cond, then)
     override val type: XRType by lazy { then.type }
     companion object {}
+    override fun toString() = show()
   }
 
   @Mat
@@ -402,6 +447,7 @@ sealed interface XR {
     override val productComponents = productOf(this, name, rhs)
     override val type: XRType by lazy { rhs.type }
     companion object {}
+    override fun toString() = show()
   }
 }
 

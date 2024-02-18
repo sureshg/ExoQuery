@@ -58,11 +58,11 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
       xr is XR.FunctionApply && xr.function is XR.Labels.Function -> {
         val params = xr.function.params
         val body = xr.function.body
-        val values = xr.args
+        val applyArgs = xr.args
         // 1. Collect all idents in the Apply.args e.g. Apply(foo('a, 'b, 'c){...}, [a.x, b.y, d....]) that are also
         // somewhere inside the input args of the function i.e. `a.x` and `b.y`. These are all the "conflicts."
         // Make a map `a` to `tmp_a`, `b` to `tmp_b` etc...
-        val conflicts = values
+        val conflicts = applyArgs
           .flatMap { CollectXR.byType<XR.Ident>(it) }
           .map { i: XR.Ident ->
             i to XR.Ident("tmp_${i.name}", i.type)
@@ -82,20 +82,22 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
         // that is applied to it will have a more specific type than the genric.
         // That is why it is important to take the more specific XRType from
         // c as opposed to 'c.
-        val newParamsMap =
-          newParams.zip(values)
+        val applicationMap =
+          newParams.zip(applyArgs)
 
         // 3. Reduce Map('a->tmp_a and b->tmp_b in the foo-function body in:
         // Apply(foo('a,'b,'c) body={...a..., ...b...}, [a, b, d...]) -> (turning it into...)
         //   Apply(foo('a,'b,'c) body={...tmp_a..., ...tmp_b..., }, [a, b, d...])
         // This `body` variable is what becomes `bodyr`
+        // Note that at this point we just need body of the FunctionApply(Function(body), ...)
+        // we can already throw away the FunctionApply and Function nodes.
         val bodyr = BetaReduce(mapOf<XR.Ident, XR.Ident>() + conflicts).invoke(body)
         // 4. Finally, reduce tmp_a->a, tmp_b->b, 'c->c in the foo-function body in:
         // body={...tmp_a..., ...tmp_b...} -> (turning it into...)
         //   body={...a..., ...b..., }
         // Thus we have reduced FunctionApply(Function(params,body), args)
-        // to just a beta-reduced body
-        invoke(BetaReduce(map + newParamsMap).invoke(bodyr))
+        // to just a beta-reduced body.
+        invoke(BetaReduce(map + applicationMap).invoke(bodyr))
       }
 
       // Reduce a block and all variables inside to a single statement
@@ -147,14 +149,14 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
   override fun invoke(xr: XR.Query): XR.Query =
     with(xr) {
       when(this) {
-        is XR.Filter -> XR.Filter(invoke(a), ident, BetaReduce(map - ident)(b))
-        is XR.Map -> XR.Map(invoke(a), ident, BetaReduce(map - ident)(b))
-        is XR.FlatMap -> XR.FlatMap(invoke(a), ident, BetaReduce(map - ident)(b))
-        is XR.ConcatMap -> XR.ConcatMap(invoke(a), ident, BetaReduce(map - ident)(b))
-        is XR.SortBy -> XR.SortBy(invoke(query), alias, BetaReduce(map - alias)(this.criteria), ordering)
-        is XR.GroupByMap -> XR.GroupByMap(invoke(query), byAlias, BetaReduce(map - byAlias)(this.byBody), mapAlias, BetaReduce(map - mapAlias)(this.mapBody))
-        is XR.FlatJoin -> XR.FlatJoin(joinType, invoke(a), aliasA, BetaReduce(map - aliasA)(on))
-        is XR.DistinctOn -> XR.DistinctOn(invoke(query), alias, BetaReduce(map - alias)(by))
+        is XR.Filter -> XR.Filter(invoke(head), id, BetaReduce(map - id)(body))
+        is XR.Map -> XR.Map(invoke(head), id, BetaReduce(map - id)(body))
+        is XR.FlatMap -> XR.FlatMap(invoke(head), id, BetaReduce(map - id)(body))
+        is XR.ConcatMap -> XR.ConcatMap(invoke(head), id, BetaReduce(map - id)(body))
+        is XR.SortBy -> XR.SortBy(invoke(head), id, BetaReduce(map - id)(this.criteria), ordering)
+        is XR.GroupByMap -> XR.GroupByMap(invoke(head), byAlias, BetaReduce(map - byAlias)(this.byBody), mapAlias, BetaReduce(map - mapAlias)(this.mapBody))
+        is XR.FlatJoin -> XR.FlatJoin(joinType, invoke(head), id, BetaReduce(map - id)(on))
+        is XR.DistinctOn -> XR.DistinctOn(invoke(head), id, BetaReduce(map - id)(by))
         // is XR.Take, is XR.Entity, is XR.Drop, is XR.Union, is XR.UnionAll, is XR.Aggregation, is XR.Distinct, is XR.Nested
         else -> super.invoke(this)
       }
