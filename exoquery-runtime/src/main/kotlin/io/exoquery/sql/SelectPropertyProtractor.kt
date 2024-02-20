@@ -68,7 +68,7 @@ data class InContext(val from: List<FromContext>) {
         is TableContext -> mapOf(it.alias to InTableContext)
         is QueryContext -> mapOf(it.alias to InQueryContext)
         is InfixContext -> mapOf(it.alias to InInfixContext)
-        is FlatJoinContext -> collectTableAliases(listOf(it.a))
+        is FlatJoinContext -> collectTableAliases(listOf(it.from))
       }
     }.fold(mapOf<String, InContextType>(), { a, b -> a + b })
 

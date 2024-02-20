@@ -138,9 +138,9 @@ class Lifter(val builderCtx: BuilderContext) {
       is Block -> make<Block>(this.component1().lift { it.lift() }, this.component2().lift())
       // The below must go in Function/Query/Expression/Action lift clauses
       is Marker -> make<Marker>(this.component1().lift(), this.component2().liftOrNull { it.lift() } )
-      // TODO need to implement product lifting
-      is Product -> TODO()
+      is Product -> make<Product>(this.component1().lift(), this.component2().lift { it.lift({ it.lift() }, { it.lift() }) })
       is Infix -> make<Lifter>(this.component1().lift { it.lift() }, this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift(), this.component5().lift())
+      is Aggregation -> make<Aggregation>(this.component1().lift(), this.component2().lift())
     }
 
   fun <T> T?.liftOrNull(lifter: (T) -> IrExpression) =
@@ -163,7 +163,6 @@ class Lifter(val builderCtx: BuilderContext) {
       is FlatJoin -> make<FlatJoin>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
       is ConcatMap -> make<ConcatMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is GroupByMap -> make<GroupByMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
-      is Aggregation -> make<Aggregation>(this.component1().lift(), this.component2().lift())
       is Nested -> make<Nested>(this.component1().lift())
       // The below must go in Function/Query/Expression/Action lift clauses
       is Marker -> make<Marker>(this.component1().lift())
@@ -198,7 +197,6 @@ class Lifter(val builderCtx: BuilderContext) {
   fun liftXRType(xrt: XRType) = xrt.lift()
   fun liftExpression(expr: Expression) = expr.lift()
 
-  // TODO use from the flatMap lifter
   @OptIn(ExoInternal::class)
   fun liftSqlVariableWithType(variable: SqlVariable<*>, typeParam: IrType) =
     makeWithTypes<SqlVariable<*>>(listOf(typeParam), listOf(variable.getVariableName().lift()))

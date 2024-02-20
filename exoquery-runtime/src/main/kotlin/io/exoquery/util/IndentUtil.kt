@@ -9,3 +9,5 @@ interface IndentOps {
 
   private fun indentOf(num: Int): String = "  ".repeat(num)
 }
+
+fun List<String>.mkString() = this.joinToString("")

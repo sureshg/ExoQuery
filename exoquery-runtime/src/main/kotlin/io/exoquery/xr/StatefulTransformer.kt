@@ -106,6 +106,10 @@ interface StatefulTransformer<T> {
           val (paramsA, stateA) = applyList(params) { t, v -> t.invoke(v) }
           Infix(parts, paramsA, pure, transparent, type) to stateA
         }
+        is Aggregation -> {
+          val (bodyA, stateA) = invoke(body)
+          Aggregation(operator, bodyA) to stateA
+        }
         is XR.Block -> invoke(this)
         is Const -> this to this@StatefulTransformer
         is Ident -> this to this@StatefulTransformer
@@ -184,10 +188,6 @@ interface StatefulTransformer<T> {
           val (byBodyA, stateB) = stateA.invoke(byBody)
           val (mapBodyA, stateC) = stateB.invoke(mapBody)
           GroupByMap(queryA, byAlias, byBodyA, mapAlias, mapBodyA) to stateC
-        }
-        is Aggregation -> {
-          val (bodyA, stateA) = invoke(body)
-          Aggregation(operator, bodyA) to stateA
         }
         is Nested -> {
           val (queryA, stateA) = invoke(head)

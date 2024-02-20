@@ -44,10 +44,11 @@ interface StatelessTransformer {
         is UnaryOp -> UnaryOp(op, invoke(expr))
         Const.Null -> this
         is When -> When(branches.map { invoke(it) }, invoke(orElse))
-        is XR.Block -> invoke(this)
+        is Block -> invoke(this)
         is Product -> Product(name, fields.map { it.first to invoke(it.second) })
         // Infix can both be Expression and Query
         is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type)
+        is Aggregation -> Aggregation(operator, invoke(body))
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
       }
@@ -70,7 +71,6 @@ interface StatelessTransformer {
         is FlatJoin -> FlatJoin(joinType, invoke(head), id, invoke(on))
         is ConcatMap -> ConcatMap(invoke(head), id, invoke(body))
         is GroupByMap -> GroupByMap(invoke(head), byAlias, invoke(byBody), mapAlias, invoke(mapBody))
-        is Aggregation -> Aggregation(operator, invoke(body))
         is Nested -> Nested(invoke(head))
         // Infix can both be Expression and Query
         is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type)

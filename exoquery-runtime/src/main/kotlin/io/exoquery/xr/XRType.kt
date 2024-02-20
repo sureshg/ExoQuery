@@ -1,5 +1,6 @@
 package io.exoquery.xr
 
+// Formerly Quat
 sealed class XRType {
   fun isAbstract() =
     when (this) {

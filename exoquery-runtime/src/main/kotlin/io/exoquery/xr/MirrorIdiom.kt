@@ -68,6 +68,7 @@ object MirrorIdiom {
       is FunctionApply -> "${function.tokenScoped}.apply(${args.token { it.token }})"
       is Product -> "${name}(${fields.map { (k, v) -> "${k}: ${v.token}" }.joinToString(", ")})"
       is Property -> "${of.tokenScoped}.${name}"
+      is Aggregation -> "${body.token}.${operator.token}"
       is Ident -> token
       is IdentOrigin -> token
       is Const -> token
@@ -131,7 +132,6 @@ object MirrorIdiom {
       is ConcatMap -> "${head.token}.concatMap { ${id.token} -> ${body.token} }"
       is SortBy -> "${head.token}.sortBy { ${id.token} -> ${criteria.token})(${ordering.token} }"
       is GroupByMap -> "${head.token}.groupByMap { ${byAlias.token} -> ${byBody.token} } { ${mapAlias.token} -> ${mapBody.token} }"
-      is Aggregation -> "${body.token}.${operator.token}"
       is Take -> "${head.token}.take(${num.token})"
       is Drop -> "${head.token}.drop(${num.token})"
       is Union -> "${a.token}.union(${b.token})"

@@ -45,7 +45,7 @@ class Traceable(
     else
       PrintXR(PPrinterConfig(defaultShowFieldNames = false, colorLiteral = Attrs.Empty, colorApplyPrefix = Attrs.Empty))
 
-  private fun generateStringForCommand(value: Any, indent: Int): String {
+  fun generateStringForCommand(value: Any, indent: Int): String {
     val objectString = qprint(value).toString()
     val oneLine      = objectString.toString().fitsOnOneLine
     return when(oneLine) {
@@ -165,19 +165,19 @@ class Traceable(
     output.joinToString("") to indent
   }
 
-  private fun logIfEnabled() =
+  fun logIfEnabled() =
     if (tracesEnabled()) renderString(parts(), params()) else null
 
   fun andLog(): Unit {
     logIfEnabled()?.let { println(it.first) }
   }
 
-  infix fun <T> andContinue(command: () -> T): T {
+  infix inline fun <T> andContinue(command: () -> T): T {
     logIfEnabled()?.let { println(it.first) }
     return command()
   }
 
-  infix fun <T> andReturn(command: () -> T): T =
+  infix inline fun <T> andReturn(command: () -> T): T =
     logIfEnabled()?.let { (output, indent) ->
       // do the initial log
       println(output)

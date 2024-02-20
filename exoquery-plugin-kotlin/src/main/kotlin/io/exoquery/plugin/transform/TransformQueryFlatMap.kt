@@ -56,7 +56,7 @@ class TransformQueryFlatMap(override val ctx: BuilderContext, val replacementMet
     val lifter = makeLifter()
 
     val applyLambda =
-      // TODO Add a type for R?
+      // TODO callMethodTyped and use R i.e. the lambdaArgName
       newFunExpression.callMethod("invoke")(
         lifter.liftSqlVariableWithType(SqlVariable.new<Any>(lambdaArgName), lambdaArgType.simpleTypeArgs.first())
       )

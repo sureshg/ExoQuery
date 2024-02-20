@@ -14,11 +14,10 @@ import io.exoquery.xr.XR.Ordering.TupleOrdering
 import io.exoquery.xrError
 import io.decomat.Matchable as Mat
 import io.decomat.Component as Slot
-import io.decomat.MiddleComponent as MSlot
 import io.decomat.productComponentsOf as productOf
 import io.decomat.HasProductClass as PC
 
-final data class OrderByCriteria(val ast: XR, val ordering: PropertyOrdering)
+final data class OrderByCriteria(val ast: XR.Expression, val ordering: PropertyOrdering)
 
 sealed interface FromContext { val type: XRType }
 
@@ -34,8 +33,8 @@ final data class InfixContext(val infix: XR.Infix, val alias: String) : FromCont
   override val type: XRType = infix.type
 }
 
-final data class FlatJoinContext(val t: XR.JoinType, val a: FromContext, val on: XR) : FromContext {
-  override val type: XRType = a.type
+final data class FlatJoinContext(val joinType: XR.JoinType, val from: FromContext, val on: XR.Expression) : FromContext {
+  override val type: XRType = from.type
 }
 
 sealed interface SqlQuery {
@@ -50,7 +49,7 @@ sealed interface DistinctKind {
   val isDistinct: Boolean
 
   object Distinct : DistinctKind { override val isDistinct: Boolean = true }
-  data class DistinctOn(val props: List<XR>) : DistinctKind { override val isDistinct: Boolean = true }
+  data class DistinctOn(val props: List<XR.Expression>) : DistinctKind { override val isDistinct: Boolean = true }
   object None : DistinctKind { override val isDistinct: Boolean = false }
 }
 
@@ -63,7 +62,7 @@ final data class SetOperationSqlQuery(
 
 final data class UnaryOperationSqlQuery(
   val op: XR.UnaryOp,
-  val q: SqlQuery,
+  val query: SqlQuery,
   override val type: XRType
 ): SqlQuery
 
@@ -91,11 +90,11 @@ final data class SelectValue(@Slot val ast: XR.Expression, @Slot val alias: Stri
 
 final data class FlattenSqlQuery(
   val from: List<FromContext> = emptyList(),
-  val where: XR? = null,
-  val groupBy: XR? = null,
+  val where: XR.Expression? = null,
+  val groupBy: XR.Expression? = null,
   val orderBy: List<OrderByCriteria> = emptyList(),
-  val limit: XR? = null,
-  val offset: XR? = null,
+  val limit: XR.Expression? = null,
+  val offset: XR.Expression? = null,
   val select: List<SelectValue> = emptyList(),
   val distinct: DistinctKind = DistinctKind.None,
   override val type: XRType
@@ -458,7 +457,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
           is TableContext             -> listOf(alias)
           is QueryContext             -> listOf(alias)
           is InfixContext             -> listOf(alias)
-          is FlatJoinContext -> collectAliases(listOf(a))
+          is FlatJoinContext -> collectAliases(listOf(from))
         }
       }
     }
@@ -470,7 +469,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
           is TableContext             -> listOf(alias)
           is QueryContext             -> emptyList()
           is InfixContext             -> emptyList()
-          is FlatJoinContext -> collectAliases(listOf(a))
+          is FlatJoinContext -> collectAliases(listOf(from))
         }
       }
     }
