@@ -1,6 +1,14 @@
 package io.exoquery.xr
 
 sealed class XRType {
+  fun isAbstract() =
+    when (this) {
+      is Generic -> true
+      is Unknown -> true
+      else -> false
+    }
+
+  fun nonAbstract() = !isAbstract()
 
   data class Product(val name: String, val fields: List<Pair<String, XRType>>): XRType() {
     private val fieldsHash by lazy { fields.toMap() }

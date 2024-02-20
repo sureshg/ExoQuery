@@ -138,22 +138,6 @@ sealed interface XR {
   }
 
   @Mat
-  data class Aggregation(val operator: AggregationOperator, @Slot val body: XR.Expression): Query, PC<Aggregation> {
-    override val productComponents = productOf(this, body)
-    override val type by lazy {
-      when (operator) {
-        AggregationOperator.`min` -> body.type
-        AggregationOperator.`max` -> body.type
-        AggregationOperator.`avg` -> XRType.Value
-        AggregationOperator.`sum` -> XRType.Value
-        AggregationOperator.`size` -> XRType.Value
-      }
-    }
-    companion object {}
-    override fun toString() = show()
-  }
-
-  @Mat
   data class Take(@Slot val head: XR.Query, @Slot val num: XR.Expression): Query, PC<Take> {
     override val productComponents = productOf(this, head, num)
     override val type get() = head.type
@@ -312,6 +296,52 @@ sealed interface XR {
     override fun toString() = show()
   }
 
+  /**
+   * It is interesting to note that in Quill an aggregation could be both a Query and what we would define
+   * in ExoQuery as an expression. This was based on the idea of monadic aggregation which was based on
+   * the API:
+   * ```
+   * people.groupBy(p -> p.name).map { case (name, aggQuery:Query<Person>) -> aggQuery.map(_.age).max }
+   * ```
+   * The problem with this kind of API is that while is works well for monadic-collections, it runs counter
+   * to the grain of how SQL things the expression/query paradigm. If `aggQuery` is a monadic-datastructure
+   * resembling a list, of course it would be operated by a map-function after aggregation. That means
+   * that the IR construct regulating it would also be a Query type
+   * `Map(people.groupBy(...), a, Aggregation(max, Map(aggQuery, x, x.age)))`
+   *
+   * However, if the paradigm is more SQL-esque via the use of something like GroupByMap. This would look more like:
+   * ```
+   * people.groupByMap(p -> p.name)(p -> p.age.max)
+   * ```
+   * In additiona to being more intutive, it clearly establishes that the `.max` operation is merely an operation
+   * on a Int type i.e. `p.age.max`. From a type-laws perspective this makes little sense but remember that
+   * our definition of p.age as a Int is merely an emulation. SQL `select x,y,z` clauses are typed as
+   * a coproduct of value-types and operation descriptor types such as aggregations, partitions, etc...
+   *
+   * Therefore, using this paradigm we would like to establish the construct:
+   * ```
+   * Aggregation(max, p.age)
+   * ```
+   * Firmly as an expression type.
+   */
+  @Mat
+  data class Aggregation(val operator: AggregationOperator, @Slot val body: XR.Expression): Expression, PC<Aggregation> {
+    override val productComponents = productOf(this, body)
+    override val type by lazy {
+      when (operator) {
+        AggregationOperator.`min` -> body.type
+        AggregationOperator.`max` -> body.type
+        AggregationOperator.`avg` -> XRType.Value
+        AggregationOperator.`sum` -> XRType.Value
+        AggregationOperator.`size` -> XRType.Value
+      }
+    }
+    companion object {}
+    override fun toString() = show()
+  }
+
+
+
   // **********************************************************************************************
   // ****************************************** Terminal ******************************************
   // **********************************************************************************************
@@ -372,6 +402,10 @@ sealed interface XR {
     override val productComponents = productOf(this, fields)
     override val type by lazy { XRType.Product(name, fields.map { it.first to it.second.type }) }
     companion object {
+
+      fun TupleNumeric(values: List<XR.Expression>) =
+        Product("Tuple${values.size}", values.withIndex().map { (idx, v) -> "_${idx+1}" to v })
+
       // Used by the SqlQuery clauses to wrap identifiers into a row-class
       fun fromType(type: XRType, identName: String): XR.Product {
         val id = XR.Ident(identName, type)
@@ -399,6 +433,8 @@ sealed interface XR {
     object Visible: Visibility { override fun toString() = "Visible" }
   }
 
+  // NOTE: No renameable because in ExoQuery properties will be renamed when created on the parent object i.e.
+  // (before any phases happen) from the field annotation on the entity object.
   @Mat
   data class Property(@Slot val of: XR.Expression, @Slot val name: String, val visibility: Visibility = Visibility.Visible) : XR.Expression, PC<Property> {
     override val productComponents = productOf(this, of, name)

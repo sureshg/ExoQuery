@@ -140,6 +140,7 @@ class Lifter(val builderCtx: BuilderContext) {
       is Marker -> make<Marker>(this.component1().lift(), this.component2().liftOrNull { it.lift() } )
       // TODO need to implement product lifting
       is Product -> TODO()
+      is Infix -> make<Lifter>(this.component1().lift { it.lift() }, this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift(), this.component5().lift())
     }
 
   fun <T> T?.liftOrNull(lifter: (T) -> IrExpression) =
@@ -166,6 +167,7 @@ class Lifter(val builderCtx: BuilderContext) {
       is Nested -> make<Nested>(this.component1().lift())
       // The below must go in Function/Query/Expression/Action lift clauses
       is Marker -> make<Marker>(this.component1().lift())
+      is Infix -> make<Lifter>(this.component1().lift { it.lift() }, this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift(), this.component5().lift())
     }
 
   fun XR.JoinType.lift(): IrExpression =
