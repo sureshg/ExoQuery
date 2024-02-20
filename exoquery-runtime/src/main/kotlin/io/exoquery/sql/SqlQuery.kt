@@ -140,13 +140,9 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             flatten(head, "x").copy(offset = num, type = query.type)
           }
         this is XR.Query ->
-          trace("Construct SqlQuery from: Query") andReturn {
-            flatten(this, "x")
-          }
+          trace("Construct SqlQuery from: Query") andReturn { flatten(this, "x") }
         this is XR.Infix ->
-          trace("Construct SqlQuery from: Infix") andReturn {
-            flatten(this, "x")
-          }
+          trace("Construct SqlQuery from: Infix") andReturn { flatten(this, "x") }
         else ->
           trace("[INVALID] Construct SqlQuery from: other") andReturn {
             xrError("Query not properly normalized. Please open a bug report. Ast: '$query'")
@@ -232,266 +228,209 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             else -> trace("base| Nesting 'other' $query") andReturn { nest(source(query, alias)) }
           }
         }
-        val type = finalFlatMapBody.type
-        trace("Flattening (alias = $alias) sources $sources from $finalFlatMapBody") andReturn {
-          with (finalFlatMapBody) {
-            when {
-              this is XR.ConcatMap ->
-//        case ConcatMap(q, Ident(alias, _), p) =>
-//          trace("Flattening| ConcatMap") andReturn {
-//            FlattenSqlQuery(
-//              from = source(q, alias) :: Nil,
-//              select = selectValues(p).map(_.copy(concat = true))
-//            )(type)
-//          }
+      }
 
-                trace("Flattening| ConcatMap") andReturn {
+      val type = finalFlatMapBody.type
+      return trace("Flattening (alias = $alias) sources $sources from $finalFlatMapBody") andReturn {
+        with (finalFlatMapBody) {
+          when {
+            this is XR.ConcatMap ->
+              trace("Flattening| ConcatMap") andReturn {
+                FlattenSqlQuery(
+                  from = sources + source(head, alias),
+                  select = selectValues(body).map { it.copy(concat = true) },
+                  type = type
+                )
+              }
+
+            this is XR.GroupByMap -> {
+              trace("Flattening| GroupByMap") andReturn {
+                val b = base(head, alias = byAlias.name, nestNextMap = true)
+                val flatGroupByAsts = ExpandSelection(b.from).ofSubselect(listOf(SelectValue(byBody))).map { it.ast }
+                val groupByClause: XR.Expression =
+                  if (flatGroupByAsts.size > 1) XR.Product.TupleNumeric(flatGroupByAsts)
+                  else flatGroupByAsts.first()
+
+                // We need to change the `a` var in:
+                //   people.groupByMap(p=>p.name)(a => (a.name,a.age.max))
+                // to same alias as 1st clause:
+                //   p => (p.name,p.age.max)
+                // since these become select-clauses:
+                //   SelectValue(p.name,p.age.max)
+                // since the `p` variable is in the `from` part of the query
+                val realiasedSelect = BetaReduction(byBody, byAlias to mapAlias)
+                b.copy(groupBy = groupByClause, select = selectValues(realiasedSelect), type = type)
+              }
+            }
+
+            this is Map -> {
+              val b = base(head, alias, nestNextMap = false)
+              val aggs = b.select.filter { it.ast is XR.Aggregation }
+              if (!b.distinct.isDistinct && aggs.isEmpty())
+                trace("Flattening| Map(Ident) [Simple]") andReturn {
+                  b.copy(select = selectValues(body), type = type)
+                }
+              else
+                trace("Flattening| Map(Ident) [Complex]") andReturn {
                   FlattenSqlQuery(
-                    from = sources + source(head, alias),
-                    select = selectValues(body).map { it.copy(concat = true) },
+                    from = listOf(QueryContext(invoke(head), alias)),
+                    select = selectValues(body),
                     type = type
                   )
                 }
+            }
 
-//        // Given a clause that looks like:
-//        // people.groupByMap(p=>p.name)(a => (a.name,a.age.max))
-//        // In the AST it's more like:
-//        // GroupByMap(people,p=>p.name)(a:Person => p:(a.name,MAX(a.age)))
-//        // more concretely:
-//        // GroupBy(q:people,x:p,g:p.name)(a:Person, p:(a.name,MAX(a.age)))
-//        case GroupByMap(q, x @ Ident(alias, _), g, a, p) =>
-//          trace("Flattening| GroupByMap") andReturn {
-//            val b = base(q, alias, nestNextMap = true)
-//            // Same as ExpandSelection in Map(GroupBy)
-//            val flatGroupByAsts = new ExpandSelection(b.from).ofSubselect(List(SelectValue(g))).map(_.ast)
-//            val groupByClause =
-//              if (flatGroupByAsts.length > 1) Tuple(flatGroupByAsts)
-//              else flatGroupByAsts.head
-//
-//            // We need to change the `a` var in:
-//            //   people.groupByMap(p=>p.name)(a => (a.name,a.age.max))
-//            // to same alias as 1st clause:
-//            //   p => (p.name,p.age.max)
-//            // since these become select-clauses:
-//            //   SelectValue(p.name,p.age.max)
-//            // since the `p` variable is in the `from` part of the query
-//            val realiasedSelect = BetaReduction(p, a -> x)
-//            b.copy(groupBy = Some(groupByClause), select = this.selectValues(realiasedSelect))(type)
-//          }
-
-              this is XR.GroupByMap -> {
-                trace("Flattening| GroupByMap") andReturn {
-                  val b = base(head, alias = byAlias.name, nestNextMap = true)
-                  val flatGroupByAsts = ExpandSelection(b.from).ofSubselect(listOf(SelectValue(byBody))).map { it.ast }
-                  val groupByClause: XR.Expression =
-                    if (flatGroupByAsts.size > 1) XR.Product.TupleNumeric(flatGroupByAsts)
-                    else flatGroupByAsts.first()
-
-                  // We need to change the `a` var in:
-                  //   people.groupByMap(p=>p.name)(a => (a.name,a.age.max))
-                  // to same alias as 1st clause:
-                  //   p => (p.name,p.age.max)
-                  // since these become select-clauses:
-                  //   SelectValue(p.name,p.age.max)
-                  // since the `p` variable is in the `from` part of the query
-                  val realiasedSelect = BetaReduction(byBody, byAlias to mapAlias)
-                  b.copy(groupBy = groupByClause, select = selectValues(realiasedSelect), type = type)
+            this is XR.Filter -> {
+              val alias = id.name
+              // If it's a filter, pass on the value of nestNextMap in case there is a future map we need to nest
+              val b = base(head, alias, nestNextMap)
+              // If the filter body uses the filter alias, make sure it matches one of the aliases in the fromContexts
+              if (b.where == null && (!CollectXR.byType<XR.Ident>(body).map { it.name }
+                  .contains(alias) || collectAliases(b.from).contains(alias)))
+                trace("Flattening| Filter(Ident) [Simple]") andReturn {
+                  b.copy(where = body, type = type)
                 }
+              else
+                trace("Flattening| Filter(Ident) [Complex]") andReturn {
+                  FlattenSqlQuery(
+                    from = listOf(QueryContext(invoke(head), alias)),
+                    where = body,
+                    select = select(alias, type),
+                    type = type
+                  )
+                }
+            }
+
+            this is XR.SortBy -> {
+              fun allIdentsIn(criteria: List<OrderByCriteria>) =
+                criteria.flatMap { CollectXR.byType<XR.Ident>(it.ast).map { it.name } }
+
+              val alias = id.name
+              val b = base(head, alias, nestNextMap = false)
+              val criteria = orderByCriteria(criteria, ordering, b.from)
+              // If the sortBy body uses the filter alias, make sure it matches one of the aliases in the fromContexts
+              if (b.where == null && (!allIdentsIn(criteria).contains(alias) || collectAliases(b.from).contains(alias)))
+                trace("Flattening| SortBy(Ident) [Simple]") andReturn {
+                  b.copy(orderBy = criteria, type = type)
+                }
+              else
+                trace("Flattening| SortBy(Ident) [Complex]") andReturn {
+                  FlattenSqlQuery(
+                    from = listOf(QueryContext(invoke(head), alias)),
+                    orderBy = criteria,
+                    select = select(alias, type),
+                    type = type
+                  )
+                }
+            }
+
+            this is XR.Take -> {
+              val b = base(head, alias, nestNextMap = false)
+              if (b.limit == null)
+                trace("Flattening| Take [Simple]") andReturn {
+                  b.copy(limit = num, type = type)
+                }
+              else
+                trace("Flattening| Take [Complex]") andReturn {
+                  FlattenSqlQuery(
+                    from = listOf(QueryContext(invoke(head), alias)),
+                    limit = num,
+                    select = select(alias, type),
+                    type = type
+                  )
+                }
+            }
+
+            this is XR.Drop -> {
+              val b = base(head, alias, nestNextMap = false)
+              if (b.offset != null && b.limit != null)
+                trace("Flattening| Drop [Simple]") andReturn {
+                  b.copy(offset = num, type = type)
+                }
+              else
+                trace("Flattening| Drop [Complex]") andReturn {
+                  FlattenSqlQuery(
+                    from = listOf(QueryContext(invoke(head), alias)),
+                    offset = num,
+                    select = select(alias, type),
+                    type = type
+                  )
+                }
+            }
+
+            this is XR.Distinct -> {
+              val b = base(head, alias, nestNextMap = false)
+              trace("Flattening| Distinct") andReturn {
+                b.copy(distinct = DistinctKind.Distinct, type = type)
               }
-//        case Map(q, Ident(alias, _), p) =>
-//          val b = base(q, alias, nestNextMap = false)
-//          val agg = b.select.collect { case s @ SelectValue(_: Aggregation, _, _) =>
-//            s
-//          }
-//          if (!b.distinct.isDistinct && agg.isEmpty)
-//            trace("Flattening| Map(Ident) [Simple]") andReturn
-//              b.copy(select = selectValues(p))(type)
-//          else
-//            trace("Flattening| Map(Ident) [Complex]") andReturn
-//              FlattenSqlQuery(
-//                from = QueryContext(invoke(q), alias) :: Nil,
-//                select = selectValues(p)
-//              )(type)
+            }
 
-              this is Map -> {
-                val b = base(head, alias, nestNextMap = false)
-                val aggs = b.select.filter { it.ast is XR.Aggregation }
-                if (!b.distinct.isDistinct && aggs.isEmpty())
-                  trace("Flattening| Map(Ident) [Simple]") andReturn {
-                    b.copy(select = selectValues(body), type = type)
+            this is XR.DistinctOn -> {
+              val distinctList =
+                when (by) {
+                  // Typically when you have something like `people.distinctOn(p -> tupleOf(p.name, p.age))`
+                  // and the tuple-of is some kind of product-type
+                  is XR.Product -> by.fields.map { it.second }
+                  else -> listOf(by)
                 }
-                else
-                  trace("Flattening| Map(Ident) [Complex]") andReturn {
+
+              when (head) {
+                // Ideally we don't need to make an extra sub-query for every single case of
+                // distinct-on but it only works when the parent AST is an entity. That's because DistinctOn
+                // selects from an alias of an outer clause. For example, query[Person].map(p => Name(p.firstName, p.lastName)).distinctOn(_.name)
+                // (Let's say Person(firstName, lastName, age), Name(first, last)) will turn into
+                // SELECT DISTINCT ON (p.name), p.firstName AS first, p.lastName AS last, p.age FROM Person
+                // This doesn't work because `name` in `p.name` doesn't exist yet. Therefore we have to nest this in a subquery:
+                // SELECT DISTINCT ON (p.name) FROM (SELECT p.firstName AS first, p.lastName AS last, p.age FROM Person p) AS p
+                // The only exception to this is if we are directly selecting from an entity:
+                // query[Person].distinctOn(_.firstName) which should be fine: SELECT (x.firstName), x.firstName, x.lastName, a.age FROM Person x
+                // since all the fields inside the (...) of the DISTINCT ON must be contained in the entity.
+                is XR.Entity -> {
+                  val b = base(head, alias, nestNextMap = false)
+                  b.copy(distinct = DistinctKind.DistinctOn(distinctList), type = type)
+                }
+
+                else ->
+                  trace("Flattening| DistinctOn") andReturn {
                     FlattenSqlQuery(
                       from = listOf(QueryContext(invoke(head), alias)),
-                      select = selectValues(body),
+                      select = select(alias, type),
+                      distinct = DistinctKind.DistinctOn(distinctList),
                       type = type
                     )
                   }
               }
-
-        this is XR.Filter -> {
-          val alias = id.name
-          // If it's a filter, pass on the value of nestNextMap in case there is a future map we need to nest
-          val b = base(head, alias, nestNextMap)
-          // If the filter body uses the filter alias, make sure it matches one of the aliases in the fromContexts
-          if (b.where == null && (!CollectXR.byType<XR.Ident>(body).map { it.name }.contains(alias) || collectAliases(b.from).contains(alias)))
-            trace("Flattening| Filter(Ident) [Simple]") andReturn {
-              b.copy(where = body, type = type)
-          }
-          else
-            trace("Flattening| Filter(Ident) [Complex]") andReturn {
-              FlattenSqlQuery(
-                from = listOf(QueryContext(invoke(head), alias)),
-                where = body,
-                select = select(alias, type),
-                type = type
-              )
             }
-        }
 
-        this is XR.SortBy -> {
-          fun allIdentsIn(criteria: List<OrderByCriteria>) =
-            criteria.flatMap { CollectXR.byType<XR.Ident>(it.ast).map { it.name } }
-
-          val alias    = id.name
-          val b        = base(head, alias, nestNextMap = false)
-          val criteria = orderByCriteria(criteria, ordering, b.from)
-          // If the sortBy body uses the filter alias, make sure it matches one of the aliases in the fromContexts
-          if (b.where == null && (!allIdentsIn(criteria).contains(alias) || collectAliases(b.from).contains(alias)))
-            trace("Flattening| SortBy(Ident) [Simple]") andReturn {
-              b.copy(orderBy = criteria, type = type)
-            }
-          else
-            trace("Flattening| SortBy(Ident) [Complex]") andReturn {
-              FlattenSqlQuery(
-                from = listOf(QueryContext(invoke(head), alias)),
-                orderBy = criteria,
-                select = select(alias, type),
-                type = type
-              )
-            }
-        }
-
-//        // TODO Finish describing
-//        // Happens when you either have an aggregation in the middle of a query
-//        // ...
-//        // Or as the result of a map
-//        case Aggregation(op, q: Query) =>
-//          val b = flatten(q, alias)
-//          b.select match {
-//            case head :: Nil if !b.distinct.isDistinct =>
-//              trace("Flattening| Aggregation(Query) [Simple]") andReturn
-//                b.copy(select = List(head.copy(ast = Aggregation(op, head.ast))))(type)
-//            case other =>
-//              trace("Flattening| Aggregation(Query) [Complex]") andReturn
-//                FlattenSqlQuery(
-//                  from = QueryContext(invoke(q), alias) :: Nil,
-//                  select = List(
-//                    SelectValue(Aggregation(op, Ident("*", type)))
-//                  ) // Quat of a * aggregation is same as for the entire query
-//                )(type)
-//          }
-//
-//        case agg @ Aggregation(_, _) =>
-//          trace("Flattening| Aggregation(Invalid)") andReturn {
-//            fail(
-//              s"Found the aggregation `${agg}` in an invalid place. An SQL aggregation (e.g. min/max/etc...) cannot be used in the body of an SQL statement e.g. in the WHERE clause."
-//            )
-//          }
-//
-//        case Take(q, n) =>
-//          val b = base(q, alias, nestNextMap = false)
-//          if (b.limit.isEmpty)
-//            trace("Flattening| Take [Simple]") andReturn
-//              b.copy(limit = Some(n))(type)
-//          else
-//            trace("Flattening| Take [Complex]") andReturn
-//              FlattenSqlQuery(
-//                from = QueryContext(invoke(q), alias) :: Nil,
-//                limit = Some(n),
-//                select = select(alias, type)
-//              )(type)
-//
-//        case Drop(q, n) =>
-//          val b = base(q, alias, nestNextMap = false)
-//          if (b.offset.isEmpty && b.limit.isEmpty)
-//            trace("Flattening| Drop [Simple]") andReturn
-//              b.copy(offset = Some(n))(type)
-//          else
-//            trace("Flattening| Drop [Complex]") andReturn
-//              FlattenSqlQuery(
-//                from = QueryContext(invoke(q), alias) :: Nil,
-//                offset = Some(n),
-//                select = select(alias, type)
-//              )(type)
-//
-//        case Distinct(q) =>
-//          val b = base(q, alias, nestNextMap = false)
-//          trace("Flattening| Distinct") andReturn
-//            b.copy(distinct = DistinctKind.Distinct)(type)
-//
-//        case DistinctOn(q, Ident(alias, _), fields) =>
-//          val distinctList =
-//            fields match {
-//              case Tuple(values) => values
-//              case other         => List(other)
-//            }
-//
-//          q match {
-//            // Ideally we don't need to make an extra sub-query for every single case of
-//            // distinct-on but it only works when the parent AST is an entity. That's because DistinctOn
-//            // selects from an alias of an outer clause. For example, query[Person].map(p => Name(p.firstName, p.lastName)).distinctOn(_.name)
-//            // (Let's say Person(firstName, lastName, age), Name(first, last)) will turn into
-//            // SELECT DISTINCT ON (p.name), p.firstName AS first, p.lastName AS last, p.age FROM Person
-//            // This doesn't work because `name` in `p.name` doesn't exist yet. Therefore we have to nest this in a subquery:
-//            // SELECT DISTINCT ON (p.name) FROM (SELECT p.firstName AS first, p.lastName AS last, p.age FROM Person p) AS p
-//            // The only exception to this is if we are directly selecting from an entity:
-//            // query[Person].distinctOn(_.firstName) which should be fine: SELECT (x.firstName), x.firstName, x.lastName, a.age FROM Person x
-//            // since all the fields inside the (...) of the DISTINCT ON must be contained in the entity.
-//            case _: Entity =>
-//              val b = base(q, alias, nestNextMap = false)
-//              b.copy(distinct = DistinctKind.DistinctOn(distinctList))(type)
-//            case _ =>
-//              trace("Flattening| DistinctOn") andReturn
-//                FlattenSqlQuery(
-//                  from = QueryContext(invoke(q), alias) :: Nil,
-//                  select = select(alias, type),
-//                  distinct = DistinctKind.DistinctOn(distinctList)
-//                )(type)
-//          }
-//
-//        case other =>
-//          trace("Flattening| Other") andReturn
-//            FlattenSqlQuery(from = sources :+ source(other, alias), select = select(alias, type))(type)
-
-
-              else -> TODO()
-            }
+            else ->
+              trace("Flattening| Other") andReturn {
+                FlattenSqlQuery(
+                  from = sources + source(this, alias),
+                  select = select(alias, type),
+                  type = type
+                )
+              }
           }
         }
-
-
-
-        /*
-
-         */
-        TODO()
       }
-
-
-    return TODO()
-  }
+    }
 
   private fun orderByCriteria(ast: XR.Expression, ord: XR.Ordering, from: List<FromContext>): List<OrderByCriteria> =
     when {
+      // Typically when you have something like `people.sortBy(p -> tupleOf(p.name, p.age))(tupleOf(Asc, Desc))`
+      // the tuple of Asc/Descs needs to have the same size as the sortBy tuple
       ast is XR.Product && ord is TupleOrdering -> {
         if (ord.elems.size != ast.fields.size) xrError("TODO error msg")
         ord.elems.zip(ast.fields).flatMap { (ordElem, field) -> orderByCriteria(field.second, ordElem, from) }
       }
+      // This is when you've got a single Asc/Desc and a tuple of sortBys e.g. `people.sortBy(p -> tupleOf(p.name, p.age))(Asc)`
+      // in this case apply the Asc to each one recursively.
       ast is XR.Product && ord is PropertyOrdering ->
         ast.fields.flatMap { (_, value) -> orderByCriteria(value, ord, from) }
+
       // if its a quat product, use ExpandSelection to break it down into its component fields and apply the ordering to all of them
+      // This is when you've got a single Asc/Desc and a ident in the sortBy e.g. `people.sortBy(p -> p)(Asc)`
+      // that means we want to sort by every single field as Asc so apply the sorting recurisvely.
       ast is XR.Ident && ord is PropertyOrdering ->
         ExpandSelection(from).ofSubselect(listOf(SelectValue(ast))).map { it.ast }.flatMap { orderByCriteria(it, ord, from) }
 
