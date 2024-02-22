@@ -24,7 +24,7 @@ class Traceable(
   val defaultIndent: Int,
   val traceConfig: TraceConfig,
   val globalTracesEnabled: (TraceType) -> Boolean
-): IndentOps {
+) {
 
   fun tracesEnabled(): Boolean =
     traceConfig.enabledTraces.contains(traceType) || globalTracesEnabled(traceType)
