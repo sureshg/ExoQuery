@@ -26,3 +26,5 @@ final data class SetContainsToken(val a: Token, val op: Token, val b: Token): To
 }
 
 val Token.token get(): Token = this
+
+fun <T> List<T>.token(elemTokenizer: (T) -> Token): Statement = Statement(this.map(elemTokenizer))

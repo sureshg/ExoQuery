@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 abstract class Transformer {
   // properties that are dependent on ctx need lazy initialization
   abstract val ctx: BuilderContext
-  private val logger by lazy { CompileLogger(ctx.compilerConfig) }
+  private val logger by lazy { ctx.logger }
 
   context(BuilderContext, CompileLogger)
   abstract protected fun matchesBase(expression: IrCall): Boolean

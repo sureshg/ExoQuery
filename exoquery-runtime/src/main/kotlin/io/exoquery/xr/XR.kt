@@ -49,7 +49,7 @@ sealed interface XR {
   abstract val type: XRType
 
   fun show(pretty: Boolean = false): String {
-    val code = with (MirrorIdiom) { this@XR.token }
+    val code = with (MirrorIdiom()) { this@XR.token }
     return if (pretty)
       format(code)
     else

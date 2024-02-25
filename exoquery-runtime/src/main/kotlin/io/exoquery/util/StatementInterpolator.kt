@@ -5,6 +5,12 @@ import io.exoquery.sql.StringToken
 import io.exoquery.sql.Token
 import io.exoquery.sql.token
 import io.exoquery.terpal.Interpolator
+import io.exoquery.terpal.InterpolatorFunction
+import io.exoquery.terpal.interpolatorBody
+
+@InterpolatorFunction<stmt>
+fun String.unaryPlus(): Statement = interpolatorBody()
+
 
 object stmt: Interpolator<Token, Statement> {
   override fun interpolate(parts: () -> List<String>, params: () -> List<Token>): Statement {

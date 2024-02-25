@@ -3,7 +3,7 @@ package io.exoquery.xr
 import io.exoquery.terpal.Interpolator
 import io.exoquery.xr.XR.*
 
-object MirrorIdiom {
+class MirrorIdiom {
 
   val XR.token get(): String =
     when(this) {

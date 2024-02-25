@@ -23,11 +23,9 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 class TransformPrintSource(
-  private val context: IrPluginContext,
-  private val config: CompilerConfiguration,
-  private val scopeOwner: IrSymbol
+  private val context: BuilderContext
 ) {
-  private val compileLogger = CompileLogger(config)
+  private val compileLogger = context.logger
 
   private val printSourceFqn: String = "io.exoquery.printSource"
 
@@ -51,7 +49,7 @@ class TransformPrintSource(
         )
       } ?: parseError("Parsing Failed\n================== The expresson was not a Global Function (with one argument-block): ==================\n" + expression.dumpKotlinLike() + "\n--------------------------\n" + expression.dumpSimple())
 
-    val printSourceExpr = context
+    val printSourceExpr = context.pluginCtx
       .referenceFunctions(
         CallableId(FqName("io.exoquery"), Name.identifier("printSourceExpr"))
       ).first()
@@ -60,10 +58,9 @@ class TransformPrintSource(
 
     compileLogger.warn(message)
 
-    val irBuilder = DeclarationIrBuilder(context, scopeOwner, expression.startOffset, expression.endOffset)
-    return with(irBuilder) {
+    return with(context.builder) {
       this.irCall(printSourceExpr).apply {
-        putValueArgument(0, irBuilder.irString(message))
+        putValueArgument(0, irString(message))
       }
     }
   }

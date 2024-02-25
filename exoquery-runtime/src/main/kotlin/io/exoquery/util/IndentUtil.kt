@@ -8,6 +8,4 @@ val Int.prefix: String get() = indentOf(this)
 
 internal fun indentOf(num: Int): String = "  ".repeat(num)
 
-fun List<String>.mkString() = this.joinToString("")
-
 fun <T> List<T>.mkString() = this.joinToString("")

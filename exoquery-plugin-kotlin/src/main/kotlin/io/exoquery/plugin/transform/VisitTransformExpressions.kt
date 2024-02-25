@@ -22,8 +22,6 @@ class VisitTransformExpressions(
   private val projectDir: Path
 ) : IrElementTransformerWithContext<ScopeSymbols>() {
 
-  val logger = CompileLogger(config)
-
   // currentFile is not initialized here yet or something???
   //val sourceFinder: FindSource = FindSource(this.currentFile, projectDir)
 
@@ -45,20 +43,22 @@ class VisitTransformExpressions(
   override fun visitCall(expression: IrCall, data: ScopeSymbols): IrElement {
 
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val compileLogger = CompileLogger(config)
 
     val stack = RuntimeException()
     //compileLogger.warn(stack.stackTrace.map { it.toString() }.joinToString("\n"))
 
-    val transformPrint = TransformPrintSource(context, config, scopeOwner)
-    val transformerCtx = TransformerOrigin(context, config, this.currentFile, data)
 
+    val transformerCtx = TransformerOrigin(context, config, this.currentFile, data)
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
+
+    val transformPrint = TransformPrintSource(builderContext)
     val transformInterpolations = TransformInterepolatorInvoke(builderContext)
     val queryMapTransformer = TransformQueryMap(builderContext, ExtractorsDomain.Call.QueryMap, "mapExpr")
     val queryFlatMapTransformer = TransformQueryFlatMap(builderContext, "flatMapInternal")
     val makeTableTransformer = TransformTableQuery(builderContext)
     val joinOnTransformer = TransformJoinOn(builderContext)
+
+    // TODO Catch parser errors here, make a warning via the compileLogger (in the BuilderContext) & don't transform the expresison
 
     // TODO Create a 'transformer' for SelectClause that will just collect
     //      the variables declared there and propagate them to clauses defined inside of that

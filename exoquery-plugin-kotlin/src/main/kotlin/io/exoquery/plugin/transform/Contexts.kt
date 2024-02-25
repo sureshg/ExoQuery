@@ -17,7 +17,7 @@ data class BuilderContext(
   val currentExpr: IrExpression,
   val parentScopeSymbols: ScopeSymbols
 ) {
-  val logger = CompileLogger(compilerConfig)
+  val logger = CompileLogger(compilerConfig, currentFile.fileEntry, currentExpr)
   val builder = DeclarationIrBuilder(pluginCtx, scopeOwner, currentExpr.startOffset, currentExpr.endOffset)
   fun makeLifter() = Lifter(this)
 }
@@ -30,7 +30,6 @@ data class TransformerOrigin(
   val currentFile: IrFile,
   val parentScopeSymbols: ScopeSymbols
 ) {
-  val logger = CompileLogger(config)
   fun makeBuilderContext(expr: IrExpression, scopeOwner: IrSymbol) =
     BuilderContext(pluginCtx, config, scopeOwner, currentFile, expr, parentScopeSymbols)
 }

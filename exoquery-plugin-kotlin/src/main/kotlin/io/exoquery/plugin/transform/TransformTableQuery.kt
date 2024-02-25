@@ -21,7 +21,7 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
 
 class TransformTableQuery(val ctx: BuilderContext) {
-  private val compileLogger = CompileLogger(ctx.compilerConfig)
+  private val compileLogger = ctx.logger
 
   fun matches(expression: IrCall): Boolean = run {
     with(compileLogger) {
