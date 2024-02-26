@@ -1,7 +1,7 @@
 package io.exoquery.plugin.trees
 
 import io.decomat.*
-import io.exoquery.Interpolator
+import io.exoquery.SqlInterpolator
 import io.exoquery.Query
 import io.exoquery.SqlVariable
 import io.exoquery.Table
@@ -16,7 +16,6 @@ import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.UnaryOperator
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
-import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.types.IrType
@@ -77,7 +76,7 @@ object ExtractorsDomain {
 
     object InterpolateInvoke {
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
-        it.reciverIs<Interpolator<*, *>>("invoke") //&& it.simpleValueArgsCount == 2 && it.valueArguments.all{ it != null }
+        it.reciverIs<SqlInterpolator>("invoke") //&& it.simpleValueArgsCount == 2 && it.valueArguments.all{ it != null }
 
       context (CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<List<IrExpression>>> get(reciver: AP, terpComps: BP) =
         customPattern2(reciver, terpComps) { call: IrCall ->

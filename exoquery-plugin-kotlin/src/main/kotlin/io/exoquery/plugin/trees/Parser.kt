@@ -33,6 +33,8 @@ object Parser {
 private class ParserCollector {
   val binds = DynamicBindsAccum.empty()
 
+  // TODO need to parse interpolations
+
   context(ParserContext, CompileLogger) inline fun <reified T> parseAs(expr: IrExpression): T {
     val parsedExpr = parse(expr)
     return if (parsedExpr is T) parsedExpr

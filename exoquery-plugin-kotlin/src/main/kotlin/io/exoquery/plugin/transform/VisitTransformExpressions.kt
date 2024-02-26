@@ -52,7 +52,6 @@ class VisitTransformExpressions(
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
 
     val transformPrint = TransformPrintSource(builderContext)
-    val transformInterpolations = TransformInterepolatorInvoke(builderContext)
     val queryMapTransformer = TransformQueryMap(builderContext, ExtractorsDomain.Call.QueryMap, "mapExpr")
     val queryFlatMapTransformer = TransformQueryFlatMap(builderContext, "flatMapInternal")
     val makeTableTransformer = TransformTableQuery(builderContext)
@@ -75,10 +74,6 @@ class VisitTransformExpressions(
       // (and this does not recursively transform stuff inside)
       transformPrint.matches(expression) -> {
         transformPrint.transform(expression)
-      }
-
-      transformInterpolations.matches(expression) -> {
-        transformInterpolations.transform(expression)
       }
 
       joinOnTransformer.matches(expression) -> {

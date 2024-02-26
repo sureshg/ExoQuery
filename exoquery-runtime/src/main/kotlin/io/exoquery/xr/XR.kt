@@ -325,12 +325,12 @@ sealed interface XR {
    * Firmly as an expression type.
    */
   @Mat
-  data class Aggregation(val operator: AggregationOperator, @Slot val body: XR.Expression): Expression, PC<Aggregation> {
-    override val productComponents = productOf(this, body)
+  data class Aggregation(val op: AggregationOperator, @Slot val expr: XR.Expression): Expression, PC<Aggregation> {
+    override val productComponents = productOf(this, expr)
     override val type by lazy {
-      when (operator) {
-        AggregationOperator.`min` -> body.type
-        AggregationOperator.`max` -> body.type
+      when (op) {
+        AggregationOperator.`min` -> expr.type
+        AggregationOperator.`max` -> expr.type
         AggregationOperator.`avg` -> XRType.Value
         AggregationOperator.`sum` -> XRType.Value
         AggregationOperator.`size` -> XRType.Value

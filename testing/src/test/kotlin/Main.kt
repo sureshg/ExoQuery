@@ -21,6 +21,10 @@ object Model1 {
         x
       }
 
+    println("=============== XR ===============")
+    println(format(x.xr.show()))
+
+    println("=============== SQL ===============")
     println(format(x.xr.show()))
 
     //val reduction = BetaReduction(x.xr)

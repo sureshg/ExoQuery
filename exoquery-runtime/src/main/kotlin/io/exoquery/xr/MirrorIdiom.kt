@@ -68,7 +68,7 @@ class MirrorIdiom {
       is FunctionApply -> "${function.tokenScoped}.apply(${args.token { it.token }})"
       is Product -> "${name}(${fields.map { (k, v) -> "${k}: ${v.token}" }.joinToString(", ")})"
       is Property -> "${of.tokenScoped}.${name}"
-      is Aggregation -> "${body.token}.${operator.token}"
+      is Aggregation -> "${expr.token}.${op.token}"
       is Ident -> token
       is IdentOrigin -> token
       is Const -> token

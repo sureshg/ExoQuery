@@ -48,7 +48,7 @@ interface StatelessTransformer {
         is Product -> Product(name, fields.map { it.first to invoke(it.second) })
         // Infix can both be Expression and Query
         is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type)
-        is Aggregation -> Aggregation(operator, invoke(body))
+        is Aggregation -> Aggregation(op, invoke(expr))
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
       }

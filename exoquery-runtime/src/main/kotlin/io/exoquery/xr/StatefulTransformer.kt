@@ -107,8 +107,8 @@ interface StatefulTransformer<T> {
           Infix(parts, paramsA, pure, transparent, type) to stateA
         }
         is Aggregation -> {
-          val (bodyA, stateA) = invoke(body)
-          Aggregation(operator, bodyA) to stateA
+          val (bodyA, stateA) = invoke(expr)
+          Aggregation(op, bodyA) to stateA
         }
         is XR.Block -> invoke(this)
         is Const -> this to this@StatefulTransformer

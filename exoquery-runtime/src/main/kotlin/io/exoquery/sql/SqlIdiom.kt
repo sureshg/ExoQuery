@@ -1,9 +1,6 @@
 package io.exoquery.sql
 
-import io.exoquery.util.Globals
-import io.exoquery.util.TraceConfig
-import io.exoquery.util.emptyStatement
-import io.exoquery.util.unaryPlus
+import io.exoquery.util.*
 import io.exoquery.xr.*
 import io.exoquery.xr.EqualityOperator.*
 import io.exoquery.xr.BooleanOperator.not
@@ -12,6 +9,7 @@ import io.exoquery.xr.BooleanOperator.or
 import io.exoquery.xr.XR.BinaryOp
 import io.exoquery.xr.XR.Const.*
 import io.exoquery.xr.XR.Ordering.*
+import io.exoquery.xr.XR.Visibility.*
 import io.exoquery.xr.XR.JoinType.*
 import io.exoquery.xr.XR.Ident
 import io.exoquery.xrError
@@ -22,6 +20,7 @@ interface SqlIdiom {
   val traceConfig: TraceConfig
   val concatFunction: String
   val useActionTableAliasAs: ActionTableAliasBehavior
+  val productAggregationToken: ProductAggregationToken get() = ProductAggregationToken.Star
 
   sealed interface ActionTableAliasBehavior {
     object UseAs: ActionTableAliasBehavior
@@ -29,15 +28,27 @@ interface SqlIdiom {
     object Hide: ActionTableAliasBehavior
   }
 
+  // Very few cases actually end-up going to this top level i.e.
+  // the only case so far is the params of an infix. This is because typically
+  // the only XR things remaining by this point are the expressions inside the SelectValues
+  val XR.token get(): Token =
+    when (this) {
+      is XR.Expression -> token
+      is XR.Query -> token
+      // is XR.Action -> this.lift()
+      is XR.Branch, is XR.Variable ->
+        xrError("All instances of ${this::class.qualifiedName} should have been beta-reduced out by now.")
+    }
+
   val XR.Expression.token get(): Token =
     when (this) {
-      is XR.Aggregation   -> TODO()
+      is XR.Aggregation   -> token
       is XR.BinaryOp      -> token
       is XR.UnaryOp       -> token
       is XR.Const         -> token
-      is XR.Infix         -> TODO()
-      is XR.Product       -> TODO()
-      is XR.Property      -> TODO()
+      is XR.Infix         -> token
+      is XR.Product       -> token
+      is XR.Property      -> token
       is Ident            -> token
       is XR.When          -> token
       is XR.Function1, is XR.FunctionN, is XR.FunctionApply, is XR.Marker, is XR.Block, is XR.IdentOrigin ->
@@ -51,17 +62,22 @@ interface SqlIdiom {
 
   val XR.Const.token get(): Token =
     when(this) {
-      is XR.Const.Boolean -> +"${value}"
-      is XR.Const.Byte    -> +"${value}" // use kotlin 1.9.22 stlib to have this: +"${value.toHexString()}"
-      is XR.Const.Char    -> +"'${value}'"
-      is XR.Const.Double  -> +"${value}"
-      is XR.Const.Float   -> +"${value}"
-      is XR.Const.Int     -> +"${value}"
-      is XR.Const.Long    -> +"${value}"
+      is XR.Const.Boolean -> +"${value.toString().token}"
+      is XR.Const.Byte    -> +"${value.toString().token}" // use kotlin 1.9.22 stlib to have this: +"${value.toHexString()}"
+      is XR.Const.Char    -> +"'${value.toString().token}'"
+      is XR.Const.Double  -> +"${value.toString().token}"
+      is XR.Const.Float   -> +"${value.toString().token}"
+      is XR.Const.Int     -> +"${value.toString().token}"
+      is XR.Const.Long    -> +"${value.toString().token}"
       XR.Const.Null       -> +"null"
-      is XR.Const.Short   -> +"${value}"
-      is XR.Const.String  -> +"'${value}'"
+      is XR.Const.Short   -> +"${value.toString().token}"
+      is XR.Const.String  -> +"'${value.toString().token}'"
     }
+
+  // Typically this will be a tuple of some sort, just converts the elements into a list
+  // For dialects of SQL like Spark that select structured data this needs special handling
+  val XR.Product.token get(): Token =
+    fields.map { it -> it.second.token }.mkStmt()
 
   val XR.Query.token get(): Token =
   // This case typically happens when you have a select inside of an insert
@@ -214,7 +230,45 @@ interface SqlIdiom {
       alias == null && concat == true -> +"${concatFunction.token}(${expr.token}) AS ${value.token}"
       // SelectValue(ast, None, concat: false)
       alias == null && concat == false -> expr.token
+
+      // NOTE: In Quill there was an aggregation-tokenizer here because Aggregation was a subtype of Query
+      // (because aggregations were monadic). This is not the case in ExoQuery where aggregations
+      // are just a type of expression. So this case is a subtype of XR.Expression.
+
       else -> xrError("Illegal SelectValue clause: ${this}")
+    }
+
+  val XR.Aggregation.token get(): Token =
+    when {
+      // Aggregation(op, Ident(id, _: Quat.Product))
+      expr is Ident && expr.type is XRType.Product -> +"${op.token}(${makeProductAggregationToken(expr.name)})"
+      // Not too many cases of this. Can happen if doing a leaf-level infix inside of a select clause. For example in postgres:
+      // `sql"unnest(array['foo','bar'])".as[Query[Int]].groupBy(p => p).map(ap => ap._2.max)` which should yield:
+      // SELECT MAX(inf) FROM (unnest(array['foo','bar'])) AS inf GROUP BY inf
+      expr is XR.Ident -> +"${op.token}(${expr.token})"
+      expr is XR.Product -> +"${op.token}(*)"
+      // In ExoQuery Distinct is a type of Query so it cannot occur in an aggregation expression
+      //expr is XR.Distinct -> +"${op.token}(DISTINCT ${expr.ast.token})"
+      expr is XR.Query -> scopedQueryTokenizer(expr)
+      else -> +"${op.token}(${expr.token})"
+    }
+
+
+//    case Aggregation(op, Ident(id, _: Quat.Product)) => stmt"${op.token}(${makeProductAggregationToken(id)})"
+//    // Not too many cases of this. Can happen if doing a leaf-level infix inside of a select clause. For example in postgres:
+//    // `sql"unnest(array['foo','bar'])".as[Query[Int]].groupBy(p => p).map(ap => ap._2.max)` which should yield:
+//    // SELECT MAX(inf) FROM (unnest(array['foo','bar'])) AS inf GROUP BY inf
+//    case Aggregation(op, Ident(id, _))   => stmt"${op.token}(${id.token})"
+//    case Aggregation(op, Tuple(_))       => stmt"${op.token}(*)"
+//    case Aggregation(op, Distinct(ast))  => stmt"${op.token}(DISTINCT ${ast.token})"
+//    case ast @ Aggregation(op, _: Query) => scopedTokenizer(ast)
+//    case Aggregation(op, ast)            => stmt"${op.token}(${ast.token})"
+
+
+  fun makeProductAggregationToken(id: String) =
+    when(productAggregationToken) {
+      ProductAggregationToken.Star            -> +"*"
+      ProductAggregationToken.VariableDotStar -> +"${id.token}.*"
     }
 
   // x is Any are technically useless checks but then entire logic here is much simpler to understand
@@ -365,6 +419,12 @@ interface SqlIdiom {
       is FlatJoinContext -> +"${joinType.token} ${from.token} ON ${on.token}"
     }
 
+  val XR.Infix.token get(): Token {
+    val pt = parts.map { it.token }
+    val pr = params.map { it.token }
+    return Statement(pt.intersperseWith(pr))
+  }
+
   val XR.JoinType.token get(): Token =
     when (this) {
       is Left -> +"INNER JOIN"
@@ -457,4 +517,32 @@ interface SqlIdiom {
       is UnionOperation -> +"UNION"
       is UnionAllOperation -> +"UNION ALL"
     }
+
+  val XR.Property.token get(): Token =
+    TokenizeProperty.unnest(this).let { (ast, prefix) ->
+      when {
+        // This is the typical case. It happens on the outer (i.e. top-level) clause of a multi-level select e.g.
+        // SELECT /*this ->*/ foobar... FROM (SELECT foo.bar AS foobar ...)
+        // When it's just a top-level select the prefix will be empty
+        ast is Ident && ast.visibility == Hidden ->
+          (prefix.mkString() + name).token
+        // This happens when the SQL dialect supports some notion of structured-data
+        // and we are selecting something from a nested expression
+        // SELECT /*this ->*/ (someExpression).otherStuff FROM (....)
+        else ->
+          +"${scopedTokenizer(ast)}.${(prefix.mkString() + name)}"
+      }
+    }
+
+//  TokenizeProperty.unnest(ast) match {
+//    // In the rare case that the Ident is invisible, do not show it. See the Ident documentation for more info.
+//    case (Ident.Opinionated(_, _, Hidden), prefix) =>
+//      stmt"${TokenizeProperty(name, prefix, strategy, renameable)}"
+//
+//    // The normal case where `Property(Property(Ident("realTable"), embeddedTableAlias), realPropertyAlias)`
+//    // becomes `realTable.realPropertyAlias`.
+//    case (ast, prefix) =>
+//      stmt"${scopedTokenizer(ast)}.${TokenizeProperty(name, prefix, strategy, renameable)}"
+//    }
+// }
 }
