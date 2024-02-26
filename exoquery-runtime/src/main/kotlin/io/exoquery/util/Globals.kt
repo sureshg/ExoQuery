@@ -6,8 +6,9 @@ object Globals {
   private fun variable(propName: String, envName: String, default: String) =
     System.getProperty(propName) ?: System.getenv(envName) ?: default
 
-  val traceColors get() = cache("quill.trace.color", variable("quill.trace.color", "quill_trace_color,", "false").toBoolean())
-  val traceEnabled get() = cache("quill.trace.enabled", variable("quill.trace.enabled", "quill_trace_enabled", "false").toBoolean())
+  val querySubexpand: Boolean = cache("exo.trace.color", variable("exo.trace.color", "exo_trace_color,", "true").toBoolean())
+  val traceColors get() = cache("exo.trace.color", variable("exo.trace.color", "exo_trace_color,", "false").toBoolean())
+  val traceEnabled get() = cache("exo.trace.enabled", variable("exo.trace.enabled", "exo_trace_enabled", "false").toBoolean())
 
   fun resetCache(): Unit                        = cacheMap.clear()
   private val cacheMap: MutableMap<String, Any> = mutableMapOf()

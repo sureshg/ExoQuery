@@ -271,7 +271,7 @@ sealed interface XR {
   }
 
   @Mat
-  data class BinaryOp(@Slot val a: XR, val op: BinaryOperator, @Slot val b: XR.Expression) : Expression, PC<BinaryOp> {
+  data class BinaryOp(@Slot val a: XR.Expression, val op: BinaryOperator, @Slot val b: XR.Expression) : Expression, PC<BinaryOp> {
     override val productComponents = productOf(this, a, b)
     override val type by lazy {
       when (op) {

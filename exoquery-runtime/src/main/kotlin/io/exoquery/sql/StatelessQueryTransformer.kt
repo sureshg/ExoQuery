@@ -3,7 +3,7 @@ package io.exoquery.sql
 import io.exoquery.xr.XRType
 
 abstract class StatelessQueryTransformer {
-  open fun invoke(q: SqlQuery, topLevelQuat: XRType = XRType.Unknown): SqlQuery =
+  open operator fun invoke(q: SqlQuery, topLevelQuat: XRType = XRType.Unknown): SqlQuery =
     invoke(q, QueryLevel.Top(topLevelQuat))
 
   protected open fun invoke(q: SqlQuery, level: QueryLevel): SqlQuery =

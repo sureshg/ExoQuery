@@ -103,7 +103,7 @@ final data class FlattenSqlQuery(
 class SqlQueryApply(val traceConfig: TraceConfig) {
   val trace: Tracer = Tracer(TraceType.SqlQueryConstruct, traceConfig, 1)
 
-  fun invoke(query: XR): SqlQuery =
+  operator fun invoke(query: XR): SqlQuery =
     with(query) {
       when {
         this is XR.Union ->

@@ -1,14 +1,25 @@
 package io.exoquery.sql
 
+import io.exoquery.util.Globals
+import io.exoquery.util.TraceConfig
 import io.exoquery.util.emptyStatement
 import io.exoquery.util.unaryPlus
-import io.exoquery.xr.XR
+import io.exoquery.xr.*
+import io.exoquery.xr.EqualityOperator.*
+import io.exoquery.xr.BooleanOperator.not
+import io.exoquery.xr.BooleanOperator.and
+import io.exoquery.xr.BooleanOperator.or
+import io.exoquery.xr.XR.BinaryOp
+import io.exoquery.xr.XR.Const.*
+import io.exoquery.xr.XR.Ordering.*
 import io.exoquery.xr.XR.JoinType.*
 import io.exoquery.xr.XR.Ident
 import io.exoquery.xrError
+import org.jetbrains.kotlin.resolve.constants.NullValue
 
 interface SqlIdiom {
 
+  val traceConfig: TraceConfig
   val concatFunction: String
   val useActionTableAliasAs: ActionTableAliasBehavior
 
@@ -18,15 +29,64 @@ interface SqlIdiom {
     object Hide: ActionTableAliasBehavior
   }
 
+  val XR.Expression.token get(): Token =
+    when (this) {
+      is XR.Aggregation   -> TODO()
+      is XR.BinaryOp      -> token
+      is XR.UnaryOp       -> token
+      is XR.Const         -> token
+      is XR.Infix         -> TODO()
+      is XR.Product       -> TODO()
+      is XR.Property      -> TODO()
+      is Ident            -> token
+      is XR.When          -> token
+      is XR.Function1, is XR.FunctionN, is XR.FunctionApply, is XR.Marker, is XR.Block, is XR.IdentOrigin ->
+        xrError("Malformed or unsupported construct: $this.")
+    }
+
+  val XR.When.token get(): Token = run {
+    val whenThens = branches.map { it -> +"WHEN ${it.cond.token} THEN ${it.then.token}" }
+    +"CASE ${whenThens.mkStmt(" ")} ELSE ${orElse.token} END"
+  }
+
+  val XR.Const.token get(): Token =
+    when(this) {
+      is XR.Const.Boolean -> +"${value}"
+      is XR.Const.Byte    -> +"${value}" // use kotlin 1.9.22 stlib to have this: +"${value.toHexString()}"
+      is XR.Const.Char    -> +"'${value}'"
+      is XR.Const.Double  -> +"${value}"
+      is XR.Const.Float   -> +"${value}"
+      is XR.Const.Int     -> +"${value}"
+      is XR.Const.Long    -> +"${value}"
+      XR.Const.Null       -> +"null"
+      is XR.Const.Short   -> +"${value}"
+      is XR.Const.String  -> +"'${value}'"
+    }
+
+  val XR.Query.token get(): Token =
+  // This case typically happens when you have a select inside of an insert
+  // infix or a set operation (e.g. query[Person].exists).
+  // have a look at the SqlDslSpec `forUpdate` and `insert with subselects` tests
+  // for more details.
+  // Right now we are not removing extra select clauses here (via RemoveUnusedSelects) since I am not sure what
+    // kind of impact that could have on selects. Can try to do that in the future.
+    if (Globals.querySubexpand) {
+      val nestedExpanded = ExpandNestedQueries(SqlQueryApply(traceConfig)(this))
+      // TODO Need to implement
+      //RemoveExtraAlias(strategy)(nestedExpanded).token
+      nestedExpanded.token
+    } else
+      SqlQueryApply(traceConfig)(this).token
+
+  //val XR.token get(): Token = TODO()
+
   private val ` AS` get() =
     when(useActionTableAliasAs) {
       ActionTableAliasBehavior.UseAs -> +" AS"
       else -> emptyStatement
     }
 
-  val FlattenSqlQuery.token get(): Token = flattenSqlQueryTokenizerHelper(this)
-  fun flattenSqlQueryTokenizerHelper(q: FlattenSqlQuery) =
-    with(q) {
+  val FlattenSqlQuery.token get(): Token = run {
 
 //      def selectTokenizer: Token =
 //        select match {
@@ -157,6 +217,144 @@ interface SqlIdiom {
       else -> xrError("Illegal SelectValue clause: ${this}")
     }
 
+  // x is Any are technically useless checks but then entire logic here is much simpler to understand
+  // with them enabled.  I'm not sure if the compiler will optimize them out or not but I
+  // do not thing it will make a significant performance penalty.
+  @Suppress("USELESS_IS_CHECK")
+  val XR.BinaryOp.token get(): Token =
+    when {
+      a is Any  && op is `==` && b is Null -> +"${scopedTokenizer(a)} IS NULL"
+      a is Null && op is `==` && b is Any  -> +"${scopedTokenizer(b)} IS NULL"
+      a is Any  && op is `!=` && b is Null -> +"${scopedTokenizer(a)} IS NOT NULL"
+      a is Null && op is `!=` && b is Any  -> +"${scopedTokenizer(b)} IS NOT NULL"
+
+      a is Any  && op is StringOperator.`startsWith` && b is Any ->
+        +"${scopedTokenizer(a)} LIKE (${BinaryOp(b, StringOperator.`+`, XR.Const.String("%")).token})" // In Quill there was an upcast here, not sure if this is needed
+      a is Any && op is StringOperator.`split` && b is Any ->
+        +"${op.token}(${scopedTokenizer(a)}, ${scopedTokenizer(b)})"
+
+      a is Any && op is SetOperator.`contains` && b is Any -> SetContainsToken(scopedTokenizer(b), op.token, a.token)
+      a is Any && op is `and` && b is Any ->
+        when {
+          // (a1 || a2) && (b1 || b2) i.e. need parens around the a and b
+          a is BinaryOp && a.op is `or` && b is BinaryOp && b.op is `or` ->
+            +"${scopedTokenizer(a)} ${op.token} ${scopedTokenizer(b)}"
+          // (a1 || a2) && b i.e. need parens around the a
+          a is BinaryOp && a.op is `or` -> +"${scopedTokenizer(a)} ${op.token} ${b.token}"
+          // a && (b1 || b2) i.e. need parens around the b
+          b is BinaryOp && b.op is `or` -> +"${a.token} ${op.token} ${scopedTokenizer(b)}"
+          // i.e. don't need parens around a or b
+          else -> +"${a.token} ${op.token} ${b.token}"
+        }
+      a is Any && op is or && b is Any -> +"${a.token} ${op.token} ${b.token}"
+      else -> +"${scopedTokenizer(a)} ${op.token} ${scopedTokenizer(b)}"
+    }
+
+  // In SQL unary operators will always be in prefix position. Also, if it's just a minus
+  // it will be part of the int/long/float/double constant and not a separate unary operator
+  // so we don't need to consider that case here.
+  val XR.UnaryOp.token get(): Token =
+    +"${op.token} (${expr.token})"
+
+  val UnaryOperator.token get(): Token =
+    when(this) {
+      is NumericOperator.minus -> +"-"
+      is BooleanOperator.not -> +"NOT"
+      is StringOperator.toUpperCase -> +"UPPER"
+      is StringOperator.toLowerCase -> +"LOWER"
+      is StringOperator.toLong -> emptyStatement // cast is implicit
+      is StringOperator.toInt -> emptyStatement // cast is implicit
+      is SetOperator.isEmpty -> +"NOT EXISTS"
+      is SetOperator.nonEmpty -> +"EXISTS"
+    }
+
+
+//  case NumericOperator.`-`          => stmt"-"
+//  case BooleanOperator.`!`          => stmt"NOT"
+//  case StringOperator.`toUpperCase` => stmt"UPPER"
+//  case StringOperator.`toLowerCase` => stmt"LOWER"
+//  case StringOperator.`toLong`      => emptyStatement // cast is implicit
+//  case StringOperator.`toInt`       => emptyStatement // cast is implicit
+//  case SetOperator.`isEmpty`        => stmt"NOT EXISTS"
+//  case SetOperator.`nonEmpty`       => stmt"EXISTS"
+
+  val AggregationOperator.token get(): Token =
+    when(this) {
+      is AggregationOperator.`min`  -> +"MIN"
+      is AggregationOperator.`max`  -> +"MAX"
+      is AggregationOperator.`avg`  -> +"AVG"
+      is AggregationOperator.`sum`  -> +"SUM"
+      is AggregationOperator.`size` -> +"COUNT"
+    }
+
+//  case AggregationOperator.`min`  => stmt"MIN"
+//  case AggregationOperator.`max`  => stmt"MAX"
+//  case AggregationOperator.`avg`  => stmt"AVG"
+//  case AggregationOperator.`sum`  => stmt"SUM"
+//  case AggregationOperator.`size` => stmt"COUNT"
+
+  val BinaryOperator.token get(): Token =
+    when(this) {
+      is EqualityOperator.`==` -> +"="
+      is EqualityOperator.`!=` -> +"<>"
+      is BooleanOperator.and -> +"AND"
+      is BooleanOperator.or -> +"OR"
+      is StringOperator.`+` -> +"||" // String concat is `||` is most dialects (SQL Server uses + and MySQL only has the `CONCAT` function)
+      is StringOperator.startsWith -> xrError("bug: this code should be unreachable")
+      is StringOperator.split -> +"SPLIT"
+      is NumericOperator.minus -> +"-"
+      is NumericOperator.plus -> +"+"
+      is NumericOperator.mult -> +"*"
+      is NumericOperator.gt -> +">"
+      is NumericOperator.gte -> +">="
+      is NumericOperator.lt -> +"<"
+      is NumericOperator.lte -> +"<="
+      is NumericOperator.div -> +"/"
+      is NumericOperator.mod -> +"%"
+      is SetOperator.contains -> +"IN"
+    }
+
+
+//    case EqualityOperator.`_==`      => stmt"="
+//    case EqualityOperator.`_!=`      => stmt"<>"
+//    case BooleanOperator.`&&`        => stmt"AND"
+//    case BooleanOperator.`||`        => stmt"OR"
+//    case StringOperator.`+`          => stmt"||"
+//    case StringOperator.`startsWith` => fail("bug: this code should be unreachable")
+//    case StringOperator.`split`      => stmt"SPLIT"
+//    case NumericOperator.`-`         => stmt"-"
+//    case NumericOperator.`+`         => stmt"+"
+//    case NumericOperator.`*`         => stmt"*"
+//    case NumericOperator.`>`         => stmt">"
+//    case NumericOperator.`>=`        => stmt">="
+//    case NumericOperator.`<`         => stmt"<"
+//    case NumericOperator.`<=`        => stmt"<="
+//    case NumericOperator.`/`         => stmt"/"
+//    case NumericOperator.`%`         => stmt"%"
+//    case SetOperator.`contains`      => stmt"IN"
+
+//  case BinaryOperation(a, EqualityOperator.`_==`, NullValue) => stmt"${scopedTokenizer(a)} IS NULL"
+//  case BinaryOperation(NullValue, EqualityOperator.`_==`, b) => stmt"${scopedTokenizer(b)} IS NULL"
+//  case BinaryOperation(a, EqualityOperator.`_!=`, NullValue) => stmt"${scopedTokenizer(a)} IS NOT NULL"
+//  case BinaryOperation(NullValue, EqualityOperator.`_!=`, b) => stmt"${scopedTokenizer(b)} IS NOT NULL"
+///
+//  case BinaryOperation(a, StringOperator.`startsWith`, b) =>
+//     stmt"${scopedTokenizer(a)} LIKE (${(BinaryOperation(b, StringOperator.`+`, Constant.auto("%")): Ast).token})"
+//  case BinaryOperation(a, op @ StringOperator.`split`, b) =>
+//     stmt"${op.token}(${scopedTokenizer(a)}, ${scopedTokenizer(b)})"
+///
+//  case BinaryOperation(a, op @ SetOperator.`contains`, b) => SetContainsToken(scopedTokenizer(b), op.token, a.token)
+//  case BinaryOperation(a, op @ `&&`, b) =>
+//  (a, b) match {
+//    case (BinaryOperation(_, `||`, _), BinaryOperation(_, `||`, _)) =>
+//    stmt"${scopedTokenizer(a)} ${op.token} ${scopedTokenizer(b)}"
+//    case (BinaryOperation(_, `||`, _), _) => stmt"${scopedTokenizer(a)} ${op.token} ${b.token}"
+//    case (_, BinaryOperation(_, `||`, _)) => stmt"${a.token} ${op.token} ${scopedTokenizer(b)}"
+//    case _                                => stmt"${a.token} ${op.token} ${b.token}"
+//  }
+//  case BinaryOperation(a, op @ `||`, b) => stmt"${a.token} ${op.token} ${b.token}"
+//  case BinaryOperation(a, op, b)        => stmt"${scopedTokenizer(a)} ${op.token} ${scopedTokenizer(b)}"
+
 
 
   val FromContext.token get(): Token =
@@ -177,7 +375,39 @@ interface SqlIdiom {
 
   val XR.Entity.token get(): Token = tokenizeTable(name)
 
-  val OrderByCriteria.token get(): Token = TODO()
+//  case OrderByCriteria(ast, Asc)            => stmt"${scopedTokenizer(ast)} ASC"
+//  case OrderByCriteria(ast, Desc)           => stmt"${scopedTokenizer(ast)} DESC"
+//  case OrderByCriteria(ast, AscNullsFirst)  => stmt"${scopedTokenizer(ast)} ASC NULLS FIRST"
+//  case OrderByCriteria(ast, DescNullsFirst) => stmt"${scopedTokenizer(ast)} DESC NULLS FIRST"
+//  case OrderByCriteria(ast, AscNullsLast)   => stmt"${scopedTokenizer(ast)} ASC NULLS LAST"
+//  case OrderByCriteria(ast, DescNullsLast)  => stmt"${scopedTokenizer(ast)} DESC NULLS LAST"
+
+  val OrderByCriteria.token get(): Token =
+    when(this.ordering) {
+      is Asc -> +"${scopedTokenizer(this.ast)} ASC"
+      is Desc -> +"${scopedTokenizer(this.ast)} DESC"
+      is AscNullsFirst -> +"${scopedTokenizer(this.ast)} ASC NULLS FIRST"
+      is DescNullsFirst -> +"${scopedTokenizer(this.ast)} DESC NULLS FIRST"
+      is AscNullsLast -> +"${scopedTokenizer(this.ast)} ASC NULLS LAST"
+      is DescNullsLast -> +"${scopedTokenizer(this.ast)} DESC NULLS LAST"
+    }
+
+  fun scopedQueryTokenizer(ast: XR.Query) =
+    +"(${ast.token})"
+
+  fun scopedTokenizer(ast: XR.Expression) =
+    when(ast) {
+      is XR.BinaryOp -> +"(${ast.token})"
+      is XR.Product -> +"(${ast.token})"
+      else -> ast.token
+    }
+
+//    ast match {
+//      case _: Query           => stmt"(${ast.token})"
+//      case _: BinaryOperation => stmt"(${ast.token})"
+//      case _: Tuple           => stmt"(${ast.token})"
+//      case _                  => ast.token
+//    }
 
 //  protected def limitOffsetToken(query: Statement)(implicit astTokenizer: Tokenizer[Ast], strategy: NamingStrategy) =
 //    Tokenizer[(Option[Ast], Option[Ast])] {
@@ -212,7 +442,7 @@ interface SqlIdiom {
 
   val SqlQuery.token get(): Token =
     when (this) {
-      is FlattenSqlQuery -> flattenSqlQueryTokenizerHelper(this)
+      is FlattenSqlQuery -> token
       is SetOperationSqlQuery -> +"(${a.token}) ${op.token} (${b.token})"
       is UnaryOperationSqlQuery -> +"SELECT ${op.token} (${query.token})"
     }
@@ -227,7 +457,4 @@ interface SqlIdiom {
       is UnionOperation -> +"UNION"
       is UnionAllOperation -> +"UNION ALL"
     }
-
-  //val XR.token get(): Token = TODO()
-  val XR.Expression.token get(): Token = TODO()
 }
