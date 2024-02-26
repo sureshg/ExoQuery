@@ -9,8 +9,10 @@ import io.exoquery.terpal.InterpolatorFunction
 import io.exoquery.terpal.interpolatorBody
 
 @InterpolatorFunction<stmt>
-fun String.unaryPlus(): Statement = interpolatorBody()
+operator fun String.unaryPlus(): Statement = interpolatorBody()
 
+val emptyStatement: Statement    = +""
+val externalStatement: Statement = +"?"
 
 object stmt: Interpolator<Token, Statement> {
   override fun interpolate(parts: () -> List<String>, params: () -> List<Token>): Statement {
@@ -25,16 +27,6 @@ object stmt: Interpolator<Token, Statement> {
     }
     val tokens = flatten(bldr)
     return Statement(tokens)
-  }
-
-  val List<Token>.head get() = this.first()
-  val List<Token>.tail get() =
-    if (this.isEmpty()) throw IllegalStateException("Cannot get the tail of an empty List")
-    else this.subList(1, this.size)
-
-  fun MutableList<Token>.withMore(token: Token): MutableList<Token> {
-    add(token)
-    return this
   }
 
   private fun flatten(tokens: List<Token>): List<Token> {

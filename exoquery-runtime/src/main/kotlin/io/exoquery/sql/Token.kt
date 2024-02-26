@@ -1,5 +1,6 @@
 package io.exoquery.sql
 
+import io.exoquery.util.intersperseWith
 import io.exoquery.util.mkString
 
 sealed interface Token
@@ -26,5 +27,21 @@ final data class SetContainsToken(val a: Token, val op: Token, val b: Token): To
 }
 
 val Token.token get(): Token = this
+val String.token get() = StringToken(this)
 
-fun <T> List<T>.token(elemTokenizer: (T) -> Token): Statement = Statement(this.map(elemTokenizer))
+fun <T> List<T>.token(elemTokenizer: (T) -> Token): Statement = this.map(elemTokenizer).mkStmt()
+fun List<Token>.mkStmt(sep: String = ", "): Statement =
+  if (this.isEmpty())
+    Statement(listOf())
+  else {
+    val sepList = List(this.size-1) { StringToken(sep) }
+    Statement(this.intersperseWith(sepList))
+  }
+
+
+
+
+
+
+
+

@@ -1,9 +1,28 @@
 package io.exoquery.sql
 
-import io.exoquery.util.stmt
+import io.exoquery.util.emptyStatement
+import io.exoquery.util.unaryPlus
 import io.exoquery.xr.XR
+import io.exoquery.xr.XR.JoinType.*
+import io.exoquery.xr.XR.Ident
+import io.exoquery.xrError
 
-class SqlIdiom {
+interface SqlIdiom {
+
+  val concatFunction: String
+  val useActionTableAliasAs: ActionTableAliasBehavior
+
+  sealed interface ActionTableAliasBehavior {
+    object UseAs: ActionTableAliasBehavior
+    object SkipAs: ActionTableAliasBehavior
+    object Hide: ActionTableAliasBehavior
+  }
+
+  private val ` AS` get() =
+    when(useActionTableAliasAs) {
+      ActionTableAliasBehavior.UseAs -> +" AS"
+      else -> emptyStatement
+    }
 
   val FlattenSqlQuery.token get(): Token = flattenSqlQueryTokenizerHelper(this)
   fun flattenSqlQueryTokenizerHelper(q: FlattenSqlQuery) =
@@ -33,7 +52,7 @@ class SqlIdiom {
       val distinctTokenizer by lazy {
         when(distinct) {
           is DistinctKind.Distinct -> +"DISTINCT "
-          is DistinctKind.DistinctOn -> +"DISTINCT ON (${distinct.token}) "
+          is DistinctKind.DistinctOn -> +"DISTINCT ON (${distinct.props.token { it.token }}) "
           is DistinctKind.None -> +""
         }
       }
@@ -116,17 +135,49 @@ class SqlIdiom {
       +"SELECT $withLimitOffset"
     }
 
-  protected fun tokenizeGroupBy(values: XR.Expression): Token = values.token
-  protected fun tokenOrderBy(criteria: List<OrderByCriteria>) = +"ORDER BY ${criteria.token { it.token }}"
+  fun tokenizeGroupBy(values: XR.Expression): Token = values.token
+  fun tokenOrderBy(criteria: List<OrderByCriteria>) = +"ORDER BY ${criteria.token { it.token }}"
+  fun tokenizeTable(name: String): Token = name.token
 
-  operator fun String.unaryPlus(): Statement = TODO()
 
-  val DistinctKind.token get(): Token = TODO()
-  val SelectValue.token get(): Token = TODO()
-  val FromContext.token get(): Token = TODO()
+  val SelectValue.token get(): Token =
+    when {
+      // SelectValue(Ident(? or name, _), _, _)
+      expr is Ident -> expr.name.token
+      // Typically these next two will be for Ast Property where we have an alias:
+      // SelectValue(ast, Some(alias), concat: true)
+      alias != null && concat == false -> +"${expr.token} AS ${alias.token}" // in this case `alias` is the column name
+      // SelectValue(ast, Some(alias), concat: false)
+      alias != null && concat == true -> +"${concatFunction.token}(${expr.token}) AS ${alias.token}"
+      // Where we don't have an alias...
+      // SelectValue(ast, None, concat: true)
+      alias == null && concat == true -> +"${concatFunction.token}(${expr.token}) AS ${value.token}"
+      // SelectValue(ast, None, concat: false)
+      alias == null && concat == false -> expr.token
+      else -> xrError("Illegal SelectValue clause: ${this}")
+    }
+
+
+
+  val FromContext.token get(): Token =
+    when (this) {
+      is TableContext -> +"${entity.token} ${alias.token}"
+      is QueryContext -> +"(${query.token})${` AS`} ${alias.token}"
+      is InfixContext -> +"(${(infix as XR.Expression).token})${` AS`} ${alias.token}"
+      is FlatJoinContext -> +"${joinType.token} ${from.token} ON ${on.token}"
+    }
+
+  val XR.JoinType.token get(): Token =
+    when (this) {
+      is Left -> +"INNER JOIN"
+      is Inner -> +"LEFT JOIN"
+      // is RightJoin -> +"RIGHT JOIN"
+      // is FullJoin -> +"FULL JOIN"
+    }
+
+  val XR.Entity.token get(): Token = tokenizeTable(name)
+
   val OrderByCriteria.token get(): Token = TODO()
-
-
 
 //  protected def limitOffsetToken(query: Statement)(implicit astTokenizer: Tokenizer[Ast], strategy: NamingStrategy) =
 //    Tokenizer[(Option[Ast], Option[Ast])] {
@@ -159,5 +210,24 @@ class SqlIdiom {
 //      stmt"SELECT ${op.token} (${q.token})"
 //  }
 
-  val XR.token get(): Token = TODO()
+  val SqlQuery.token get(): Token =
+    when (this) {
+      is FlattenSqlQuery -> flattenSqlQueryTokenizerHelper(this)
+      is SetOperationSqlQuery -> +"(${a.token}) ${op.token} (${b.token})"
+      is UnaryOperationSqlQuery -> +"SELECT ${op.token} (${query.token})"
+    }
+
+//  implicit val setOperationTokenizer: Tokenizer[SetOperation] = Tokenizer[SetOperation] {
+//    case UnionOperation    => stmt"UNION"
+//    case UnionAllOperation => stmt"UNION ALL"
+//  }
+
+  val SetOperation.token get(): Token =
+    when (this) {
+      is UnionOperation -> +"UNION"
+      is UnionAllOperation -> +"UNION ALL"
+    }
+
+  //val XR.token get(): Token = TODO()
+  val XR.Expression.token get(): Token = TODO()
 }

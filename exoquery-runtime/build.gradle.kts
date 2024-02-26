@@ -1,7 +1,7 @@
 plugins {
     id("publish")
     id("com.google.devtools.ksp") version "1.8.21-1.0.11"
-    id("io.exoquery.terpal-plugin") version "1.0.2"
+    id("io.exoquery.terpal-plugin") version "1.0.6"
 }
 
 kotlin {
@@ -49,7 +49,7 @@ dependencies {
     // Actually this is going to be 0.0.5 - using an unpublished one now
     implementation("io.exoquery:decomat-core:0.0.7")
     implementation("com.facebook:ktfmt:0.43")
-    implementation("io.exoquery:terpal-runtime:1.0.2")
+    api("io.exoquery:terpal-runtime:1.0.6")
 }
 
 // Needed for Kotest

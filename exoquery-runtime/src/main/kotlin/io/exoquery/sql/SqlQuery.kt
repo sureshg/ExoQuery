@@ -82,9 +82,9 @@ final data class UnaryOperationSqlQuery(
  * of being inside a SelectValue, it should always be the latter.
  */
 @Mat
-final data class SelectValue(@Slot val ast: XR.Expression, @Slot val alias: String? = null, val concat: Boolean = false): PC<SelectValue> {
-  override val productComponents = productOf(this, ast, alias)
-  val type: XRType = ast.type
+final data class SelectValue(@Slot val expr: XR.Expression, @Slot val alias: String? = null, val concat: Boolean = false): PC<SelectValue> {
+  override val productComponents = productOf(this, expr, alias)
+  val type: XRType = expr.type
   companion object {}
 }
 
@@ -245,7 +245,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             this is XR.GroupByMap -> {
               trace("Flattening| GroupByMap") andReturn {
                 val b = base(head, alias = byAlias.name, nestNextMap = true)
-                val flatGroupByAsts = ExpandSelection(b.from).ofSubselect(listOf(SelectValue(byBody))).map { it.ast }
+                val flatGroupByAsts = ExpandSelection(b.from).ofSubselect(listOf(SelectValue(byBody))).map { it.expr }
                 val groupByClause: XR.Expression =
                   if (flatGroupByAsts.size > 1) XR.Product.TupleNumeric(flatGroupByAsts)
                   else flatGroupByAsts.first()
@@ -264,7 +264,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
             this is Map -> {
               val b = base(head, alias, nestNextMap = false)
-              val aggs = b.select.filter { it.ast is XR.Aggregation }
+              val aggs = b.select.filter { it.expr is XR.Aggregation }
               if (!b.distinct.isDistinct && aggs.isEmpty())
                 trace("Flattening| Map(Ident) [Simple]") andReturn {
                   b.copy(select = selectValues(body), type = type)
@@ -431,7 +431,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
       // This is when you've got a single Asc/Desc and a ident in the sortBy e.g. `people.sortBy(p -> p)(Asc)`
       // that means we want to sort by every single field as Asc so apply the sorting recurisvely.
       ast is XR.Ident && ord is PropertyOrdering ->
-        ExpandSelection(from).ofSubselect(listOf(SelectValue(ast))).map { it.ast }.flatMap { orderByCriteria(it, ord, from) }
+        ExpandSelection(from).ofSubselect(listOf(SelectValue(ast))).map { it.expr }.flatMap { orderByCriteria(it, ord, from) }
 
       ord is PropertyOrdering -> listOf(OrderByCriteria(ast, ord))
       else -> xrError("Invalid order by criteria $ast")
