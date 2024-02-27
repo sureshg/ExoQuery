@@ -1,6 +1,10 @@
 package io.exoquery.util
 
 object Globals {
+
+  // This needs to be at the top for some reason, even if it is lazy
+  private val cacheMap: MutableMap<String, Any> by lazy { mutableMapOf() }
+
   // TODO for KMP use kotlinx.cinterop.* from kotlin-stdlib-common
   //      see https://stackoverflow.com/a/55002326
   private fun variable(propName: String, envName: String, default: String) =
@@ -11,7 +15,7 @@ object Globals {
   val traceEnabled get() = cache("exo.trace.enabled", variable("exo.trace.enabled", "exo_trace_enabled", "false").toBoolean())
 
   fun resetCache(): Unit                        = cacheMap.clear()
-  private val cacheMap: MutableMap<String, Any> = mutableMapOf()
+
   @Suppress("UNCHECKED_CAST")
   private fun <T> cache(name: String, value: T): T =
     cacheMap.getOrPut(name, { value as Any }) as T
@@ -33,4 +37,6 @@ object Globals {
 
   fun tracesEnabled(tt: TraceType): Boolean =
     (traceEnabled && traces.contains(tt)) || tt == TraceType.Warning
+
+  fun traceConfig(): TraceConfig = TraceConfig(if (traceEnabled) traces else listOf())
 }

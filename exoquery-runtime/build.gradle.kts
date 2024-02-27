@@ -44,12 +44,13 @@ dependencies {
     api(kotlin("reflect"))
     testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
     // Actually this is going to be 0.0.5 - using an unpublished one now
-    ksp("io.exoquery:decomat-ksp:0.0.7")
+    ksp("io.exoquery:decomat-ksp:0.1.1")
     implementation("io.exoquery:pprint-kotlin:2.0.1")
     // Actually this is going to be 0.0.5 - using an unpublished one now
-    implementation("io.exoquery:decomat-core:0.0.7")
+    implementation("io.exoquery:decomat-core:0.1.1")
     implementation("com.facebook:ktfmt:0.43")
     api("io.exoquery:terpal-runtime:1.0.6")
+    api("com.github.vertical-blank:sql-formatter:2.0.4")
 }
 
 // Needed for Kotest

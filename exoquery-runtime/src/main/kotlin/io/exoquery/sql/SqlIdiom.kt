@@ -13,6 +13,7 @@ import io.exoquery.xr.XR.Visibility.*
 import io.exoquery.xr.XR.JoinType.*
 import io.exoquery.xr.XR.Ident
 import io.exoquery.xrError
+import io.exoquery.sql.UnnestProperty
 import org.jetbrains.kotlin.resolve.constants.NullValue
 
 interface SqlIdiom {
@@ -21,6 +22,7 @@ interface SqlIdiom {
   val concatFunction: String
   val useActionTableAliasAs: ActionTableAliasBehavior
   val productAggregationToken: ProductAggregationToken get() = ProductAggregationToken.Star
+  val seriesSepartor: String get() = "."
 
   sealed interface ActionTableAliasBehavior {
     object UseAs: ActionTableAliasBehavior
@@ -54,6 +56,8 @@ interface SqlIdiom {
       is XR.Function1, is XR.FunctionN, is XR.FunctionApply, is XR.Marker, is XR.Block, is XR.IdentOrigin ->
         xrError("Malformed or unsupported construct: $this.")
     }
+
+  val XR.Ident.token get(): Token = name.token
 
   val XR.When.token get(): Token = run {
     val whenThens = branches.map { it -> +"WHEN ${it.cond.token} THEN ${it.then.token}" }
@@ -155,7 +159,7 @@ interface SqlIdiom {
           from.isEmpty() -> withDistinct
           else -> {
             val t =
-              from.fold(+"${from.first().token}") { a, b ->
+              from.drop(1).fold(+"${from.first().token}") { a, b ->
                 when(b) {
                   is FlatJoinContext -> +"$a ${(b as FromContext).token}"
                   else -> +"$a, ${b.token}"
@@ -519,18 +523,18 @@ interface SqlIdiom {
     }
 
   val XR.Property.token get(): Token =
-    TokenizeProperty.unnest(this).let { (ast, prefix) ->
+    UnnestProperty(this).let { (ast, prefix) ->
       when {
         // This is the typical case. It happens on the outer (i.e. top-level) clause of a multi-level select e.g.
         // SELECT /*this ->*/ foobar... FROM (SELECT foo.bar AS foobar ...)
         // When it's just a top-level select the prefix will be empty
         ast is Ident && ast.visibility == Hidden ->
-          (prefix.mkString() + name).token
+          (prefix.joinToString(seriesSepartor)).token
         // This happens when the SQL dialect supports some notion of structured-data
         // and we are selecting something from a nested expression
         // SELECT /*this ->*/ (someExpression).otherStuff FROM (....)
         else ->
-          +"${scopedTokenizer(ast)}.${(prefix.mkString() + name)}"
+          +"${scopedTokenizer(ast)}.${(prefix.joinToString(seriesSepartor))}"
       }
     }
 

@@ -34,7 +34,7 @@ dependencies {
     implementation("com.facebook:ktfmt:0.43")
 
     // Actually this is going to be 0.0.5 - using an unpublished one now
-    implementation("io.exoquery:decomat-core:0.0.7")
+    implementation("io.exoquery:decomat-core:0.1.1")
     implementation("com.tylerthrailkill.helpers:pretty-print:2.0.2")
     implementation("io.exoquery:pprint-kotlin:2.0.1")
     api(kotlin("reflect"))

@@ -8,7 +8,7 @@ import io.exoquery.terpal.Interpolator
 import io.exoquery.terpal.InterpolatorFunction
 import io.exoquery.terpal.interpolatorBody
 
-@InterpolatorFunction<stmt>
+@InterpolatorFunction<stmt>(stmt::class)
 operator fun String.unaryPlus(): Statement = interpolatorBody()
 
 val emptyStatement: Statement    = +""

@@ -1,18 +1,17 @@
 package io.exoquery.sql
 
-import io.exoquery.util.mkString
 import io.exoquery.xr.XR
 import io.exoquery.xr.XR.*
 
-object TokenizeProperty {
-  fun unnest(ast: XR.Expression): Pair<XR.Expression, List<String>> =
+object UnnestProperty {
+  operator fun invoke(ast: XR.Expression): Pair<XR.Expression, List<String>> =
     when {
       ast is Property && ast.visibility == Visibility.Hidden -> {
-        val (a, nestedName) = unnest(ast)
+        val (a, nestedName) = invoke(ast.of)
         a to nestedName
       }
       ast is Property -> {
-        val (a, nestedName) = unnest(ast)
+        val (a, nestedName) = invoke(ast.of)
         a to (nestedName + ast.name)
       }
       //ast is ExternalIdent && ast.visibility == Visibility.Fixed -> ast to listOf(ast.name)

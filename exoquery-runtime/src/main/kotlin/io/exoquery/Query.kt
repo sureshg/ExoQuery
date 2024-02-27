@@ -145,15 +145,22 @@ public fun <T, Q: Query<T>> select(block: suspend SelectClause<T>.() -> SqlVaria
 ): Action
    */
   val markerId = UUID.randomUUID().toString()
+
+  var start = System.currentTimeMillis()
   val q =
     program<Query<T>, SqlVariable<T>, SelectClause<T>>(
       machine = SelectClause<T>(markerId),
       f = block
     ) as Query<T>
+  println("--- Creating Program: ${(System.currentTimeMillis() - start).toDouble()/1000} ---")
 
   // TODO Need to change the innermost map into a flatMap
   //return q as Q
+
+  start = System.currentTimeMillis()
   val markedXR = InnerMost(markerId).findAndMark(q.xr)
+  println("--- Marking InnerMost: ${(System.currentTimeMillis() - start).toDouble()/1000} ---")
+
   return QueryContainer<T>(markedXR, q.binds) as Q
 }
 

@@ -2,6 +2,7 @@
 
 package io.exoquery.sql
 
+import io.exoquery.printing.PrintXR
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
 import io.exoquery.util.Tracer
@@ -39,6 +40,11 @@ final data class FlatJoinContext(val joinType: XR.JoinType, val from: FromContex
 
 sealed interface SqlQuery {
   val type: XRType
+
+  fun showRaw(color: Boolean = true): String {
+    val str = PrintXR()(this)
+    return if (color) str.toString() else str.plainText
+  }
 }
 
 sealed interface SetOperation

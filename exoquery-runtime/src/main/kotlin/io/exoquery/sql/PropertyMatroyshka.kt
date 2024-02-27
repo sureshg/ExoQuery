@@ -25,5 +25,13 @@ object PropertyMatryoshka {
       }
 }
 
-fun PropertyOrCore() = Is<XR.Expression> { it is XR.Property || it is XR.Ident || it is XR.Infix || it is XR.Const }
+fun isPropertyOrCore(it: XR.Expression) =
+  it is XR.Property || it is XR.Ident || it is XR.Infix || it is XR.Const
+
+fun PropertyOrCore() =
+  Is<XR.Expression> {
+    val check = it is XR.Property || it is XR.Ident || it is XR.Infix || it is XR.Const
+    check
+  }
+
 fun Core() = Is<XR.Expression> { it is XR.Ident || it is XR.Infix || it is XR.Const }
