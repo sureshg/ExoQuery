@@ -21,7 +21,7 @@ sealed interface TraceType {
   object ReifyLiftings: TraceType          { override val value = "reify"       }
   object PatMatch: TraceType               { override val value = "patmatch"    }
   object Quotation: TraceType              { override val value = "quote"       }
-  object RepropagateQuats: TraceType       { override val value = "reprop"      }
+  object RepropagateTypes: TraceType       { override val value = "reprop"      }
   object RenameProperties: TraceType       { override val value = "rename"      }
   object ApplyMap: TraceType               { override val value = "applymap"    }
   object ExprModel: TraceType              { override val value = "exprmodel"   }
@@ -43,7 +43,7 @@ sealed interface TraceType {
       ReifyLiftings,
       PatMatch,
       Quotation,
-      RepropagateQuats,
+      RepropagateTypes,
       RenameProperties,
       Warning,
       ShealthLeaf,

@@ -13,6 +13,10 @@ sealed class XRType {
 
   data class Product(val name: String, val fields: List<Pair<String, XRType>>): XRType() {
     private val fieldsHash by lazy { fields.toMap() }
+    /**
+     * The underlying impelmentation in kotlin o List<Pair<String, XRType>>.toMap() is a LinkedHashMap
+     * if that changes in the future than we will need to change the result of this to explicitly be a LinkedHashMap.
+     */
     fun fieldsHash() = fieldsHash
     fun getField(name: String) =
       if (fields.size < 5)

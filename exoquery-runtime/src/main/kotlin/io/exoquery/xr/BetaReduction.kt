@@ -163,17 +163,29 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
     }
 
   companion object {
-    operator fun invoke(ast: XR, vararg t: Pair<XR.Expression, XR.Expression>): XR =
-      invoke(ast, TypeBehavior.SubstituteSubtypes, EmptyProductTypeBehavior.Ignore, *t)
+    fun ofXR(ast: XR, vararg t: Pair<XR.Expression, XR.Expression>): XR =
+      ofXR(ast, TypeBehavior.SubstituteSubtypes, EmptyProductTypeBehavior.Ignore, *t)
+
+    fun ofXR(ast: XR, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR =
+      invokeTyped(ast, t.toMap(), typeBehavior, emptyBehavior, { be, ir -> be.invoke(ir) })
 
     operator fun invoke(ast: XR.Expression, vararg t: Pair<XR.Expression, XR.Expression>): XR.Expression =
       invoke(ast, TypeBehavior.SubstituteSubtypes, EmptyProductTypeBehavior.Ignore, *t)
 
-    operator fun invoke(ast: XR, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR =
-      invokeTyped(ast, t.toMap(), typeBehavior, emptyBehavior, { be, ir -> be.invoke(ir) })
+    operator fun invoke(ast: XR.Expression, typeBehavior: TypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR.Expression =
+      invokeTyped(ast, t.toMap(), typeBehavior, EmptyProductTypeBehavior.Ignore, { be, ir -> be.invoke(ir) })
 
     operator fun invoke(ast: XR.Expression, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR.Expression =
       invokeTyped(ast, t.toMap(), typeBehavior, emptyBehavior, { be, ir -> be.invoke(ir) })
+
+    fun ofQuery(ast: XR.Query, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR.Query =
+      invokeTyped(ast, t.toMap(), typeBehavior, emptyBehavior, { be, ir -> be.invoke(ir) })
+
+    fun ofQuery(ast: XR.Query, typeBehavior: TypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR.Query =
+      invokeTyped(ast, t.toMap(), typeBehavior, EmptyProductTypeBehavior.Ignore, { be, ir -> be.invoke(ir) })
+
+    fun ofQuery(ast: XR.Query, vararg t: Pair<XR.Expression, XR.Expression>): XR.Query =
+      invokeTyped(ast, t.toMap(), TypeBehavior.SubstituteSubtypes, EmptyProductTypeBehavior.Ignore, { be, ir -> be.invoke(ir) })
 
 
     internal fun <X: XR> invokeTyped(

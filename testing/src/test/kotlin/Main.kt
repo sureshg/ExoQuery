@@ -1,6 +1,7 @@
 import com.github.vertical_blank.sqlformatter.SqlFormatter
 import io.exoquery.*
 import io.exoquery.annotation.ExoInternal
+import io.exoquery.norm.RepropagateTypes
 import io.exoquery.printing.format
 import io.exoquery.sql.ExpandNestedQueries
 import io.exoquery.sql.SqlQuery
@@ -31,11 +32,15 @@ object Model1 {
     println("------------ Query Making Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
 
     println("=============== XR ===============")
-    println(format(x.xr.show()))
+    println(x.xr.showRaw())
+
+    println("=============== XR: Types Repropagated ===============")
+    val xrBeta = RepropagateTypes(Globals.traceConfig())(x.xr)
+    println(xrBeta.showRaw())
 
     //println("=============== SQL ===============")
     start = System.currentTimeMillis()
-    val sql = SqlQueryApply(Globals.traceConfig())(x.xr)
+    val sql = SqlQueryApply(Globals.traceConfig())(xrBeta)
     println("------------ SqlQueryApply Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
     //println(sql.showRaw())
 
@@ -62,9 +67,7 @@ object Model1 {
 }
 
 fun main() {
-  for (i in 1..100) {
-    Model1.use()
-  }
+  Model1.use()
 }
 
 //
