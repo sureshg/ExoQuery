@@ -33,11 +33,6 @@ private fun freshIdentFrom(prefix: String = "x", allBindVars: Set<String>): Stri
   return highest
 }
 
-fun <T> Query<T>.withReifiedIdents(): Query<T> {
-  val (reifiedXR, bindIds) = ReifyIdents.ofQuery(binds, xr)
-  return QueryContainer<T>(reifiedXR, binds - bindIds)
-}
-
 
 @OptIn(ExoInternal::class) // TODO Not sure if the output here QueryContainer(Ident(SqlVariable)) is right need to look into the shape
 class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlVariable<A>>({ result -> QueryContainer<A>(XR.Marker(markerName, XR.Ident(result.getVariableName(), XRType.Generic)), DynamicBinds.empty())  }) {
@@ -76,19 +71,20 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
 
   // TODO some internal annotation?
   @OptIn(ExoInternal::class)
-  suspend fun onExpr(cond: Lambda1Expression, binds: DynamicBinds): SqlVariable<R> =
+  suspend fun onExpr(identRaw: XR.Ident, bodyRaw: XR, binds: DynamicBinds): SqlVariable<R> =
     with (selectClause) {
       perform { mapping ->
-        val sqlVariable = SqlVariable<R>(cond.ident.name)
+        val body = bodyRaw as XR.Expression
+        val sqlVariable = SqlVariable<R>(identRaw.name)
         val outputQuery = mapping(sqlVariable)
         val ident = XR.Ident(sqlVariable.getVariableName(), outputQuery.xr.type)
         // TODO variable name of the table?
         val freshIdentForCond = run {
           // Need to consider all the alises that could come from any of the other sources before making a new variable for the element.
-          val name = freshIdent(alias, listOf(cond.xr), listOf(query, outputQuery), listOf(binds))
-          XR.Ident(name, cond.ident.type)
+          val name = freshIdent(alias, listOf(identRaw, body), listOf(query, outputQuery), listOf(binds))
+          XR.Ident(name, identRaw.type)
         }
-        val freshCondBody = BetaReduction(cond.xr.body, cond.ident to freshIdentForCond)
+        val freshCondBody = BetaReduction(body, identRaw to freshIdentForCond)
         QueryContainer<R>(XR.FlatMap(
           // Good example of beta reduction
           XR.FlatJoin(joinType, query.xr, freshIdentForCond, freshCondBody), ident, outputQuery.xr), query.binds + binds

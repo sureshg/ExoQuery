@@ -47,7 +47,7 @@ class TransformQueryMap(override val ctx: BuilderContext, val matcher: Extractor
     val transformedBlockBody = blockBody.transform(superTransformer, internalVars) as IrBlockBody
     val (bodyXR, bindsAccum) = Parser.parseFunctionBlockBody(transformedBlockBody)
 
-    val paramIdentExpr = makeLifter().liftXR(paramIdentXR)
+    val paramIdentExpr = makeLifter().liftIdent(paramIdentXR)
     val bodyExpr = makeLifter().liftXR(bodyXR)
 
 //    val mapExprFunction = caller.type.findMethodOrFail(replacementMethod)

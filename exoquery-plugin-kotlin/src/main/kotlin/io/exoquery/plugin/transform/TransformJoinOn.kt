@@ -42,8 +42,10 @@ class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
         Parser.parseFunctionBlockBody(blockBody)
       }
 
-    val onLambda = Lambda1Expression(XR.Function1(paramIdent, onLambdaBody))
-    val onLambdaExpr = makeLifter().liftExpression(onLambda)
+    val lifter = makeLifter()
+    val paramIdentExpr = lifter.liftIdent(paramIdent)
+    val onLambdaBodyExpr = lifter.liftXR(onLambdaBody)
+
     // To transform the TableQuery etc... in the join(<Heree>).on clause before the `on`
     // No scope symbols into caller since it comes Before the on-clause i.e. before any symbols could be created
     val newCaller = caller.transform(superTransformer, internalVars)
@@ -52,6 +54,6 @@ class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
 
     val bindsList = bindsAccum.makeDynamicBindsIr()
 
-    return newCaller.callMethod("onExpr").invoke(onLambdaExpr, bindsList)
+    return newCaller.callMethod("onExpr").invoke(paramIdentExpr, onLambdaBodyExpr, bindsList)
   }
 }

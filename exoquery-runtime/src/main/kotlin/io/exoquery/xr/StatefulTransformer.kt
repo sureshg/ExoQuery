@@ -140,7 +140,7 @@ interface StatefulTransformer<T> {
         is XR.Map -> {
           val (aA, stateA) = invoke(head)
           val (bA, stateB) = stateA.invoke(body)
-          XR.Map(aA, id, bA) to stateB
+          Map(aA, id, bA) to stateB
         }
         is Entity -> this to this@StatefulTransformer
         is Filter -> {
@@ -209,6 +209,8 @@ interface StatefulTransformer<T> {
         }
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this to this@StatefulTransformer
+        // If there is a runtime-bind can't do anything with it
+        is RuntimeQueryBind -> this to this@StatefulTransformer
       }
     }
 

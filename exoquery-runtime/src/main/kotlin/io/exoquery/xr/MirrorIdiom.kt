@@ -142,6 +142,7 @@ class MirrorIdiom {
       is Nested -> "${head.token}.nested"
       is Marker -> token
       is Infix -> token
+      is RuntimeQueryBind -> """runtimeQuery(${id.value.takeLast(4)})"""
     }
 
 }

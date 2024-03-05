@@ -6,5 +6,5 @@ import io.exoquery.xr.XR
 // IrCall(IrConstructor(Sym("RuntimeBindValue.String"), listOf(IrString("Joe")))
 sealed interface RuntimeBindValue {
   data class SqlVariableIdent(val value: kotlin.String): RuntimeBindValue
-  data class RuntimeQuery(val value: XR.Query): RuntimeBindValue
+  data class RuntimeQuery(val value: Query<*>): RuntimeBindValue
 }

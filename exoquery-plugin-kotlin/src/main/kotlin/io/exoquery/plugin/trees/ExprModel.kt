@@ -18,6 +18,6 @@ context (BuilderContext) fun RuntimeBindValueExpr.makeDynamicBindsIr(): IrExpres
       // Execute the expression `RuntimeBindValue.SqlVariableIdent()`
       make<RuntimeBindValue.SqlVariableIdent>(sqlVariableInstance.callMethod("getVariableName")())
     is RuntimeBindValueExpr.RuntimeQueryExpr ->
-      make<RuntimeBindValue.RuntimeQuery>(queryElement.callMethod("xr")())
+      make<RuntimeBindValue.RuntimeQuery>(queryElement)
   }
 

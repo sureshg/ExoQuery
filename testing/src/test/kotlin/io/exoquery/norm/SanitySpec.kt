@@ -22,3 +22,8 @@ class SanitySpec: FreeSpec({
   }
 
 })
+
+fun main() {
+  val q = qr1.flatMap { x -> qr2.filter { y -> y.s == x.s } }
+  println(q)
+}

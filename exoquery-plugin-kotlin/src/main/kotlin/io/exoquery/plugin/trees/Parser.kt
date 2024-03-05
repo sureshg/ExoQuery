@@ -51,6 +51,9 @@ private class ParserCollector {
   context(ParserContext, CompileLogger) fun parseExpr(expr: IrExpression): XR.Expression =
     parseAs<XR.Expression>(expr)
 
+  context(ParserContext, CompileLogger) fun parseXR(expr: IrExpression): XR =
+    parseAs<XR>(expr)
+
   context(ParserContext, CompileLogger) fun parseBlockStatement(expr: IrStatement): XR.Variable =
     on(expr).match(
       case(Ir.Variable[Is(), Is()]).thenThis { name, rhs ->
@@ -66,13 +69,13 @@ private class ParserCollector {
       }
     ) ?: parseError("Could not parse Branch from: ${expr.dumpSimple()}")
 
-  context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): XR.Expression =
-    on(blockBody).match<XR.Expression>(
+  context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): XR =
+    on(blockBody).match<XR>(
       // TODO use Ir.BlockBody.ReturnOnly
       case(Ir.BlockBody[List1[Ir.Return[Is()]]])
         .then { (irReturn) ->
           val returnExpression = irReturn.value
-          parseExpr(returnExpression)
+          parse(returnExpression)
         }
     ) ?: parseError("Could not parse IrBlockBody:\n${blockBody.dumpKotlinLike()}")
 
@@ -98,12 +101,11 @@ private class ParserCollector {
       case(Ir.Expression[Is()]).thenIf { it.isClass<Query<*>>() }.then { expr ->
         // Assuming that recursive transforms have already converted queries inside here
         val bindId = BID.new()
-        XR.RuntimeQueryBind(bindId, TypeParser.parse(expr.type))
 
         // Add the query expression to the binds list
         binds.add(bindId, RuntimeBindValueExpr.RuntimeQueryExpr(expr))
 
-        TODO()
+        XR.RuntimeQueryBind(bindId, TypeParser.parse(expr.type))
       },
 
       // Binary Operators

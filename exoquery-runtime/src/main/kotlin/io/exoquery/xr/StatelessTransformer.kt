@@ -58,7 +58,7 @@ interface StatelessTransformer {
     with(xr) {
       when (this) {
         is FlatMap -> FlatMap(invoke(head), id, invoke(body))
-        is XR.Map -> XR.Map(invoke(head), id, invoke(body))
+        is XR.Map -> Map(invoke(head), id, invoke(body))
         is Entity -> this
         is Filter -> Filter(invoke(head), id, invoke(body))
         is Union -> Union(invoke(a), invoke(b))
@@ -76,6 +76,8 @@ interface StatelessTransformer {
         is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type)
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
+        // If there is a runtime bind, can't do anything with it
+        is RuntimeQueryBind -> this
       }
     }
 }

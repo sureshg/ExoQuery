@@ -6,6 +6,9 @@ import io.exoquery.RuntimeBindValue
 
 data class ReifyIdentError(val msg: String): IllegalStateException(msg)
 
+/**
+ * State is the Ids that have been bound. We need them later to
+ */
 data class ReifyIdents internal constructor (override val state: List<BID>, val binds: DynamicBinds): StatefulTransformer<List<BID>> {
   protected fun withState(state: List<BID>) = ReifyIdents(state, binds)
 

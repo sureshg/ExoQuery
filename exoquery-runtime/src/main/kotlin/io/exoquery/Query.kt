@@ -4,6 +4,7 @@ import io.exoquery.annotation.ExoInternal
 import io.exoquery.select.InnerMost
 import io.exoquery.select.SelectClause
 import io.exoquery.select.program
+import io.exoquery.xr.ReifyIdents
 import io.exoquery.xr.XR
 import java.util.*
 
@@ -64,6 +65,11 @@ sealed interface Query<T> {
   val xr: XR.Query
   val binds: DynamicBinds
 
+  fun withReifiedIdents(): Query<T> {
+    val (reifiedXR, bindIds) = ReifyIdents.ofQuery(binds, xr)
+    return QueryContainer<T>(reifiedXR, binds - bindIds)
+  }
+
 //  val map get() = MapClause<T>(xr)
 
   // Table<Person>().filter(name == "Joe")
@@ -90,7 +96,7 @@ sealed interface Query<T> {
 
   fun <R> flatMap(f: (T) -> Query<R>): Query<R> = error("needs to be replaced by compiler")
   // TODO Make the compiler plug-in a SqlVariable that it creates based on the variable name in f
-  fun <R> flatMapInternal(id: XR.Ident, body: XR, binds: DynamicBinds): Query<R> =
+  fun <R> flatMapExpr(id: XR.Ident, body: XR, binds: DynamicBinds): Query<R> =
     QueryContainer(XR.FlatMap(this.xr, id, body as XR.Query), binds)
 
 

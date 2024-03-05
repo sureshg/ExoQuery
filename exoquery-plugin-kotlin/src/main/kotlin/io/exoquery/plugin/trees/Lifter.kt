@@ -167,6 +167,7 @@ class Lifter(val builderCtx: BuilderContext) {
       // The below must go in Function/Query/Expression/Action lift clauses
       is Marker -> make<Marker>(this.component1().lift())
       is Infix -> make<Lifter>(this.component1().lift { it.lift() }, this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift(), this.component5().lift())
+      is RuntimeQueryBind -> make<RuntimeQueryBind>(this.component1().lift(), this.component2().lift())
     }
 
   fun XR.JoinType.lift(): IrExpression =
@@ -196,6 +197,7 @@ class Lifter(val builderCtx: BuilderContext) {
   fun liftXR(xr: XR) = xr.lift()
   fun liftXRType(xrt: XRType) = xrt.lift()
   fun liftExpression(expr: Expression) = expr.lift()
+  fun liftIdent(expr: Ident) = expr.lift()
 
   @OptIn(ExoInternal::class)
   fun liftSqlVariableWithType(variable: SqlVariable<*>, typeParam: IrType) =
