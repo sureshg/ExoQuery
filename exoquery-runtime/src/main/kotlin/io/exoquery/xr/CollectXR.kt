@@ -2,6 +2,8 @@ package io.exoquery.xr
 
 class CollectXR<T>(private val collect: (XR) -> T?): StatefulTransformerSingleRoot<MutableList<T>> {
 
+  override val debug: DebugDump = DebugDump()
+
   override val state = mutableListOf<T>()
 
   override fun <X : XR> root(xr: X): Pair<X, StatefulTransformerSingleRoot<MutableList<T>>> {

@@ -4,16 +4,41 @@ import io.exoquery.fansi.Attrs
 import io.exoquery.pprint.PPrinterConfig
 import io.exoquery.printing.PrintXR
 import io.exoquery.terpal.Interpolator
+import io.exoquery.xr.DebugDump
+
+
+sealed interface DebugMsg {
+  data class Fragment(val str: String): DebugMsg
+  data class Composite(val frags: List<DebugMsg>): DebugMsg
+  object Empty: DebugMsg
+}
+
 
 class Tracer(
   val traceType: TraceType,
   val traceConfig: TraceConfig,
   val defaultIndent: Int = 0,
   val color: Boolean = Globals.traceColors,
-  val globalTracesEnabled: (TraceType) -> Boolean = { Globals.tracesEnabled(it) }
+  val globalTracesEnabled: (TraceType) -> Boolean = { Globals.tracesEnabled(it) },
+  val outputSource: OutputSource = OutputSource.Println
 ): Interpolator<Any, Traceable> {
+
+  sealed interface OutputSource {
+    fun output(str: String): Unit {
+      when (this) {
+        is InMem -> this.dump(str)
+        is Println -> println(str)
+      }
+    }
+
+    data class InMem(val sink: DebugDump): OutputSource {
+      fun dump(str: String) = sink.dump(str)
+    }
+    object Println: OutputSource
+  }
+
   override fun interpolate(parts: () -> List<String>, params: () -> List<Any>): Traceable =
-    Traceable(parts, params, traceType, color, defaultIndent, traceConfig, globalTracesEnabled)
+    Traceable(parts, params, traceType, color, defaultIndent, traceConfig, globalTracesEnabled, outputSource)
 }
 
 class Traceable(
@@ -23,8 +48,11 @@ class Traceable(
   val color: Boolean,
   val defaultIndent: Int,
   val traceConfig: TraceConfig,
-  val globalTracesEnabled: (TraceType) -> Boolean
+  val globalTracesEnabled: (TraceType) -> Boolean,
+  val outputSource: Tracer.OutputSource
 ) {
+
+  fun <T> writeln(str: T) = outputSource.output(str.toString() + "\n")
 
   fun tracesEnabled(): Boolean =
     traceConfig.enabledTraces.contains(traceType) || globalTracesEnabled(traceType)
@@ -80,11 +108,19 @@ class Traceable(
       explicitIndent ?: run {
         // A trick to make nested calls of andReturn indent further out which makes andReturn MUCH more usable.
         // Just count the number of times it has occurred on the thread stack.
+        val fil = Thread
+          .currentThread()
+          .getStackTrace()
+          .toList()
+
+        println(fil)
+
+
         val returnInvocationCount = Thread
           .currentThread()
           .getStackTrace()
           .toList()
-          .count { e -> e.getMethodName() == "andReturn" }
+          .count { e -> e.getMethodName() == "andReturn"  } //|| (e.className == "io.exoquery.util.Traceable\$AndReturnIf" && e.methodName == "invoke")
         defaultIndent + orZero(returnInvocationCount - 1) * 2
       }
 
@@ -169,42 +205,56 @@ class Traceable(
     if (tracesEnabled()) renderString(parts(), params()) else null
 
   fun andLog(): Unit {
-    logIfEnabled()?.let { println(it.first) }
+    logIfEnabled()?.let { writeln(it.first) }
   }
 
   infix inline fun <T> andContinue(command: () -> T): T {
-    logIfEnabled()?.let { println(it.first) }
+    logIfEnabled()?.let { writeln(it.first) }
     return command()
   }
 
-  infix inline fun <T> andReturn(command: () -> T): T =
+  infix fun <T> andReturn(command: () -> T): T =
     logIfEnabled()?.let { (output, indent) ->
       // do the initial log
-      println(output)
+      writeln(output)
       // evaluate the command, this will activate any traces that were inside of it
       val result = command()
-      println(generateStringForCommand(result as Any, indent))
+      writeln(generateStringForCommand(result as Any, indent))
       result
     } ?: command()
 
-  fun <T> andReturnIf(command: () -> T): (((T) -> Boolean) -> T) = { showIf ->
-    logIfEnabled()?.let { (output, indent) ->
-
-      // Even though we usually want to evaluate the command after the initial log was done
-      // (so that future logs are nested under this one after the intro text but not
-      // before the return) but we can't do that in this case because the switch indicating
-      // whether to output anything or not is dependant on the return value.
-      val result = command()
-
-      if (showIf(result))
-        println(output)
-
-      if (showIf(result))
-        println(generateStringForCommand(result as Any, indent))
-
-      result
-    } ?: command()
+  inner class AndReturnIf<T>(val command: () -> T) {
+    operator fun invoke(showIf: (T) -> Boolean): T =
+      logIfEnabled()?.let { (output, indent) ->
+        val result = command()
+        if (showIf(result))
+          writeln(output)
+        if (showIf(result))
+          writeln(generateStringForCommand(result as Any, indent))
+        result
+      } ?: command()
   }
+
+  fun <T> andReturnIf(command: () -> T) = AndReturnIf(command)
+
+//  fun <T> andReturnIf(command: () -> T): (((T) -> Boolean) -> T) = { showIf ->
+//    logIfEnabled()?.let { (output, indent) ->
+//
+//      // Even though we usually want to evaluate the command after the initial log was done
+//      // (so that future logs are nested under this one after the intro text but not
+//      // before the return) but we can't do that in this case because the switch indicating
+//      // whether to output anything or not is dependant on the return value.
+//      val result = command()
+//
+//      if (showIf(result))
+//        println(output)
+//
+//      if (showIf(result))
+//        println(generateStringForCommand(result as Any, indent))
+//
+//      result
+//    } ?: command()
+//  }
 
 
 }

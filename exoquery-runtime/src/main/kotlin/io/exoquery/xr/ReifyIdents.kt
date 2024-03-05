@@ -9,6 +9,8 @@ data class ReifyIdentError(val msg: String): IllegalStateException(msg)
 data class ReifyIdents internal constructor (override val state: List<BID>, val binds: DynamicBinds): StatefulTransformer<List<BID>> {
   protected fun withState(state: List<BID>) = ReifyIdents(state, binds)
 
+  override val debug: DebugDump = DebugDump()
+
   val bindMap =
     binds.list.mapNotNull { (bid, runtimeValue) ->
       if (runtimeValue is RuntimeBindValue.SqlVariableIdent) bid to runtimeValue.value else null

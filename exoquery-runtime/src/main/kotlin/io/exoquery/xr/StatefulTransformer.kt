@@ -1,5 +1,6 @@
 package io.exoquery.xr
 
+import io.exoquery.util.DebugMsg
 import io.exoquery.xr.XR.*
 
 
@@ -48,8 +49,16 @@ interface StatefulTransformerSingleRoot<T>: StatefulTransformer<T> {
   }
 }
 
+data class DebugDump(val info: MutableList<DebugMsg> = mutableListOf()){
+  fun dump(str: String) = info.add(DebugMsg.Fragment(str))
+  companion object {
+    operator fun invoke(vararg msg: DebugMsg) = DebugDump(msg.toMutableList())
+  }
+}
+
 interface StatefulTransformer<T> {
   val state: T
+  val debug: DebugDump
 
   operator fun invoke(xr: XR): Pair<XR, StatefulTransformer<T>> =
     with(xr) {
