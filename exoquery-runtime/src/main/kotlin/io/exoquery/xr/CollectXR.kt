@@ -30,6 +30,41 @@ class CollectXR<T>(private val collect: (XR) -> T?): StatefulTransformerSingleRo
 }
 
 
+
+class ContainsXR(private val predicate: (XR) -> Boolean): StatefulTransformer<Boolean> {
+  override val debug: DebugDump = DebugDump()
+
+  var isFound = false
+  override val state get() = isFound
+
+  override fun invoke(xr: XR.Expression): Pair<XR.Expression, StatefulTransformer<Boolean>> =
+    if (isFound) xr to this
+    else { isFound = predicate(xr); xr to this }
+
+  override fun invoke(xr: XR.Query): Pair<XR.Query, StatefulTransformer<Boolean>> =
+    if (isFound) xr to this
+    else { isFound = predicate(xr); xr to this }
+
+  override fun invoke(xr: XR.Branch): Pair<XR.Branch, StatefulTransformer<Boolean>> =
+    if (isFound) xr to this
+    else { isFound = predicate(xr); xr to this }
+
+  override fun invoke(xr: XR.Variable): Pair<XR.Variable, StatefulTransformer<Boolean>> =
+    if (isFound) xr to this
+    else { isFound = predicate(xr); xr to this }
+
+  override fun invoke(xr: XR): Pair<XR, StatefulTransformer<Boolean>> =
+    if (isFound) xr to this
+    else { isFound = predicate(xr); xr to this }
+
+
+  companion object {
+    operator fun <T> invoke(xr: XR, collect: (XR) -> T?): List<T> where T: XR =
+      CollectXR<T>(collect).root(xr).second.state
+  }
+}
+
+
 class TransformXR(
   val transformQuery: (XR.Query) -> XR.Query? = { it },
   val transformExpression: (XR.Expression) -> XR.Expression? = { it },

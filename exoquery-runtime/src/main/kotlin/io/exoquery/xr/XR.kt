@@ -96,7 +96,8 @@ sealed interface XR {
   data class Map(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression): Query, PC<Map> {
     override val productComponents = productOf(this, head, id, body)
     override val type get() = body.type
-    companion object {}
+    companion object {
+    }
     override fun toString() = show()
   }
 
