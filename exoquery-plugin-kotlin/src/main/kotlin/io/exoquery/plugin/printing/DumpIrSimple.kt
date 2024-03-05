@@ -1,5 +1,6 @@
 package io.exoquery.plugin.printing
 
+import io.exoquery.plugin.safeName
 import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.ir.IrElement
@@ -434,7 +435,11 @@ class CollectIdentDeclVisitor() : IrElementVisitorVoid {
   val foundIdentifiers = mutableListOf<IrSymbol>()
 
   override fun visitElement(element: IrElement) {
-    if (element is IrDeclaration) {
+    if (
+      element is IrDeclaration &&
+      element.symbol.safeName != "<anonymous>" &&
+      !element.symbol.safeName.startsWith("_context_receiver")
+    ) {
       foundIdentifiers.add(element.symbol)
     }
 

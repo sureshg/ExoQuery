@@ -1,6 +1,7 @@
 package io.exoquery.plugin.transform
 
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.printing.CollectDecls
 import io.exoquery.plugin.trees.ParserContext
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -16,7 +17,10 @@ abstract class Transformer {
   context(ParserContext, BuilderContext, CompileLogger)
   abstract protected fun transformBase(expression: IrCall, superTransformer: VisitTransformExpressions): IrExpression
 
-  open fun makeParserContext(): ParserContext = ParserContext(ctx.parentScopeSymbols, ctx.currentFile)
+  open fun makeParserContext(expression: IrCall): ParserContext {
+    val decls = ScopeSymbols(CollectDecls.from(expression)) + ctx.parentScopeSymbols
+    return ParserContext(decls, ctx.currentFile)
+  }
 
   fun matches(expression: IrCall): Boolean =
     with(ctx) {
@@ -24,7 +28,7 @@ abstract class Transformer {
     }
 
   fun transform(expression: IrCall, superTransformer: VisitTransformExpressions): IrExpression =
-    with(makeParserContext()) {
+    with(makeParserContext(expression)) {
       with(ctx) {
         with (logger) { transformBase(expression, superTransformer) }
       }

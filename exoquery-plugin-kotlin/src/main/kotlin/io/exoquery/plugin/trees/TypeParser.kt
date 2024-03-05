@@ -19,6 +19,10 @@ object TypeParser {
         parse(realType)
       },
 
+      case(Ir.Type.Query[Is()]).then { realType ->
+        parse(realType)
+      },
+
       case(Ir.Type.DataClass[Is(), Is()]).then { name, props ->
         val fieldTypeXRs = props.map { (fieldName, fieldType) -> fieldName to parse(fieldType) }
         XRType.Product(name, fieldTypeXRs)

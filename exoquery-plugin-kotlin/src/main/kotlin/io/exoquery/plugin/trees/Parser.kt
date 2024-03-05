@@ -4,6 +4,7 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.BID
+import io.exoquery.Query
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.DomainErrors
@@ -11,6 +12,7 @@ import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.transform.ScopeSymbols
 import io.exoquery.parseError
+import io.exoquery.plugin.transform.VisitTransformExpressions
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
@@ -18,11 +20,12 @@ import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import java.util.UUID
 
 data class ParserContext(val internalVars: ScopeSymbols, val currentFile: IrFile)
 
 object Parser {
-  context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR.Expression, DynamicBindsAccum> =
+  context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR, DynamicBindsAccum> =
     ParserCollector().let { par -> Pair(par.parseFunctionBlockBody(blockBody), par.binds) }
 }
 
@@ -89,6 +92,20 @@ private class ParserCollector {
     // TODO was in the middle of working on pattern-matching for Unary functions
     on(expr).match<XR>(
 
+      // This could a runtime binding e.g. a variable representing a query etc...
+      // can we assume it will be recurisvely transformed and just take the XR from it?
+      // or do we need to transform it here
+      case(Ir.Expression[Is()]).thenIf { it.isClass<Query<*>>() }.then { expr ->
+        // Assuming that recursive transforms have already converted queries inside here
+        val bindId = BID.new()
+        XR.RuntimeQueryBind(bindId, TypeParser.parse(expr.type))
+
+        // Add the query expression to the binds list
+        binds.add(bindId, RuntimeBindValueExpr.RuntimeQueryExpr(expr))
+
+        TODO()
+      },
+
       // Binary Operators
       case(ExtractorsDomain.Call.`x op y`[Is()]).thenThis { opCall ->
         val (x, op, y) = opCall
@@ -119,6 +136,7 @@ private class ParserCollector {
       // Other situations where you might have an identifier which is not an SqlVar e.g. with variable bindings in a Block (inside an expression)
       case(Ir.GetValue[Is()]).thenThis { sym ->
         // Every single instance of this should should be a getSqlVar
+        //error("----------- Checking: ${sym.safeName} against internalVars: ${internalVars.symbols.map { it.safeName }}")
 
         //  let-alises e.g: tmp0_safe_receiver since can't error on them
         if (!internalVars.contains(sym) && !(sym.owner.let { it is IrVariable && it.origin == IrDeclarationOrigin.IR_TEMPORARY_VARIABLE }) ) {

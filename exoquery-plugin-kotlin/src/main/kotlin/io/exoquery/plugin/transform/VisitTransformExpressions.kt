@@ -53,7 +53,8 @@ class VisitTransformExpressions(
 
     val transformPrint = TransformPrintSource(builderContext)
     val queryMapTransformer = TransformQueryMap(builderContext, ExtractorsDomain.Call.QueryMap, "mapExpr")
-    val queryFlatMapTransformer = TransformQueryFlatMap(builderContext, "flatMapInternal")
+    val queryFilterTransformer = TransformQueryMap(builderContext, ExtractorsDomain.Call.QueryFilter, "filterExpr")
+    val queryFlatMapTransformer = TransformQueryMap(builderContext, ExtractorsDomain.Call.QueryFlatMap, "flatMapExpr")
     val makeTableTransformer = TransformTableQuery(builderContext)
     val joinOnTransformer = TransformJoinOn(builderContext)
 
@@ -93,6 +94,11 @@ class VisitTransformExpressions(
       queryMapTransformer.matches(expression) -> {
         //compileLogger.warn("=========== Transforming Map ========\n" + expression.dumpKotlinLike())
         queryMapTransformer.transform(expression, this)
+      }
+
+      queryFilterTransformer.matches(expression) -> {
+        //compileLogger.warn("=========== Transforming Map ========\n" + expression.dumpKotlinLike())
+        queryFilterTransformer.transform(expression, this)
       }
 
       else ->

@@ -76,6 +76,8 @@ sealed interface XR {
   // *******************************************************************************************
 
 
+  data class RuntimeQueryBind(val id: BID, override val type: XRType): Query
+
   // TODO XRType needs to be Product
   @Mat
   data class Entity(@Slot val name: String, override val type: XRType.Product): Query, PC<Entity> {

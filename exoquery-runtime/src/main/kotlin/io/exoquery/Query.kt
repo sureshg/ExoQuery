@@ -58,28 +58,6 @@ data class BID(val value: String) {
     fun new() = BID(UUID.randomUUID().toString())
   }
 }
-data class DynamicBinds(val list: List<Pair<BID, RuntimeBindValue>>) {
-
-  fun sqlVars() = list.map { it.second }.filterIsInstance<RuntimeBindValue.SqlVariableIdent>().map { it.value }
-
-  companion object {
-    fun empty() = DynamicBinds(listOf())
-  }
-
-  fun allVals() = list.map { it.second }.filterIsInstance<RuntimeBindValue.SqlVariableIdent>().map { it.value }
-
-  operator fun plus(other: DynamicBinds) = DynamicBinds(this.list + other.list)
-  operator fun plus(other: Pair<BID, RuntimeBindValue>) = DynamicBinds(this.list + other)
-  operator fun minus(other: DynamicBinds) = DynamicBinds(this.list - other.list)
-  operator fun minus(bid: BID) = DynamicBinds(this.list.filter { it.first != bid })
-  // Note: Might want to use a hash set of `bids` if the list gets big
-  operator fun minus(bids: List<BID>) = DynamicBinds(this.list.filter { !bids.contains(it.first) })
-}
-// The contents of this constructed directly as Kotlin IR nodes with the expressions dynamically inside e.g.
-// IrCall(IrConstructor(Sym("RuntimeBindValue.String"), listOf(IrString("Joe")))
-sealed interface RuntimeBindValue {
-  data class SqlVariableIdent(val value: kotlin.String): RuntimeBindValue
-}
 
 
 sealed interface Query<T> {
@@ -94,10 +72,14 @@ sealed interface Query<T> {
   // Table<Person>().map(name)
   fun <R> mapBy(f: context(EnclosedExpression) (T).() -> R): Query<T> = error("The map expression of the Query was not inlined")
 
-  fun <R> map(f: context(EnclosedExpression) (SqlVariable<T>) -> R): Query<T> = error("The map expression of the Query was not inlined")
-  // TODO Need to understand how this would be parsed if the function body had val-assignments
-  fun <R> mapExpr(f: Lambda1Expression, binds: DynamicBinds): Query<R> =
-    QueryContainer(XR.Map(this.xr, f.ident, f.xr.body), binds)
+  fun <R> map(f: context(EnclosedExpression) (T) -> R): Query<T> = error("The map expression of the Query was not inlined")
+  fun <R> mapExpr(id: XR.Ident, body: XR, binds: DynamicBinds): Query<R> =
+    QueryContainer(XR.Map(this.xr, id, body as XR.Expression), binds)
+
+  fun <R> filter(f: context(EnclosedExpression) (T) -> R): Query<T> = error("The filter expression of the Query was not inlined")
+  // TODO Need to understand how this would be parsed in the correlated subquery case
+  fun <R> filterExpr(id: XR.Ident, body: XR, binds: DynamicBinds): Query<R> =
+    QueryContainer(XR.Filter(this.xr, id, body as XR.Expression), binds)
 
 
   // Search for every Ident (i.e. GetValue) that has @SqlVariable in it's type
@@ -106,10 +88,10 @@ sealed interface Query<T> {
 
   // "Cannot use the value of the variable 'foo' outside of a Enclosed Expression context
 
-  fun <R> flatMap(f: (SqlVariable<T>) -> Query<R>): Query<R> = error("needs to be replaced by compiler")
+  fun <R> flatMap(f: (T) -> Query<R>): Query<R> = error("needs to be replaced by compiler")
   // TODO Make the compiler plug-in a SqlVariable that it creates based on the variable name in f
-  fun <R> flatMapInternal(ident: XR.Ident, body: Query<R>, binds: DynamicBinds): Query<R> =
-    QueryContainer(XR.FlatMap(this.xr, ident, body.xr), binds)
+  fun <R> flatMapInternal(id: XR.Ident, body: XR, binds: DynamicBinds): Query<R> =
+    QueryContainer(XR.FlatMap(this.xr, id, body as XR.Query), binds)
 
 
 

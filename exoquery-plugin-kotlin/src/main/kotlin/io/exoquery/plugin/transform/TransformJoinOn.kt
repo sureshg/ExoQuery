@@ -38,7 +38,7 @@ class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
 
     // parse the `on` clause of the join.on(...)
     val (onLambdaBody, bindsAccum) =
-      with(makeParserContext().copy(internalVars + ScopeSymbols(listOf(reciverParam.symbol)))) {
+      with(makeParserContext(expression).copy(internalVars + ScopeSymbols(listOf(reciverParam.symbol)))) {
         Parser.parseFunctionBlockBody(blockBody)
       }
 

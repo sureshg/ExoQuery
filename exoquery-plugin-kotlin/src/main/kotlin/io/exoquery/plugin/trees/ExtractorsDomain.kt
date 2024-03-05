@@ -67,6 +67,7 @@ object ExtractorsDomain {
 
 
     val QueryMap = QueryFunction("map")
+    val QueryFilter = QueryFunction("filter")
     val QueryFlatMap = QueryFunction("flatMap")
     val `from(expr)` = BindExpression("from")
     val `join(expr)` = BindExpression("join")

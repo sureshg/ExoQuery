@@ -58,6 +58,13 @@ val IrType.simpleTypeArgs: List<IrType> get() =
   }
 
 object Ir {
+  object Expression {
+    context(CompileLogger) operator fun <AP: Pattern<IrExpression>> get(components: AP) =
+      customPattern1(components) { it: IrExpression ->
+        Components1(it)
+      }
+  }
+
   object StringConcatenation {
     // Can't do just get(components: Pattern<List<IrExpression>) need to do:
     // <AP: Pattern<List<IrExpression>>> get(components: AP) or it doesn't work because
@@ -82,6 +89,20 @@ object Ir {
           val cls = it.classOrNull
           val simpleTypeArgs = it.simpleTypeArgs
           if (cls != null && simpleTypeArgs.size == 1 && it.classFqName?.asString() == sqlVariableTypeName) {
+            Components1(simpleTypeArgs.first())
+          }
+          else null
+        }
+    }
+
+    object Query {
+      private val queryTypeName = io.exoquery.Query::class.qualifiedName!!
+
+      context(CompileLogger) operator fun <AP: Pattern<IrType>> get(realType: AP) =
+        customPattern1(realType) { it: IrType ->
+          val cls = it.classOrNull
+          val simpleTypeArgs = it.simpleTypeArgs
+          if (cls != null && simpleTypeArgs.size == 1 && it.classFqName?.asString() == queryTypeName) {
             Components1(simpleTypeArgs.first())
           }
           else null
