@@ -47,13 +47,17 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlVariable
   // Need some kind of expression parking for this
   //public suspend fun <R> yield(query: Query<R>): SqlVariable<R> =
 
+  @Suppress("UNCHECKED_CAST")
   public suspend fun <R> fromAliased(query: Query<R>, alias: String): SqlVariable<R> =
     perform { mapping ->
       val sqlVar = SqlVariable<R>(alias)
+      // Before going further, take any SqlVariable values and reify the actual name-fields into them
+      // since they are specifically returned from the select-value from/join clauses.
       val resultQuery = mapping(sqlVar).withReifiedIdents()
       val ident = XR.Ident(sqlVar.getVariableName(), resultQuery.xr.type)
       // No quoted context in this case so only the inner query of this has dynamic binds, we just get those
-      QueryContainer<R>(XR.FlatMap(query.xr, ident, resultQuery.xr), query.binds + resultQuery.binds) as Query<A> // TODO Unsafe cast, will this work?
+      val outputQuery = (QueryContainer<R>(XR.FlatMap(query.xr, ident, resultQuery.xr), query.binds + resultQuery.binds) as Query<A>)
+      outputQuery.reifyRuntimes()
     }
 
   public suspend fun <Q: Query<R>, R> join(query: Q) =
@@ -71,6 +75,7 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
 
   // TODO some internal annotation?
   @OptIn(ExoInternal::class)
+  @Suppress("UNCHECKED_CAST")
   suspend fun onExpr(identRaw: XR.Ident, bodyRaw: XR, binds: DynamicBinds): SqlVariable<R> =
     with (selectClause) {
       perform { mapping ->
@@ -85,12 +90,12 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
           XR.Ident(name, identRaw.type)
         }
         val freshCondBody = BetaReduction(body, identRaw to freshIdentForCond)
-        QueryContainer<R>(XR.FlatMap(
+        (QueryContainer<R>(XR.FlatMap(
           // Good example of beta reduction
           XR.FlatJoin(joinType, query.xr, freshIdentForCond, freshCondBody), ident, outputQuery.xr), query.binds + binds
           // Maybe there should be some kind of global-flag to disable reduction above
           // XR.FlatJoin(joinType, query.xr, cond.ident, cond.xr.body), ident, outputQuery.xr), query.binds + binds
-        ) as Query<A>
+        ) as Query<A>).reifyRuntimes()
       }
     }
 }

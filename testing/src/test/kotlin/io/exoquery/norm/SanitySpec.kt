@@ -17,7 +17,7 @@ class SanitySpec: FreeSpec({
     }
     "flatMap" {
       val q = qr1.flatMap { x -> qr2.filter { y -> y.s == x.s } }
-      println(q.xr.show())
+      q.xr.show() shouldBe """query("TestEntity").flatMap { x -> query("TestEntity2").filter { y -> y.s == x.s } }"""
     }
   }
 

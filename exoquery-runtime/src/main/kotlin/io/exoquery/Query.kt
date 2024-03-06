@@ -4,7 +4,8 @@ import io.exoquery.annotation.ExoInternal
 import io.exoquery.select.InnerMost
 import io.exoquery.select.SelectClause
 import io.exoquery.select.program
-import io.exoquery.xr.ReifyIdents
+import io.exoquery.norm.ReifyRuntimeIdents
+import io.exoquery.norm.ReifyRuntimeQueries
 import io.exoquery.xr.XR
 import java.util.*
 
@@ -66,9 +67,18 @@ sealed interface Query<T> {
   val binds: DynamicBinds
 
   fun withReifiedIdents(): Query<T> {
-    val (reifiedXR, bindIds) = ReifyIdents.ofQuery(binds, xr)
+    val (reifiedXR, bindIds) = ReifyRuntimeIdents.ofQuery(binds, xr)
     return QueryContainer<T>(reifiedXR, binds - bindIds)
   }
+
+  fun withReifiedSubQueries(): Query<T> {
+    val (reifiedXR, idsAndQueries) = ReifyRuntimeQueries.ofQuery(binds, xr)
+    val idsToRemove = idsAndQueries.map { it.first }
+    val idsToAdd = idsAndQueries.map { it.second.binds.list }.flatten()
+    return QueryContainer<T>(reifiedXR, (binds - idsToRemove) + idsToAdd)
+  }
+
+  fun reifyRuntimes() = this.withReifiedIdents().withReifiedSubQueries()
 
 //  val map get() = MapClause<T>(xr)
 
@@ -76,16 +86,16 @@ sealed interface Query<T> {
   fun <R> filterBy(f: context(EnclosedExpression) (T).() -> R): Query<T> = error("The map expression of the Query was not inlined")
 
   // Table<Person>().map(name)
-  fun <R> mapBy(f: context(EnclosedExpression) (T).() -> R): Query<T> = error("The map expression of the Query was not inlined")
+  fun <R> mapBy(f: context(EnclosedExpression) (T).() -> R): Query<R> = error("The map expression of the Query was not inlined")
 
-  fun <R> map(f: context(EnclosedExpression) (T) -> R): Query<T> = error("The map expression of the Query was not inlined")
+  fun <R> map(f: context(EnclosedExpression) (T) -> R): Query<R> = error("The map expression of the Query was not inlined")
   fun <R> mapExpr(id: XR.Ident, body: XR, binds: DynamicBinds): Query<R> =
-    QueryContainer(XR.Map(this.xr, id, body as XR.Expression), binds)
+    QueryContainer<R>(XR.Map(this.xr, id, body as XR.Expression), binds).reifyRuntimes()
 
   fun <R> filter(f: context(EnclosedExpression) (T) -> R): Query<T> = error("The filter expression of the Query was not inlined")
   // TODO Need to understand how this would be parsed in the correlated subquery case
   fun <R> filterExpr(id: XR.Ident, body: XR, binds: DynamicBinds): Query<R> =
-    QueryContainer(XR.Filter(this.xr, id, body as XR.Expression), binds)
+    QueryContainer<R>(XR.Filter(this.xr, id, body as XR.Expression), binds).reifyRuntimes()
 
 
   // Search for every Ident (i.e. GetValue) that has @SqlVariable in it's type
@@ -97,7 +107,7 @@ sealed interface Query<T> {
   fun <R> flatMap(f: (T) -> Query<R>): Query<R> = error("needs to be replaced by compiler")
   // TODO Make the compiler plug-in a SqlVariable that it creates based on the variable name in f
   fun <R> flatMapExpr(id: XR.Ident, body: XR, binds: DynamicBinds): Query<R> =
-    QueryContainer(XR.FlatMap(this.xr, id, body as XR.Query), binds)
+    QueryContainer<R>(XR.FlatMap(this.xr, id, body as XR.Query), binds).reifyRuntimes()
 
 
 

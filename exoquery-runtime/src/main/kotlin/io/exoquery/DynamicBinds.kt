@@ -13,6 +13,7 @@ data class DynamicBinds(val list: List<Pair<BID, RuntimeBindValue>>) {
 
   operator fun plus(other: DynamicBinds) = DynamicBinds(this.list + other.list)
   operator fun plus(other: Pair<BID, RuntimeBindValue>) = DynamicBinds(this.list + other)
+  operator fun plus(other: List<Pair<BID, RuntimeBindValue>>) = DynamicBinds(this.list + other)
   operator fun minus(other: DynamicBinds) = DynamicBinds(this.list - other.list)
   operator fun minus(bid: BID) = DynamicBinds(this.list.filter { it.first != bid })
   // Note: Might want to use a hash set of `bids` if the list gets big

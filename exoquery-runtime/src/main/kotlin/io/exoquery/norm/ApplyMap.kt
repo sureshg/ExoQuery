@@ -79,7 +79,7 @@ class ApplyMap(val traceConfig: TraceConfig) {
 
 
 
-  fun invoke(q: Query): Query? =
+  operator fun invoke(q: Query): Query? =
     on(q).match(
 //      case Map(a: GroupByMap, b, c) if (b == c) => None
 //      case Map(a: Nested, b, c) if (b == c)     => None
