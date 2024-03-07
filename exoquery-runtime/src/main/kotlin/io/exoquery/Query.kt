@@ -86,8 +86,6 @@ sealed interface Query<T> {
     return QueryContainer<T>(reifiedXR, (binds - idsToRemove) + idsToAdd)
   }
 
-  fun reifyRuntimes() = this.withReifiedIdents().withReifiedSubQueries()
-
 //  val map get() = MapClause<T>(xr)
 
   // Table<Person>().filter(name == "Joe")
@@ -98,12 +96,12 @@ sealed interface Query<T> {
 
   fun <R> map(f: context(EnclosedExpression) (T) -> R): Query<R> = error("The map expression of the Query was not inlined")
   fun <R> mapExpr(id: XR.Ident, body: XR, binds: DynamicBinds): Query<R> =
-    QueryContainer<R>(XR.Map(this.xr, id, body as XR.Expression), binds).reifyRuntimes()
+    QueryContainer<R>(XR.Map(this.xr, id, body as XR.Expression), binds).withReifiedSubQueries()
 
   fun <R> filter(f: context(EnclosedExpression) (T) -> R): Query<T> = error("The filter expression of the Query was not inlined")
   // TODO Need to understand how this would be parsed in the correlated subquery case
   fun <R> filterExpr(id: XR.Ident, body: XR, binds: DynamicBinds): Query<R> =
-    QueryContainer<R>(XR.Filter(this.xr, id, body as XR.Expression), binds).reifyRuntimes()
+    QueryContainer<R>(XR.Filter(this.xr, id, body as XR.Expression), binds).withReifiedSubQueries()
 
 
   // Search for every Ident (i.e. GetValue) that has @SqlVariable in it's type
@@ -113,23 +111,10 @@ sealed interface Query<T> {
   // "Cannot use the value of the variable 'foo' outside of a Enclosed Expression context
 
   fun <R> flatMap(f: (T) -> Query<R>): Query<R> = error("needs to be replaced by compiler")
-  // TODO Make the compiler plug-in a SqlVariable that it creates based on the variable name in f
   fun <R> flatMapExpr(id: XR.Ident, body: XR, binds: DynamicBinds): Query<R> =
-    QueryContainer<R>(XR.FlatMap(this.xr, id, body as XR.Query), binds).reifyRuntimes()
+    QueryContainer<R>(XR.FlatMap(this.xr, id, body as XR.Query), binds).withReifiedSubQueries()
 
-
-
-
-  //fun <R> flatMapExpr(f: Lambda1Expression): Query<R> =
-  //  QueryContainer(XR.FlatMap(this.xr, f.ident, f.xr.body))
-
-//  fun <T> join(source: Query<T>): OnClause<T> = OnClause(source)
 }
-
-//data class OnClause<T>(val source: Query<T>) {
-//  fun on(predicate: (T) -> Boolean): Query<T> =  error("The join-on expression of the Query was not inlined")
-//  fun onExpr(f: Lambda1Expression): Query<T> =  error("The join-on expression of the Query was not inlined")
-//}
 
 data class QueryContainer<T>(override val xr: XR.Query, override val binds: DynamicBinds): Query<T>
 
@@ -144,30 +129,28 @@ class Table<T> private constructor (override val xr: XR.Entity, override val bin
 
 @Suppress("UNCHECKED_CAST")
 public fun <T, Q: Query<T>> query(block: suspend SelectClause<T>.() -> SqlExpression<T>): Q {
-  /*
-  public fun <Action, Result, T : ProgramBuilder<Action, Result>> program(
-    machine: T,
-    f: suspend T.() -> Result
-): Action
-   */
   val markerId = UUID.randomUUID().toString()
 
-  var start = System.currentTimeMillis()
   val q =
     program<Query<T>, SqlExpression<T>, SelectClause<T>>(
       machine = SelectClause<T>(markerId),
       f = block
     ) as Query<T>
-  println("--- Creating Program: ${(System.currentTimeMillis() - start).toDouble()/1000} ---")
 
-  // TODO Need to change the innermost map into a flatMap
-  //return q as Q
-
-  start = System.currentTimeMillis()
   val markedXR = InnerMost(markerId).findAndMark(q.xr)
-  println("--- Marking InnerMost: ${(System.currentTimeMillis() - start).toDouble()/1000} ---")
-
-  return QueryContainer<T>(markedXR, q.binds) as Q
+  val queryContainerRaw = QueryContainer<T>(markedXR, q.binds)
+  /*
+  IMPORTANT Only do the `withReifiedIdents()` here and not in previous clauses because the reification process removes the
+  identifiers we've found from the DynamicBinds state. That means that if there are any other clauses in the SelectClause
+  below that reuse those identifiers the binds could be lost. For example:
+    query {
+      val p = from(Table<Person>)
+      val a = join(Table<Address>).on { owner == p.id (<- need to reifiy `p` here) }
+      select { p (<- need to reifiy `p` here as well) to a }
+    }
+  That means that if we reifiy idents at the end of the join-clause, it will return a QueryContainer with an empty
+  binds list and the `select` clause at the end (which knows nothing about binds since it is a generic quotation function)
+  will never get the information about the fact that p needs to be reified.
+   */
+  return queryContainerRaw.withReifiedSubQueries().withReifiedIdents() as Q
 }
-
-//data class Table<T>(override val xt: XR): Query<T>

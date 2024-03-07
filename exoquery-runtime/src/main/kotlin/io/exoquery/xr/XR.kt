@@ -189,6 +189,22 @@ sealed interface XR {
   }
 
   @Mat
+  data class FlatGroupBy(@Slot val by: XR.Expression): Query, PC<FlatGroupBy> {
+    override val productComponents = productOf(this, by)
+    override val type get() = by.type
+    companion object {}
+    override fun toString() = show()
+  }
+
+  @Mat
+  data class FlatSortBy(@Slot val by: XR.Expression, val ordering: XR.Ordering): Query, PC<FlatSortBy> {
+    override val productComponents = productOf(this, by)
+    override val type get() = by.type
+    companion object {}
+    override fun toString() = show()
+  }
+
+  @Mat
   data class Distinct(@Slot val head: XR.Query): Query, PC<Distinct> {
     override val productComponents = productOf(this, head)
     override val type get() = head.type

@@ -155,7 +155,13 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
       }
     }
 
-  private fun flattenContexts(query: XR): Pair<List<FromContext>, XR> =
+  sealed interface Layer {
+    data class Context(val ctx: FromContext): Layer
+    data class Grouping(val groupBy: XR.Expression): Layer
+  }
+
+
+  private fun flattenContexts(query: XR): Pair<List<Layer>, XR> =
     with(query) {
       when {
         // A flat-join query with no maps e.g: `qr1.flatMap(e1 => qr1.join(e2 => e1.i == e2.i))`
@@ -168,15 +174,24 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
           trace("[INVALID] Flattening Flatmap with Infix") andReturn {
             xrError("Infix can't be use as a `flatMap` body. $query")
           }
+        // Conceptually (the actual DSL is different):
+        // people.flatMap(p -> groupBy(expr).flatMap(rest)) is:
+        //   FlatMap(people, p, FlatMap(GroupBy(expr), rest)))
+        this is FlatMap && head is XR.FlatGroupBy ->
+          trace("Flattening Flatmap with FlatGroupBy") andReturn {
+            val (nestedContexts, finalFlatMapBody) = flattenContexts(body)
+            listOf(Layer.Grouping(head.by)) + nestedContexts to finalFlatMapBody
+          }
+        // TODO FlatSortBy same way
         this is FlatMap ->
           trace("Flattening Flatmap with Query") andReturn {
             val source                             = source(head, id.name)
             val (nestedContexts, finalFlatMapBody) = flattenContexts(body)
-            (listOf(source) + nestedContexts to finalFlatMapBody)
+            (listOf(Layer.Context(source)) + nestedContexts to finalFlatMapBody)
           }
         else ->
           trace("Flattening other") andReturn {
-            (listOf<FromContext>() to query)
+            (listOf<Layer>() to query)
           }
       }
     }
@@ -184,7 +199,16 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
   private fun flatten(query: XR, alias: String): FlattenSqlQuery =
     trace("Flattening ${query}") andReturn {
       val (sources, finalFlatMapBody) = flattenContexts(query)
-      flatten(sources, finalFlatMapBody, alias, nestNextMap = false)
+      // TODO Check if the 2nd-to-last source is a groupBy otherwise we're doing things
+      //      between the groupBy and the final `select` which is illegal
+      val contexts = sources.mapNotNull { if (it is Layer.Context) it.ctx else null }
+      // TODO there should only be one grouping possible, check that this is the case
+      val grouping = sources.mapNotNull { if (it is Layer.Grouping) it.groupBy else null }.firstOrNull()
+      val query = flatten(contexts, finalFlatMapBody, alias, nestNextMap = false)
+      if (grouping != null)
+        query.copy(groupBy = grouping)
+      else
+        query
     }
 
   private fun flatten(
@@ -450,6 +474,8 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
       when (this) {
         is XR.Entity            -> TableContext(this, alias)
         is XR.Infix             -> InfixContext(this, alias)
+        // people.flatMap(p -> join(addresses, on).flatMap(rest)) is:
+        //   FlatMap(people, p, FlatMap(FlatJoin(people, on), rest))
         is XR.FlatJoin          -> FlatJoinContext(joinType, source(head, id.name), on)
         is XR.Nested            -> QueryContext(invoke(head), alias)
         else                    -> QueryContext(invoke(ast), alias)
