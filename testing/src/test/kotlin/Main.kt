@@ -1,5 +1,6 @@
 import com.github.vertical_blank.sqlformatter.SqlFormatter
 import io.exoquery.*
+import io.exoquery.annotation.ExoInternal
 import io.exoquery.norm.RepropagateTypes
 import io.exoquery.sql.ExpandNestedQueries
 import io.exoquery.sql.SqlQueryApply
@@ -60,6 +61,76 @@ object Model1 {
     println(pprint(x.binds, defaultShowFieldNames = false, defaultWidth = 200))
   }
 }
+
+
+
+object Model1Simple {
+  data class Person(val id: Int, val name: String, val age: Int)
+  data class Address(val ownerId: Int, val street: String, val zip: Int)
+
+  fun use() {
+    val p = Person(111, "Joe", 123)
+
+    // Problem of "p" vs "x". Ident needs to get the runtime value of the variable
+    // That means we need a separate binding map for runtime values or an expression-container
+
+    // TODO aliasing is wrong, need to fix up
+    var start = System.currentTimeMillis()
+    val x =
+      query {
+        val x = from(Table<Person>().filter { it.name == "Joe" })
+        val a = join(Table<Address>()).on { street == x().name }
+        // TODO can implement a `where {  }` clause this way
+        // TODO can implement the `sortBy {  }` clause this way
+        // TODO Error on multiple groupBy
+        // TODO generalize groupBy to do these things
+        groupBy { x().age }
+        groupBy { x().name }
+        select { x() to a() }
+      }.filter { it.first.name == "Jack" }
+
+    println("------------ Query Making Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
+
+    println("=============== XR ===============")
+    println(x.xr.showRaw())
+
+    println("=============== XR: Types Repropagated ===============")
+    val xrBeta = RepropagateTypes(Globals.traceConfig())(x.xr)
+    println(xrBeta.showRaw())
+
+    //println("=============== SQL ===============")
+    start = System.currentTimeMillis()
+    val sql = SqlQueryApply(Globals.traceConfig())(xrBeta)
+    println("------------ SqlQueryApply Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
+    //println(sql.showRaw())
+
+    //println("=============== Expanded SQL ===============")
+    start = System.currentTimeMillis()
+    val expandedSql = ExpandNestedQueries(sql, sql.type)
+    println("------------ ExpandNestedQueries Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
+    //println(expandedSql.showRaw())
+
+    println("=============== Tokenized SQL ===============")
+    start = System.currentTimeMillis()
+    val tokenizedSql =
+      with (PostgresDialect(Globals.traceConfig())) {
+        expandedSql.token
+      }
+    println("------------ PostgresDialect Tokenization Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
+    println(SqlFormatter.format(tokenizedSql.toString()))
+
+    //val reduction = BetaReduction(x.xr)
+    //println("-------------- Reduction -------------\n" + format(reduction.show()))
+
+    println(pprint(x.binds, defaultShowFieldNames = false, defaultWidth = 200))
+  }
+}
+
+
+fun main() {
+  Model1Simple.use()
+}
+
 
 //
 //// TODO Need test name:String? because it doesn't work with XRType
@@ -129,16 +200,13 @@ object Model4 {
       query {
         val p = from(Table<Person>())
         val a = join(Table<Address>()).on { street == p().name }
+        groupBy { p().name }
         select { p() to a() }
       }
 
     println("=============== Raw ===============\n" + x)
     println("=============== Code ===============\n" + x)
   }
-}
-
-fun main() {
-  Model4.use()
 }
 
 

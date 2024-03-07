@@ -60,7 +60,7 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressi
       val resultQuery = mapping(sqlVar).withReifiedIdents()
       val ident = XR.Ident(sqlVar.getVariableName(), resultQuery.xr.type)
       // No quoted context in this case so only the inner query of this has dynamic binds, we just get those
-      (QueryContainer<R>(XR.FlatMap(query.xr, ident, resultQuery.xr), query.binds + resultQuery.binds) as Query<A>)
+      (QueryContainer<A>(XR.FlatMap(query.xr, ident, resultQuery.xr), query.binds + resultQuery.binds)) /*as Query<A>*/
     }
 
   public suspend fun <Q: Query<R>, R> join(query: Q) =
@@ -69,14 +69,14 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressi
   public suspend fun <Q: Query<R>, R> joinAliased(query: Q, alias: String) =
     JoinOn<Q, R, A>(query, XR.JoinType.Inner, this, alias)
 
-//  public suspend fun <R> groupBy(f: () -> R): Unit =
-//    error("The groupBy(...) expression of the Query was not inlined")
+  public suspend fun <R> groupBy(f: context(EnclosedExpression) () -> R): Unit =
+    error("The groupBy(...) expression of the Query was not inlined")
 
-//  public suspend fun <R> groupByExpr(expr: XR.Expression, binds: DynamicBinds): Unit =
-//    performUnit { mapping ->
-//      val childQuery = mapping()
-//      (QueryContainer<R>(XR.FlatMap(XR.FlatGroupBy(expr), XR.Ident.Unused, childQuery), binds))
-//    }
+  public suspend fun <R> groupByExpr(expr: XR.Expression, binds: DynamicBinds): Unit =
+    performUnit { mapping ->
+      val childQuery = mapping()
+      (QueryContainer<A>(XR.FlatMap(XR.FlatGroupBy(expr), XR.Ident("unused", XRType.Unknown), childQuery.xr), childQuery.binds + binds))
+    }
 }
 
 class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.JoinType, private val selectClause: SelectClause<A>, private val aliasRaw: String?) {

@@ -28,13 +28,17 @@ object TypeParser {
         XRType.Product(name, fieldTypeXRs)
       },
 
-      // TODO Don't understand why this doesn't work!!!
       case(Ir.Type.Value[Is()]).then { type ->
         //error("----------- Got here: ${type} ----------")
         if (type.isBoolean())
           XRType.BooleanValue
         else
           XRType.Value
+      },
+
+      case(Ir.Type.Generic[Is()]).then { type ->
+        //error("----------- Got here: ${type} ----------")
+        XRType.Generic
       }
 
     ) ?: parseError("Could not parse type from: ${expr.dumpKotlinLike()}")

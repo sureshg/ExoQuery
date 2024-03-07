@@ -137,6 +137,8 @@ class MirrorIdiom {
       is Union -> "${a.token}.union(${b.token})"
       is UnionAll -> "${head.token}.unionAll(${body.token})"
       is FlatJoin -> "${head.token}.${joinType.token} { ${id.token} -> ${on.token} }"
+      is FlatGroupBy -> "groupBy { ${by.token} }"
+      is FlatSortBy -> "sortedBy { ${by.token} }(${ordering.token})"
       is Distinct -> "${head.token}.distinct"
       is DistinctOn -> "${head.token}.distinctOn { ${id.token} -> ${by.token} }"
       is Nested -> "${head.token}.nested"

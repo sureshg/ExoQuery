@@ -141,6 +141,29 @@ object ExtractorsDomain {
         }
     }
 
+    object `groupBy(expr)` {
+      context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
+        // E.g. is Query."map"
+        it.reciverIs<SelectClause<*>>("groupBy") && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
+
+      context (CompileLogger) operator fun <AP: Pattern<CallData>> get(x: AP) =
+        customPattern1(x) { it: IrCall ->
+          if (matchesMethod(it)) {
+            on(it).match(
+              // (joinClause).on { stuff } <- FunctionMem1, `on` is a member of joinClause
+              case(Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
+                on(expression).match(
+                  case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
+                    val funExpression = this
+                    Components1(CallData(reciver, funExpression, params, blockBody))
+                  }
+                )
+              }
+            )
+          } else null
+        }
+    }
+
     object `x op y` {
       context (CompileLogger) operator fun <AP: Pattern<OperatorCall>> get(x: AP) =
         customPattern1(x) { it: IrCall ->

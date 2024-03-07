@@ -58,3 +58,40 @@ class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
   }
 }
 
+
+class TransformGroupBy(override val ctx: BuilderContext): Transformer() {
+  context(BuilderContext, CompileLogger)
+  override fun matchesBase(expression: IrCall): Boolean =
+    ExtractorsDomain.Call.`groupBy(expr)`.matchesMethod(expression)
+
+  context(ParserContext, BuilderContext, CompileLogger)
+  override fun transformBase(expression: IrCall, superTransformer: VisitTransformExpressions): IrExpression {
+    // For join(addresses).on { id == person.id } :
+    //    funExpression would be `id == person.id`. Actually it includes the "hidden" reciver so it would be:
+    //    `$this$on.id == person.id`
+    val (caller, funExpression, params, blockBody) =
+      on(expression).match(
+        case(ExtractorsDomain.Call.`groupBy(expr)`[Is()]).then { queryCallData -> queryCallData }
+      ) ?: parseError("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
+
+    // TODO Recursively transform the block body?
+
+    // parse the `on` clause of the join.on(...)
+    val (onLambdaBody, bindsAccum) =
+      with(makeParserContext(expression).copy(internalVars)) {
+        Parser.parseFunctionBlockBody(blockBody)
+      }
+
+    val lifter = makeLifter()
+    val onLambdaBodyExpr = lifter.liftXR(onLambdaBody)
+
+    // To transform the TableQuery etc... in the join(<Heree>).on clause before the `on`
+    // No scope symbols into caller since it comes Before the on-clause i.e. before any symbols could be created
+    val newCaller = caller.transform(superTransformer, internalVars)
+
+    val bindsList = bindsAccum.makeDynamicBindsIr()
+
+    return newCaller.callMethod("groupByExpr").invoke(onLambdaBodyExpr, bindsList)
+  }
+}
+

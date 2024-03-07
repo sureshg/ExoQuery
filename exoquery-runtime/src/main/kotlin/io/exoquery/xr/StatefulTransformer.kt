@@ -187,6 +187,14 @@ interface StatefulTransformer<T> {
           val (onA, stateB) = stateA.invoke(on)
           FlatJoin(joinType, aA, id, onA) to stateB
         }
+        is FlatGroupBy -> {
+          val (aA, stateA) = invoke(by)
+          FlatGroupBy(aA) to stateA
+        }
+        is FlatSortBy -> {
+          val (aA, stateA) = invoke(by)
+          FlatSortBy(aA, ordering) to stateA
+        }
         is ConcatMap -> {
           val (aA, stateA) = invoke(head)
           val (bA, stateB) = stateA.invoke(body)

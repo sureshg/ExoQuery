@@ -69,6 +69,8 @@ interface StatelessTransformer {
         is SortBy -> SortBy(invoke(head), id, invoke(criteria), ordering)
         is Take -> Take(invoke(head), invoke(num))
         is FlatJoin -> FlatJoin(joinType, invoke(head), id, invoke(on))
+        is FlatGroupBy -> FlatGroupBy(invoke(by))
+        is FlatSortBy -> FlatSortBy(invoke(by), ordering)
         is ConcatMap -> ConcatMap(invoke(head), id, invoke(body))
         is GroupByMap -> GroupByMap(invoke(head), byAlias, invoke(byBody), mapAlias, invoke(mapBody))
         is Nested -> Nested(invoke(head))

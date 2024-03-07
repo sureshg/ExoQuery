@@ -8,6 +8,7 @@ import io.exoquery.plugin.isDataClass
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.safeName
 import io.exoquery.parseError
+import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.*
@@ -15,6 +16,7 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.isTypeParameter
 
 fun <T> List0() = Is(listOf<T>())
 
@@ -123,6 +125,16 @@ object Ir {
             output
           }
           else null
+        }
+    }
+
+    object Generic {
+      context(CompileLogger) operator fun get(type: Pattern0<IrType>) =
+        customPattern1(type) { it: IrType ->
+          if (it.isTypeParameter())
+            Components1(it)
+          else
+            null
         }
     }
 

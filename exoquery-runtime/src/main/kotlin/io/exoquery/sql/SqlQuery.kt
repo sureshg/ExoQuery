@@ -182,7 +182,12 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             val (nestedContexts, finalFlatMapBody) = flattenContexts(body)
             listOf(Layer.Grouping(head.by)) + nestedContexts to finalFlatMapBody
           }
-        // TODO FlatSortBy same way
+
+        this is Map && head is XR.FlatGroupBy ->
+          trace("Flattening Flatmap with FlatGroupBy") andReturn {
+            listOf(Layer.Grouping(head.by)) to body
+          }
+
         this is FlatMap ->
           trace("Flattening Flatmap with Query") andReturn {
             val source                             = source(head, id.name)
@@ -204,7 +209,14 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
       val contexts = sources.mapNotNull { if (it is Layer.Context) it.ctx else null }
       // TODO there should only be one grouping possible, check that this is the case
       val grouping = sources.mapNotNull { if (it is Layer.Grouping) it.groupBy else null }.firstOrNull()
-      val query = flatten(contexts, finalFlatMapBody, alias, nestNextMap = false)
+      val query =
+        when (finalFlatMapBody) {
+          is XR.Expression ->
+            FlattenSqlQuery(from = contexts, select = selectValues(finalFlatMapBody), type = query.type)
+          else ->
+            flatten(contexts, finalFlatMapBody, alias, nestNextMap = false)
+        }
+
       if (grouping != null)
         query.copy(groupBy = grouping)
       else
@@ -477,6 +489,8 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         // people.flatMap(p -> join(addresses, on).flatMap(rest)) is:
         //   FlatMap(people, p, FlatMap(FlatJoin(people, on), rest))
         is XR.FlatJoin          -> FlatJoinContext(joinType, source(head, id.name), on)
+        is XR.FlatGroupBy       -> xrError("Source of a query cannot a flat-groupBy")
+        is XR.FlatSortBy        -> xrError("Source of a query cannot a flat-sortBy")
         is XR.Nested            -> QueryContext(invoke(head), alias)
         else                    -> QueryContext(invoke(ast), alias)
       }

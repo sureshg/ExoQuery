@@ -147,6 +147,17 @@ class Lifter(val builderCtx: BuilderContext) {
     if (this == null) builderCtx.builder.irNull()
     else lifter(this)
 
+  fun XR.Ordering.lift(): IrExpression =
+    when(this) {
+      is Ordering.TupleOrdering -> make<Ordering.TupleOrdering>(this.component1().lift { it.lift() })
+      is Ordering.Asc -> makeObject<Ordering.Asc>()
+      is Ordering.Desc -> makeObject<Ordering.Desc>()
+      is Ordering.DescNullsLast -> makeObject<Ordering.DescNullsLast>()
+      is Ordering.DescNullsFirst -> makeObject<Ordering.DescNullsFirst>()
+      is Ordering.AscNullsLast -> makeObject<Ordering.AscNullsLast>()
+      is Ordering.AscNullsFirst -> makeObject<Ordering.AscNullsFirst>()
+    }
+
   fun XR.Query.lift(): IrExpression =
     when(this) {
       is FlatMap -> make<FlatMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
@@ -158,9 +169,11 @@ class Lifter(val builderCtx: BuilderContext) {
       is Distinct -> make<Distinct>(this.component1().lift())
       is DistinctOn -> make<DistinctOn>(this.component1().lift(), this.component2().lift())
       is Drop -> make<Drop>(this.component1().lift(), this.component2().lift())
-      is SortBy -> make<SortBy>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is SortBy -> make<SortBy>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
       is Take -> make<Take>(this.component1().lift(), this.component2().lift())
       is FlatJoin -> make<FlatJoin>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
+      is FlatGroupBy -> make<FlatGroupBy>(this.component1().lift())
+      is FlatSortBy -> make<FlatSortBy>(this.component1().lift(), this.component2().lift())
       is ConcatMap -> make<ConcatMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is GroupByMap -> make<GroupByMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is Nested -> make<Nested>(this.component1().lift())

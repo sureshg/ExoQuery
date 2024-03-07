@@ -55,7 +55,10 @@ data class SqlExpressionContainer<T>(override val xr: XR.Expression, override va
 class SqlVariable<T>(variableName: String /* don't want this to intersect with extension function properties*/): SqlExpression<T> {
   private val _variableName = variableName
 
+  @ExoInternal
   override val xr = XR.Ident(_variableName, XRType.Generic)
+
+  @ExoInternal
   override val binds = DynamicBinds.empty()
 
   @ExoInternal
@@ -71,7 +74,9 @@ class SqlVariable<T>(variableName: String /* don't want this to intersect with e
 
 
 sealed interface Query<T> {
+  // TODO mark ExoInternal
   val xr: XR.Query
+  // TODO mark ExoInternal
   val binds: DynamicBinds
 
   fun withReifiedIdents(): Query<T> {

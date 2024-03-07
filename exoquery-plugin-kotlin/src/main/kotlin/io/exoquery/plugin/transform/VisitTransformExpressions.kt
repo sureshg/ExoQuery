@@ -57,6 +57,7 @@ class VisitTransformExpressions(
     val selectTransformer = TransformSelect(builderContext)
     val makeTableTransformer = TransformTableQuery(builderContext)
     val joinOnTransformer = TransformJoinOn(builderContext)
+    val groupByTransformer = TransformGroupBy(builderContext)
 
     // TODO Catch parser errors here, make a warning via the compileLogger (in the BuilderContext) & don't transform the expresison
 
@@ -79,6 +80,12 @@ class VisitTransformExpressions(
 
       joinOnTransformer.matches(expression) -> {
         val out = joinOnTransformer.transform(expression, this)
+        //logger.warn("----------------- Output ----------------\n" + out.dumpKotlinLike())
+        out
+      }
+
+      groupByTransformer.matches(expression) -> {
+        val out = groupByTransformer.transform(expression, this)
         //logger.warn("----------------- Output ----------------\n" + out.dumpKotlinLike())
         out
       }
