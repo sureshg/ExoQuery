@@ -22,9 +22,10 @@ class SanitySpec: FreeSpec({
     }
   }
 
+  data class Person(val id: Int, val name: String, val age: Int)
+  data class Address(val id: Int, val owner: Int, val street: String)
 })
 
 fun main() {
-  val q = select { 1 + 2 }
-  println(q)
+
 }

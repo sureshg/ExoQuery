@@ -174,6 +174,7 @@ class Lifter(val builderCtx: BuilderContext) {
       is FlatJoin -> make<FlatJoin>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
       is FlatGroupBy -> make<FlatGroupBy>(this.component1().lift())
       is FlatSortBy -> make<FlatSortBy>(this.component1().lift(), this.component2().lift())
+      is FlatFilter -> make<FlatFilter>(this.component1().lift())
       is ConcatMap -> make<ConcatMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is GroupByMap -> make<GroupByMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is Nested -> make<Nested>(this.component1().lift())

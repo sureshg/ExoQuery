@@ -9,6 +9,10 @@ import io.exoquery.util.Tracer
 import io.exoquery.xr.*
 import io.exoquery.xr.XR.FlatMap
 import io.exoquery.xr.XR.Map
+import io.exoquery.xr.XR.Labels.FlatUnit
+import io.exoquery.xr.XR.FlatGroupBy
+import io.exoquery.xr.XR.FlatSortBy
+import io.exoquery.xr.XR.FlatFilter
 import io.exoquery.xr.XR.FlatJoin
 import io.exoquery.xr.XR.Ordering.PropertyOrdering
 import io.exoquery.xr.XR.Ordering.TupleOrdering
@@ -158,6 +162,16 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
   sealed interface Layer {
     data class Context(val ctx: FromContext): Layer
     data class Grouping(val groupBy: XR.Expression): Layer
+    data class Sorting(val sortedBy: XR.Expression, val ordering: XR.Ordering): Layer
+    data class Filtering(val where: XR.Expression): Layer
+    companion object {
+      fun fromFlatUnit(xr: XR.Labels.FlatUnit): Layer =
+        when (xr) {
+          is FlatFilter -> Layer.Filtering(xr.by)
+          is FlatGroupBy -> Layer.Grouping(xr.by)
+          is FlatSortBy -> Layer.Sorting(xr.by, xr.ordering)
+        }
+    }
   }
 
 
@@ -177,15 +191,15 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         // Conceptually (the actual DSL is different):
         // people.flatMap(p -> groupBy(expr).flatMap(rest)) is:
         //   FlatMap(people, p, FlatMap(GroupBy(expr), rest)))
-        this is FlatMap && head is XR.FlatGroupBy ->
+        this is FlatMap && (head is FlatUnit) ->
           trace("Flattening Flatmap with FlatGroupBy") andReturn {
             val (nestedContexts, finalFlatMapBody) = flattenContexts(body)
-            listOf(Layer.Grouping(head.by)) + nestedContexts to finalFlatMapBody
+            listOf(Layer.fromFlatUnit(head)) + nestedContexts to finalFlatMapBody
           }
 
-        this is Map && head is XR.FlatGroupBy ->
+        this is Map && head is FlatUnit ->
           trace("Flattening Flatmap with FlatGroupBy") andReturn {
-            listOf(Layer.Grouping(head.by)) to body
+            listOf(Layer.fromFlatUnit(head)) to body
           }
 
         this is FlatMap ->
@@ -201,26 +215,32 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
       }
     }
 
+
+
   private fun flatten(query: XR, alias: String): FlattenSqlQuery =
     trace("Flattening ${query}") andReturn {
       val (sources, finalFlatMapBody) = flattenContexts(query)
       // TODO Check if the 2nd-to-last source is a groupBy otherwise we're doing things
       //      between the groupBy and the final `select` which is illegal
       val contexts = sources.mapNotNull { if (it is Layer.Context) it.ctx else null }
-      // TODO there should only be one grouping possible, check that this is the case
-      val grouping = sources.mapNotNull { if (it is Layer.Grouping) it.groupBy else null }.firstOrNull()
-      val query =
+      val (grouping, sorting, filtering) = sources.findComponentsOrNull()
+
+      val queryRaw =
         when (finalFlatMapBody) {
           is XR.Expression ->
             FlattenSqlQuery(from = contexts, select = selectValues(finalFlatMapBody), type = query.type)
           else ->
             flatten(contexts, finalFlatMapBody, alias, nestNextMap = false)
         }
+      val query =
+        queryRaw
+          .let { if (grouping != null)  it.copy(groupBy = grouping.groupBy) else it }
+          // TODO what if there is already an orderBy?
+          .let { if (sorting != null)  it.copy(orderBy = orderByCriteria(sorting.sortedBy, sorting.ordering, contexts)) else it }
+          // Not sure if its possible to already have a where-clause but if it is combine them
+          .let { if (filtering != null)  it.copy(where = combineWhereClauses(it.where, filtering.where)) else it }
 
-      if (grouping != null)
-        query.copy(groupBy = grouping)
-      else
-        query
+      query
     }
 
   private fun flatten(
@@ -489,9 +509,8 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         // people.flatMap(p -> join(addresses, on).flatMap(rest)) is:
         //   FlatMap(people, p, FlatMap(FlatJoin(people, on), rest))
         is XR.FlatJoin          -> FlatJoinContext(joinType, source(head, id.name), on)
-        is XR.FlatGroupBy       -> xrError("Source of a query cannot a flat-groupBy")
-        is XR.FlatSortBy        -> xrError("Source of a query cannot a flat-sortBy")
         is XR.Nested            -> QueryContext(invoke(head), alias)
+        is FlatUnit             -> xrError("Source of a query cannot a flat-unit (e.g. where/groupBy/sortedBy)\n" + this.toString())
         else                    -> QueryContext(invoke(ast), alias)
       }
     }

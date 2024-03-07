@@ -195,6 +195,10 @@ interface StatefulTransformer<T> {
           val (aA, stateA) = invoke(by)
           FlatSortBy(aA, ordering) to stateA
         }
+        is FlatFilter -> {
+          val (aA, stateA) = invoke(by)
+          FlatFilter(aA) to stateA
+        }
         is ConcatMap -> {
           val (aA, stateA) = invoke(head)
           val (bA, stateB) = stateA.invoke(body)

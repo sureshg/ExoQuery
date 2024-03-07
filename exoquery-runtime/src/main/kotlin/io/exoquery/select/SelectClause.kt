@@ -77,6 +77,27 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressi
       val childQuery = mapping()
       (QueryContainer<A>(XR.FlatMap(XR.FlatGroupBy(expr), XR.Ident("unused", XRType.Unknown), childQuery.xr), childQuery.binds + binds))
     }
+
+  public suspend fun <R> sortedBy(f: context(EnclosedExpression) () -> R): Unit =
+    error("The sortedBy(...) expression of the Query was not inlined")
+
+  public suspend fun <R> sortedByExpr(expr: XR.Expression, binds: DynamicBinds): Unit =
+    performUnit { mapping ->
+      val childQuery = mapping()
+      (QueryContainer<A>(XR.FlatMap(XR.FlatSortBy(expr, ordering = XR.Ordering.Desc), XR.Ident("unused", XRType.Unknown), childQuery.xr), childQuery.binds + binds))
+    }
+
+  // TODO sortedByDescending
+  // TODO sortedByOrders { expr }(Asc, Desc, etc.... <- make a DSL for this)
+
+  public suspend fun <R> where(f: context(EnclosedExpression) () -> R): Unit =
+    error("The where(...) expression of the Query was not inlined")
+
+  public suspend fun <R> whereExpr(expr: XR.Expression, binds: DynamicBinds): Unit =
+    performUnit { mapping ->
+      val childQuery = mapping()
+      (QueryContainer<A>(XR.FlatMap(XR.FlatFilter(expr), XR.Ident("unused", XRType.Unknown), childQuery.xr), childQuery.binds + binds))
+    }
 }
 
 class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.JoinType, private val selectClause: SelectClause<A>, private val aliasRaw: String?) {

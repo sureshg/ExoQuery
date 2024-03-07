@@ -40,6 +40,7 @@ sealed interface XR {
     // Things that store their own XRType. Right now this is just an Ident but in the future
     // it will also be a lifted value.
     sealed interface Terminal: Expression, XR
+    sealed interface FlatUnit: XR.Query
     sealed interface Function: XR {
       val params: List<XR.Ident>
       val body: XR.Expression
@@ -189,7 +190,7 @@ sealed interface XR {
   }
 
   @Mat
-  data class FlatGroupBy(@Slot val by: XR.Expression): Query, PC<FlatGroupBy> {
+  data class FlatGroupBy(@Slot val by: XR.Expression): Query, Labels.FlatUnit, PC<FlatGroupBy> {
     override val productComponents = productOf(this, by)
     override val type get() = by.type
     companion object {}
@@ -197,7 +198,15 @@ sealed interface XR {
   }
 
   @Mat
-  data class FlatSortBy(@Slot val by: XR.Expression, val ordering: XR.Ordering): Query, PC<FlatSortBy> {
+  data class FlatSortBy(@Slot val by: XR.Expression, val ordering: XR.Ordering): Query, Labels.FlatUnit, PC<FlatSortBy> {
+    override val productComponents = productOf(this, by)
+    override val type get() = by.type
+    companion object {}
+    override fun toString() = show()
+  }
+
+  @Mat
+  data class FlatFilter(@Slot val by: XR.Expression): Query, Labels.FlatUnit, PC<FlatFilter> {
     override val productComponents = productOf(this, by)
     override val type get() = by.type
     companion object {}

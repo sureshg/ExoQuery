@@ -57,7 +57,9 @@ class VisitTransformExpressions(
     val selectTransformer = TransformSelect(builderContext)
     val makeTableTransformer = TransformTableQuery(builderContext)
     val joinOnTransformer = TransformJoinOn(builderContext)
-    val groupByTransformer = TransformGroupBy(builderContext)
+    val groupByTransformer = TransformSelectClauseMethod(builderContext, ExtractorsDomain.Call.`groupBy(expr)`, "groupByExpr")
+    val sortedByTransformer = TransformSelectClauseMethod(builderContext, ExtractorsDomain.Call.`sortedBy(expr)`, "sortedByExpr")
+    val whereTransformer = TransformSelectClauseMethod(builderContext, ExtractorsDomain.Call.`where(expr)`, "whereExpr")
 
     // TODO Catch parser errors here, make a warning via the compileLogger (in the BuilderContext) & don't transform the expresison
 
@@ -74,44 +76,16 @@ class VisitTransformExpressions(
     val out = when {
       // 1st that that runs here because printed stuff should not be transformed
       // (and this does not recursively transform stuff inside)
-      transformPrint.matches(expression) -> {
-        transformPrint.transform(expression)
-      }
-
-      joinOnTransformer.matches(expression) -> {
-        val out = joinOnTransformer.transform(expression, this)
-        //logger.warn("----------------- Output ----------------\n" + out.dumpKotlinLike())
-        out
-      }
-
-      groupByTransformer.matches(expression) -> {
-        val out = groupByTransformer.transform(expression, this)
-        //logger.warn("----------------- Output ----------------\n" + out.dumpKotlinLike())
-        out
-      }
-
-      queryFlatMapTransformer.matches(expression) ->
-        queryFlatMapTransformer.transform(expression, this)
-
-      makeTableTransformer.matches(expression) -> {
-        //compileLogger.warn("=========== Transforming TableQuery ========\n" + expression.dumpKotlinLike())
-        makeTableTransformer.transform(expression)
-      }
-
-      queryMapTransformer.matches(expression) -> {
-        //compileLogger.warn("=========== Transforming Map ========\n" + expression.dumpKotlinLike())
-        queryMapTransformer.transform(expression, this)
-      }
-
-      queryFilterTransformer.matches(expression) -> {
-        //compileLogger.warn("=========== Transforming Map ========\n" + expression.dumpKotlinLike())
-        queryFilterTransformer.transform(expression, this)
-      }
-
-      selectTransformer.matches(expression) -> {
-        //compileLogger.warn("=========== Transforming Map ========\n" + expression.dumpKotlinLike())
-        selectTransformer.transform(expression, this)
-      }
+      transformPrint.matches(expression) -> transformPrint.transform(expression)
+      joinOnTransformer.matches(expression) -> joinOnTransformer.transform(expression, this)
+      groupByTransformer.matches(expression) -> groupByTransformer.transform(expression, this)
+      sortedByTransformer.matches(expression) -> sortedByTransformer.transform(expression, this)
+      whereTransformer.matches(expression) -> whereTransformer.transform(expression, this)
+      queryFlatMapTransformer.matches(expression) -> queryFlatMapTransformer.transform(expression, this)
+      makeTableTransformer.matches(expression) -> makeTableTransformer.transform(expression)
+      queryMapTransformer.matches(expression) -> queryMapTransformer.transform(expression, this)
+      queryFilterTransformer.matches(expression) -> queryFilterTransformer.transform(expression, this)
+      selectTransformer.matches(expression) -> selectTransformer.transform(expression, this)
 
       else ->
         // No additional data (i.e. Scope-Symbols) to add since none of the transformers was activated

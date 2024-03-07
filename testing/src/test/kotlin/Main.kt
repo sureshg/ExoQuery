@@ -74,20 +74,31 @@ object Model1Simple {
     // Problem of "p" vs "x". Ident needs to get the runtime value of the variable
     // That means we need a separate binding map for runtime values or an expression-container
 
-    // TODO aliasing is wrong, need to fix up
     var start = System.currentTimeMillis()
+
+    // TODO need to fix up the alising in this query
+    //    val x =
+    //      query {
+    //        val x = from(Table<Person>().filter { it.name == "Joe" })
+    //        val a = join(Table<Address>()).on { street == x().name }
+    //        // TODO can implement a `where {  }` clause this way
+    //        // TODO can implement the `sortBy {  }` clause this way
+    //        // TODO Error on multiple groupBy
+    //        // TODO generalize groupBy to do these things
+    //        groupBy { x().age }
+    //        groupBy { x().name }
+    //        select { x() to a() }
+    //      }.filter { it.first.name == "Jack" }
+
     val x =
       query {
-        val x = from(Table<Person>().filter { it.name == "Joe" })
-        val a = join(Table<Address>()).on { street == x().name }
-        // TODO can implement a `where {  }` clause this way
-        // TODO can implement the `sortBy {  }` clause this way
-        // TODO Error on multiple groupBy
-        // TODO generalize groupBy to do these things
-        groupBy { x().age }
+        val x = from(Table<Person>())
+        val a = join(Table<Address>()).on { ownerId == x().id }
+        where { x().age > 20 }
         groupBy { x().name }
+        sortedBy { x().age }
         select { x() to a() }
-      }.filter { it.first.name == "Jack" }
+      }
 
     println("------------ Query Making Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
 

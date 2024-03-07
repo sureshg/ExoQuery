@@ -70,6 +70,9 @@ object ExtractorsDomain {
     val QueryFlatMap = QueryFunction("flatMap")
     val `from(expr)` = BindExpression("from")
     val `join(expr)` = BindExpression("join")
+    val `groupBy(expr)` = SelectClauseFunction("groupBy")
+    val `sortedBy(expr)` = SelectClauseFunction("sortedBy")
+    val `where(expr)` = SelectClauseFunction("where")
 
     data class OperatorCall(val x: IrExpression, val op: BinaryOperator, val y: IrExpression)
     data class UnaryOperatorCall(val x: IrExpression, val op: UnaryOperator)
@@ -87,6 +90,7 @@ object ExtractorsDomain {
               case(Ir.StringConcatenation[Is()]).then { components ->
                 Components2(caller, components)
               },
+              // TODO does this work?
               // it's a single string-const in this case
 //              case(Ir.Const[Is()]).then { const ->
 //                Components2(caller, listOf(const))
@@ -141,10 +145,10 @@ object ExtractorsDomain {
         }
     }
 
-    object `groupBy(expr)` {
+    class SelectClauseFunction(val methodName: String) {
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
-        it.reciverIs<SelectClause<*>>("groupBy") && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
+        it.reciverIs<SelectClause<*>>(methodName) && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
 
       context (CompileLogger) operator fun <AP: Pattern<CallData>> get(x: AP) =
         customPattern1(x) { it: IrCall ->
