@@ -66,7 +66,8 @@ object Model1 {
 
 object Model1Simple {
   data class Person(val id: Int, val name: String, val age: Int)
-  data class Address(val ownerId: Int, val street: String, val zip: Int)
+  data class Address(val id: Int, val ownerId: Int, val street: String, val zip: Int)
+  data class Furniture(val location: Int, val name: String)
 
   fun use() {
     val p = Person(111, "Joe", 123)
@@ -90,11 +91,15 @@ object Model1Simple {
     //        select { x() to a() }
     //      }.filter { it.first.name == "Jack" }
 
+    // TODO some way to enforce ordering of where/groupBy/sortedBy/select at compile-time
     val x =
       query {
         val x = from(Table<Person>())
         val a = join(Table<Address>()).on { ownerId == x().id }
-        where { x().age > 20 }
+        where {
+          // TODO shuold be able to have query { ... } inside of here with an exists clause
+          x().age > 20
+        }
         groupBy { x().name }
         sortedBy { x().age }
         select { x() to a() }

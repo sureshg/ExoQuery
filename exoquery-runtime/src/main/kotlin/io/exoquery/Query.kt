@@ -108,6 +108,25 @@ sealed interface Query<T> {
   fun <R> filterExpr(id: XR.Ident, body: XR, binds: DynamicBinds): Query<R> =
     QueryContainer<R>(XR.Filter(this.xr, id, body as XR.Expression), binds).withReifiedSubQueries()
 
+  fun <R> sortedBy(f: context(EnclosedExpression) (T) -> R): Query<T> = error("The sort-by expression of the Query was not inlined")
+  fun <R> sortedByExpr(id: XR.Ident, body: XR, binds: DynamicBinds): Query<R> =
+    QueryContainer<R>(XR.SortBy(this.xr, id, body as XR.Expression, XR.Ordering.Asc), binds).withReifiedSubQueries()
+
+  // TODO sortedByDescending, sortedByAscending, sortedByOrders { expr }(Asc, Desc, etc.... <- make a DSL for this)
+
+  // Need this kind of API to enable quotation
+  //fun take(i: context(EnclosedExpression) () -> Int): Query<T>
+  //fun takeExpr(i: context(EnclosedExpression) () -> Int): Query<T>
+  //fun drop(i: context(EnclosedExpression) () -> Int): Query<T>
+  //fun dropExpr(i: context(EnclosedExpression) () -> Int): Query<T>
+
+  // but this is much more natural
+  fun take(i: Int): Query<T> = error("...")
+  fun takeExpr(i: XR.Expression): Query<T> = error("...")
+  fun drop(i: Int): Query<T> = error("...")
+  fun dropExpr(i: XR.Expression): Query<T> = error("...")
+
+
 
   // Search for every Ident (i.e. GetValue) that has @SqlVariable in it's type
   // and check its ExtensionReciever which should be of type EnclosedExpression
