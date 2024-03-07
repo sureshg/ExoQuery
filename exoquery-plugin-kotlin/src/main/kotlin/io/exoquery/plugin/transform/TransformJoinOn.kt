@@ -3,7 +3,6 @@ package io.exoquery.plugin.transform
 import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
-import io.exoquery.Lambda1Expression
 import io.exoquery.structError
 import io.exoquery.parseError
 import io.exoquery.plugin.logging.CompileLogger
@@ -21,12 +20,13 @@ class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
 
   context(ParserContext, BuilderContext, CompileLogger)
   override fun transformBase(expression: IrCall, superTransformer: VisitTransformExpressions): IrExpression {
+    // For join(addresses).on { id == person.id } :
+    //    funExpression would be `id == person.id`. Actually it includes the "hidden" reciver so it would be:
+    //    `$this$on.id == person.id`
     val (caller, funExpression, params, blockBody) =
       on(expression).match(
         case(ExtractorsDomain.Call.`join-on(expr)`[Is()]).then { queryCallData -> queryCallData }
       ) ?: parseError("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
-
-    //error("-------- Function:\n${funExpression.function.dumpSimple()}\n------------Params: ${funExpression.function.extensionReceiverParameter?.symbol?.safeName}")
 
      //There actually IS a reciver to this function and it should be named $this$on
     val reciverParam = funExpression.function.extensionReceiverParameter ?: structError("Extension Reciever for on-clause was null")
@@ -35,6 +35,8 @@ class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
       val tpe = TypeParser.parse(reciverParam.type)
       XR.Ident(reciverSymbol, tpe)
     }
+
+    // TODO Recursively transform the block body?
 
     // parse the `on` clause of the join.on(...)
     val (onLambdaBody, bindsAccum) =
@@ -50,10 +52,9 @@ class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
     // No scope symbols into caller since it comes Before the on-clause i.e. before any symbols could be created
     val newCaller = caller.transform(superTransformer, internalVars)
 
-    //warn("------------ Binds Accum -----------\n" + bindsAccum.show())
-
     val bindsList = bindsAccum.makeDynamicBindsIr()
 
     return newCaller.callMethod("onExpr").invoke(paramIdentExpr, onLambdaBodyExpr, bindsList)
   }
 }
+

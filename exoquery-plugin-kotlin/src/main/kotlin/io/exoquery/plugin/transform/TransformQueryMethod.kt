@@ -1,19 +1,15 @@
 package io.exoquery.plugin.transform
 
 import io.decomat.*
-import io.exoquery.Lambda1Expression
 import io.exoquery.parseError
 import io.exoquery.xr.XR
 import io.exoquery.plugin.trees.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
-import io.exoquery.plugin.printing.CollectDecls
-import io.exoquery.plugin.safeName
 import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 
-class TransformQueryMap(override val ctx: BuilderContext, val matcher: ExtractorsDomain.QueryFunction, val replacementMethod: String): Transformer() {
+class TransformQueryMethod(override val ctx: BuilderContext, val matcher: ExtractorsDomain.QueryFunction, val replacementMethod: String): Transformer() {
   context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
     matcher.matchesMethod(expression)
@@ -21,10 +17,6 @@ class TransformQueryMap(override val ctx: BuilderContext, val matcher: Extractor
   // parent symbols are collected in the parent context
   context(ParserContext, BuilderContext, CompileLogger)
   override fun transformBase(expression: IrCall, superTransformer: VisitTransformExpressions): IrExpression {
-
-    // TODO use the parserCtx from the ParserContext input
-    // error("------ Collecting Decls from: ${expression.dumpKotlinLike()} = ${CollectDecls.from(expression).map { it.safeName }}")
-    // error("------ Decls from parent scope: ${ctx.parentScopeSymbols.symbols.map { it.safeName }}")
 
     val (caller, funExpression, params, blockBody) =
       on(expression).match(
@@ -50,14 +42,6 @@ class TransformQueryMap(override val ctx: BuilderContext, val matcher: Extractor
     val paramIdentExpr = makeLifter().liftIdent(paramIdentXR)
     val bodyExpr = makeLifter().liftXR(bodyXR)
 
-//    val mapExprFunction = caller.type.findMethodOrFail(replacementMethod)
-
-    // need to recursively transformed parent e.g. InvokeFunction(TableQuery(stuff), "map") needs to returse
-    // into the TableQuery part. Also make sure to call caller.transform(superTransformer) instead of superTransformer.visitExpression
-    // because superTransformer.visitExpression won't recurse into child-types of Expression e.g. IrCall (Ugh!)
-
-    // TODO Propagate ScopeSymbols, pass it in from the input TransformScope, add symbols
-    //      that we've collected here, then make the recursive call
     val transformedCaller = caller.transform(superTransformer, internalVars)
 
     val bindsList = bindsAccum.makeDynamicBindsIr()

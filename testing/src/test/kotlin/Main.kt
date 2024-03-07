@@ -1,14 +1,9 @@
 import com.github.vertical_blank.sqlformatter.SqlFormatter
 import io.exoquery.*
-import io.exoquery.annotation.ExoInternal
 import io.exoquery.norm.RepropagateTypes
-import io.exoquery.printing.format
 import io.exoquery.sql.ExpandNestedQueries
-import io.exoquery.sql.SqlQuery
 import io.exoquery.sql.SqlQueryApply
 import io.exoquery.util.Globals
-import io.exoquery.util.TraceConfig
-import io.exoquery.xr.BetaReduction
 
 object Model1 {
   data class Person(val id: Int, val name: Name?, val age: Int)
@@ -24,7 +19,7 @@ object Model1 {
 
     var start = System.currentTimeMillis()
     val x =
-      select {
+      query {
         val x = from(Table<Person>())
         val a = join(Table<Address>()).on { street == x().name?.first?.name }
         x
@@ -64,10 +59,6 @@ object Model1 {
 
     println(pprint(x.binds, defaultShowFieldNames = false, defaultWidth = 200))
   }
-}
-
-fun main() {
-  Model1.use()
 }
 
 //
@@ -114,7 +105,7 @@ object Model3 {
 
     // TODO Need to try a nested `select {  }` inside of from and `join`
     val x =
-      select {
+      query {
         val p = from(Table<Person>())
         val a = join(Table<Address>()).on { street == p().name }
         p
@@ -123,6 +114,31 @@ object Model3 {
     println("=============== Raw ===============\n" + x.xr.showRaw())
     println("=============== Code ===============\n" + x.xr.show(true))
   }
+}
+
+
+object Model4 {
+  data class Person(val id: Int, val name: String, val age: Int)
+  data class Address(val ownerId: Int, val street: String, val zip: Int)
+
+  fun use() {
+    val p = Person(111, "Joe", 123)
+
+    // TODO Need to try a nested `select {  }` inside of from and `join`
+    val x =
+      query {
+        val p = from(Table<Person>())
+        val a = join(Table<Address>()).on { street == p().name }
+        select { p() to a() }
+      }
+
+    println("=============== Raw ===============\n" + x)
+    println("=============== Code ===============\n" + x)
+  }
+}
+
+fun main() {
+  Model4.use()
 }
 
 

@@ -65,7 +65,6 @@ object ExtractorsDomain {
 
   object Call {
 
-
     val QueryMap = QueryFunction("map")
     val QueryFilter = QueryFunction("filter")
     val QueryFlatMap = QueryFunction("flatMap")
@@ -157,6 +156,24 @@ object ExtractorsDomain {
         }
     }
 
+    inline fun <T> Boolean.thenLet(predicate: () -> T): T? =
+      if (this) predicate() else null
+
+    object `x to y` {
+      context (CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
+        customPattern2(x, y) { it: IrCall ->
+          // TODO see what other descriptors it has to make sure it's only a system-level a to b
+          (it.symbol.safeName == "to").thenLet {
+            it.extensionReceiver?.let { argA ->
+              it.simpleValueArgs.first()?.let { argB ->
+                Components2(argA, argB)
+              }
+            }
+          }
+        }
+    }
+
+
     object `(op)x` {
       context (CompileLogger) operator fun <AP: Pattern<UnaryOperatorCall>> get(x: AP) =
         customPattern1(x) { it: IrCall ->
@@ -169,6 +186,29 @@ object ExtractorsDomain {
               Components1(UnaryOperatorCall(arg1, op))
             }
           }
+        }
+    }
+
+    object `select(fun)` {
+      context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
+        // E.g. is Query."map"
+        it.dispatchReceiver == null && it.extensionReceiver == null && it.symbol.safeName == "select" && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
+
+      context (CompileLogger) operator fun <AP: Pattern<CallDataTopLevel>> get(x: AP) =
+        customPattern1(x) { it: IrCall ->
+          if (matchesMethod(it)) {
+            on(it).match(
+              // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
+              case( /* .flatMap */ Ir.Call.FunctionUntethered1[Is()]).then { expression ->
+                on(expression).match(
+                  case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
+                    val funExpression = this
+                    Components1(CallDataTopLevel(funExpression, params, blockBody))
+                  }
+                )
+              }
+            )
+          } else null
         }
     }
 
@@ -211,4 +251,5 @@ object ExtractorsDomain {
   }
 
   data class CallData(val reciver: IrExpression, val functionExpression: IrFunctionExpression, val params:  List<IrValueParameter>, val body: IrBlockBody)
+  data class CallDataTopLevel(val functionExpression: IrFunctionExpression, val params:  List<IrValueParameter>, val body: IrBlockBody)
 }

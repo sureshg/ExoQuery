@@ -7,6 +7,7 @@ import io.exoquery.select.program
 import io.exoquery.norm.ReifyRuntimeIdents
 import io.exoquery.norm.ReifyRuntimeQueries
 import io.exoquery.xr.XR
+import io.exoquery.xr.XRType
 import java.util.*
 
 fun <T> getSqlVar(name: String): T =
@@ -39,9 +40,23 @@ class EnclosedExpression
 
 context(EnclosedExpression) fun <T> param(value: T): T = error("Lifting... toto write this message")
 
-// TODO Rename to SqlRow
-class SqlVariable<T>(variableName: String /* don't want this to intersect with extension function properties*/) {
+
+interface SqlExpression<T> {
+  val xr: XR.Expression
+  val binds: DynamicBinds
+}
+
+fun <T> select(clause: context(EnclosedExpression) () -> T): SqlExpression<T> = error("The map expression of the Query was not inlined")
+fun <T> selectExpr(body: XR, binds: DynamicBinds): SqlExpression<T> =
+  SqlExpressionContainer<T>(body as XR.Expression, binds)
+
+data class SqlExpressionContainer<T>(override val xr: XR.Expression, override val binds: DynamicBinds): SqlExpression<T>
+
+class SqlVariable<T>(variableName: String /* don't want this to intersect with extension function properties*/): SqlExpression<T> {
   private val _variableName = variableName
+
+  override val xr = XR.Ident(_variableName, XRType.Generic)
+  override val binds = DynamicBinds.empty()
 
   @ExoInternal
   fun getVariableName() = _variableName
@@ -52,13 +67,6 @@ class SqlVariable<T>(variableName: String /* don't want this to intersect with e
 
   context(EnclosedExpression) operator fun invoke(): T =
     throw IllegalStateException("meaningful error about how can't use a sql variable in a runtime context and it should be impossible anyway becuase its not an EnclosedExpression")
-}
-
-// A runtime bind IDBindsAcc
-data class BID(val value: String) {
-  companion object {
-    fun new() = BID(UUID.randomUUID().toString())
-  }
 }
 
 
@@ -135,7 +143,7 @@ class Table<T> private constructor (override val xr: XR.Entity, override val bin
 }
 
 @Suppress("UNCHECKED_CAST")
-public fun <T, Q: Query<T>> select(block: suspend SelectClause<T>.() -> SqlVariable<T>): Q {
+public fun <T, Q: Query<T>> query(block: suspend SelectClause<T>.() -> SqlExpression<T>): Q {
   /*
   public fun <Action, Result, T : ProgramBuilder<Action, Result>> program(
     machine: T,
@@ -146,7 +154,7 @@ public fun <T, Q: Query<T>> select(block: suspend SelectClause<T>.() -> SqlVaria
 
   var start = System.currentTimeMillis()
   val q =
-    program<Query<T>, SqlVariable<T>, SelectClause<T>>(
+    program<Query<T>, SqlExpression<T>, SelectClause<T>>(
       machine = SelectClause<T>(markerId),
       f = block
     ) as Query<T>

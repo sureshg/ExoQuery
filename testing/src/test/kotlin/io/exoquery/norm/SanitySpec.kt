@@ -2,6 +2,7 @@ package io.exoquery.norm
 
 import io.exoquery.qr1
 import io.exoquery.qr2
+import io.exoquery.select
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 
@@ -24,6 +25,6 @@ class SanitySpec: FreeSpec({
 })
 
 fun main() {
-  val q = qr1.flatMap { x -> qr2.filter { y -> y.s == x.s } }
+  val q = select { 1 + 2 }
   println(q)
 }

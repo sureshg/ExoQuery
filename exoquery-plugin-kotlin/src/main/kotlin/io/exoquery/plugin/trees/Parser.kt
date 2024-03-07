@@ -119,6 +119,10 @@ private class ParserCollector {
         XR.UnaryOp(op, parseAs<XR.Expression>(x))
       },
 
+      case(ExtractorsDomain.Call.`x to y`[Is(), Is()]).thenThis { x, y ->
+        XR.Product.TupleNumeric(parseExpr(x), parseExpr(y))
+      },
+
       // TODO also need unary operator
 
 

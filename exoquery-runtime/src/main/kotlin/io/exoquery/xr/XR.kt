@@ -405,6 +405,8 @@ sealed interface XR {
     override val productComponents = productOf(this, fields)
     override val type by lazy { XRType.Product(name, fields.map { it.first to it.second.type }) }
     companion object {
+      fun TupleNumeric(vararg values: XR.Expression) =
+        TupleNumeric(values.toList())
 
       fun TupleNumeric(values: List<XR.Expression>) =
         Product("Tuple${values.size}", values.withIndex().map { (idx, v) -> "_${idx+1}" to v })

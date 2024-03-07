@@ -2,7 +2,6 @@ package io.exoquery.plugin.transform
 
 import com.tylerthrailkill.helpers.prettyprint.pp
 import io.exoquery.plugin.trees.ExtractorsDomain
-import io.exoquery.plugin.logging.CompileLogger
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -52,9 +51,10 @@ class VisitTransformExpressions(
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
 
     val transformPrint = TransformPrintSource(builderContext)
-    val queryMapTransformer = TransformQueryMap(builderContext, ExtractorsDomain.Call.QueryMap, "mapExpr")
-    val queryFilterTransformer = TransformQueryMap(builderContext, ExtractorsDomain.Call.QueryFilter, "filterExpr")
-    val queryFlatMapTransformer = TransformQueryMap(builderContext, ExtractorsDomain.Call.QueryFlatMap, "flatMapExpr")
+    val queryMapTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryMap, "mapExpr")
+    val queryFilterTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryFilter, "filterExpr")
+    val queryFlatMapTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryFlatMap, "flatMapExpr")
+    val selectTransformer = TransformSelect(builderContext)
     val makeTableTransformer = TransformTableQuery(builderContext)
     val joinOnTransformer = TransformJoinOn(builderContext)
 
@@ -99,6 +99,11 @@ class VisitTransformExpressions(
       queryFilterTransformer.matches(expression) -> {
         //compileLogger.warn("=========== Transforming Map ========\n" + expression.dumpKotlinLike())
         queryFilterTransformer.transform(expression, this)
+      }
+
+      selectTransformer.matches(expression) -> {
+        //compileLogger.warn("=========== Transforming Map ========\n" + expression.dumpKotlinLike())
+        selectTransformer.transform(expression, this)
       }
 
       else ->

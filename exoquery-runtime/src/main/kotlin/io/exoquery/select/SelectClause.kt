@@ -35,7 +35,7 @@ private fun freshIdentFrom(prefix: String = "x", allBindVars: Set<String>): Stri
 
 
 @OptIn(ExoInternal::class) // TODO Not sure if the output here QueryContainer(Ident(SqlVariable)) is right need to look into the shape
-class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlVariable<A>>({ result -> QueryContainer<A>(XR.Marker(markerName, XR.Ident(result.getVariableName(), XRType.Generic)), DynamicBinds.empty())  }) {
+class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpression<A>>({ result -> QueryContainer<A>(XR.Marker(markerName, result.xr), result.binds)  }) {
 
   // TODO search for this call in the IR and see if there's a Val-def on the other side of it and call fromAliased with the name of that
   public suspend fun <R> from(query: Query<R>): SqlVariable<R> =
