@@ -10,9 +10,9 @@ object PropertyMatryoshka {
       when {
         // Property(Property(...))
         of is XR.Property ->
-          traverse(of, accum + name)
+          traverse(of, listOf(name) + accum)
         else ->
-          of to accum + name
+          of to listOf(name) + accum
       }
     }
 

@@ -47,7 +47,7 @@ class ExpandSelection(val from: List<FromContext>) {
             // Append alias headers (i.e. _1,_2 from tuples and field names foo,bar from case classes) to the
             // value of the XRType path
             p is XR.Property && path.isNotEmpty() ->
-              SelectValue(p, concatOr(path, alias, path.lastOrNull()), concat)
+              SelectValue(p, concatOr(alias, path, path.lastOrNull()), concat)
             else ->
               SelectValue(p, alias, concat)
           }
