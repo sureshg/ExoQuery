@@ -41,17 +41,15 @@ object Model1 {
     //println(sql.showRaw())
 
     //println("=============== Expanded SQL ===============")
+    val dialect = PostgresDialect(Globals.traceConfig())
     start = System.currentTimeMillis()
-    val expandedSql = ExpandNestedQueries(sql, sql.type)
+    val expandedSql = ExpandNestedQueries(dialect::joinAlias)(sql, sql.type)
     println("------------ ExpandNestedQueries Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
     //println(expandedSql.showRaw())
 
     println("=============== Tokenized SQL ===============")
     start = System.currentTimeMillis()
-    val tokenizedSql =
-      with (PostgresDialect(Globals.traceConfig())) {
-        expandedSql.token
-      }
+    val tokenizedSql = with (dialect) { expandedSql.token }
     println("------------ PostgresDialect Tokenization Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
     println(SqlFormatter.format(tokenizedSql.toString()))
 
@@ -103,7 +101,7 @@ object Model1Simple {
         groupBy { x().name }
         sortedBy { x().age }
         select { x() to a() }
-      }
+      }.filter { p -> p.first.name == "Joe" }
 
     println("------------ Query Making Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
 
@@ -114,24 +112,23 @@ object Model1Simple {
     val xrBeta = RepropagateTypes(Globals.traceConfig())(x.xr)
     println(xrBeta.showRaw())
 
-    //println("=============== SQL ===============")
+    println("=============== SQL ===============")
     start = System.currentTimeMillis()
     val sql = SqlQueryApply(Globals.traceConfig())(xrBeta)
     println("------------ SqlQueryApply Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
-    //println(sql.showRaw())
+    println(sql.show(true))
+
+    val dialect = PostgresDialect(Globals.traceConfig())
 
     //println("=============== Expanded SQL ===============")
     start = System.currentTimeMillis()
-    val expandedSql = ExpandNestedQueries(sql, sql.type)
+    val expandedSql = ExpandNestedQueries(dialect::joinAlias)(sql, sql.type)
     println("------------ ExpandNestedQueries Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
     //println(expandedSql.showRaw())
 
     println("=============== Tokenized SQL ===============")
     start = System.currentTimeMillis()
-    val tokenizedSql =
-      with (PostgresDialect(Globals.traceConfig())) {
-        expandedSql.token
-      }
+    val tokenizedSql = with (dialect) { expandedSql.token }
     println("------------ PostgresDialect Tokenization Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
     println(SqlFormatter.format(tokenizedSql.toString()))
 

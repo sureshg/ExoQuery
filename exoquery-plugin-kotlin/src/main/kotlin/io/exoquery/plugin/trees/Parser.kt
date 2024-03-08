@@ -120,7 +120,7 @@ private class ParserCollector {
       },
 
       case(ExtractorsDomain.Call.`x to y`[Is(), Is()]).thenThis { x, y ->
-        XR.Product.TupleNumeric(parseExpr(x), parseExpr(y))
+        XR.Product.Tuple(parseExpr(x), parseExpr(y))
       },
 
       // TODO also need unary operator

@@ -430,9 +430,18 @@ sealed interface XR {
     override val productComponents = productOf(this, fields)
     override val type by lazy { XRType.Product(name, fields.map { it.first to it.second.type }) }
     companion object {
+      operator fun invoke(name: String, vararg fields: Pair<String, Expression>) = Product(name, fields.toList())
+
+      fun Tuple(first: XR.Expression, second: XR.Expression) =
+        XR.Product("Tuple", "first" to first, "second" to second)
+
+      fun Triple(first: XR.Expression, second: XR.Expression, third: XR.Expression) =
+        XR.Product("Tuple", "first" to first, "second" to second, "third" to third)
+
+      // WARNING: Use these only when you don't care about the property-values because kotlin doesn't
+      // actually have _X tuples.
       fun TupleNumeric(vararg values: XR.Expression) =
         TupleNumeric(values.toList())
-
       fun TupleNumeric(values: List<XR.Expression>) =
         Product("Tuple${values.size}", values.withIndex().map { (idx, v) -> "_${idx+1}" to v })
 

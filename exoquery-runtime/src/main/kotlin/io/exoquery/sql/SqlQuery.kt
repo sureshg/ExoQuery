@@ -2,7 +2,10 @@
 
 package io.exoquery.sql
 
+import com.github.vertical_blank.sqlformatter.SqlFormatter
+import io.exoquery.PostgresDialect
 import io.exoquery.printing.PrintXR
+import io.exoquery.util.Globals
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
 import io.exoquery.util.Tracer
@@ -44,6 +47,15 @@ final data class FlatJoinContext(val joinType: XR.JoinType, val from: FromContex
 
 sealed interface SqlQuery {
   val type: XRType
+
+  fun show(pretty: Boolean = false): String {
+    val str =
+      with(PostgresDialect(Globals.traceConfig())) {
+        this@SqlQuery.token.toString()
+      }
+    return if (pretty) SqlFormatter.format(str) else str
+  }
+
 
   fun showRaw(color: Boolean = true): String {
     val str = PrintXR()(this)
@@ -90,9 +102,17 @@ final data class UnaryOperationSqlQuery(
  * construct e.g. Property(Id(person), name) or a constant, or perhaps like an expression (a + b).
  * The only exception to this is an Infix which can both be a Query and Expression but in the case
  * of being inside a SelectValue, it should always be the latter.
+ *
+ * NOTE: Since SQL query expansion phases typically join property paths to process subqueries e.g.
+ * `SELECT inner.firstid FROM (SELECT p.id AS idfirst FROM Person) inner`
+ *
+ * which is necessary because fields e.g. `id` could be repeated:
+ * `SELECT inner.firstid, inner.firstid FROM (SELECT p.id AS idfirst, a.id AS idsecond FROM Person JOIN Address ...) inner`
+ *
+ * because all of these paths e.g. `[first,id]`, `[second, id]` ultimately are used as alises, it makes sense
+ * for the `alias` parameter to be a list. If this list is empty the field is not considered to have an alias.
  */
-@Mat
-final data class SelectValue(@Slot val expr: XR.Expression, @Slot val alias: String? = null, val concat: Boolean = false): PC<SelectValue> {
+final data class SelectValue(val expr: XR.Expression, val alias: List<String> = listOf(), val concat: Boolean = false): PC<SelectValue> {
   override val productComponents = productOf(this, expr, alias)
   val type: XRType = expr.type
   companion object {}
@@ -250,7 +270,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
     nestNextMap: Boolean
   ): FlattenSqlQuery {
 
-    fun select(alias: String, type: XRType): List<SelectValue> = listOf(SelectValue(XR.Ident(alias, type), null))
+    fun select(alias: String, type: XRType): List<SelectValue> = listOf(SelectValue(XR.Ident(alias, type), listOf()))
 
     fun base(query: XR, alias: String, nestNextMap: Boolean): FlattenSqlQuery =
       trace("Computing Base (nestingMaps=${nestNextMap}) for Query: $query") andReturn {
@@ -309,6 +329,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 val b = base(head, alias = byAlias.name, nestNextMap = true)
                 val flatGroupByAsts = ExpandSelection(b.from).ofSubselect(listOf(SelectValue(byBody))).map { it.expr }
                 val groupByClause: XR.Expression =
+                  // Can use TupleNumeric because we don't actually care about the field names
                   if (flatGroupByAsts.size > 1) XR.Product.TupleNumeric(flatGroupByAsts)
                   else flatGroupByAsts.first()
 

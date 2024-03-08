@@ -1,5 +1,9 @@
 package io.exoquery.sql
 
+import io.decomat.Is
+import io.decomat.Pattern
+import io.decomat.Pattern2
+import io.decomat.Typed
 import io.exoquery.xr.`+&&+`
 import io.exoquery.xr.XR
 import io.exoquery.xrError
@@ -23,3 +27,9 @@ fun List<SqlQueryApply.Layer>.findComponentsOrNull(): LayerComponents {
 fun combineWhereClauses(expr: XR.Expression?, combineWith: XR.Expression) =
   if (expr != null) expr `+&&+` combineWith
   else combineWith
+
+
+// Define decomat extensions for selectvalue manually since the codegen doesn't seem to work right with things like generics e.g. turns List<String> into List<*>
+class SelectValue_M<A: Pattern<AP>, B: Pattern<BP>, AP: XR.Expression, BP: List<String>>(a: A, b: B): Pattern2<A, B, AP, BP, SelectValue>(a, b, Typed<SelectValue>())
+operator fun <A: Pattern<AP>, B: Pattern<BP>, AP: XR.Expression, BP: List<String>> SelectValue.Companion.get(a: A, b: B) = SelectValue_M(a, b)
+val SelectValue.Companion.Is get() = Is<SelectValue>()

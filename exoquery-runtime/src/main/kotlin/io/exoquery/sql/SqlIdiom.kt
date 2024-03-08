@@ -23,6 +23,7 @@ interface SqlIdiom {
   val useActionTableAliasAs: ActionTableAliasBehavior
   val productAggregationToken: ProductAggregationToken get() = ProductAggregationToken.Star
   val seriesSepartor: String get() = "."
+  open fun joinAlias(alias: List<String>): String = alias.joinToString("_")
 
   sealed interface ActionTableAliasBehavior {
     object UseAs: ActionTableAliasBehavior
@@ -91,7 +92,7 @@ interface SqlIdiom {
   // Right now we are not removing extra select clauses here (via RemoveUnusedSelects) since I am not sure what
     // kind of impact that could have on selects. Can try to do that in the future.
     if (Globals.querySubexpand) {
-      val nestedExpanded = ExpandNestedQueries(SqlQueryApply(traceConfig)(this))
+      val nestedExpanded = ExpandNestedQueries(::joinAlias)(SqlQueryApply(traceConfig)(this))
       // TODO Need to implement
       //RemoveExtraAlias(strategy)(nestedExpanded).token
       nestedExpanded.token
@@ -218,6 +219,7 @@ interface SqlIdiom {
   fun tokenizeGroupBy(values: XR.Expression): Token = values.token
   fun tokenOrderBy(criteria: List<OrderByCriteria>) = +"ORDER BY ${criteria.token { it.token }}"
   fun tokenizeTable(name: String): Token = name.token
+  fun tokenizeAlias(alias: List<String>): Token = StringToken(this.joinAlias(alias))
 
 
   val SelectValue.token get(): Token =
@@ -226,14 +228,14 @@ interface SqlIdiom {
       expr is Ident -> expr.name.token
       // Typically these next two will be for Ast Property where we have an alias:
       // SelectValue(ast, Some(alias), concat: true)
-      alias != null && concat == false -> +"${expr.token} AS ${alias.token}" // in this case `alias` is the column name
+      alias.isNotEmpty() && concat == false -> +"${expr.token} AS ${tokenizeAlias(alias)}" // in this case `alias` is the column name
       // SelectValue(ast, Some(alias), concat: false)
-      alias != null && concat == true -> +"${concatFunction.token}(${expr.token}) AS ${alias.token}"
+      alias.isNotEmpty() && concat == true -> +"${concatFunction.token}(${expr.token}) AS ${tokenizeAlias(alias)}"
       // Where we don't have an alias...
       // SelectValue(ast, None, concat: true)
-      alias == null && concat == true -> +"${concatFunction.token}(${expr.token}) AS ${value.token}"
+      alias.isEmpty() && concat == true -> +"${concatFunction.token}(${expr.token}) AS ${value.token}"
       // SelectValue(ast, None, concat: false)
-      alias == null && concat == false -> expr.token
+      alias.isEmpty() && concat == false -> expr.token
 
       // NOTE: In Quill there was an aggregation-tokenizer here because Aggregation was a subtype of Query
       // (because aggregations were monadic). This is not the case in ExoQuery where aggregations

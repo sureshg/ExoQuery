@@ -18,14 +18,12 @@ class ExpandSelection(val from: List<FromContext>) {
   internal operator fun invoke(values: List<SelectValue>, level: QueryLevel): List<SelectValue> =
     values.flatMap { invoke(it, level) }
 
-  fun String?.concatWith(str: String): String = "${this ?: ""}${str}"
-
   internal fun invoke(value: SelectValue, level: QueryLevel): List<SelectValue> {
-    fun concatOr(concatA: String?, concatB: String, or: String?) =
+    fun concatOr(concatA: List<String>, concatB: List<String>, or: String?) =
       if (!level.isTop)
-        concatA.concatWith(concatB)
+        concatA + concatB
       else
-        or
+        if (or != null) listOf(or) else listOf()
 
     // Assuming there's no case class or tuple buried inside or a property i.e. if there were,
     // the beta reduction would have unrolled them already
@@ -45,11 +43,11 @@ class ExpandSelection(val from: List<FromContext>) {
             // the use that. Otherwise the selection is of an individual element so use the element name (before the rename)
             // as the alias.
             p is XR.Property && path.isEmpty() ->
-              SelectValue(p, alias ?: p.name)
+              SelectValue(p, alias or p.name)
             // Append alias headers (i.e. _1,_2 from tuples and field names foo,bar from case classes) to the
             // value of the XRType path
             p is XR.Property && path.isNotEmpty() ->
-              SelectValue(p, concatOr(alias, path.joinToString(""), path.lastOrNull()), concat)
+              SelectValue(p, concatOr(path, alias, path.lastOrNull()), concat)
             else ->
               SelectValue(p, alias, concat)
           }
@@ -61,7 +59,7 @@ class ExpandSelection(val from: List<FromContext>) {
         fields.flatMap { (name, ast) ->
           // Go into the select values, if the level is Top we need to go TopUnwrapped since the top-level
           // XRType doesn't count anymore. If level=Inner then it's the same.
-          invoke(SelectValue(ast, concatOr(alias, name, name), concat), level.withoutTopQuat())
+          invoke(SelectValue(ast, concatOr(listOf(name), alias, name), concat), level.withoutTopQuat())
         }
       }
 
@@ -71,6 +69,9 @@ class ExpandSelection(val from: List<FromContext>) {
   }
 }
 
+infix fun List<String>.or(alternate: String) =
+  if (this.isEmpty()) listOf(alternate) else this
+
 
 /*
  * Much of what this does is documented in PRs here:
@@ -78,7 +79,7 @@ class ExpandSelection(val from: List<FromContext>) {
  * https://github.com/zio/zio-quill/pull/2381 and here:
  * https://github.com/zio/zio-quill/pull/2420
  */
-object ExpandNestedQueries: StatelessQueryTransformer() {
+class ExpandNestedQueries(val pathJoinFunction: (List<String>) -> String): StatelessQueryTransformer() {
 
   override fun invoke(q: SqlQuery, level: QueryLevel): SqlQuery =
     when (q) {
@@ -91,7 +92,7 @@ object ExpandNestedQueries: StatelessQueryTransformer() {
         super.invoke(q, level)
     }
 
-  data class FlattenNestedProperty(val from: List<FromContext>) {
+  data class FlattenNestedProperty(val from: List<FromContext>, val pathJoinFunction: (List<String>) -> String) {
     val inContext = InContext(from)
 
     fun invoke(p: XR.Expression): XR.Expression =
@@ -101,7 +102,7 @@ object ExpandNestedQueries: StatelessQueryTransformer() {
 
           // If it is a sub-select do not apply the strategy to the property
           if (isSubselect)
-            XR.Property(inner, path.mkString(), Visibility.Visible)
+            XR.Property(inner, pathJoinFunction(path), Visibility.Visible)
           else
             XR.Property(inner, path.last(), Visibility.Visible)
         }
@@ -119,7 +120,7 @@ object ExpandNestedQueries: StatelessQueryTransformer() {
 
   override fun expandNested(q: FlattenSqlQuery, level: QueryLevel): FlattenSqlQuery =
     with(q) {
-      val flattenNestedProperty = FlattenNestedProperty(from)
+      val flattenNestedProperty = FlattenNestedProperty(from, pathJoinFunction)
       val newFroms = q.from.map { expandContextFlattenOns(it, flattenNestedProperty) }
 
       fun distinctIfNotTopLevel(values: List<SelectValue>) =
