@@ -4,18 +4,17 @@ import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
 import io.exoquery.util.Tracer
 import io.exoquery.xr.BetaReduction
-import io.exoquery.xr.DebugDump
 import io.exoquery.xr.StatefulTransformer
 import io.exoquery.xr.XR
 import io.exoquery.xr.XR.*
 
-data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boolean, val traceConfig: TraceConfig, override val debug: DebugDump = DebugDump()): StatefulTransformer<Set<String>> {
+data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boolean, val traceConfig: TraceConfig): StatefulTransformer<Set<String>> {
 
   fun Recurse(state: Set<String>) =
     AvoidAliasConflict(state, detemp, traceConfig)
 
   val trace: Tracer =
-    Tracer(TraceType.AvoidAliasConflict, traceConfig, 1, outputSource = Tracer.OutputSource.InMem(debug))
+    Tracer(TraceType.AvoidAliasConflict, traceConfig, 1)
 
   /**
    * I.e. we consider to be something to be "unaliased" if it is an Entity or Infix most often it will be something like
@@ -50,7 +49,7 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
 
   private fun freshIdent(x: Ident, state: Set<String> = this.state): Ident =
     if (x.isTemporary() && detemp)
-      dedupeIdent(Ident("x", x.type), state)
+      dedupeIdent(Ident("x", x.type, x.loc), state)
     else
       dedupeIdent(x, state)
 
@@ -277,7 +276,7 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
     var fresh = x
     while (state.contains(fresh.name)) {
       i++
-      fresh = Ident("${x.name}$i", x.type)
+      fresh = Ident("${x.name}$i", x.type, x.loc)
     }
     return fresh
   }

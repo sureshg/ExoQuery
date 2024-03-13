@@ -3,6 +3,8 @@ package io.exoquery.plugin.transform
 import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
+import io.exoquery.plugin.buildLocationXR
+import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.trees.ExtractorsDomain
 import io.exoquery.plugin.trees.isClass
@@ -71,7 +73,8 @@ class VisitPropagateVariables(
       case(ExtractorsDomain.Call.`from(expr)`[Is(), Is()]).thenThis { reciever, expr ->
         // Recurse inside the from in-case there's a query inside a query
         val newExpression = super.visitExpression(expr, null)
-        reciever.callMethod("fromAliased").invoke(newExpression, builder.irString(varName))
+        val loc = makeLifter().liftLocation(expr.buildLocationXR())
+        reciever.callMethod("fromAliased").invoke(newExpression, builder.irString(varName), loc)
       },
       case(ExtractorsDomain.Call.`join(expr)`[Is(), Is()]).thenThis { reciever, expr ->
         // Recurse inside the from in-case there's a query inside a query

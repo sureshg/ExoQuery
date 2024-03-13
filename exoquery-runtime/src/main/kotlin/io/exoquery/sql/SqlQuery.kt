@@ -161,17 +161,17 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         // e.g. Take(people.flatMap(p => addresses:Query), 3) -> `select ... from people, addresses... limit 3`
         this is XR.Take && head is XR.FlatMap ->
           trace("Construct SqlQuery from: TakeDropFlatten") andReturn {
-            flatten(head, "x").copy(limit = num, type = query.type)
+            flatten(head, head.id.copy(name = "x")).copy(limit = num, type = query.type)
           }
         // e.g. Drop(people.flatMap(p => addresses:Query), 3) -> `select ... from people, addresses... offset 3`
         this is XR.Drop && head is XR.FlatMap ->
           trace("Construct SqlQuery from: TakeDropFlatten") andReturn {
-            flatten(head, "x").copy(offset = num, type = query.type)
+            flatten(head, head.id.copy(name = "x")).copy(offset = num, type = query.type)
           }
         this is XR.Query ->
-          trace("Construct SqlQuery from: Query") andReturn { flatten(this, "x") }
+          trace("Construct SqlQuery from: Query") andReturn { flatten(this, XR.Ident("x", type, XR.Location.Synth)) }
         this is XR.Infix ->
-          trace("Construct SqlQuery from: Infix") andReturn { flatten(this, "x") }
+          trace("Construct SqlQuery from: Infix") andReturn { flatten(this, XR.Ident("x", type, loc)) }
         else ->
           trace("[INVALID] Construct SqlQuery from: other") andReturn {
             xrError("Query not properly normalized. Please open a bug report. Ast: '$query'")
@@ -201,7 +201,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         // A flat-join query with no maps e.g: `qr1.flatMap(e1 => qr1.join(e2 => e1.i == e2.i))`
         this is FlatMap && body is FlatJoin ->
           trace("Flattening FlatMap with FlatJoin") andReturn {
-            val cc: XR.Product = XR.Product.fromType(body.type, body.id.name)
+            val cc: XR.Product = XR.Product.fromProductIdent(body.id)
             flattenContexts(FlatMap(head, id, Map(body, body.id, cc)))
           }
         this is FlatMap && body is XR.Infix ->
@@ -237,7 +237,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
 
 
-  private fun flatten(query: XR, alias: String): FlattenSqlQuery =
+  private fun flatten(query: XR, alias: XR.Ident): FlattenSqlQuery =
     trace("Flattening ${query}") andReturn {
       val (sources, finalFlatMapBody) = flattenContexts(query)
       // TODO Check if the 2nd-to-last source is a groupBy otherwise we're doing things
@@ -266,20 +266,20 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
   private fun flatten(
     sources: List<FromContext>,
     finalFlatMapBody: XR,
-    alias: String,
+    alias: XR.Ident,
     nestNextMap: Boolean
   ): FlattenSqlQuery {
 
-    fun select(alias: String, type: XRType): List<SelectValue> = listOf(SelectValue(XR.Ident(alias, type), listOf()))
+    fun select(alias: String, type: XRType, loc: XR.Location): List<SelectValue> = listOf(SelectValue(XR.Ident(alias, type, loc), listOf()))
 
-    fun base(query: XR, alias: String, nestNextMap: Boolean): FlattenSqlQuery =
+    fun base(query: XR.Query, alias: XR.Ident, nestNextMap: Boolean): FlattenSqlQuery =
       trace("Computing Base (nestingMaps=${nestNextMap}) for Query: $query") andReturn {
         fun nest(ctx: FromContext): FlattenSqlQuery = trace("Computing FlattenSqlQuery for: $ctx") andReturn {
-          FlattenSqlQuery(from = sources + ctx, select = select(alias, query.type), type = query.type)
+          FlattenSqlQuery(from = sources + ctx, select = select(alias.name, query.type, alias.loc), type = query.type)
         }
         with(query) {
           when {
-            this is XR.GroupByMap -> trace("base| Nesting GroupByMap $query") andReturn { nest(source(query, alias)) }
+            this is XR.GroupByMap -> trace("base| Nesting GroupByMap $query") andReturn { nest(source(query, alias.name)) }
 
             // A map that contains mapped-to aggregations e.g.
             //   people.map(p=>max(p.name))
@@ -289,9 +289,9 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             //   people.map(p=>SomeCaseClassOrTuple(p.name, someStatefulSqlFunction(p.age)))
             // therefore we need to check if there are elements like this inside of the map-function and nest it
             this is XR.Map && containsImpurities() ->
-              trace("base| Nesting Map(a=>ContainsImpurities(a)) $query") andReturn { nest(source(query, alias)) }
+              trace("base| Nesting Map(a=>ContainsImpurities(a)) $query") andReturn { nest(source(query, alias.name)) }
 
-            this is XR.Nested -> trace("base| Nesting Nested $query") andReturn { nest(source(head, alias)) }
+            this is XR.Nested -> trace("base| Nesting Nested $query") andReturn { nest(source(head, alias.name)) }
 
             this is XR.ConcatMap -> trace("base| Nesting ConcatMap $query") andReturn { nest(source(this, alias)) }
 
@@ -326,7 +326,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
             this is XR.GroupByMap -> {
               trace("Flattening| GroupByMap") andReturn {
-                val b = base(head, alias = byAlias.name, nestNextMap = true)
+                val b = base(head, alias = byAlias, nestNextMap = true)
                 val flatGroupByAsts = ExpandSelection(b.from).ofSubselect(listOf(SelectValue(byBody))).map { it.expr }
                 val groupByClause: XR.Expression =
                   // Can use TupleNumeric because we don't actually care about the field names
@@ -355,7 +355,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
               else
                 trace("Flattening| Map(Ident) [Complex]") andReturn {
                   FlattenSqlQuery(
-                    from = listOf(QueryContext(invoke(head), alias)),
+                    from = listOf(QueryContext(invoke(head), alias.name)),
                     select = selectValues(body),
                     type = type
                   )
@@ -363,21 +363,20 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             }
 
             this is XR.Filter -> {
-              val alias = id.name
               // If it's a filter, pass on the value of nestNextMap in case there is a future map we need to nest
-              val b = base(head, alias, nestNextMap)
+              val b = base(head, id, nestNextMap)
               // If the filter body uses the filter alias, make sure it matches one of the aliases in the fromContexts
               if (b.where == null && (!CollectXR.byType<XR.Ident>(body).map { it.name }
-                  .contains(alias) || collectAliases(b.from).contains(alias)))
+                  .contains(alias.name) || collectAliases(b.from).contains(alias.name)))
                 trace("Flattening| Filter(Ident) [Simple]") andReturn {
                   b.copy(where = body, type = type)
                 }
               else
                 trace("Flattening| Filter(Ident) [Complex]") andReturn {
                   FlattenSqlQuery(
-                    from = listOf(QueryContext(invoke(head), alias)),
+                    from = listOf(QueryContext(invoke(head), alias.name)),
                     where = body,
-                    select = select(alias, type),
+                    select = select(alias.name, type, id.loc),
                     type = type
                   )
                 }
@@ -387,20 +386,19 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
               fun allIdentsIn(criteria: List<OrderByCriteria>) =
                 criteria.flatMap { CollectXR.byType<XR.Ident>(it.ast).map { it.name } }
 
-              val alias = id.name
-              val b = base(head, alias, nestNextMap = false)
+              val b = base(head, id, nestNextMap = false)
               val criteria = orderByCriteria(criteria, ordering, b.from)
               // If the sortBy body uses the filter alias, make sure it matches one of the aliases in the fromContexts
-              if (b.where == null && (!allIdentsIn(criteria).contains(alias) || collectAliases(b.from).contains(alias)))
+              if (b.where == null && (!allIdentsIn(criteria).contains(id.name) || collectAliases(b.from).contains(id.name)))
                 trace("Flattening| SortBy(Ident) [Simple]") andReturn {
                   b.copy(orderBy = criteria, type = type)
                 }
               else
                 trace("Flattening| SortBy(Ident) [Complex]") andReturn {
                   FlattenSqlQuery(
-                    from = listOf(QueryContext(invoke(head), alias)),
+                    from = listOf(QueryContext(invoke(head), id.name)),
                     orderBy = criteria,
-                    select = select(alias, type),
+                    select = select(id.name, type, id.loc),
                     type = type
                   )
                 }
@@ -415,9 +413,9 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
               else
                 trace("Flattening| Take [Complex]") andReturn {
                   FlattenSqlQuery(
-                    from = listOf(QueryContext(invoke(head), alias)),
+                    from = listOf(QueryContext(invoke(head), alias.name)),
                     limit = num,
-                    select = select(alias, type),
+                    select = select(alias.name, type, alias.loc),
                     type = type
                   )
                 }
@@ -432,9 +430,9 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
               else
                 trace("Flattening| Drop [Complex]") andReturn {
                   FlattenSqlQuery(
-                    from = listOf(QueryContext(invoke(head), alias)),
+                    from = listOf(QueryContext(invoke(head), alias.name)),
                     offset = num,
-                    select = select(alias, type),
+                    select = select(alias.name, type, alias.loc),
                     type = type
                   )
                 }
@@ -475,8 +473,8 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 else ->
                   trace("Flattening| DistinctOn") andReturn {
                     FlattenSqlQuery(
-                      from = listOf(QueryContext(invoke(head), alias)),
-                      select = select(alias, type),
+                      from = listOf(QueryContext(invoke(head), alias.name)),
+                      select = select(alias.name, type, alias.loc),
                       distinct = DistinctKind.DistinctOn(distinctList),
                       type = type
                     )
@@ -488,7 +486,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
               trace("Flattening| Other") andReturn {
                 FlattenSqlQuery(
                   from = sources + source(this, alias),
-                  select = select(alias, type),
+                  select = select(alias.name, type, alias.loc),
                   type = type
                 )
               }
@@ -522,6 +520,8 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
   private fun selectValues(ast: XR.Expression) = listOf(SelectValue(ast))
 
+  private fun source(ast: XR, alias: XR.Ident): FromContext =
+    source(ast, alias.name)
   private fun source(ast: XR, alias: String): FromContext =
     with (ast) {
       when (this) {

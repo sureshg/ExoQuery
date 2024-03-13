@@ -44,7 +44,7 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressi
   // TODO search for this call in the IR and see if there's a Val-def on the other side of it and call fromAliased with the name of that
   public suspend fun <R> from(query: Query<R>): SqlVariable<R> =
     // Note find the out the class of R (use an inline?) and make the 1st letter based on it?
-    fromAliased(query, query.freshIdent())
+    fromAliased(query, query.freshIdent(), XR.Location.Synth)
 
   // TODO test select inside select
 
@@ -52,13 +52,13 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressi
   //public suspend fun <R> yield(query: Query<R>): SqlVariable<R> =
 
   @Suppress("UNCHECKED_CAST")
-  public suspend fun <R> fromAliased(query: Query<R>, alias: String): SqlVariable<R> =
+  public suspend fun <R> fromAliased(query: Query<R>, alias: String, loc: XR.Location): SqlVariable<R> =
     perform { mapping ->
       val sqlVar = SqlVariable<R>(alias)
       // Before going further, take any SqlVariable values and reify the actual name-fields into them
       // since they are specifically returned from the select-value from/join clauses.
       val resultQuery = mapping(sqlVar).withReifiedIdents()
-      val ident = XR.Ident(sqlVar.getVariableName(), resultQuery.xr.type)
+      val ident = XR.Ident(sqlVar.getVariableName(), resultQuery.xr.type, loc)
       // No quoted context in this case so only the inner query of this has dynamic binds, we just get those
       (QueryContainer<A>(XR.FlatMap(query.xr, ident, resultQuery.xr), query.binds + resultQuery.binds)) /*as Query<A>*/
     }
@@ -75,7 +75,7 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressi
   public suspend fun <R> groupByExpr(expr: XR.Expression, binds: DynamicBinds): Unit =
     performUnit { mapping ->
       val childQuery = mapping()
-      (QueryContainer<A>(XR.FlatMap(XR.FlatGroupBy(expr), XR.Ident("unused", XRType.Unknown), childQuery.xr), childQuery.binds + binds))
+      (QueryContainer<A>(XR.FlatMap(XR.FlatGroupBy(expr), XR.Ident.Unused, childQuery.xr), childQuery.binds + binds))
     }
 
   public suspend fun <R> sortedBy(f: context(EnclosedExpression) () -> R): Unit =
@@ -84,7 +84,7 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressi
   public suspend fun <R> sortedByExpr(expr: XR.Expression, binds: DynamicBinds): Unit =
     performUnit { mapping ->
       val childQuery = mapping()
-      (QueryContainer<A>(XR.FlatMap(XR.FlatSortBy(expr, ordering = XR.Ordering.Asc), XR.Ident("unused", XRType.Unknown), childQuery.xr), childQuery.binds + binds))
+      (QueryContainer<A>(XR.FlatMap(XR.FlatSortBy(expr, ordering = XR.Ordering.Asc), XR.Ident.Unused, childQuery.xr), childQuery.binds + binds))
     }
 
   // TODO sortedByDescending
@@ -96,7 +96,7 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressi
   public suspend fun <R> whereExpr(expr: XR.Expression, binds: DynamicBinds): Unit =
     performUnit { mapping ->
       val childQuery = mapping()
-      (QueryContainer<A>(XR.FlatMap(XR.FlatFilter(expr), XR.Ident("unused", XRType.Unknown), childQuery.xr), childQuery.binds + binds))
+      (QueryContainer<A>(XR.FlatMap(XR.FlatFilter(expr), XR.Ident.Unused, childQuery.xr), childQuery.binds + binds))
     }
 }
 
@@ -112,20 +112,21 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
       perform { mapping ->
         val joinIdentTpe = joinIdentRaw.type
         val joinIdentName = aliasRaw ?: joinIdentRaw.name
+        val loc = joinIdentRaw.loc
 
         val body = bodyRaw as XR.Expression
         val sqlVariable = SqlVariable<R>(joinIdentName)
         val outputQuery = mapping(sqlVariable)
-        val ident = XR.Ident(sqlVariable.getVariableName(), outputQuery.xr.type)
+        val ident = XR.Ident(sqlVariable.getVariableName(), outputQuery.xr.type, loc)
 
         val freshIdentForCond = run {
           // Need to consider all the alises that could come from any of the other sources before making a new variable for the element.
           // however, if the alias is not-null we can rely on just that on being duplicated
           if (aliasRaw != null) {
             val name = freshIdent(joinIdentName, listOf(body), listOf(query, outputQuery), listOf(onClauseBinds))
-            XR.Ident(name, joinIdentTpe)
+            XR.Ident(name, joinIdentTpe, loc)
           } else {
-            XR.Ident(joinIdentName, joinIdentTpe)
+            XR.Ident(joinIdentName, joinIdentTpe, loc)
           }
         }
         val freshCondBody = BetaReduction(body, joinIdentRaw to freshIdentForCond)

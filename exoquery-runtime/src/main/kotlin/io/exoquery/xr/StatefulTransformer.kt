@@ -58,7 +58,6 @@ data class DebugDump(val info: MutableList<DebugMsg> = mutableListOf()){
 
 interface StatefulTransformer<T> {
   val state: T
-  val debug: DebugDump
 
   operator fun invoke(xr: XR): Pair<XR, StatefulTransformer<T>> =
     with(xr) {
@@ -113,7 +112,7 @@ interface StatefulTransformer<T> {
         // Infix can be both a Query and Expression
         is Infix -> {
           val (paramsA, stateA) = applyList(params) { t, v -> t.invoke(v) }
-          Infix(parts, paramsA, pure, transparent, type) to stateA
+          Infix(parts, paramsA, pure, transparent, type, loc) to stateA
         }
         is Aggregation -> {
           val (bodyA, stateA) = invoke(expr)
@@ -217,7 +216,7 @@ interface StatefulTransformer<T> {
         // Infix can be both a Query and Expression
         is Infix -> {
           val (paramsA, stateA) = applyList(params) { t, v -> t.invoke(v) }
-          Infix(parts, paramsA, pure, transparent, type) to stateA
+          Infix(parts, paramsA, pure, transparent, type, loc) to stateA
         }
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this to this@StatefulTransformer

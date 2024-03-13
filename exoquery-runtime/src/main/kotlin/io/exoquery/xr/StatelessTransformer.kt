@@ -47,7 +47,7 @@ interface StatelessTransformer {
         is Block -> invoke(this)
         is Product -> Product(name, fields.map { it.first to invoke(it.second) })
         // Infix can both be Expression and Query
-        is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type)
+        is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type, loc)
         is Aggregation -> Aggregation(op, invoke(expr))
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
@@ -76,7 +76,7 @@ interface StatelessTransformer {
         is GroupByMap -> GroupByMap(invoke(head), byAlias, invoke(byBody), mapAlias, invoke(mapBody))
         is Nested -> Nested(invoke(head))
         // Infix can both be Expression and Query
-        is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type)
+        is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type, loc)
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
         // If there is a runtime bind, can't do anything with it

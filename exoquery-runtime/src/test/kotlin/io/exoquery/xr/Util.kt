@@ -2,7 +2,8 @@
 
 package io.exoquery.xr
 
-operator fun XR.Ident.Companion.invoke(id: String) = XR.Ident(id, XRType.Generic)
+operator fun XR.Ident.Companion.invoke(id: String) = XR.Ident(id, XRType.Generic, XR.Location.Synth)
+operator fun XR.Ident.Companion.invoke(name: String, type: XRType) = XR.Ident(name, type, XR.Location.Synth)
 operator fun XR.Entity.Companion.invoke(id: String) = XR.Entity(id, XRType.Product("Test", emptyList()))
 
 fun XR.Product.Companion.TupleN(elements: List<XR.Expression>) =

@@ -65,7 +65,7 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
         val conflicts = applyArgs
           .flatMap { CollectXR.byType<XR.Ident>(it) }
           .map { i: XR.Ident ->
-            i to XR.Ident("tmp_${i.name}", i.type)
+            i to XR.Ident("tmp_${i.name}", i.type, i.loc)
           }
           .toMap()
         // 2. Then get all args that are in the function body Apply(foo('a, 'b, 'c){...'a..., ...'b..., ...'c...}, [a.x, b.y, d...])

@@ -12,6 +12,8 @@ import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.transform.ScopeSymbols
 import io.exoquery.parseError
+import io.exoquery.plugin.locationXR
+import io.exoquery.plugin.toLocationXR
 import io.exoquery.plugin.transform.VisitTransformExpressions
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.IrStatement
@@ -58,7 +60,7 @@ private class ParserCollector {
     on(expr).match(
       case(Ir.Variable[Is(), Is()]).thenThis { name, rhs ->
         val irType = TypeParser.parse(type)
-        XR.Variable(XR.Ident(name, irType), parseExpr(rhs))
+        XR.Variable(XR.Ident(name, irType, rhs.locationXR()), parseExpr(rhs))
       }
     ) ?: parseError("Could not parse Ir Variable statement from:\n${expr.dumpSimple()}")
 
@@ -136,7 +138,7 @@ private class ParserCollector {
           this.dispatchReceiver?.let { RuntimeBindValueExpr.SqlVariableIdentExpr(it) } ?: DomainErrors.NoDispatchRecieverFoundForSqlVarCall(this)
         )
         //warn(binds.show().toString())
-        XR.IdentOrigin(bindId, symName, TypeParser.parse(this.type))
+        XR.IdentOrigin(bindId, symName, TypeParser.parse(this.type), expr.locationXR())
       },
 
       // Other situations where you might have an identifier which is not an SqlVar e.g. with variable bindings in a Block (inside an expression)
@@ -151,7 +153,7 @@ private class ParserCollector {
           error("The symbol `${sym.safeName}` is external. Cannot find it in the symbols-list belonging to the clause ${internalVars.symbols.map { it.safeName }}", loc)
         }
 
-        XR.Ident(sym.safeName, TypeParser.parse(this.type)) // this.symbol.owner.type
+        XR.Ident(sym.safeName, TypeParser.parse(this.type), this.locationXR()) // this.symbol.owner.type
 
         // TODO Need to enhance parseFail to return the failed symbol so later when the
         //      compile-time message is produced we can get the row/column of the bad symbol
@@ -173,7 +175,7 @@ private class ParserCollector {
             else -> parseError("Illegal argument in the `getSqlVar` function:\n${this.dumpKotlinLike()}")
           }
 
-        XR.Ident(argValue, TypeParser.parse(this.type))
+        XR.Ident(argValue, TypeParser.parse(this.type), this.locationXR())
       },
       // case(Ir.Call.Function[Is()]).thenIf { (list) -> list.size == 2 }.thenThis { list ->
       //   val a = list.get(0)

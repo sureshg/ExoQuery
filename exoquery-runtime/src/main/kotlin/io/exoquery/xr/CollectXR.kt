@@ -2,8 +2,6 @@ package io.exoquery.xr
 
 class CollectXR<T>(private val collect: (XR) -> T?): StatefulTransformerSingleRoot<MutableList<T>> {
 
-  override val debug: DebugDump = DebugDump()
-
   override val state = mutableListOf<T>()
 
   override fun <X : XR> root(xr: X): Pair<X, StatefulTransformerSingleRoot<MutableList<T>>> {
@@ -32,7 +30,6 @@ class CollectXR<T>(private val collect: (XR) -> T?): StatefulTransformerSingleRo
 
 
 class ContainsXR(private val predicate: (XR) -> Boolean): StatefulTransformer<Boolean> {
-  override val debug: DebugDump = DebugDump()
 
   var isFound = false
   override val state get() = isFound

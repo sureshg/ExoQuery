@@ -129,8 +129,8 @@ class Lifter(val builderCtx: BuilderContext) {
       is Function1 -> make<Function1>(this.component1().lift(), this.component2().lift())
       is FunctionN -> make<FunctionN>(this.component1().lift { it.lift() }, this.component2().lift())
       is FunctionApply -> make<FunctionApply>(this.component1().lift(), this.component2().lift { it.lift() })
-      is Ident -> make<Ident>(this.component1().lift(), this.component2().lift(), this.component3().lift())
-      is IdentOrigin -> make<IdentOrigin>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
+      is Ident -> make<Ident>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
+      is IdentOrigin -> make<IdentOrigin>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift(), this.component5().lift())
       is Property -> make<Property>(this.component1().lift(), this.component2().lift(), this.component3().lift())
       is UnaryOp -> make<UnaryOp>(this.component1().lift(), this.component2().lift())
       Const.Null -> makeObject<Const.Null>()
@@ -139,7 +139,7 @@ class Lifter(val builderCtx: BuilderContext) {
       // The below must go in Function/Query/Expression/Action lift clauses
       is Marker -> make<Marker>(this.component1().lift(), this.component2().liftOrNull { it.lift() } )
       is Product -> make<Product>(this.component1().lift(), this.component2().lift { it.lift({ it.lift() }, { it.lift() }) })
-      is Infix -> make<Lifter>(this.component1().lift { it.lift() }, this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift(), this.component5().lift())
+      is Infix -> make<Lifter>(this.component1().lift { it.lift() }, this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift(), this.component5().lift(), this.component6().lift())
       is Aggregation -> make<Aggregation>(this.component1().lift(), this.component2().lift())
     }
 
@@ -205,6 +205,12 @@ class Lifter(val builderCtx: BuilderContext) {
     }
 
 
+  fun XR.Location.lift(): IrExpression =
+    when(this) {
+      is Location.File -> make<Location.File>(path.lift(), row.lift(), col.lift())
+      Location.Synth -> makeObject<Location.Synth>()
+    }
+
   //fun <T> liftList(list: List<T>, elementLifter: (T) -> IrExpression) =
 
 
@@ -212,6 +218,7 @@ class Lifter(val builderCtx: BuilderContext) {
   fun liftXRType(xrt: XRType) = xrt.lift()
   fun liftExpression(expr: Expression) = expr.lift()
   fun liftIdent(expr: Ident) = expr.lift()
+  fun liftLocation(expr: Location) = expr.lift()
 
   @OptIn(ExoInternal::class)
   fun liftSqlVariableWithType(variable: SqlVariable<*>, typeParam: IrType) =

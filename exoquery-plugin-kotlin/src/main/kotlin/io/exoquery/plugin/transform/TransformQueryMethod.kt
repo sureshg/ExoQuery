@@ -2,6 +2,7 @@ package io.exoquery.plugin.transform
 
 import io.decomat.*
 import io.exoquery.parseError
+import io.exoquery.plugin.locationXR
 import io.exoquery.xr.XR
 import io.exoquery.plugin.trees.*
 import io.exoquery.plugin.logging.CompileLogger
@@ -32,7 +33,7 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
     val paramIdentXR = run {
       val name = lambdaArg.name.asString()
       val tpe = TypeParser.parse(lambdaArg.type)
-      XR.Ident(name, tpe)
+      XR.Ident(name, tpe, expression.locationXR())
     }
 
     // If there are any maps/filters/flatMaps etc... in the body need to transform them first

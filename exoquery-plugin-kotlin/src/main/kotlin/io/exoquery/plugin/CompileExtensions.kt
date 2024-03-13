@@ -1,7 +1,9 @@
 package io.exoquery.plugin
 
 import io.decomat.fail.fail
+import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.trees.ParserContext
+import io.exoquery.xr.XR
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
@@ -67,3 +69,15 @@ fun IrElement.location(fileEntry: IrFileEntry): CompilerMessageSourceLocation {
 
 context(ParserContext) fun IrElement.location(): CompilerMessageSourceLocation =
   this.location(currentFile.fileEntry)
+
+context(ParserContext) fun IrElement.locationXR(): XR.Location =
+  this.location(currentFile.fileEntry).toLocationXR()
+
+context(BuilderContext) fun IrElement.buildLocation(): CompilerMessageSourceLocation =
+  this.location(currentFile.fileEntry)
+
+context(BuilderContext) fun IrElement.buildLocationXR(): XR.Location =
+  this.location(currentFile.fileEntry).toLocationXR()
+
+fun CompilerMessageSourceLocation.toLocationXR(): XR.Location =
+  XR.Location.File(path, line, column)

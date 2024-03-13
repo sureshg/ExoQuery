@@ -243,7 +243,7 @@ sealed interface XR {
 
   // TODO could it also be a XR.Function1/FunctionN?
   @Mat
-  data class Infix(@Slot val parts: List<String>, @Slot val params: List<XR>, val pure: Boolean, val transparent: Boolean, override val type: XRType): Query, Expression, PC<Infix> {
+  data class Infix(@Slot val parts: List<String>, @Slot val params: List<XR>, val pure: Boolean, val transparent: Boolean, override val type: XRType, val loc: Location): Query, Expression, PC<Infix> {
    override val productComponents = productOf(this, parts, params)
    companion object {}
     override fun toString() = show()
@@ -380,7 +380,7 @@ sealed interface XR {
    * at runtime to have the name that was assigned to them at compile-time.
    */
   @Mat
-  data class IdentOrigin(@Slot val runtimeName: BID, val name: String, override val type: XRType, val visibility: Visibility = Visibility.Visible) : XR, Labels.Terminal, PC<IdentOrigin> {
+  data class IdentOrigin(@Slot val runtimeName: BID, val name: String, override val type: XRType, val loc: Location, val visibility: Visibility = Visibility.Visible) : XR, Labels.Terminal, PC<IdentOrigin> {
 
     override val productComponents = productOf(this, runtimeName)
     companion object {}
@@ -393,11 +393,24 @@ sealed interface XR {
     override fun toString() = show()
   }
 
+  sealed interface Location {
+    data class File(val path: String, val row: Int, val col: Int): Location
+    object Synth: Location
+  }
+
   @Mat
-  data class Ident(@Slot val name: String, override val type: XRType, val visibility: Visibility = Visibility.Visible) : XR, Labels.Terminal, PC<XR.Ident> {
+  data class Ident(@Slot val name: String, override val type: XRType, val loc: Location, val visibility: Visibility = Visibility.Visible) : XR, Labels.Terminal, PC<XR.Ident> {
 
     override val productComponents = productOf(this, name)
-    companion object {}
+    companion object {
+      context(Ident) fun fromThis(name: String) = copy(name = name)
+      fun from(ident: Ident): Copy = Copy(ident)
+      data class Copy(val host: Ident) {
+        operator fun invoke(name: String) = host.copy(name = name)
+      }
+
+      val Unused = XR.Ident("unused", XRType.Unknown, XR.Location.Synth)
+    }
 
     data class Id(val name: String)
     private val id = Id(name)
@@ -446,8 +459,9 @@ sealed interface XR {
         Product("Tuple${values.size}", values.withIndex().map { (idx, v) -> "_${idx+1}" to v })
 
       // Used by the SqlQuery clauses to wrap identifiers into a row-class
-      fun fromType(type: XRType, identName: String): XR.Product {
-        val id = XR.Ident(identName, type)
+      fun fromProductIdent(id: XR.Ident): XR.Product {
+        val identName = id.name
+        val type = id.type
         return when (type) {
           // tpe: XRType.Prod(a->V,b->V), id: Id("foo",tpe) ->
           //   XR.Prod(id, a->Prop(id,"a"), b->Prop(id,"b"))
@@ -534,6 +548,6 @@ fun XR.isTerminal() =
 
 fun XR.Labels.Terminal.withType(type: XRType): XR.Expression =
   when (this) {
-    is XR.Ident -> XR.Ident(name, type)
-    is XR.IdentOrigin -> XR.IdentOrigin(runtimeName, name, type)
+    is XR.Ident -> XR.Ident(name, type, loc)
+    is XR.IdentOrigin -> XR.IdentOrigin(runtimeName, name, type, loc)
   }

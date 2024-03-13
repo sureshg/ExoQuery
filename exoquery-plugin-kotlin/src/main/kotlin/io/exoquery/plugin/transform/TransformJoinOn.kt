@@ -5,9 +5,11 @@ import io.decomat.case
 import io.decomat.on
 import io.exoquery.structError
 import io.exoquery.parseError
+import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.safeName
+import io.exoquery.plugin.toLocationXR
 import io.exoquery.plugin.trees.*
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.expressions.IrCall
@@ -33,7 +35,7 @@ class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
     val reciverSymbol = reciverParam.symbol.safeName
     val paramIdent = run {
       val tpe = TypeParser.parse(reciverParam.type)
-      XR.Ident(reciverSymbol, tpe)
+      XR.Ident(reciverSymbol, tpe, reciverParam.location().toLocationXR())
     }
 
     // TODO Recursively transform the block body?
@@ -57,5 +59,4 @@ class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
     return newCaller.callMethod("onExpr").invoke(paramIdentExpr, onLambdaBodyExpr, bindsList)
   }
 }
-
 

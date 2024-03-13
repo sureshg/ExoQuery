@@ -56,7 +56,7 @@ class SqlVariable<T>(variableName: String /* don't want this to intersect with e
   private val _variableName = variableName
 
   @ExoInternal
-  override val xr = XR.Ident(_variableName, XRType.Generic)
+  override val xr = XR.Ident(_variableName, XRType.Generic, XR.Location.Synth)
 
   @ExoInternal
   override val binds = DynamicBinds.empty()
