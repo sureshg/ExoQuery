@@ -57,9 +57,9 @@ class VisitTransformExpressions(
     val selectTransformer = TransformSelect(builderContext)
     val makeTableTransformer = TransformTableQuery(builderContext)
     val joinOnTransformer = TransformJoinOn(builderContext)
-    val groupByTransformer = TransformSelectClauseMethod(builderContext, ExtractorsDomain.Call.`groupBy(expr)`, "groupByExpr")
-    val sortedByTransformer = TransformSelectClauseMethod(builderContext, ExtractorsDomain.Call.`sortedBy(expr)`, "sortedByExpr")
-    val whereTransformer = TransformSelectClauseMethod(builderContext, ExtractorsDomain.Call.`where(expr)`, "whereExpr")
+    val groupByTransformer = TransformSelectClauseUnitMethod(builderContext, ExtractorsDomain.Call.`groupBy(expr)`, "groupByExpr")
+    val sortedByTransformer = TransformSelectClauseUnitMethod(builderContext, ExtractorsDomain.Call.`sortedBy(expr)`, "sortedByExpr")
+    val whereTransformer = TransformSelectClauseUnitMethod(builderContext, ExtractorsDomain.Call.`where(expr)`, "whereExpr")
 
     // TODO Catch parser errors here, make a warning via the compileLogger (in the BuilderContext) & don't transform the expresison
 

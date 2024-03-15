@@ -7,6 +7,7 @@ import io.exoquery.xr.BetaReduction
 import io.exoquery.xr.StatefulTransformer
 import io.exoquery.xr.XR
 import io.exoquery.xr.XR.*
+import io.exoquery.xr.cs
 
 data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boolean, val traceConfig: TraceConfig): StatefulTransformer<Set<String>> {
 
@@ -107,16 +108,16 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
     with(xr) {
       when {
         this is FlatMap && head.isUnaliased() ->
-          invoke(id, body) { i, b -> FlatMap(head, i, b) }
+          invoke(id, body) { i, b -> FlatMap.cs(head, i, b) }
 
         this is ConcatMap && head.isUnaliased() ->
-          invoke(id, body) { i, b -> ConcatMap(head, i, b) }
+          invoke(id, body) { i, b -> ConcatMap.cs(head, i, b) }
 
         this is XR.Map && head.isUnaliased() ->
-          invoke(id, body) { i, b -> Map(head, i, b) }
+          invoke(id, body) { i, b -> XR.Map.cs(head, i, b) }
 
         this is Filter && head.isUnaliased() ->
-          invoke(id, body) { i, b -> Filter(head, i, b) }
+          invoke(id, body) { i, b -> Filter.cs(head, i, b) }
 
         this is GroupByMap && head.isUnaliased() -> {
           val (byComps, s1) = invoke(byAlias, byBody) { i, b -> i to b }
@@ -124,25 +125,25 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
           val (toComps, s2) = invoke(mapAlias, mapBody) { i, b -> i to b }
           val (toId1, mapBody1) = toComps
           (
-            GroupByMap(head, byId1, byBody1, toId1, mapBody1) to
+            GroupByMap.cs(head, byId1, byBody1, toId1, mapBody1) to
               Recurse(s1.state + s2.state + state)
             )
         }
 
         this is DistinctOn && head.isUnaliased() ->
-          invoke(id, by) { i, b -> DistinctOn(head, i, b) }
+          invoke(id, by) { i, b -> DistinctOn.cs(head, i, b) }
 
         this is FlatMap ->
-          recurseAndApply(head, id, body) { q, i, b -> FlatMap(q, i, b) }
+          recurseAndApply(head, id, body) { q, i, b -> FlatMap.cs(q, i, b) }
 
         this is ConcatMap ->
-          recurseAndApply(head, id, body) { q, i, b -> ConcatMap(q, i, b) }
+          recurseAndApply(head, id, body) { q, i, b -> ConcatMap.cs(q, i, b) }
 
         this is XR.Map ->
-          recurseAndApply(head, id, body) { q, i, b -> Map(q, i, b) }
+          recurseAndApply(head, id, body) { q, i, b -> XR.Map.cs(q, i, b) }
 
         this is Filter ->
-          recurseAndApply(head, id, body) { q, i, b -> Filter(q, i, b) }
+          recurseAndApply(head, id, body) { q, i, b -> Filter.cs(q, i, b) }
 
         this is GroupByMap -> {
           val (newHead, newState) = super.invoke(head)
@@ -151,16 +152,16 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
           val (newByAlias, newByBody) = byAlias.refreshInsideOf(byBody) { "aliased-byBody-GroupByMap" }
           val (newMapAlias, newMapBody) = byAlias.refreshInsideOf(byBody) { "aliased-mapBody-GroupByMap" }
           (
-            GroupByMap(newHead, newByAlias, newByBody, newMapAlias, newMapBody) to
+            GroupByMap.cs(newHead, newByAlias, newByBody, newMapAlias, newMapBody) to
               Recurse(newState.state + state)
             )
         }
 
         this is DistinctOn ->
-          recurseAndApply(head, id, by) { q, i, b -> DistinctOn(q, i, b) }
+          recurseAndApply(head, id, by) { q, i, b -> DistinctOn.cs(q, i, b) }
 
         this is SortBy && head.isUnaliased() ->
-          invoke(id, criteria) { i, c -> SortBy(head, i, c, ordering) }
+          invoke(id, criteria) { i, c -> SortBy.cs(head, i, c, ordering) }
 
         this is XR.FlatJoin -> {
           val (newHead, newState) = invoke(head)
@@ -171,7 +172,7 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
               AvoidAliasConflict(newState.state + newId.name, detemp, traceConfig)(newOnRaw)
             }({ it.first != newOnRaw })
 
-          (FlatJoin(joinType, newHead, newId, newOn) to Recurse(newOnState.state + newState.state + state))
+          (FlatJoin.cs(joinType, newHead, newId, newOn) to Recurse(newOnState.state + newState.state + state))
         }
 
         else -> super.invoke(xr)

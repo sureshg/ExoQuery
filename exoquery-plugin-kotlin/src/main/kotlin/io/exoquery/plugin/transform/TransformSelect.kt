@@ -4,6 +4,7 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.parseError
+import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.trees.ExtractorsDomain
@@ -42,7 +43,8 @@ class TransformSelect(override val ctx: BuilderContext): Transformer() {
     // No scope symbols into caller since it comes Before the on-clause i.e. before any symbols could be created
 
     val bindsList = bindsAccum.makeDynamicBindsIr()
+    val loc = lifter.liftLocation(expression.locationXR())
 
-    return callMethodWithType("io.exoquery", "selectExpr", expression.type).invoke(onLambdaBodyExpr, bindsList)
+    return callMethodWithType("io.exoquery", "selectExpr", expression.type).invoke(onLambdaBodyExpr, bindsList, loc)
   }
 }

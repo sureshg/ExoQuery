@@ -6,6 +6,7 @@ import io.decomat.on
 import io.exoquery.structError
 import io.exoquery.parseError
 import io.exoquery.plugin.location
+import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.safeName
@@ -49,6 +50,7 @@ class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
     val lifter = makeLifter()
     val paramIdentExpr = lifter.liftIdent(paramIdent)
     val onLambdaBodyExpr = lifter.liftXR(onLambdaBody)
+    val loc = lifter.liftLocation(expression.locationXR())
 
     // To transform the TableQuery etc... in the join(<Heree>).on clause before the `on`
     // No scope symbols into caller since it comes Before the on-clause i.e. before any symbols could be created
@@ -56,7 +58,7 @@ class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
 
     val bindsList = bindsAccum.makeDynamicBindsIr()
 
-    return newCaller.callMethod("onExpr").invoke(paramIdentExpr, onLambdaBodyExpr, bindsList)
+    return newCaller.callMethod("onExpr").invoke(paramIdentExpr, onLambdaBodyExpr, bindsList, loc)
   }
 }
 

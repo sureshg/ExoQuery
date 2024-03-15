@@ -104,16 +104,16 @@ class Lifter(val builderCtx: BuilderContext) {
 
   fun Const.lift(): IrExpression =
     when (this) {
-      is Const.Boolean -> make<Const.Boolean>(this.component1().lift())
-      is Const.Byte -> make<Const.Byte>(this.component1().lift())
-      is Const.Char -> make<Const.Char>(this.component1().lift())
-      is Const.Double -> make<Const.Double>(this.component1().lift())
-      is Const.Float -> make<Const.Float>(this.component1().lift())
-      is Const.Int -> make<Const.Int>(this.component1().lift())
-      is Const.Long -> make<Const.Long>(this.component1().lift())
-      is Const.Short -> make<Const.Short>(this.component1().lift())
-      is Const.String -> make<Const.String>(this.component1().lift())
-      Const.Null -> makeObject<Const.Null>() // Does this actually work?
+      is Const.Boolean -> make<Const.Boolean>(this.component1().lift(), this.component2().lift())
+      is Const.Byte -> make<Const.Byte>(this.component1().lift(), this.component2().lift())
+      is Const.Char -> make<Const.Char>(this.component1().lift(), this.component2().lift())
+      is Const.Double -> make<Const.Double>(this.component1().lift(), this.component2().lift())
+      is Const.Float -> make<Const.Float>(this.component1().lift(), this.component2().lift())
+      is Const.Int -> make<Const.Int>(this.component1().lift(), this.component2().lift())
+      is Const.Long -> make<Const.Long>(this.component1().lift(), this.component2().lift())
+      is Const.Short -> make<Const.Short>(this.component1().lift(), this.component2().lift())
+      is Const.String -> make<Const.String>(this.component1().lift(), this.component2().lift())
+      is Const.Null -> make<Const.Null>(this.component1().lift())
     }
 
   fun XR.Visibility.lift(): IrExpression =
@@ -124,21 +124,21 @@ class Lifter(val builderCtx: BuilderContext) {
 
   fun XR.Expression.lift(): IrExpression =
     when(this) {
-      is BinaryOp -> make<BinaryOp>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is BinaryOp -> make<BinaryOp>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
       is Const -> this.lift() // points to the Const.lift() function above
-      is Function1 -> make<Function1>(this.component1().lift(), this.component2().lift())
-      is FunctionN -> make<FunctionN>(this.component1().lift { it.lift() }, this.component2().lift())
-      is FunctionApply -> make<FunctionApply>(this.component1().lift(), this.component2().lift { it.lift() })
+      is Function1 -> make<Function1>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is FunctionN -> make<FunctionN>(this.component1().lift { it.lift() }, this.component2().lift(), this.component3().lift())
+      is FunctionApply -> make<FunctionApply>(this.component1().lift(), this.component2().lift { it.lift() }, this.component3().lift())
       is Ident -> make<Ident>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
       is IdentOrigin -> make<IdentOrigin>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift(), this.component5().lift())
-      is Property -> make<Property>(this.component1().lift(), this.component2().lift(), this.component3().lift())
-      is UnaryOp -> make<UnaryOp>(this.component1().lift(), this.component2().lift())
-      Const.Null -> makeObject<Const.Null>()
-      is When -> make<When>(this.component1().lift { it.lift() }, this.component2().lift())
-      is Block -> make<Block>(this.component1().lift { it.lift() }, this.component2().lift())
+      is Property -> make<Property>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
+      is UnaryOp -> make<UnaryOp>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is Const.Null -> make<Const.Null>(this.component1().lift())
+      is When -> make<When>(this.component1().lift { it.lift() }, this.component2().lift(), this.component3().lift())
+      is Block -> make<Block>(this.component1().lift { it.lift() }, this.component2().lift(), this.component3().lift())
       // The below must go in Function/Query/Expression/Action lift clauses
-      is Marker -> make<Marker>(this.component1().lift(), this.component2().liftOrNull { it.lift() } )
-      is Product -> make<Product>(this.component1().lift(), this.component2().lift { it.lift({ it.lift() }, { it.lift() }) })
+      is Marker -> make<Marker>(this.component1().lift(), this.component2().liftOrNull { it.lift() }, this.component3().lift())
+      is Product -> make<Product>(this.component1().lift(), this.component2().lift { it.lift({ it.lift() }, { it.lift() }) }, this.component3().lift())
       is Infix -> make<Lifter>(this.component1().lift { it.lift() }, this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift(), this.component5().lift(), this.component6().lift())
       is Aggregation -> make<Aggregation>(this.component1().lift(), this.component2().lift())
     }
@@ -160,28 +160,28 @@ class Lifter(val builderCtx: BuilderContext) {
 
   fun XR.Query.lift(): IrExpression =
     when(this) {
-      is FlatMap -> make<FlatMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
-      is XR.Map -> make<XR.Map>(this.component1().lift(), this.component2().lift(), this.component3().lift())
-      is Entity -> make<Entity>(this.component1().lift(), this.component2().lift())
-      is Filter -> make<Filter>(this.component1().lift(), this.component2().lift(), this.component3().lift())
-      is Union -> make<Union>(this.component1().lift(), this.component2().lift())
-      is UnionAll -> make<UnionAll>(this.component1().lift(), this.component2().lift())
-      is Distinct -> make<Distinct>(this.component1().lift())
-      is DistinctOn -> make<DistinctOn>(this.component1().lift(), this.component2().lift())
-      is Drop -> make<Drop>(this.component1().lift(), this.component2().lift())
-      is SortBy -> make<SortBy>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
-      is Take -> make<Take>(this.component1().lift(), this.component2().lift())
-      is FlatJoin -> make<FlatJoin>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
-      is FlatGroupBy -> make<FlatGroupBy>(this.component1().lift())
-      is FlatSortBy -> make<FlatSortBy>(this.component1().lift(), this.component2().lift())
-      is FlatFilter -> make<FlatFilter>(this.component1().lift())
-      is ConcatMap -> make<ConcatMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
-      is GroupByMap -> make<GroupByMap>(this.component1().lift(), this.component2().lift(), this.component3().lift())
-      is Nested -> make<Nested>(this.component1().lift())
+      is FlatMap -> make<FlatMap>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
+      is XR.Map -> make<XR.Map>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
+      is Entity -> make<Entity>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is Filter -> make<Filter>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
+      is Union -> make<Union>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is UnionAll -> make<UnionAll>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is Distinct -> make<Distinct>(this.component1().lift(), this.component2().lift())
+      is DistinctOn -> make<DistinctOn>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is Drop -> make<Drop>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is SortBy -> make<SortBy>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift(), this.component5().lift())
+      is Take -> make<Take>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is FlatJoin -> make<FlatJoin>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift(), this.component5().lift())
+      is FlatGroupBy -> make<FlatGroupBy>(this.component1().lift(), this.component2().lift())
+      is FlatSortBy -> make<FlatSortBy>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is FlatFilter -> make<FlatFilter>(this.component1().lift(), this.component2().lift())
+      is ConcatMap -> make<ConcatMap>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
+      is GroupByMap -> make<GroupByMap>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
+      is Nested -> make<Nested>(this.component1().lift(), this.component2().lift())
       // The below must go in Function/Query/Expression/Action lift clauses
-      is Marker -> make<Marker>(this.component1().lift())
+      is Marker -> make<Marker>(this.component1().lift(), this.component2()?.lift() ?: builderCtx.builder.irNull(), this.component3().lift())
       is Infix -> make<Lifter>(this.component1().lift { it.lift() }, this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift(), this.component5().lift())
-      is RuntimeQueryBind -> make<RuntimeQueryBind>(this.component1().lift(), this.component2().lift())
+      is RuntimeQueryBind -> make<RuntimeQueryBind>(this.component1().lift(), this.component2().lift(), this.component3().lift())
     }
 
   fun XR.JoinType.lift(): IrExpression =

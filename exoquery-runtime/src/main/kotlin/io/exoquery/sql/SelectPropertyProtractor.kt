@@ -172,7 +172,8 @@ data class ProtractQuat(val refersToEntity: Boolean) {
              * (See examples of this in ExpandNestedQueries multiple embedding levels series of tests. Also note that since sub-selection
              * is typically done from tuples, paths typically start with _1,_2 etc...)
              */
-              if (wholePathVisible) Visible else Hidden
+              if (wholePathVisible) Visible else Hidden,
+              XR.Location.Synth
             )
           ).map { (prop, path) ->
             (prop to listOf(name) + path)
@@ -183,7 +184,7 @@ data class ProtractQuat(val refersToEntity: Boolean) {
           // If the quat is renamed, create a property representing the renamed field, otherwise use the quat field for the property
           // val fieldName = quat.renames.find(_._1 == name).map(_._2).getOrElse(name)
           // The innermost entity of the quat. This is always visible since it is the actual column of the table
-          listOf((XR.Property(core, name, Visible) to listOf(name)))
+          listOf((XR.Property(core, name, Visible, XR.Location.Synth) to listOf(name)))
       }.toList()
     }
   }

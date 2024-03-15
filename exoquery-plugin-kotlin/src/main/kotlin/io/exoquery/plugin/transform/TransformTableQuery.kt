@@ -4,6 +4,7 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.EntityExpression
+import io.exoquery.plugin.locationXR
 import io.exoquery.xr.XR
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.DomainErrors
@@ -61,7 +62,7 @@ class TransformTableQuery(val ctx: BuilderContext) {
         val builder = ctx.builder
 
         val xrType = TypeParser.parse(entityClass).productOrFail(entityClass)
-        val xr = XR.Entity(entityClass.classOrFail("Error derving class of TableQuery").safeName, xrType)
+        val xr = XR.Entity(entityClass.classOrFail("Error derving class of TableQuery").safeName, xrType, expression.locationXR())
         val caller = this.dispatchReceiver ?: kotlin.error("Dispatch reciever of the following expression was null. This should not be possible:\n" + expression.dumpKotlinLike())
 
         val entityExpression = EntityExpression(xr)

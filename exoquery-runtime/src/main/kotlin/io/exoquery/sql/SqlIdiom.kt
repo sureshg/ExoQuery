@@ -15,6 +15,7 @@ import io.exoquery.xr.XR.Ident
 import io.exoquery.xrError
 import io.exoquery.sql.UnnestProperty
 import org.jetbrains.kotlin.resolve.constants.NullValue
+import io.exoquery.xr.XR.Location.Synth
 
 interface SqlIdiom {
 
@@ -74,7 +75,7 @@ interface SqlIdiom {
       is XR.Const.Float   -> +"${value.toString().token}"
       is XR.Const.Int     -> +"${value.toString().token}"
       is XR.Const.Long    -> +"${value.toString().token}"
-      XR.Const.Null       -> +"null"
+      is XR.Const.Null       -> +"null"
       is XR.Const.Short   -> +"${value.toString().token}"
       is XR.Const.String  -> +"'${value.toString().token}'"
     }
@@ -289,7 +290,7 @@ interface SqlIdiom {
       a is Null && op is `!=` && b is Any  -> +"${scopedTokenizer(b)} IS NOT NULL"
 
       a is Any  && op is StringOperator.`startsWith` && b is Any ->
-        +"${scopedTokenizer(a)} LIKE (${BinaryOp(b, StringOperator.`+`, XR.Const.String("%")).token})" // In Quill there was an upcast here, not sure if this is needed
+        +"${scopedTokenizer(a)} LIKE (${BinaryOp(b, StringOperator.`+`, XR.Const.String("%", Synth), Synth).token})" // In Quill there was an upcast here, not sure if this is needed
       a is Any && op is StringOperator.`split` && b is Any ->
         +"${op.token}(${scopedTokenizer(a)}, ${scopedTokenizer(b)})"
 

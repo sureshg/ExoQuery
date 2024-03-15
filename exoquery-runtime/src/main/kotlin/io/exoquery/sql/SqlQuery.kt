@@ -20,8 +20,6 @@ import io.exoquery.xr.XR.FlatJoin
 import io.exoquery.xr.XR.Ordering.PropertyOrdering
 import io.exoquery.xr.XR.Ordering.TupleOrdering
 import io.exoquery.xrError
-import io.decomat.Matchable as Mat
-import io.decomat.Component as Slot
 import io.decomat.productComponentsOf as productOf
 import io.decomat.HasProductClass as PC
 
@@ -202,7 +200,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         this is FlatMap && body is FlatJoin ->
           trace("Flattening FlatMap with FlatJoin") andReturn {
             val cc: XR.Product = XR.Product.fromProductIdent(body.id)
-            flattenContexts(FlatMap(head, id, Map(body, body.id, cc)))
+            flattenContexts(FlatMap.cs(head, id, Map(body, body.id, cc, loc)))
           }
         this is FlatMap && body is XR.Infix ->
           trace("[INVALID] Flattening Flatmap with Infix") andReturn {
@@ -330,7 +328,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 val flatGroupByAsts = ExpandSelection(b.from).ofSubselect(listOf(SelectValue(byBody))).map { it.expr }
                 val groupByClause: XR.Expression =
                   // Can use TupleNumeric because we don't actually care about the field names
-                  if (flatGroupByAsts.size > 1) XR.Product.TupleNumeric(flatGroupByAsts)
+                  if (flatGroupByAsts.size > 1) XR.Product.TupleNumeric(flatGroupByAsts, XR.Location.Synth)
                   else flatGroupByAsts.first()
 
                 // We need to change the `a` var in:

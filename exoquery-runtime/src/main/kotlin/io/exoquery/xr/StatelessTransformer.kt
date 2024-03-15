@@ -26,29 +26,29 @@ interface StatelessTransformer {
       }
     }
 
-  operator fun invoke(xr: XR.Variable): XR.Variable = with(xr) { Variable(name, invoke(rhs)) }
-  operator fun invoke(xr: XR.Branch): XR.Branch = with(xr) { XR.Branch(invoke(cond), invoke(then)) }
-  operator fun invoke(xr: XR.Block): XR.Block = with(xr) { Block(stmts.map { invoke(it) }, invoke(output)) }
+  operator fun invoke(xr: XR.Variable): XR.Variable = with(xr) { Variable.cs(name, invoke(rhs)) }
+  operator fun invoke(xr: XR.Branch): XR.Branch = with(xr) { XR.Branch.cs(invoke(cond), invoke(then)) }
+  operator fun invoke(xr: XR.Block): XR.Block = with(xr) { Block.cs(stmts.map { invoke(it) }, invoke(output)) }
 
   operator fun invoke(xr: XR.Expression): XR.Expression =
     with(xr) {
       when (this) {
-        is BinaryOp -> BinaryOp(invoke(a), op, invoke(b))
+        is BinaryOp -> BinaryOp.cs(invoke(a), op, invoke(b))
         is Const -> this
-        is Function1 -> Function1(param, invoke(body))
-        is FunctionN -> FunctionN(params, invoke(body))
-        is FunctionApply -> FunctionApply(invoke(function), args.map { invoke(it) })
+        is Function1 -> Function1.cs(param, invoke(body))
+        is FunctionN -> FunctionN.cs(params, invoke(body))
+        is FunctionApply -> FunctionApply.cs(invoke(function), args.map { invoke(it) })
         is Ident -> this
         is IdentOrigin -> this
-        is Property -> Property(invoke(of), name)
-        is UnaryOp -> UnaryOp(op, invoke(expr))
-        Const.Null -> this
-        is When -> When(branches.map { invoke(it) }, invoke(orElse))
+        is Property -> Property.cs(invoke(of), name)
+        is UnaryOp -> UnaryOp.cs(op, invoke(expr))
+        is Const.Null -> this
+        is When -> When.cs(branches.map { invoke(it) }, invoke(orElse))
         is Block -> invoke(this)
-        is Product -> Product(name, fields.map { it.first to invoke(it.second) })
+        is Product -> Product.cs(name, fields.map { it.first to invoke(it.second) })
         // Infix can both be Expression and Query
         is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type, loc)
-        is Aggregation -> Aggregation(op, invoke(expr))
+        is Aggregation -> Aggregation.cs(op, invoke(expr))
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
       }
@@ -57,26 +57,26 @@ interface StatelessTransformer {
   operator fun invoke(xr: XR.Query): XR.Query =
     with(xr) {
       when (this) {
-        is FlatMap -> FlatMap(invoke(head), id, invoke(body))
-        is XR.Map -> Map(invoke(head), id, invoke(body))
+        is FlatMap -> FlatMap.cs(invoke(head), id, invoke(body))
+        is XR.Map -> XR.Map.cs(invoke(head), id, invoke(body))
         is Entity -> this
-        is Filter -> Filter(invoke(head), id, invoke(body))
-        is Union -> Union(invoke(a), invoke(b))
-        is UnionAll -> UnionAll(invoke(head), invoke(body))
-        is Distinct -> Distinct(invoke(head))
-        is DistinctOn -> DistinctOn(invoke(head), id, invoke(by))
-        is Drop -> Drop(invoke(head), invoke(num))
-        is SortBy -> SortBy(invoke(head), id, invoke(criteria), ordering)
-        is Take -> Take(invoke(head), invoke(num))
-        is FlatJoin -> FlatJoin(joinType, invoke(head), id, invoke(on))
-        is FlatGroupBy -> FlatGroupBy(invoke(by))
-        is FlatSortBy -> FlatSortBy(invoke(by), ordering)
-        is FlatFilter -> FlatFilter(invoke(by))
-        is ConcatMap -> ConcatMap(invoke(head), id, invoke(body))
-        is GroupByMap -> GroupByMap(invoke(head), byAlias, invoke(byBody), mapAlias, invoke(mapBody))
-        is Nested -> Nested(invoke(head))
+        is Filter -> Filter.cs(invoke(head), id, invoke(body))
+        is Union -> Union.cs(invoke(a), invoke(b))
+        is UnionAll -> UnionAll.cs(invoke(head), invoke(body))
+        is Distinct -> Distinct.cs(invoke(head))
+        is DistinctOn -> DistinctOn.cs(invoke(head), id, invoke(by))
+        is Drop -> Drop.cs(invoke(head), invoke(num))
+        is SortBy -> SortBy.cs(invoke(head), id, invoke(criteria), ordering)
+        is Take -> Take.cs(invoke(head), invoke(num))
+        is FlatJoin -> FlatJoin.cs(joinType, invoke(head), id, invoke(on))
+        is FlatGroupBy -> FlatGroupBy.cs(invoke(by))
+        is FlatSortBy -> FlatSortBy.cs(invoke(by), ordering)
+        is FlatFilter -> FlatFilter.cs(invoke(by))
+        is ConcatMap -> ConcatMap.cs(invoke(head), id, invoke(body))
+        is GroupByMap -> GroupByMap.cs(invoke(head), byAlias, invoke(byBody), mapAlias, invoke(mapBody))
+        is Nested -> Nested.cs(invoke(head))
         // Infix can both be Expression and Query
-        is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type, loc)
+        is Infix -> Infix.cs(parts, params.map { invoke(it) })
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
         // If there is a runtime bind, can't do anything with it

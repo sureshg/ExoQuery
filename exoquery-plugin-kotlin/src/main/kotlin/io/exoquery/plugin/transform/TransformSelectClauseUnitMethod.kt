@@ -4,6 +4,7 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.parseError
+import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.trees.ExtractorsDomain
@@ -13,7 +14,7 @@ import io.exoquery.plugin.trees.makeDynamicBindsIr
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
-class TransformSelectClauseMethod(override val ctx: BuilderContext, val matcher: ExtractorsDomain.Call.SelectClauseFunction, val replacementMethod: String): Transformer() {
+class TransformSelectClauseUnitMethod(override val ctx: BuilderContext, val matcher: ExtractorsDomain.Call.SelectClauseFunction, val replacementMethod: String): Transformer() {
   context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
     matcher.matchesMethod(expression)
@@ -38,6 +39,7 @@ class TransformSelectClauseMethod(override val ctx: BuilderContext, val matcher:
 
     val lifter = makeLifter()
     val onLambdaBodyExpr = lifter.liftXR(onLambdaBody)
+    val loc = lifter.liftLocation(expression.locationXR())
 
     // To transform the TableQuery etc... in the join(<Heree>).on clause before the `on`
     // No scope symbols into caller since it comes Before the on-clause i.e. before any symbols could be created
@@ -45,6 +47,6 @@ class TransformSelectClauseMethod(override val ctx: BuilderContext, val matcher:
 
     val bindsList = bindsAccum.makeDynamicBindsIr()
 
-    return newCaller.callMethod(replacementMethod).invoke(onLambdaBodyExpr, bindsList)
+    return newCaller.callMethod(replacementMethod).invoke(onLambdaBodyExpr, bindsList, loc)
   }
 }

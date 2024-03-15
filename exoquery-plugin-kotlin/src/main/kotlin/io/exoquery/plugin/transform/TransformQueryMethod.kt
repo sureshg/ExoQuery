@@ -40,8 +40,10 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
     val transformedBlockBody = blockBody.transform(superTransformer, internalVars) as IrBlockBody
     val (bodyXR, bindsAccum) = Parser.parseFunctionBlockBody(transformedBlockBody)
 
-    val paramIdentExpr = makeLifter().liftIdent(paramIdentXR)
-    val bodyExpr = makeLifter().liftXR(bodyXR)
+    val lifter = makeLifter()
+    val paramIdentExpr = lifter.liftIdent(paramIdentXR)
+    val bodyExpr = lifter.liftXR(bodyXR)
+    val loc = lifter.liftLocation(expression.locationXR())
 
     val transformedCaller = caller.transform(superTransformer, internalVars)
 
@@ -50,7 +52,7 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
     val expressionCall =
       // for:  query.map(p -> p.name)
       // it would be:  (query).callMethodWithType("map", <String>. bindsList())(XR.Function1(Id(p), Prop(p, name))
-      transformedCaller.callMethodWithType(replacementMethod, expression.type)(paramIdentExpr, bodyExpr, bindsList)
+      transformedCaller.callMethodWithType(replacementMethod, expression.type)(paramIdentExpr, bodyExpr, bindsList, loc)
 
     return expressionCall
   }

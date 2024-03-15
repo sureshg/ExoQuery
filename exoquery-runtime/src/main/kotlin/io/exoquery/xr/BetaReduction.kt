@@ -131,11 +131,11 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
           when(this) {
             is XR.Function1 -> {
               val newParams = mapParams(params)
-              XR.Function1(newParams.first(), BetaReduce(map + params.zip(newParams))(body))
+              XR.Function1.cs(newParams.first(), BetaReduce(map + params.zip(newParams))(body))
             }
             is XR.FunctionN -> {
               val newParams = mapParams(params)
-              XR.FunctionN(newParams, BetaReduce(map + params.zip(newParams))(body))
+              XR.FunctionN.cs(newParams, BetaReduce(map + params.zip(newParams))(body))
             }
             else -> throw IllegalStateException("Function must be Function1 or FunctionN")
           }
@@ -149,14 +149,14 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
   override fun invoke(xr: XR.Query): XR.Query =
     with(xr) {
       when(this) {
-        is XR.Filter -> XR.Filter(invoke(head), id, BetaReduce(map - id)(body))
-        is XR.Map -> XR.Map(invoke(head), id, BetaReduce(map - id)(body))
-        is XR.FlatMap -> XR.FlatMap(invoke(head), id, BetaReduce(map - id)(body))
-        is XR.ConcatMap -> XR.ConcatMap(invoke(head), id, BetaReduce(map - id)(body))
-        is XR.SortBy -> XR.SortBy(invoke(head), id, BetaReduce(map - id)(this.criteria), ordering)
-        is XR.GroupByMap -> XR.GroupByMap(invoke(head), byAlias, BetaReduce(map - byAlias)(this.byBody), mapAlias, BetaReduce(map - mapAlias)(this.mapBody))
-        is XR.FlatJoin -> XR.FlatJoin(joinType, invoke(head), id, BetaReduce(map - id)(on))
-        is XR.DistinctOn -> XR.DistinctOn(invoke(head), id, BetaReduce(map - id)(by))
+        is XR.Filter -> XR.Filter.cs(invoke(head), id, BetaReduce(map - id)(body))
+        is XR.Map -> XR.Map.cs(invoke(head), id, BetaReduce(map - id)(body))
+        is XR.FlatMap -> XR.FlatMap.cs(invoke(head), id, BetaReduce(map - id)(body))
+        is XR.ConcatMap -> XR.ConcatMap.cs(invoke(head), id, BetaReduce(map - id)(body))
+        is XR.SortBy -> XR.SortBy.cs(invoke(head), id, BetaReduce(map - id)(this.criteria), ordering)
+        is XR.GroupByMap -> XR.GroupByMap.cs(invoke(head), byAlias, BetaReduce(map - byAlias)(this.byBody), mapAlias, BetaReduce(map - mapAlias)(this.mapBody))
+        is XR.FlatJoin -> XR.FlatJoin.cs(joinType, invoke(head), id, BetaReduce(map - id)(on))
+        is XR.DistinctOn -> XR.DistinctOn.cs(invoke(head), id, BetaReduce(map - id)(by))
         // is XR.Take, is XR.Entity, is XR.Drop, is XR.Union, is XR.UnionAll, is XR.Aggregation, is XR.Distinct, is XR.Nested
         else -> super.invoke(this)
       }

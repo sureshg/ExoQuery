@@ -9,7 +9,6 @@ import io.exoquery.xr.XR
 import io.exoquery.xr.XR.*
 import io.exoquery.xr.XRType.*
 import io.exoquery.xr.TypeBehavior.ReplaceWithReduction as RWR
-import io.exoquery.xr.EmptyProductTypeBehavior.Ignore as EPI
 
 class RepropagateTypes(val traceConfig: TraceConfig): StatelessTransformer {
   val trace: Tracer = Tracer(TraceType.RepropagateTypes, traceConfig, 1)
@@ -102,25 +101,25 @@ class RepropagateTypes(val traceConfig: TraceConfig): StatelessTransformer {
   override fun invoke(e: Query): Query =
     with (e) {
       when (this) {
-        is Filter -> applyBody(head, id, body) { a, b, c -> Filter(a, b, c) }
-        is XR.Map -> applyBody(head, id, body) { a, b, c -> Map(a, b, c) }
-        is FlatMap -> applyBody(head, id, body) { a, b, c -> FlatMap(a, b, c) }
-        is ConcatMap -> applyBody(head, id, body) { a, b, c -> ConcatMap(a, b, c) }
+        is Filter -> applyBody(head, id, body) { a, b, c -> Filter.cs(a, b, c) }
+        is XR.Map -> applyBody(head, id, body) { a, b, c -> XR.Map.cs(a, b, c) }
+        is FlatMap -> applyBody(head, id, body) { a, b, c -> FlatMap.cs(a, b, c) }
+        is ConcatMap -> applyBody(head, id, body) { a, b, c -> ConcatMap.cs(a, b, c) }
         is GroupByMap -> {
           val ar = invoke(head)
           val byAliasR = byAlias.retypeFrom(ar.type)
           val mapAliasR = mapAlias.retypeFrom(ar.type)
           val cr = BetaReduction(byBody, RWR, byAlias to byAliasR)
           val er = BetaReduction(mapBody, RWR, mapAlias to mapAliasR)
-          trace("Repropagate ${head.type.shortString()} from $head into:") andReturn { GroupByMap(ar, byAliasR, cr, mapAliasR, er) }
+          trace("Repropagate ${head.type.shortString()} from $head into:") andReturn { GroupByMap.cs(ar, byAliasR, cr, mapAliasR, er) }
         }
-        is DistinctOn -> applyBody(head, id, by) { a, b, c -> DistinctOn(a, b, c) }
-        is SortBy -> applyBody(head, id, criteria) { a, b, c -> SortBy(a, b, c, ordering) }
+        is DistinctOn -> applyBody(head, id, by) { a, b, c -> DistinctOn.cs(a, b, c) }
+        is SortBy -> applyBody(head, id, criteria) { a, b, c -> SortBy.cs(a, b, c, ordering) }
         is FlatJoin -> {
           val ar = invoke(head)
           val iAr = id.retypeFrom(ar.type)
           val onr = BetaReduction(on, RWR, id to iAr)
-          trace("Repropagate ${head.type.shortString()} from $head into:") andReturn { FlatJoin(joinType, ar, iAr, invoke(onr)) }
+          trace("Repropagate ${head.type.shortString()} from $head into:") andReturn { FlatJoin.cs(joinType, ar, iAr, invoke(onr)) }
         }
         else -> super.invoke(this)
       }

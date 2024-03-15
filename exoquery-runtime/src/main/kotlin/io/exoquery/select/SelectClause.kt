@@ -37,14 +37,17 @@ private fun freshIdentFrom(prefix: String = "x", allBindVars: Set<String>): Stri
 @OptIn(ExoInternal::class) // TODO Not sure if the output here QueryContainer(Ident(SqlVariable)) is right need to look into the shape
 class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpression<A>>(
   { result ->
-    QueryContainer<A>(XR.Marker(markerName, result.xr), result.binds)
+    QueryContainer<A>(XR.Marker(markerName, result.xr, XR.Location.Synth), result.binds)
   }
 ) {
 
-  // TODO search for this call in the IR and see if there's a Val-def on the other side of it and call fromAliased with the name of that
   public suspend fun <R> from(query: Query<R>): SqlVariable<R> =
-    // Note find the out the class of R (use an inline?) and make the 1st letter based on it?
     fromAliased(query, query.freshIdent(), XR.Location.Synth)
+
+  // TODO Delgate to this as well
+  //public suspend fun <R> fromUnaliased(query: Query<R>, loc: XR.Location): SqlVariable<R> =
+  //  // Note find the out the class of R (use an inline?) and make the 1st letter based on it?
+  //  fromAliased(query, query.freshIdent(), loc)
 
   // TODO test select inside select
 
@@ -60,7 +63,7 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressi
       val resultQuery = mapping(sqlVar).withReifiedIdents()
       val ident = XR.Ident(sqlVar.getVariableName(), resultQuery.xr.type, loc)
       // No quoted context in this case so only the inner query of this has dynamic binds, we just get those
-      (QueryContainer<A>(XR.FlatMap(query.xr, ident, resultQuery.xr), query.binds + resultQuery.binds)) /*as Query<A>*/
+      (QueryContainer<A>(XR.FlatMap(query.xr, ident, resultQuery.xr, loc), query.binds + resultQuery.binds)) /*as Query<A>*/
     }
 
   public suspend fun <Q: Query<R>, R> join(query: Q) =
@@ -72,19 +75,19 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressi
   public suspend fun <R> groupBy(f: context(EnclosedExpression) () -> R): Unit =
     error("The groupBy(...) expression of the Query was not inlined")
 
-  public suspend fun <R> groupByExpr(expr: XR.Expression, binds: DynamicBinds): Unit =
+  public suspend fun <R> groupByExpr(expr: XR.Expression, binds: DynamicBinds, loc: XR.Location): Unit =
     performUnit { mapping ->
       val childQuery = mapping()
-      (QueryContainer<A>(XR.FlatMap(XR.FlatGroupBy(expr), XR.Ident.Unused, childQuery.xr), childQuery.binds + binds))
+      (QueryContainer<A>(XR.FlatMap(XR.FlatGroupBy(expr, loc), XR.Ident.Unused, childQuery.xr, loc), childQuery.binds + binds))
     }
 
   public suspend fun <R> sortedBy(f: context(EnclosedExpression) () -> R): Unit =
     error("The sortedBy(...) expression of the Query was not inlined")
 
-  public suspend fun <R> sortedByExpr(expr: XR.Expression, binds: DynamicBinds): Unit =
+  public suspend fun <R> sortedByExpr(expr: XR.Expression, binds: DynamicBinds, loc: XR.Location): Unit =
     performUnit { mapping ->
       val childQuery = mapping()
-      (QueryContainer<A>(XR.FlatMap(XR.FlatSortBy(expr, ordering = XR.Ordering.Asc), XR.Ident.Unused, childQuery.xr), childQuery.binds + binds))
+      (QueryContainer<A>(XR.FlatMap(XR.FlatSortBy(expr, ordering = XR.Ordering.Asc, loc), XR.Ident.Unused, childQuery.xr, loc), childQuery.binds + binds))
     }
 
   // TODO sortedByDescending
@@ -93,10 +96,10 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressi
   public suspend fun <R> where(f: context(EnclosedExpression) () -> R): Unit =
     error("The where(...) expression of the Query was not inlined")
 
-  public suspend fun <R> whereExpr(expr: XR.Expression, binds: DynamicBinds): Unit =
+  public suspend fun <R> whereExpr(expr: XR.Expression, binds: DynamicBinds, loc: XR.Location): Unit =
     performUnit { mapping ->
       val childQuery = mapping()
-      (QueryContainer<A>(XR.FlatMap(XR.FlatFilter(expr), XR.Ident.Unused, childQuery.xr), childQuery.binds + binds))
+      (QueryContainer<A>(XR.FlatMap(XR.FlatFilter(expr, loc), XR.Ident.Unused, childQuery.xr, loc), childQuery.binds + binds))
     }
 }
 
@@ -107,7 +110,7 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
   // TODO some internal annotation?
   @OptIn(ExoInternal::class)
   @Suppress("UNCHECKED_CAST")
-  suspend fun onExpr(joinIdentRaw: XR.Ident, bodyRaw: XR, onClauseBinds: DynamicBinds): SqlVariable<R> =
+  suspend fun onExpr(joinIdentRaw: XR.Ident, bodyRaw: XR, onClauseBinds: DynamicBinds, loc: XR.Location): SqlVariable<R> =
     with (selectClause) {
       perform { mapping ->
         val joinIdentTpe = joinIdentRaw.type
@@ -137,7 +140,7 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
         // Finally assemble the output query
         (QueryContainer<R>(XR.FlatMap(
           // Good example of beta reduction
-          XR.FlatJoin(joinType, query.xr, freshIdentForCond, freshCondBody), ident, outputQuery.xr), totalBinds
+          XR.FlatJoin(joinType, query.xr, freshIdentForCond, freshCondBody, loc), ident, outputQuery.xr, loc), totalBinds
           // Maybe there should be some kind of global-flag to disable reduction above
           // XR.FlatJoin(joinType, query.xr, cond.ident, cond.xr.body), ident, outputQuery.xr), query.binds + binds
         ) as Query<A>)
@@ -158,11 +161,11 @@ class InnerMost(private val markerId: String) {
     on(q).match(
       // if head is a map it's something like FlatMap(FlatMap(...FlatMap), ...) so get to innermost one on head & mark
       // then recurse back from the outer structure
-      case(XR.FlatMap[XR.FlatMap.Is, Is()]).thenThis { head, id, body -> XR.FlatMap(mark(head), id, mark(body)) },
+      case(XR.FlatMap[XR.FlatMap.Is, Is()]).thenThis { head, id, body -> XR.FlatMap.cs(mark(head), id, mark(body)) },
       // If the tail is a flatMap e.g. FlatMap(?, FlatMap(?, FlatMap(...)))) recurse into the last one in the chain
-      case(XR.FlatMap[Is(), XR.FlatMap.Is]).thenThis { head, id, body -> XR.FlatMap(head, id, mark(body)) },
+      case(XR.FlatMap[Is(), XR.FlatMap.Is]).thenThis { head, id, body -> XR.FlatMap.cs(head, id, mark(body)) },
       // If we are here than we are at the deepest flatMap in the chain since we have reached the marked-value
-      case(XR.FlatMap[Is(), XR.Marker[Is(markerId)]]).thenThis { head, id, (nestedValue) -> XR.Map(head, id, (this.body as XR.Marker).expr!!) }
+      case(XR.FlatMap[Is(), XR.Marker[Is(markerId)]]).thenThis { head, id, (nestedValue) -> XR.Map(head, id, (this.body as XR.Marker).expr!!, loc) }
     ) ?: q
 
 }
