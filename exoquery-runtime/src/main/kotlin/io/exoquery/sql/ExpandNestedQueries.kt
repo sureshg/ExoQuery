@@ -97,14 +97,14 @@ class ExpandNestedQueries(val pathJoinFunction: (List<String>) -> String): State
 
     fun invoke(p: XR.Expression): XR.Expression =
       on(p).match(
-        case(PropertyMatryoshka[Is(), Is()]).thenThis { inner, path ->
+        case(PropertyMatryoshka[Is(), Is()]).thenThis { inner, propsPath ->
           val isSubselect = inContext.isSubselect(p)
 
           // If it is a sub-select do not apply the strategy to the property
           if (isSubselect)
-            XR.Property(inner, pathJoinFunction(path), Visibility.Visible)
+            XR.Property(inner, pathJoinFunction(propsPath.map { it.name }), Visibility.Visible, propsPath.last().loc)
           else
-            XR.Property(inner, path.last(), Visibility.Visible)
+            XR.Property(inner, propsPath.last().name, Visibility.Visible, propsPath.last().loc)
         }
       ) ?: p
 

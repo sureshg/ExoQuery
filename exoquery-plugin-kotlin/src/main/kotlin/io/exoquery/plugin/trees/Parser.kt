@@ -16,6 +16,7 @@ import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.toLocationXR
 import io.exoquery.plugin.transform.VisitTransformExpressions
 import io.exoquery.xr.XR
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrFile
@@ -36,6 +37,8 @@ object Parser {
  * as stateless to client functions so everything should go through the `Parser` object instead of this.
  */
 private class ParserCollector {
+  context(ParserContext) private val IrElement.loc get() = this.locationXR()
+
   val binds = DynamicBindsAccum.empty()
 
   // TODO need to parse interpolations
@@ -60,14 +63,14 @@ private class ParserCollector {
     on(expr).match(
       case(Ir.Variable[Is(), Is()]).thenThis { name, rhs ->
         val irType = TypeParser.parse(type)
-        XR.Variable(XR.Ident(name, irType, rhs.locationXR()), parseExpr(rhs))
+        XR.Variable(XR.Ident(name, irType, rhs.locationXR()), parseExpr(rhs), expr.loc)
       }
     ) ?: parseError("Could not parse Ir Variable statement from:\n${expr.dumpSimple()}")
 
   context(ParserContext, CompileLogger) fun parseBranch(expr: IrBranch): XR.Branch =
     on(expr).match(
       case(Ir.Branch[Is(), Is()]).then { cond, then ->
-        XR.Branch(parseExpr(cond), parseExpr(then))
+        XR.Branch(parseExpr(cond), parseExpr(then), expr.loc)
       }
     ) ?: parseError("Could not parse Branch from: ${expr.dumpSimple()}")
 
@@ -107,22 +110,22 @@ private class ParserCollector {
         // Add the query expression to the binds list
         binds.add(bindId, RuntimeBindValueExpr.RuntimeQueryExpr(expr))
 
-        XR.RuntimeQueryBind(bindId, TypeParser.parse(expr.type))
+        XR.RuntimeQueryBind(bindId, TypeParser.parse(expr.type), expr.loc)
       },
 
       // Binary Operators
       case(ExtractorsDomain.Call.`x op y`[Is()]).thenThis { opCall ->
         val (x, op, y) = opCall
-        XR.BinaryOp(parseAs<XR.Expression>(x), op, parseAs<XR.Expression>(y))
+        XR.BinaryOp(parseAs<XR.Expression>(x), op, parseAs<XR.Expression>(y), expr.loc)
       },
       // Unary Operators
       case(ExtractorsDomain.Call.`(op)x`[Is()]).thenThis { opCall ->
         val (x, op) = opCall
-        XR.UnaryOp(op, parseAs<XR.Expression>(x))
+        XR.UnaryOp(op, parseAs<XR.Expression>(x), expr.loc)
       },
 
       case(ExtractorsDomain.Call.`x to y`[Is(), Is()]).thenThis { x, y ->
-        XR.Product.Tuple(parseExpr(x), parseExpr(y))
+        XR.Product.Tuple(parseExpr(x), parseExpr(y), expr.loc)
       },
 
       // TODO also need unary operator
@@ -164,7 +167,7 @@ private class ParserCollector {
         parseConst(this)
       },
       case(Ir.Call.Property[Is(), Is()]).then { expr, name ->
-        XR.Property(parseExpr(expr), name)
+        XR.Property(parseExpr(expr), name, XR.Visibility.Visible, expr.loc)
       },
       case(Ir.Call.FunctionUntethered1[Is()]).thenIfThis { list ->
         this.symbol.safeName == "getSqlVar"
@@ -185,13 +188,13 @@ private class ParserCollector {
       // }
       // ,
       case(Ir.Block[Is(), Is()]).then { stmts, ret ->
-        XR.Block(stmts.map { parseBlockStatement(it) }, parseExpr(ret))
+        XR.Block(stmts.map { parseBlockStatement(it) }, parseExpr(ret), expr.loc)
       },
       case(Ir.When[Is()]).thenThis { cases ->
         val elseBranch = cases.find { it is IrElseBranch }?.let { parseBranch(it) }
         val casesAst = cases.filterNot { it is IrElseBranch }.map { parseBranch(it) }
         val elseBranchOrLast = elseBranch ?: casesAst.lastOrNull() ?: parseError("Empty when expression not allowed:\n${this.dumpKotlinLike()}")
-        XR.When(casesAst, elseBranchOrLast.then)
+        XR.When(casesAst, elseBranchOrLast.then, expr.loc)
       }
     ) ?: parseError(
       """|======= Could not parse expression from: =======
@@ -201,19 +204,19 @@ private class ParserCollector {
          |
       """.trimMargin())
 
-  context (CompileLogger) fun parseConst(irConst: IrConst<*>): XR =
-    if (irConst.value == null) XR.Const.Null
+  context (ParserContext, CompileLogger) fun parseConst(irConst: IrConst<*>): XR =
+    if (irConst.value == null) XR.Const.Null(irConst.loc)
     else when (irConst.kind) {
-      IrConstKind.Null -> XR.Const.Null
-      IrConstKind.Boolean -> XR.Const.Boolean(irConst.value as kotlin.Boolean)
-      IrConstKind.Char -> XR.Const.Char(irConst.value as kotlin.Char)
-      IrConstKind.Byte -> XR.Const.Byte(irConst.value as kotlin.Int)
-      IrConstKind.Short -> XR.Const.Short(irConst.value as kotlin.Short)
-      IrConstKind.Int -> XR.Const.Int(irConst.value as kotlin.Int)
-      IrConstKind.Long -> XR.Const.Long(irConst.value as kotlin.Long)
-      IrConstKind.String -> XR.Const.String(irConst.value as kotlin.String)
-      IrConstKind.Float -> XR.Const.Float(irConst.value as kotlin.Float)
-      IrConstKind.Double -> XR.Const.Double(irConst.value as kotlin.Double)
+      IrConstKind.Null -> XR.Const.Null(irConst.loc)
+      IrConstKind.Boolean -> XR.Const.Boolean(irConst.value as kotlin.Boolean, irConst.loc)
+      IrConstKind.Char -> XR.Const.Char(irConst.value as kotlin.Char, irConst.loc)
+      IrConstKind.Byte -> XR.Const.Byte(irConst.value as kotlin.Int, irConst.loc)
+      IrConstKind.Short -> XR.Const.Short(irConst.value as kotlin.Short, irConst.loc)
+      IrConstKind.Int -> XR.Const.Int(irConst.value as kotlin.Int, irConst.loc)
+      IrConstKind.Long -> XR.Const.Long(irConst.value as kotlin.Long, irConst.loc)
+      IrConstKind.String -> XR.Const.String(irConst.value as kotlin.String, irConst.loc)
+      IrConstKind.Float -> XR.Const.Float(irConst.value as kotlin.Float, irConst.loc)
+      IrConstKind.Double -> XR.Const.Double(irConst.value as kotlin.Double, irConst.loc)
       else -> parseError("Unknown IrConstKind: ${irConst.kind}")
     }
 

@@ -104,7 +104,7 @@ class StatelessTransformerSpec : FreeSpec({
         Subject()(ast) shouldBe ast
       }
       "null" {
-        val ast: XR = XR.Const.Null
+        val ast: XR = XR.Const.Null()
         Subject()(ast) shouldBe ast
       }
       "product" {
