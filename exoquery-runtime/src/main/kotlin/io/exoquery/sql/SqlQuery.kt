@@ -140,7 +140,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
           }
         this is XR.UnionAll ->
           trace("Construct SqlQuery from: UnionAll") andReturn {
-            SetOperationSqlQuery(invoke(head), UnionAllOperation, invoke(body), query.type)
+            SetOperationSqlQuery(invoke(a), UnionAllOperation, invoke(b), query.type)
           }
         this is XR.UnaryOp && this.expr is XR.Query ->
           trace("Construct SqlQuery from: UnaryOp") andReturn {

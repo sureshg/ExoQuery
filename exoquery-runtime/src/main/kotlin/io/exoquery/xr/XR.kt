@@ -168,9 +168,9 @@ sealed interface XR {
   }
 
   @Mat
-  data class UnionAll(@Slot val head: XR.Query, @Slot val body: XR.Query, override val loc: Location = Location.Synth): Query, PC<UnionAll> {
-    override val productComponents = productOf(this, head, body)
-    override val type get() = head.type
+  data class UnionAll(@Slot val a: XR.Query, @Slot val b: XR.Query, override val loc: Location = Location.Synth): Query, PC<UnionAll> {
+    override val productComponents = productOf(this, a, b)
+    override val type get() = a.type
     companion object {}
     override fun toString() = show()
   }

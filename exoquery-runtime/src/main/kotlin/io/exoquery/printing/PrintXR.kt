@@ -16,6 +16,16 @@ class PrintXR(config: PPrinterConfig = defaultConfig): PPrinter(config) {
   override fun treeify(x: Any?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree =
     when (x) {
       is XRType -> Tree.Literal(x.shortString())
+      is XR.Location.File -> Tree.Literal("<Location:${x.path}:${x.row}:${x.col}>")
+      is XR.Location.Synth -> Tree.Literal("<Location:Synthetic>")
+      is XR ->
+        when (val tree = super.treeify(x, escapeUnicode, showFieldNames)) {
+          is Tree.Apply -> {
+            val superNodes = tree.body.asSequence().filterNot { (it is Tree.Literal && it.body.startsWith("<Location:")) }.toList()
+            Tree.Apply(tree.prefix, superNodes.iterator())
+          }
+          else -> tree
+        }
       else -> super.treeify(x, escapeUnicode, showFieldNames)
     }
 

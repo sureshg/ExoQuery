@@ -153,8 +153,8 @@ interface StatefulTransformer<T> {
           Union.cs(aA, bA) to stateB
         }
         is UnionAll -> {
-          val (aA, stateA) = invoke(head)
-          val (bA, stateB) = stateA.invoke(body)
+          val (aA, stateA) = invoke(a)
+          val (bA, stateB) = stateA.invoke(b)
           UnionAll.cs(aA, bA) to stateB
         }
         is Distinct -> {

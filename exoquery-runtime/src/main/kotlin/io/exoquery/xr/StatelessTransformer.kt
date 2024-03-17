@@ -62,7 +62,7 @@ interface StatelessTransformer {
         is Entity -> this
         is Filter -> Filter.cs(invoke(head), id, invoke(body))
         is Union -> Union.cs(invoke(a), invoke(b))
-        is UnionAll -> UnionAll.cs(invoke(head), invoke(body))
+        is UnionAll -> UnionAll.cs(invoke(a), invoke(b))
         is Distinct -> Distinct.cs(invoke(head))
         is DistinctOn -> DistinctOn.cs(invoke(head), id, invoke(by))
         is Drop -> Drop.cs(invoke(head), invoke(num))

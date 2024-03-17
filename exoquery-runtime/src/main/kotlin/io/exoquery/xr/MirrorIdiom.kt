@@ -135,7 +135,7 @@ class MirrorIdiom {
       is Take -> "${head.token}.take(${num.token})"
       is Drop -> "${head.token}.drop(${num.token})"
       is Union -> "${a.token}.union(${b.token})"
-      is UnionAll -> "${head.token}.unionAll(${body.token})"
+      is UnionAll -> "${a.token}.unionAll(${b.token})"
       is FlatJoin -> "${head.token}.${joinType.token} { ${id.token} -> ${on.token} }"
       is FlatGroupBy -> "flatGroupBy { ${by.token} }"
       is FlatSortBy -> "flatSortBy { ${by.token} }(${ordering.token})"
