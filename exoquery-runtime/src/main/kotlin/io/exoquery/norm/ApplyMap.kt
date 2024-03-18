@@ -48,15 +48,14 @@ class ApplyMap(val traceConfig: TraceConfig) {
 
   object DetachableMap {
     operator fun <AP: Pattern<XR.Query>, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
-      customPattern2M(x, y) { it: XR.Query ->
+      customPattern2M(x, y) { it: XR.Map ->
         with(it) {
           when {
-            this is XR.Map && body.hasImpurities() -> null
-            this is XR.Map && head is DistinctOn -> null
-            this is XR.Map && head is FlatJoin -> null
-            this is XR.Map && body.hasImpureInfix() -> null
-            this is XR.Map -> Components2M(head, id, body)
-            else -> null
+            body.hasImpurities() -> null
+            head is DistinctOn -> null
+            head is FlatJoin -> null
+            body.hasImpureInfix() -> null
+            else -> Components2M(head, id, body)
           }
         }
       }
@@ -233,8 +232,8 @@ class ApplyMap(val traceConfig: TraceConfig) {
 
       // a.map(b => c).take(d) =>
       //    a.drop(d).map(b => c)
-      case(XR.Take[DetachableMap[Is(), Is()], Is()]).thenThis { (a, b, c), d ->
-        trace("ApplyMap inside take for $q") andReturn { XR.Map(XR.Take.cs(a, d), b, c, loc) }
+      case(XR.Take[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d ->
+        trace("ApplyMap inside take for $q") andReturn { XR.Map.csf(compLeft)(XR.Take.csf(comp)(a, d), b, c) }
       },
 
 //      // a.map(b => c).take(d) =>

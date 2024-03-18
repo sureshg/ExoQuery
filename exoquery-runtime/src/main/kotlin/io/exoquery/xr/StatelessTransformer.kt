@@ -45,7 +45,7 @@ interface StatelessTransformer {
         is Const.Null -> this
         is When -> When.cs(branches.map { invoke(it) }, invoke(orElse))
         is Block -> invoke(this)
-        is Product -> Product.cs(name, fields.map { it.first to invoke(it.second) })
+        is Product -> Product.cs(fields.map { it.first to invoke(it.second) })
         // Infix can both be Expression and Query
         is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type, loc)
         is Aggregation -> Aggregation.cs(op, invoke(expr))

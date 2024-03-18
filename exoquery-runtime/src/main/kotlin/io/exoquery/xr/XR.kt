@@ -1,5 +1,6 @@
 package io.exoquery.xr
 
+import io.decomat.ProductClass
 import io.exoquery.BID
 import io.exoquery.printing.PrintXR
 import io.exoquery.printing.format
@@ -87,6 +88,9 @@ sealed interface XR {
     override val productComponents = productOf(this, name)
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is Entity && other.id() == cid
   }
 
   @Mat
@@ -95,6 +99,9 @@ sealed interface XR {
     override val type get() = head.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is Filter && other.id() == cid
   }
 
   @Mat
@@ -104,6 +111,9 @@ sealed interface XR {
     companion object {
     }
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is Map && other.id() == cid
   }
 
   @Mat
@@ -112,6 +122,9 @@ sealed interface XR {
     override val type get() = body.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is ConcatMap && other.id() == cid
   }
 
   @Mat
@@ -120,6 +133,9 @@ sealed interface XR {
     override val type get() = head.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is SortBy && other.id() == cid
   }
 
   // Ordering elements are technically not part of the XR but closely related
@@ -141,6 +157,9 @@ sealed interface XR {
     override val type get() = head.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is GroupByMap && other.id() == cid
   }
 
   @Mat
@@ -149,6 +168,9 @@ sealed interface XR {
     override val type get() = head.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is Take && other.id() == cid
   }
 
   @Mat
@@ -157,6 +179,9 @@ sealed interface XR {
     override val type get() = head.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is Drop && other.id() == cid
   }
 
   @Mat
@@ -165,6 +190,9 @@ sealed interface XR {
     override val type get() = a.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is Union && other.id() == cid
   }
 
   @Mat
@@ -173,6 +201,9 @@ sealed interface XR {
     override val type get() = a.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is UnionAll && other.id() == cid
   }
 
   @Mat
@@ -181,6 +212,9 @@ sealed interface XR {
     override val type get() = body.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is FlatMap && other.id() == cid
   }
 
   @Mat
@@ -189,6 +223,9 @@ sealed interface XR {
     override val type get() = head.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is FlatJoin && other.id() == cid
   }
 
   @Mat
@@ -197,6 +234,9 @@ sealed interface XR {
     override val type get() = by.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is FlatGroupBy && other.id() == cid
   }
 
   @Mat
@@ -205,6 +245,9 @@ sealed interface XR {
     override val type get() = by.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is FlatSortBy && other.id() == cid
   }
 
   @Mat
@@ -213,6 +256,9 @@ sealed interface XR {
     override val type get() = by.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is FlatFilter && other.id() == cid
   }
 
   @Mat
@@ -221,6 +267,9 @@ sealed interface XR {
     override val type get() = head.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is Distinct && other.id() == cid
   }
 
   @Mat
@@ -229,6 +278,9 @@ sealed interface XR {
     override val type get() = head.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is DistinctOn && other.id() == cid
   }
 
   @Mat
@@ -237,6 +289,9 @@ sealed interface XR {
     override val type get() = head.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is Nested && other.id() == cid
   }
 
   // ************************************************************************************************
@@ -246,9 +301,12 @@ sealed interface XR {
   // TODO could it also be a XR.Function1/FunctionN?
   @Mat
   data class Infix(@Slot val parts: List<String>, @Slot val params: List<XR>, val pure: Boolean, val transparent: Boolean, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<Infix> {
-   override val productComponents = productOf(this, parts, params)
-   companion object {}
+    override val productComponents = productOf(this, parts, params)
+    companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is Infix && other.id() == cid
   }
 
   @Mat
@@ -257,6 +315,9 @@ sealed interface XR {
     override val type get() = XRType.Generic
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is Marker && other.id() == cid
   }
 
 
@@ -275,6 +336,9 @@ sealed interface XR {
 
     override val params get() = listOf(param)
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is Function1 && other.id() == cid
   }
 
   @Mat
@@ -283,6 +347,9 @@ sealed interface XR {
     override val type get() = body.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is FunctionN && other.id() == cid
   }
 
   // ************************************************************************************************
@@ -298,6 +365,9 @@ sealed interface XR {
     override val type get() = function.type
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is FunctionApply && other.id() == cid
   }
 
   @Mat
@@ -311,6 +381,9 @@ sealed interface XR {
     }
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is BinaryOp && other.id() == cid
   }
 
   @Mat
@@ -324,6 +397,9 @@ sealed interface XR {
     }
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is UnaryOp && other.id() == cid
   }
 
   /**
@@ -368,6 +444,9 @@ sealed interface XR {
     }
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is Aggregation && other.id() == cid
   }
 
 
@@ -387,12 +466,10 @@ sealed interface XR {
     override val productComponents = productOf(this, runtimeName)
     companion object {}
 
-    data class Id(val name: String)
-    private val id = Id(runtimeName.value)
-
-    override fun hashCode() = id.hashCode()
-    override fun equals(other: Any?) = other is IdentOrigin && other.id == id
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is IdentOrigin && other.id() == cid
   }
 
   sealed interface Location {
@@ -415,34 +492,48 @@ sealed interface XR {
       val Unused = XR.Ident("unused", XRType.Unknown, XR.Location.Synth)
     }
 
-    data class Id(val name: String)
-    private val id = Id(name)
-
-    override fun hashCode() = id.hashCode()
-    override fun equals(other: Any?) = other is XR.Ident && other.id == id
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is Ident && other.id() == cid
   }
 
-  sealed class Const: Expression {
-    override val type = XRType.Value
+  // ConstType<Const.Boolean>: PC<Const.Boolean>
 
-    data class Boolean(val value: kotlin.Boolean, override val loc: Location = Location.Synth) : Const()
-    data class Char(val value: kotlin.Char, override val loc: Location = Location.Synth) : Const()
-    data class Byte(val value: kotlin.Int, override val loc: Location = Location.Synth) : Const()
-    data class Short(val value: kotlin.Short, override val loc: Location = Location.Synth) : Const()
-    data class Int(val value: kotlin.Int, override val loc: Location = Location.Synth) : Const()
-    data class Long(val value: kotlin.Long, override val loc: Location = Location.Synth) : Const()
-    data class String(val value: kotlin.String, override val loc: Location = Location.Synth) : Const()
-    data class Float(val value: kotlin.Float, override val loc: Location = Location.Synth) : Const()
-    data class Double(val value: kotlin.Double, override val loc: Location = Location.Synth) : Const()
-    data class Null(override val loc: Location = Location.Synth): Const() {
-      override fun toString(): kotlin.String = "Null"
-    }
+  sealed class ConstType<T>: PC<ConstType<T>>, XR.Expression {
+    abstract val value: T
+    override val productComponents by lazy { productOf(this, value) }
+    override val type = XRType.Value
     override fun toString() = show()
+    companion object {
+      data class ConstTypeId<T>(val value: T)
+    }
+    val cid by lazy { ConstTypeId(value) }
+    override fun hashCode() = cid.hashCode()
+  }
+
+  sealed interface Const: Expression {
+    data class Boolean(override val value: kotlin.Boolean, override val loc: Location = Location.Synth) : ConstType<kotlin.Boolean>(), Const { override fun equals(other: Any?) = other is Const.Boolean && other.value == value }
+    data class Char(override val value: kotlin.Char, override val loc: Location = Location.Synth) : ConstType<kotlin.Char>(), Const { override fun equals(other: Any?) = other is Const.Char && other.value == value }
+    data class Byte(override val value: kotlin.Int, override val loc: Location = Location.Synth) : ConstType<kotlin.Int>(), Const { override fun equals(other: Any?) = other is Const.Byte && other.value == value }
+    data class Short(override val value: kotlin.Short, override val loc: Location = Location.Synth) : ConstType<kotlin.Short>(), Const { override fun equals(other: Any?) = other is Const.Short && other.value == value }
+    data class Int(override val value: kotlin.Int, override val loc: Location = Location.Synth) : ConstType<kotlin.Int>(), Const { override fun equals(other: Any?) = other is Const.Int && other.value == value }
+    data class Long(override val value: kotlin.Long, override val loc: Location = Location.Synth) : ConstType<kotlin.Long>(), Const { override fun equals(other: Any?) = other is Const.Long && other.value == value }
+    data class String(override val value: kotlin.String, override val loc: Location = Location.Synth) : ConstType<kotlin.String>(), Const { override fun equals(other: Any?) = other is Const.String && other.value == value }
+    data class Float(override val value: kotlin.Float, override val loc: Location = Location.Synth) : ConstType<kotlin.Float>(), Const { override fun equals(other: Any?) = other is Const.Float && other.value == value }
+    data class Double(override val value: kotlin.Double, override val loc: Location = Location.Synth) : ConstType<kotlin.Double>(), Const { override fun equals(other: Any?) = other is Const.Double && other.value == value }
+    data class Null(override val loc: Location = Location.Synth): Const {
+      override fun toString(): kotlin.String = "Null"
+      object Id
+      override fun hashCode() = Id.hashCode()
+      override fun equals(other: Any?) = other is Null
+      override val type = XRType.Value
+    }
+
   }
 
   @Mat
-  data class Product(@CS val name: String, @Slot val fields: List<Pair<String, XR.Expression>>, override val loc: Location = Location.Synth): Expression, PC<Product> {
+  data class Product(val name: String, @Slot val fields: List<Pair<String, XR.Expression>>, override val loc: Location = Location.Synth): Expression, PC<Product> {
     override val productComponents = productOf(this, fields)
     override val type by lazy { XRType.Product(name, fields.map { it.first to it.second.type }) }
     companion object {
@@ -477,11 +568,10 @@ sealed interface XR {
       }
     }
 
-    data class Id(val fields : List<Pair<String, XR.Expression>>)
-    private val id = Id(fields)
-    override fun hashCode() = id.hashCode()
-    override fun equals(other: Any?) = other is Product && other.id == id
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is Product && other.id() == cid
   }
 
   sealed interface Visibility {
@@ -500,14 +590,11 @@ sealed interface XR {
         else -> XRType.Unknown
       }
     }
-
-    data class Id(val of: XR.Expression, val name: String)
-    private val id = Id(of, name)
-    override fun hashCode() = id.hashCode()
-    override fun equals(other: Any?) = other is Property && other.id == id
-
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is Property && other.id() == cid
   }
 
   @Mat
@@ -516,6 +603,9 @@ sealed interface XR {
     override val type: XRType by lazy { output.type }
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is Block && other.id() == cid
   }
 
   @Mat
@@ -524,6 +614,9 @@ sealed interface XR {
     override val type: XRType by lazy { branches.lastOrNull()?.type ?: XRType.Unknown }
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is When && other.id() == cid
   }
 
   @Mat
@@ -532,6 +625,9 @@ sealed interface XR {
     override val type: XRType by lazy { then.type }
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is Branch && other.id() == cid
   }
 
   @Mat
@@ -540,6 +636,9 @@ sealed interface XR {
     override val type: XRType by lazy { rhs.type }
     companion object {}
     override fun toString() = show()
+    private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is Variable && other.id() == cid
   }
 }
 

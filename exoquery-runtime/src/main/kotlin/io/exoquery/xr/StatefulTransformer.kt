@@ -107,7 +107,7 @@ interface StatefulTransformer<T> {
         is Product -> {
           val (keys, values) = fields.unzip()
           val (valuesA, stateA) = applyList(values) { t, v -> t.invoke(v) }
-          Product.cs(name, keys zip valuesA) to stateA
+          Product.cs(keys zip valuesA) to stateA
         }
         // Infix can be both a Query and Expression
         is Infix -> {

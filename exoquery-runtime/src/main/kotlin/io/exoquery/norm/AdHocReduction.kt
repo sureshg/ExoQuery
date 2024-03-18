@@ -4,12 +4,17 @@ import io.exoquery.xr.XR.*
 import io.exoquery.xr.*
 import io.decomat.*
 
-class AdHocReduction {
+object AdHocReduction {
 
-  fun test() {
+  interface Foo {
+    val x: XR.Query
   }
 
-  fun doMatch(q: Query): XR.Query? =
+  interface Bar {
+    val x: XR.FlatMap
+  }
+
+  fun invoke(q: Query): XR.Query? =
     on(q).match(
       // ---------------------------
       // *.filter
@@ -20,7 +25,7 @@ class AdHocReduction {
       // Filter(Filter(a, b, c), d, e) =>
       case(Filter[Filter[Is(), Is()], Is()]).thenThis { (a, b, c), d, e ->
         val er = BetaReduction(e, d to b)
-        Filter(a, b, XR.BinaryOp(c, BooleanOperator.and, er, loc), loc)
+        Filter.cs(a, b, XR.BinaryOp(c, BooleanOperator.and, er))
       },
       // ---------------------------
       // flatMap.*
@@ -29,29 +34,29 @@ class AdHocReduction {
       //    a.flatMap(b => c.map(d => e))
       //
       // Map(FlatMap(a, b, c), d, e) =>
-      case(Map[FlatMap[Is(), Is()], Is()]).thenThis { (a, b, c), d, e ->
-        FlatMap(a, b, Map(c, d, e, loc), loc)
+      case(Map[FlatMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
+        FlatMap.csf(compLeft)(a, b, XR.Map.csf(comp)(c, d, e))
       },
       // a.flatMap(b => c).filter(d => e) =>
       //    a.flatMap(b => c.filter(d => e))
       //
       // case Filter(FlatMap(a, b, c), d, e) =>
-      case(Filter[FlatMap[Is(), Is()], Is()]).thenThis { (a, b, c), d, e ->
-        FlatMap(a, b, Filter.cs(c, d, e), loc)
+      case(Filter[FlatMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
+        FlatMap.csf(compLeft)(a, b, Filter.csf(comp)(c, d, e))
       },
       // a.flatMap(b => c.union(d))
       //    a.flatMap(b => c).union(a.flatMap(b => d))
       //
       // case FlatMap(a, b, Union(c, d)) =>
-      case(FlatMap[Is(), Union[Is(), Is()]]).thenThis { a, b, (c, d) ->
-        Union(FlatMap.cs(a, b, c), FlatMap.cs(a, b, d), loc)
+      case(FlatMap[Is(), Union[Is(), Is()]]).then { a, b, (c, d) ->
+        Union.csf(compRight)(FlatMap.csf(comp)(a, b, c), FlatMap.csf(comp)(a, b, d))
       },
       // a.flatMap(b => c.unionAll(d))
       //    a.flatMap(b => c).unionAll(a.flatMap(b => d))
       //
       // case FlatMap(a, b, UnionAll(c, d)) =>
-      case(FlatMap[Is(), UnionAll[Is(), Is()]]).thenThis { a, b, (c, d) ->
-        UnionAll(FlatMap.cs(a, b, c), FlatMap.cs(a, b, d), loc)
+      case(FlatMap[Is(), UnionAll[Is(), Is()]]).then { a, b, (c, d) ->
+        UnionAll.csf(compRight)(FlatMap.csf(comp)(a, b, c), FlatMap.csf(comp)(a, b, d))
       }
     )
 }

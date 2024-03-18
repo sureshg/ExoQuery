@@ -31,7 +31,7 @@ fun XR.Map.containsImpurities(): Boolean =
 
 val XR.Map.Companion.DistinctHead get() = DistinctHeadMap()
 class DistinctHeadMap() {
-  operator fun <AP: Pattern<XR.Query>, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
+  operator fun <AP: Pattern<Q>, Q: XR.Query, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
     customPattern2M(x, y) { it: XR.Map ->
       with(it) {
         when {
@@ -45,7 +45,7 @@ class DistinctHeadMap() {
 
 val XR.SortBy.Companion.DistinctHead get() = DistinctHeadMatchSortBy()
 class DistinctHeadMatchSortBy() {
-  operator fun <AP: Pattern<XR.Query>, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
+  operator fun <AP: Pattern<Q>, Q: XR.Query, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
     customPattern2M(x, y) { it: XR.SortBy ->
       with(it) {
         when {

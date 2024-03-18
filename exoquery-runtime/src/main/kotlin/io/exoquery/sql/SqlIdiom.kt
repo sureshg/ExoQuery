@@ -234,7 +234,7 @@ interface SqlIdiom {
       alias.isNotEmpty() && concat == true -> +"${concatFunction.token}(${expr.token}) AS ${tokenizeAlias(alias)}"
       // Where we don't have an alias...
       // SelectValue(ast, None, concat: true)
-      alias.isEmpty() && concat == true -> +"${concatFunction.token}(${expr.token}) AS ${value.token}"
+      alias.isEmpty() && concat == true -> +"${concatFunction.token}(${expr.token}) AS ${expr.token}"
       // SelectValue(ast, None, concat: false)
       alias.isEmpty() && concat == false -> expr.token
 
