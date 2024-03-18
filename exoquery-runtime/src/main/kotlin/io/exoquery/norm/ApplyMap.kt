@@ -143,9 +143,9 @@ class ApplyMap(val traceConfig: TraceConfig) {
 
       // a.map(b => c).filter(d => e) =>
       //    a.filter(b => e[d := c]).map(b => c)
-      case(XR.Filter[DetachableMap[Is(), Is()], Is()]).thenThis { (a, b, c), d, e ->
+      case(XR.Filter[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
         val er = BetaReduction(e, d to c)
-        trace("ApplyMap inside filter for $q") andReturn { XR.Map(XR.Filter.cs(a, b, er), b, c, loc) }
+        trace("ApplyMap inside filter for $q") andReturn { XR.Map.csf(XR.Filter.csf(a, b, er)(comp), b, c)(compLeft) }
       },
 
 //      // a.map(b => c).filter(d => e) =>
@@ -156,9 +156,9 @@ class ApplyMap(val traceConfig: TraceConfig) {
 
       // a.map(b => c).sortBy(d => e) =>
       //    a.sortBy(b => e[d := c]).map(b => c)
-      case(XR.SortBy[DetachableMap[Is(), Is()], Is()]).thenThis { (a, b, c), d, e ->
+      case(XR.SortBy[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
         val er = BetaReduction(e, d to c)
-        trace("ApplyMap inside sortBy for $q") andReturn { XR.Map(XR.SortBy.cs(a, b, er, ordering), b, c, loc) }
+        trace("ApplyMap inside sortBy for $q") andReturn { XR.Map.csf(XR.SortBy.csf(a, b, er, comp.ordering)(comp), b, c)(compLeft) }
       },
 
 //      // a.map(b => c).sortBy(d => e) =>
@@ -169,9 +169,9 @@ class ApplyMap(val traceConfig: TraceConfig) {
 
       // a.map(b => c).sortBy(d => e).distinct =>
       //    a.sortBy(b => e[d := c]).map(b => c).distinct
-      case(XR.SortBy.DistinctHead[DetachableMap[Is(), Is()], Is()]).thenThis { (a, b, c), d, e ->
+      case(XR.SortBy.DistinctHead[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
         val er = BetaReduction(e, d to c)
-        trace("ApplyMap inside sortBy+distinct for $q") andReturn { XR.Distinct(XR.Map(XR.SortBy.cs(a, b, er, ordering), b, c, loc), loc) }
+        trace("ApplyMap inside sortBy+distinct for $q") andReturn { XR.Distinct(XR.Map.csf(XR.SortBy.csf(a, b, er, comp.ordering)(comp), b, c)(compLeft)) }
       },
 
 
@@ -221,8 +221,8 @@ class ApplyMap(val traceConfig: TraceConfig) {
 
       // a.map(b => c).drop(d) =>
       //    a.drop(d).map(b => c)
-      case(XR.Drop[DetachableMap[Is(), Is()], Is()]).thenThis { (a, b, c), d ->
-        trace("ApplyMap inside drop for $q") andReturn { XR.Map(XR.Drop.cs(a, d), b, c, loc) }
+      case(XR.Drop[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d ->
+        trace("ApplyMap inside drop for $q") andReturn { XR.Map.csf(XR.Drop.csf(a, d)(comp), b, c)(compLeft) }
       },
 
 //      // a.map(b => c).drop(d) =>
@@ -233,7 +233,7 @@ class ApplyMap(val traceConfig: TraceConfig) {
       // a.map(b => c).take(d) =>
       //    a.drop(d).map(b => c)
       case(XR.Take[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d ->
-        trace("ApplyMap inside take for $q") andReturn { XR.Map.csf(compLeft)(XR.Take.csf(comp)(a, d), b, c) }
+        trace("ApplyMap inside take for $q") andReturn { XR.Map.csf(XR.Take.csf(a, d)(comp), b, c)(compLeft) }
       },
 
 //      // a.map(b => c).take(d) =>
@@ -243,8 +243,8 @@ class ApplyMap(val traceConfig: TraceConfig) {
 
       // a.map(b => c).nested =>
       //    a.nested.map(b => c)
-      case(XR.Nested[DetachableMap[Is(), Is()]]).thenThis { (a, b, c) ->
-        trace("ApplyMap inside nested for $q") andReturn { XR.Map(XR.Nested.cs(a), b, c, loc) }
+      case(XR.Nested[DetachableMap[Is(), Is()]]).then { (a, b, c) ->
+        trace("ApplyMap inside nested for $q") andReturn { XR.Map.csf(XR.Nested.csf(a)(comp), b, c)(compInner) }
       },
 
 //      // a.map(b => c).nested =>

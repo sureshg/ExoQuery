@@ -17,7 +17,7 @@ class OrderTerms(val traceConfig: TraceConfig) {
       // case Filter(SortBy(a, b, c), d, e) =>
       //     Some(SortBy(Filter(a, d, e), b, c))
       case(Filter[SortBy[Is(), Is()], Is()]).then { (a, b, c), d, e ->
-        SortBy.csf(compLeft)(Filter.csf(comp)(a, b, c), d, e, compLeft.ordering)
+        SortBy.csf(Filter.csf(a, b, c)(comp), d, e, compLeft.ordering)(compLeft)
       },
 
       // a.flatMap(b => c).take(n).map(d => e) =>
@@ -27,7 +27,7 @@ class OrderTerms(val traceConfig: TraceConfig) {
       // Map(Take(fm: FlatMap, n), ma, mb) =>
       //   Some(Take(Map(fm, ma, mb), n))
       case(XR.Map[Take[Is<FlatMap>(), Is()], Is()]).then { (fm, n), ma, mb ->
-        Take.csf(compLeft).invoke(XR.Map.csf(comp)(fm, ma, mb), n)
+        Take.csf(XR.Map.csf(fm, ma, mb)(comp), n)(compLeft)
       },
 
       // a.flatMap(b => c).drop(n).map(d => e) =>
@@ -37,7 +37,7 @@ class OrderTerms(val traceConfig: TraceConfig) {
       // Map(Drop(fm: FlatMap, n), ma, mb) =>
       //    Some(Drop(Map(fm, ma, mb), n))
       case(XR.Map[Drop[Is<FlatMap>(), Is()], Is()]).then { (fm, n), ma, mb ->
-        Drop.csf(compLeft).invoke(XR.Map.csf(comp)(fm, ma, mb), n)
+        Drop.csf(XR.Map.csf(fm, ma, mb)(comp), n)(compLeft)
       }
     )
 }

@@ -35,28 +35,28 @@ object AdHocReduction {
       //
       // Map(FlatMap(a, b, c), d, e) =>
       case(Map[FlatMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
-        FlatMap.csf(compLeft)(a, b, XR.Map.csf(comp)(c, d, e))
+        FlatMap.csf(a, b, XR.Map.csf(c, d, e)(comp))(compLeft)
       },
       // a.flatMap(b => c).filter(d => e) =>
       //    a.flatMap(b => c.filter(d => e))
       //
       // case Filter(FlatMap(a, b, c), d, e) =>
       case(Filter[FlatMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
-        FlatMap.csf(compLeft)(a, b, Filter.csf(comp)(c, d, e))
+        FlatMap.csf(a, b, Filter.csf(c, d, e)(comp))(compLeft)
       },
       // a.flatMap(b => c.union(d))
       //    a.flatMap(b => c).union(a.flatMap(b => d))
       //
       // case FlatMap(a, b, Union(c, d)) =>
       case(FlatMap[Is(), Union[Is(), Is()]]).then { a, b, (c, d) ->
-        Union.csf(compRight)(FlatMap.csf(comp)(a, b, c), FlatMap.csf(comp)(a, b, d))
+        Union.csf(FlatMap.csf(a, b, c)(comp), FlatMap.csf(a, b, d)(comp))(compRight)
       },
       // a.flatMap(b => c.unionAll(d))
       //    a.flatMap(b => c).unionAll(a.flatMap(b => d))
       //
       // case FlatMap(a, b, UnionAll(c, d)) =>
       case(FlatMap[Is(), UnionAll[Is(), Is()]]).then { a, b, (c, d) ->
-        UnionAll.csf(compRight)(FlatMap.csf(comp)(a, b, c), FlatMap.csf(comp)(a, b, d))
+        UnionAll.csf(FlatMap.csf(a, b, c)(comp), FlatMap.csf(a, b, d)(comp))(compRight)
       }
     )
 }

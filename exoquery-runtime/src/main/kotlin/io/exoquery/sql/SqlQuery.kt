@@ -169,7 +169,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         this is XR.Query ->
           trace("Construct SqlQuery from: Query") andReturn { flatten(this, XR.Ident("x", type, XR.Location.Synth)) }
         this is XR.Infix ->
-          trace("Construct SqlQuery from: Infix") andReturn { flatten(this, XR.Ident("x", type, loc)) }
+          trace("Construct SqlQuery from: Infix") andReturn { flatten(this, XR.Ident("x", type, XR.Location.Synth)) }
         else ->
           trace("[INVALID] Construct SqlQuery from: other") andReturn {
             xrError("Query not properly normalized. Please open a bug report. Ast: '$query'")
