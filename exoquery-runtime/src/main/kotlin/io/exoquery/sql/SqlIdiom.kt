@@ -17,14 +17,39 @@ import io.exoquery.sql.UnnestProperty
 import org.jetbrains.kotlin.resolve.constants.NullValue
 import io.exoquery.xr.XR.Location.Synth
 
-interface SqlIdiom {
+abstract class SqlIdiom {
 
-  val traceConfig: TraceConfig
-  val concatFunction: String
-  val useActionTableAliasAs: ActionTableAliasBehavior
+  abstract val traceConfig: TraceConfig
+  abstract val concatFunction: String
+  abstract val useActionTableAliasAs: ActionTableAliasBehavior
+  open fun joinAlias(alias: List<String>): String = alias.joinToString("_")
+
+  val trace: Tracer by lazy { Tracer(TraceType.SqlNormalizations, traceConfig, 1) }
+
+  fun querifyAst(ast: XR, traceConfig: TraceConfig) = SqlQueryApply(traceConfig)(ast)
+
+  fun translate(xr: XR): Token {
+    // TODO caching
+    return when {
+      xr is XR.Query -> {
+        val q = SqlNormalize(traceConf = traceConfig, disableApplyMap = false)(xr)
+        val sqlQuery = querifyAst(q, traceConfig)
+        trace("SQL: ${sqlQuery.show()}").andLog()
+        val expanded = ExpandNestedQueries(::joinAlias)(sqlQuery)
+        trace("Expanded SQL: ${expanded.show()}").andLog()
+        val tokenized = expanded.token
+        trace("Tokenized SQL: ${tokenized}").andLog()
+        tokenized
+      }
+      else ->
+        xr.token
+    }
+  }
+
+
   val productAggregationToken: ProductAggregationToken get() = ProductAggregationToken.Star
   val seriesSepartor: String get() = "."
-  open fun joinAlias(alias: List<String>): String = alias.joinToString("_")
+
 
   sealed interface ActionTableAliasBehavior {
     object UseAs: ActionTableAliasBehavior

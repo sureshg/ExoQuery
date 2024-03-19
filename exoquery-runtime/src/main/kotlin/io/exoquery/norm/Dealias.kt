@@ -194,6 +194,23 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //      case other =>
 //        (f(a, b, c), Dealias(Some(b), traceConfig))
 //    }
-
-
 }
+
+//object Dealias {
+//  def apply(query: Query)(traceConfig: TraceConfig) =
+//    new Dealias(None, traceConfig)(query) match {
+//      case (q, _) => q
+//    }
+//}
+
+class DealiasApply(val traceConfig: TraceConfig) {
+  operator fun invoke(query: Query): Query =
+    Dealias(null, traceConfig)(query).first
+}
+
+//class DealiasApply(traceConfig: TraceConfig) {
+//  def apply(query: Query) =
+//    new Dealias(None, traceConfig)(query) match {
+//      case (q, _) => q
+//    }
+//}

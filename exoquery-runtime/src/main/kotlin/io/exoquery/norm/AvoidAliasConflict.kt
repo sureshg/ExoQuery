@@ -305,3 +305,15 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
 fun Ident.isTemporary(): Boolean =
   name.matches("\\[tmp_[0-9A-Za-z]+\\]".toRegex())
 
+
+class AvoidAliasConflictApply(val traceConfig: TraceConfig) {
+  operator fun invoke(q: Query, detemp: Boolean = false): Query =
+    AvoidAliasConflict(setOf(), detemp, traceConfig)(q).let { (q, _) -> q }
+}
+
+//private class AvoidAliasConflictApply(traceConfig: TraceConfig) {
+//  def apply(q: Query, detemp: Boolean = false): Query =
+//    AvoidAliasConflict(Set[IdentName](), detemp, traceConfig)(q) match {
+//      case (q, _) => q
+//    }
+//}

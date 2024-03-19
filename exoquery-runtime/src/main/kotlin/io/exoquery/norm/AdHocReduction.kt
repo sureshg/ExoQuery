@@ -3,18 +3,11 @@ package io.exoquery.norm
 import io.exoquery.xr.XR.*
 import io.exoquery.xr.*
 import io.decomat.*
+import io.exoquery.util.TraceConfig
 
-object AdHocReduction {
+class AdHocReduction(val traceConfig: TraceConfig) {
 
-  interface Foo {
-    val x: XR.Query
-  }
-
-  interface Bar {
-    val x: XR.FlatMap
-  }
-
-  fun invoke(q: Query): XR.Query? =
+  operator fun invoke(q: Query): XR.Query? =
     on(q).match(
       // ---------------------------
       // *.filter

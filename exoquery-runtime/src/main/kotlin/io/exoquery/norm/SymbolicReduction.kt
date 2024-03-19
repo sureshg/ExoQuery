@@ -17,7 +17,7 @@ import io.exoquery.xr.cs
  * `P.flatMap(x => ...)`.
  */
 class SymbolicReduction(val traceConfig: TraceConfig) {
-  fun invoke(q: XR.Query) =
+  operator fun invoke(q: XR.Query): XR.Query? =
     with(q) {
       when {
         /*

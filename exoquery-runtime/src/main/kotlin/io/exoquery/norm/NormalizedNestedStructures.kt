@@ -10,7 +10,7 @@ class NormalizeNestedStructures(val normalize: StatelessTransformer) {
   fun Query.nullIfSameAs(q: Query) =
     if (this == q) null else this
 
-  fun invoke(q: Query): Query? =
+  operator fun invoke(q: Query): Query? =
     with(q) {
       when(this) {
         is Entity -> null
