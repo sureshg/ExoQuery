@@ -165,7 +165,7 @@ class InnerMost(private val markerId: String) {
       // If the tail is a flatMap e.g. FlatMap(?, FlatMap(?, FlatMap(...)))) recurse into the last one in the chain
       case(XR.FlatMap[Is(), XR.FlatMap.Is]).thenThis { head, id, body -> XR.FlatMap.cs(head, id, mark(body)) },
       // If we are here than we are at the deepest flatMap in the chain since we have reached the marked-value
-      case(XR.FlatMap[Is(), XR.Marker[Is(markerId)]]).thenThis { head, id, (nestedValue) -> XR.Map(head, id, (this.body as XR.Marker).expr!!, loc) }
+      case(XR.FlatMap[Is(), XR.Marker[Is(markerId), Is()]]).thenThis { head, id, (nestedValue, _) -> XR.Map(head, id, (this.body as XR.Marker).expr!!, loc) }
     ) ?: q
 
 }

@@ -13,14 +13,14 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 
   override operator fun invoke(q: Query): Pair<Query, StatefulTransformer<Ident?>> =
     with(q) {
-      when {
+      when(this) {
 //      case FlatMap(a, b, c) =>
 //        dealias(a, b, c)(FlatMap) match {
 //          case (FlatMap(a, b, c), _) =>
 //            val (cn, cnt) = apply(c)
 //            (FlatMap(a, b, cn), cnt)
 //        }
-        this is FlatMap -> {
+        is FlatMap -> {
           val (a, b, c, t) = dealias(head, id, body)
           FlatMap.cs(a, b, c) to t
         }
@@ -32,7 +32,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //            (ConcatMap(a, b, cn), cnt)
 //        }
 
-        this is ConcatMap -> {
+        is ConcatMap -> {
           val (a, b, c, t) = dealias(head, id, body)
           ConcatMap.cs(a, b, c) to t
         }
@@ -40,7 +40,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //      case Map(a, b, c) =>
 //        dealias(a, b, c)(Map)
 
-        this is XR.Map -> {
+        is XR.Map -> {
           val (a, b, c, t) = dealias(head, id, body)
           XR.Map.cs(a, b, c) to t
         }
@@ -48,7 +48,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //      case Filter(a, b, c) =>
 //        dealias(a, b, c)(Filter)
 
-        this is Filter -> {
+        is Filter -> {
           val (a, b, c, t) = dealias(head, id, body)
           Filter.cs(a, b, c) to t
         }
@@ -56,7 +56,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //      case SortBy(a, b, c, d) =>
 //        dealias(a, b, c)(SortBy(_, _, _, d))
 
-        this is SortBy -> {
+        is SortBy -> {
           val (a, b, c, t) = dealias(head, id, criteria)
           SortBy.cs(a, b, c, ordering) to t
         }
@@ -72,7 +72,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //            (g, Dealias(Some(b), traceConfig))
 //        }
 
-        this is GroupByMap -> {
+        is GroupByMap -> {
           val (an, t) = invoke(head)
           val alias = t.state
           when {
@@ -92,7 +92,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //      case DistinctOn(a, b, c) =>
 //        dealias(a, b, c)(DistinctOn)
 
-        this is DistinctOn -> {
+        is DistinctOn -> {
           val (a, b, c, t) = dealias(head, id, by)
           DistinctOn.cs(a, b, c) to t
         }
@@ -101,7 +101,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //        val (an, ant) = apply(a)
 //        (Take(an, b), ant)
 
-        this is Take -> {
+        is Take -> {
           val (an, ant) = invoke(head)
           Take.cs(an, num) to ant
         }
@@ -110,7 +110,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //        val (an, ant) = apply(a)
 //        (Drop(an, b), ant)
 
-        this is Drop -> {
+        is Drop -> {
           val (an, ant) = invoke(head)
           Drop.cs(an, num) to ant
         }
@@ -120,7 +120,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //        val (bn, _) = apply(b)
 //        (Union(an, bn), Dealias(None, traceConfig))
 
-        this is Union -> {
+        is Union -> {
           val (an, _) = invoke(a)
           val (bn, _) = invoke(b)
           Union.cs(an, bn) to Dealias(null, traceConfig)
@@ -131,7 +131,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //        val (bn, _) = apply(b)
 //        (UnionAll(an, bn), Dealias(None, traceConfig))
 
-        this is UnionAll -> {
+        is UnionAll -> {
           val (an, _) = invoke(a)
           val (bn, _) = invoke(b)
           UnionAll.cs(an, bn) to Dealias(null, traceConfig)
@@ -141,7 +141,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //        val ((an, iAn, on), ont) = dealias(a, iA, o)((_, _, _))
 //        (FlatJoin(t, an, iAn, on), Dealias(Some(iA), traceConfig))
 
-        this is FlatJoin -> {
+        is FlatJoin -> {
           val (head1, id1, on1) = dealias(head, id, on)
           FlatJoin.cs(head1, id1, on1) to Dealias(id1, traceConfig)
         }
@@ -149,13 +149,10 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //      case _: Entity | _: Distinct | _: Nested =>
 //        (q, Dealias(None, traceConfig))
 
-      this is Entity || this is Distinct || this is Nested -> {
-        this to Dealias(null, traceConfig)
+        is Entity, is Distinct, is Nested, is FlatFilter, is FlatSortBy, is FlatGroupBy, is Infix, is Marker, is RuntimeQueryBind -> {
+          this to Dealias(null, traceConfig)
+        }
       }
-
-
-      else -> TODO()
-    }
   }
 
   data class DealiasResultA(val a: Query, val b: Ident, val c: Expression, val newState: StatefulTransformer<Ident?>)

@@ -121,6 +121,7 @@ class RepropagateTypes(val traceConfig: TraceConfig): StatelessTransformer {
           val onr = BetaReduction(on, RWR, id to iAr)
           trace("Repropagate ${head.type.shortString()} from $head into:") andReturn { FlatJoin.cs(ar, iAr, invoke(onr)) }
         }
+        // FlatFilter, FlatGroupBy, FlatSortBy, Nested, and Distinct etc... do not have head-fields to repropagate types from
         else -> super.invoke(this)
       }
     }

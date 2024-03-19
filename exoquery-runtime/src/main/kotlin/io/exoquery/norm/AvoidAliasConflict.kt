@@ -175,6 +175,8 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
           (FlatJoin.cs(newHead, newId, newOn) to Recurse(newOnState.state + newState.state + state))
         }
 
+        // FlatFilter, FlatGroupBy, FlatSortBy do not introduce aliases
+
         else -> super.invoke(xr)
       }
     }

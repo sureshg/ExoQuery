@@ -310,8 +310,8 @@ sealed interface XR {
   }
 
   @Mat
-  data class Marker(@Slot val name: String, val expr: XR.Expression?, override val loc: Location = Location.Synth): Query, Expression, PC<Marker> {
-    override val productComponents = productOf(this, name)
+  data class Marker(@Slot val name: String, @Slot val expr: XR.Expression?, override val loc: Location = Location.Synth): Query, Expression, PC<Marker> {
+    override val productComponents = productOf(this, name, expr)
     override val type get() = XRType.Generic
     companion object {}
     override fun toString() = show()
