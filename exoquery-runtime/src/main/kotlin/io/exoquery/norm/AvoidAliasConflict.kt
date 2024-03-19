@@ -172,7 +172,7 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
               AvoidAliasConflict(newState.state + newId.name, detemp, traceConfig)(newOnRaw)
             }({ it.first != newOnRaw })
 
-          (FlatJoin.cs(joinType, newHead, newId, newOn) to Recurse(newOnState.state + newState.state + state))
+          (FlatJoin.cs(newHead, newId, newOn) to Recurse(newOnState.state + newState.state + state))
         }
 
         else -> super.invoke(xr)

@@ -184,7 +184,7 @@ interface StatefulTransformer<T> {
         is FlatJoin -> {
           val (aA, stateA) = invoke(head)
           val (onA, stateB) = stateA.invoke(on)
-          FlatJoin.cs(joinType, aA, id, onA) to stateB
+          FlatJoin.cs(aA, id, onA) to stateB
         }
         is FlatGroupBy -> {
           val (aA, stateA) = invoke(by)

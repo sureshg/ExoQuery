@@ -155,7 +155,7 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
         is XR.ConcatMap -> XR.ConcatMap.cs(invoke(head), id, BetaReduce(map - id)(body))
         is XR.SortBy -> XR.SortBy.cs(invoke(head), id, BetaReduce(map - id)(this.criteria), ordering)
         is XR.GroupByMap -> XR.GroupByMap.cs(invoke(head), byAlias, BetaReduce(map - byAlias)(this.byBody), mapAlias, BetaReduce(map - mapAlias)(this.mapBody))
-        is XR.FlatJoin -> XR.FlatJoin.cs(joinType, invoke(head), id, BetaReduce(map - id)(on))
+        is XR.FlatJoin -> XR.FlatJoin.cs(invoke(head), id, BetaReduce(map - id)(on))
         is XR.DistinctOn -> XR.DistinctOn.cs(invoke(head), id, BetaReduce(map - id)(by))
         // is XR.Take, is XR.Entity, is XR.Drop, is XR.Union, is XR.UnionAll, is XR.Aggregation, is XR.Distinct, is XR.Nested
         else -> super.invoke(this)

@@ -119,7 +119,7 @@ class RepropagateTypes(val traceConfig: TraceConfig): StatelessTransformer {
           val ar = invoke(head)
           val iAr = id.retypeFrom(ar.type)
           val onr = BetaReduction(on, RWR, id to iAr)
-          trace("Repropagate ${head.type.shortString()} from $head into:") andReturn { FlatJoin.cs(joinType, ar, iAr, invoke(onr)) }
+          trace("Repropagate ${head.type.shortString()} from $head into:") andReturn { FlatJoin.cs(ar, iAr, invoke(onr)) }
         }
         else -> super.invoke(this)
       }

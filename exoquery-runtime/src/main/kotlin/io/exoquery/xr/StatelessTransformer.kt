@@ -68,7 +68,7 @@ interface StatelessTransformer {
         is Drop -> Drop.cs(invoke(head), invoke(num))
         is SortBy -> SortBy.cs(invoke(head), id, invoke(criteria), ordering)
         is Take -> Take.cs(invoke(head), invoke(num))
-        is FlatJoin -> FlatJoin.cs(joinType, invoke(head), id, invoke(on))
+        is FlatJoin -> FlatJoin.cs(invoke(head), id, invoke(on))
         is FlatGroupBy -> FlatGroupBy.cs(invoke(by))
         is FlatSortBy -> FlatSortBy.cs(invoke(by), ordering)
         is FlatFilter -> FlatFilter.cs(invoke(by))

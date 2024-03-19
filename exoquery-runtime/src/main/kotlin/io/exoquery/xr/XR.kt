@@ -218,7 +218,7 @@ sealed interface XR {
   }
 
   @Mat
-  data class FlatJoin(@CS val joinType: JoinType, @Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val on: XR.Expression, override val loc: Location = Location.Synth): Query, PC<FlatJoin> {
+  data class FlatJoin(val joinType: JoinType, @Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val on: XR.Expression, override val loc: Location = Location.Synth): Query, PC<FlatJoin> {
     override val productComponents = productOf(this, head, id, on)
     override val type get() = head.type
     companion object {}
