@@ -8,7 +8,7 @@ import io.exoquery.xr.XR
 interface HasPhasePrinting {
   abstract val traceConf: TraceConfig
   abstract val traceType: TraceType
-  abstract val tracer: Tracer
+  abstract val trace: Tracer
 
   fun title(label: String): String =
     "=".repeat(10) + " $label " + "=".repeat(10)
@@ -18,13 +18,7 @@ interface HasPhasePrinting {
 //    trace[T](("=".repeat(10)) + s" $label " + ("=".repeat(10)), 0, traceType)
 
   fun demarcate(heading: String, q: XR.Query) =
-    if (traceConf.enabledTraces.contains(traceType)) {
-      println(
-        tracer.interpolate({listOf(title("$heading"), "")}, {listOf(q)})
-      )
-    } else {
-      Unit
-    }
+    trace.interpolate({listOf(title("$heading"), "")}, {listOf(q)}).andLog()
 
 
 //  private def demarcate(heading: String) =

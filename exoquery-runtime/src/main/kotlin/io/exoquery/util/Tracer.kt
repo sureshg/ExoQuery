@@ -108,14 +108,6 @@ class Traceable(
       explicitIndent ?: run {
         // A trick to make nested calls of andReturn indent further out which makes andReturn MUCH more usable.
         // Just count the number of times it has occurred on the thread stack.
-        val fil = Thread
-          .currentThread()
-          .getStackTrace()
-          .toList()
-
-        println(fil)
-
-
         val returnInvocationCount = Thread
           .currentThread()
           .getStackTrace()

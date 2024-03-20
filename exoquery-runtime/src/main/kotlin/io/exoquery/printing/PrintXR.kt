@@ -15,7 +15,11 @@ import io.exoquery.xr.XRType
 class PrintXR(config: PPrinterConfig = defaultConfig): PPrinter(config) {
   override fun treeify(x: Any?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree =
     when (x) {
-      is XRType -> Tree.Literal(x.shortString())
+      is XRType ->
+        when(x) {
+          is XRType.Product -> Tree.Literal("${x.name}(...)")
+          else -> Tree.Literal(x.shortString())
+        }
       is XR.Location.File -> Tree.Literal("<Location:${x.path}:${x.row}:${x.col}>")
       is XR.Location.Synth -> Tree.Literal("<Location:Synthetic>")
       is XR ->

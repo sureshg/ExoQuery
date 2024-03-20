@@ -5,6 +5,8 @@ import io.exoquery.norm.RepropagateTypes
 import io.exoquery.sql.ExpandNestedQueries
 import io.exoquery.sql.SqlQueryApply
 import io.exoquery.util.Globals
+import io.exoquery.util.TraceConfig
+import io.exoquery.util.TraceType
 
 object Model1 {
   data class Person(val id: Int, val name: Name?, val age: Int)
@@ -30,36 +32,16 @@ object Model1 {
     println("=============== XR ===============")
     println(x.xr.showRaw())
 
-    println("=============== XR: Types Repropagated ===============")
-    val xrBeta = RepropagateTypes(Globals.traceConfig())(x.xr)
-    println(xrBeta.showRaw())
-
-    //println("=============== SQL ===============")
-    start = System.currentTimeMillis()
-    val sql = SqlQueryApply(Globals.traceConfig())(xrBeta)
-    println("------------ SqlQueryApply Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
-    //println(sql.showRaw())
-
-    //println("=============== Expanded SQL ===============")
-    val dialect = PostgresDialect(Globals.traceConfig())
-    start = System.currentTimeMillis()
-    val expandedSql = ExpandNestedQueries(dialect::joinAlias)(sql, sql.type)
-    println("------------ ExpandNestedQueries Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
-    //println(expandedSql.showRaw())
-
-    println("=============== Tokenized SQL ===============")
-    start = System.currentTimeMillis()
-    val tokenizedSql = with (dialect) { expandedSql.token }
-    println("------------ PostgresDialect Tokenization Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
-    println(SqlFormatter.format(tokenizedSql.toString()))
-
-    //val reduction = BetaReduction(x.xr)
-    //println("-------------- Reduction -------------\n" + format(reduction.show()))
-
-    println(pprint(x.binds, defaultShowFieldNames = false, defaultWidth = 200))
+    val tokenized = PostgresDialect(TraceConfig(listOf(TraceType.SqlNormalizations, TraceType.Normalizations, TraceType.RepropagateTypes))).translate(x.xr)
+    println("=============== Tokenized ===============")
+    println(SqlFormatter.format(tokenized.toString()))
   }
 }
 
+
+fun main() {
+  Model1.use()
+}
 
 
 object Model1Simple {
@@ -139,10 +121,6 @@ object Model1Simple {
   }
 }
 
-
-fun main() {
-  Model1Simple.use()
-}
 
 
 //

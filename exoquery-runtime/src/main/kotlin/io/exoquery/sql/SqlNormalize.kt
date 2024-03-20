@@ -17,7 +17,7 @@ class SqlNormalize(
   val disableApplyMap: Boolean = false
 ): HasPhasePrinting {
   override val traceType = TraceType.Normalizations
-  override val tracer by lazy { Tracer(traceType, traceConf, 1) }
+  override val trace by lazy { Tracer(traceType, traceConf, 1) }
 
   val NormalizePhase = Normalize(traceConf, disableApplyMap)
   val RepropagateTypesPhase = RepropagateTypes(traceConf)
@@ -25,14 +25,20 @@ class SqlNormalize(
   private val root = { it: Query -> it }
   private val normalize =
     root
-      .andThen("RepropagateTypes") { RepropagateTypesPhase(it) }
-      .andThen("Normalize") { NormalizePhase(it) }
+      .andThen("RepropagateTypes") {
+        RepropagateTypesPhase(it)
+      }
+      .andThen("Normalize") {
+        NormalizePhase(it)
+      }
   // TODO ExpandDistinct
 
-  inline fun ((Query) -> Query).andThen(phaseTitle: String, crossinline f: (Query) -> Query): (Query) -> Query = { q ->
-    demarcate(phaseTitle, q)
+  inline fun ((Query) -> Query).andThen(phaseTitle: String, crossinline f: (Query) -> Query): (Query) -> Query = { qRaw ->
+    // Too much noise when both before and after the phase are printed
+    //demarcate(phaseTitle, q)
+    val q = this(qRaw)
     val output = f(q)
-    demarcate(title("Completed: ${phaseTitle}"), output)
+    demarcate("Completed: ${phaseTitle}", output)
     output
   }
 
