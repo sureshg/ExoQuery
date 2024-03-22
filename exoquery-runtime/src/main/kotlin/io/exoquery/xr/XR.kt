@@ -4,6 +4,7 @@ import io.decomat.ProductClass
 import io.exoquery.BID
 import io.exoquery.printing.PrintXR
 import io.exoquery.printing.format
+import io.exoquery.sql.SqlIdiom
 import io.decomat.Matchable as Mat
 import io.decomat.Component as Slot
 import io.decomat.MiddleComponent as MSlot
@@ -65,6 +66,7 @@ sealed interface XR {
     return if (color) str.toString() else str.plainText
   }
 
+  fun translateWith(idiom: SqlIdiom) = idiom.translate(this)
 
 
   sealed class JoinType {

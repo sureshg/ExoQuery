@@ -219,6 +219,7 @@ class Lifter(val builderCtx: BuilderContext) {
   fun liftExpression(expr: Expression) = expr.lift()
   fun liftIdent(expr: Ident) = expr.lift()
   fun liftLocation(expr: Location) = expr.lift()
+  inline fun <reified T> liftList(list: List<T>, elementLifter: (T) -> IrExpression) = list.lift(elementLifter)
 
   @OptIn(ExoInternal::class)
   fun liftSqlVariableWithType(variable: SqlVariable<*>, typeParam: IrType) =

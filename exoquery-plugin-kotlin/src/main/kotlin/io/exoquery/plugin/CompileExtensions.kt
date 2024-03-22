@@ -1,6 +1,7 @@
 package io.exoquery.plugin
 
 import io.decomat.fail.fail
+import io.exoquery.annotation.ExoMethod
 import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.xr.XR
@@ -12,16 +13,25 @@ import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
+import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrConst
+import org.jetbrains.kotlin.ir.expressions.IrConstKind
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.name.FqName
 import kotlin.reflect.KClass
 
 val KClass<*>.qualifiedNameForce get(): String =
   if (this.qualifiedName == null) fail("Qualified name of the class ${this} was null")
   else this.qualifiedName!!
+
+val KClass<*>.fqNameForce get() =
+  FqName(this.qualifiedNameForce)
 
 fun IrType.findMethodOrFail(methodName: String) = run {
   (this
@@ -81,3 +91,24 @@ context(BuilderContext) fun IrElement.buildLocationXR(): XR.Location =
 
 fun CompilerMessageSourceLocation.toLocationXR(): XR.Location =
   XR.Location.File(path, line, column)
+
+
+inline fun <reified T> IrExpression.isClass(): Boolean {
+  val className = T::class.qualifiedNameForce
+  return className == this.type.classFqName.toString() || type.superTypes().any { it.classFqName.toString() == className }
+}
+
+inline fun <reified T> IrType.isClass(): Boolean {
+  val className = T::class.qualifiedNameForce
+  return className == this.classFqName.toString() || this.superTypes().any { it.classFqName.toString() == className }
+}
+
+inline fun <reified T> IrCall.reciverIs(methodName: String) =
+  this.dispatchReceiver?.isClass<T>() ?: false && this.symbol.safeName == methodName
+
+
+inline fun IrCall.isExoMethodAnnotated(name: String) =
+  this.symbol.owner.annotations.findAnnotation(ExoMethod::class.fqNameForce)
+    ?.let { it.getValueArgument(0) }
+    ?.let { it is IrConst<*> && it.kind == IrConstKind.String && it.value as kotlin.String == name }
+    ?: false

@@ -2,6 +2,7 @@ package io.exoquery.plugin.transform
 
 import io.decomat.Is
 import io.decomat.case
+import io.decomat.match
 import io.decomat.on
 import io.exoquery.structError
 import io.exoquery.parseError
@@ -27,7 +28,7 @@ class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
     //    funExpression would be `id == person.id`. Actually it includes the "hidden" reciver so it would be:
     //    `$this$on.id == person.id`
     val (caller, funExpression, params, blockBody) =
-      on(expression).match(
+      expression.match(
         case(ExtractorsDomain.Call.`join-on(expr)`[Is()]).then { queryCallData -> queryCallData }
       ) ?: parseError("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
 

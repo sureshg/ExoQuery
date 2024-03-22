@@ -5,15 +5,12 @@ import io.decomat.case
 import io.decomat.on
 import io.exoquery.BID
 import io.exoquery.Query
-import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.DomainErrors
 import io.exoquery.plugin.printing.dumpSimple
-import io.exoquery.plugin.safeName
 import io.exoquery.plugin.transform.ScopeSymbols
 import io.exoquery.parseError
-import io.exoquery.plugin.locationXR
-import io.exoquery.plugin.toLocationXR
+import io.exoquery.plugin.*
 import io.exoquery.plugin.transform.VisitTransformExpressions
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.IrElement

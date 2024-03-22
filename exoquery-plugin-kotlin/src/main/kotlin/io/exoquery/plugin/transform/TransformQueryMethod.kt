@@ -7,13 +7,33 @@ import io.exoquery.xr.XR
 import io.exoquery.plugin.trees.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 
 
-class TransformQueryMethod(override val ctx: BuilderContext, val matcher: ExtractorsDomain.QueryFunction, val replacementMethod: String): Transformer() {
+class TransformQueryMethod(override val ctx: BuilderContext, val matcher: ExtractorsDomain.QueryLambdaFunction, val replacementMethod: String): Transformer() {
   context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
     matcher.matchesMethod(expression)
+
+  context(ParserContext, BuilderContext, CompileLogger) private fun lambdaArgToXR(lambdaArg: IrValueParameter, location: XR.Location): IrExpression {
+    val lifter = makeLifter()
+    val paramIdentXR = run {
+      val name = lambdaArg.name.asString()
+      val tpe = TypeParser.parse(lambdaArg.type)
+      XR.Ident(name, tpe, location)
+    }
+    val paramIdentExpr = lifter.liftIdent(paramIdentXR)
+    return paramIdentExpr
+  }
+
+  context(ParserContext, BuilderContext, CompileLogger) private fun lambdaArgsToListOfXR(lambdaArgs: List<IrValueParameter>, location: XR.Location): IrExpression {
+    val lifter = makeLifter()
+    val lambdaArgs = lambdaArgs.map { arg -> lambdaArgToXR(arg, location) }
+    return lifter.liftList(lambdaArgs) { it }
+  }
+
+
 
   // parent symbols are collected in the parent context
   context(ParserContext, BuilderContext, CompileLogger)
@@ -28,20 +48,16 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
       //      also, should generally just return the expression instead of throwing exceptions in the compiler
       //      perhaps use some kind of FP either-like structure here???
 
-    val lambdaArg = params.first()
+    val lifter = makeLifter()
 
-    val paramIdentXR = run {
-      val name = lambdaArg.name.asString()
-      val tpe = TypeParser.parse(lambdaArg.type)
-      XR.Ident(name, tpe, expression.locationXR())
-    }
+    // List of the arguments passed to the lambda as identifiers
+    val paramIdentExpr = lambdaArgsToListOfXR(params, expression.locationXR())
 
     // If there are any maps/filters/flatMaps etc... in the body need to transform them first
     val transformedBlockBody = blockBody.transform(superTransformer, internalVars) as IrBlockBody
     val (bodyXR, bindsAccum) = Parser.parseFunctionBlockBody(transformedBlockBody)
 
-    val lifter = makeLifter()
-    val paramIdentExpr = lifter.liftIdent(paramIdentXR)
+
     val bodyExpr = lifter.liftXR(bodyXR)
     val loc = lifter.liftLocation(expression.locationXR())
 

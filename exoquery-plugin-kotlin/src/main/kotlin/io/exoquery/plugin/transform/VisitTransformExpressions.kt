@@ -54,6 +54,8 @@ class VisitTransformExpressions(
     val queryMapTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryMap, "mapExpr")
     val queryFilterTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryFilter, "filterExpr")
     val queryFlatMapTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryFlatMap, "flatMapExpr")
+    val queryTakeTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryTake, "takeExpr")
+    val queryDropTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryDrop , "dropExpr")
     val selectTransformer = TransformSelect(builderContext)
     val makeTableTransformer = TransformTableQuery(builderContext)
     val joinOnTransformer = TransformJoinOn(builderContext)
@@ -86,6 +88,8 @@ class VisitTransformExpressions(
       queryMapTransformer.matches(expression) -> queryMapTransformer.transform(expression, this)
       queryFilterTransformer.matches(expression) -> queryFilterTransformer.transform(expression, this)
       selectTransformer.matches(expression) -> selectTransformer.transform(expression, this)
+      queryTakeTransformer.matches(expression) -> queryTakeTransformer.transform(expression, this)
+      queryDropTransformer.matches(expression) -> queryDropTransformer.transform(expression, this)
 
       else ->
         // No additional data (i.e. Scope-Symbols) to add since none of the transformers was activated

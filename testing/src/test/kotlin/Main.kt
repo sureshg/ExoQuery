@@ -40,7 +40,10 @@ object Model1 {
 
 
 fun main() {
-  Model1.use()
+  data class Person(val name: String, val age: Int)
+  val q = Table<Person>().map { p -> p.name == "Joe" }.take { 10 }
+  val sql = q.xr.translateWith(PostgresDialect(TraceConfig.empty))
+  println(sql.toString())
 }
 
 

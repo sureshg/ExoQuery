@@ -4,10 +4,10 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.plugin.buildLocationXR
+import io.exoquery.plugin.isClass
 import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.trees.ExtractorsDomain
-import io.exoquery.plugin.trees.isClass
 import io.exoquery.select.SelectClause
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.config.CompilerConfiguration
