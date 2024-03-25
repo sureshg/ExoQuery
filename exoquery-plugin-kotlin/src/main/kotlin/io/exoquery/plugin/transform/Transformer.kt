@@ -15,7 +15,7 @@ abstract class Transformer {
   abstract protected fun matchesBase(expression: IrCall): Boolean
 
   context(ParserContext, BuilderContext, CompileLogger)
-  abstract protected fun transformBase(expression: IrCall, superTransformer: VisitTransformExpressions): IrExpression
+  abstract protected fun transformBase(expression: IrCall): IrExpression
 
   open fun makeParserContext(expression: IrCall): ParserContext {
     val decls = ScopeSymbols(CollectDecls.from(expression)) + ctx.parentScopeSymbols
@@ -27,10 +27,10 @@ abstract class Transformer {
       with (logger) { matchesBase(expression) }
     }
 
-  fun transform(expression: IrCall, superTransformer: VisitTransformExpressions): IrExpression =
+  fun transform(expression: IrCall): IrExpression =
     with(makeParserContext(expression)) {
       with(ctx) {
-        with (logger) { transformBase(expression, superTransformer) }
+        with (logger) { transformBase(expression) }
       }
     }
 }

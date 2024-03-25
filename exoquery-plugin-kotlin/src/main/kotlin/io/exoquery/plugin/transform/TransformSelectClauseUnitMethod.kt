@@ -14,13 +14,13 @@ import io.exoquery.plugin.trees.makeDynamicBindsIr
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
-class TransformSelectClauseUnitMethod(override val ctx: BuilderContext, val matcher: ExtractorsDomain.Call.SelectClauseFunction, val replacementMethod: String): Transformer() {
+class TransformSelectClauseUnitMethod(override val ctx: BuilderContext, val matcher: ExtractorsDomain.Call.SelectClauseFunction, val replacementMethod: String, val superTransformer: VisitTransformExpressions): Transformer() {
   context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
     matcher.matchesMethod(expression)
 
   context(ParserContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrCall, superTransformer: VisitTransformExpressions): IrExpression {
+  override fun transformBase(expression: IrCall): IrExpression {
     // For join(addresses).on { id == person.id } :
     //    funExpression would be `id == person.id`. Actually it includes the "hidden" reciver so it would be:
     //    `$this$on.id == person.id`

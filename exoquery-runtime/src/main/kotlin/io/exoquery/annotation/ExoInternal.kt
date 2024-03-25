@@ -6,3 +6,6 @@ annotation class ExoInternal
 
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoMethod(val name: String)
+
+@Retention(AnnotationRetention.BINARY)
+annotation class ParseXR

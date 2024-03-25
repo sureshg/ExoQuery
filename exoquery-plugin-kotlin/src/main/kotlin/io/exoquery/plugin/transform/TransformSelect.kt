@@ -15,13 +15,13 @@ import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
-class TransformSelect(override val ctx: BuilderContext): Transformer() {
+class TransformSelect(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): Transformer() {
   context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
     ExtractorsDomain.Call.`select(fun)`.matchesMethod(expression)
 
   context(ParserContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrCall, superTransformer: VisitTransformExpressions): IrExpression {
+  override fun transformBase(expression: IrCall): IrExpression {
     val (funExpression, params, blockBody) =
       on(expression).match(
         case(ExtractorsDomain.Call.`select(fun)`[Is()]).then { callData -> callData }

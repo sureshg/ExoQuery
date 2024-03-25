@@ -1,15 +1,10 @@
 package io.exoquery.plugin.trees
 
 import io.decomat.*
-import io.exoquery.SqlInterpolator
-import io.exoquery.Query
-import io.exoquery.SqlVariable
-import io.exoquery.Table
-import io.exoquery.plugin.isExoMethodAnnotated
+import io.exoquery.*
+import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.qualifiedNameForce
-import io.exoquery.plugin.reciverIs
-import io.exoquery.plugin.safeName
+import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.transform.BinaryOperators
 import io.exoquery.plugin.transform.UnaryOperators
 import io.exoquery.select.JoinOn
@@ -24,65 +19,58 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import io.exoquery.plugin.trees.CallData.MultiArgMember.ArgType
 
 object ExtractorsDomain {
   final val queryClassName = Query::class.qualifiedNameForce
 
-  sealed interface DslFunction {
+  sealed interface QueryDslFunction {
     context (CompileLogger) fun matchesMethod(it: IrCall): Boolean
-    //context (CompileLogger) operator fun <AP: Pattern<CallData.OneArgMember>> get(x: AP)
+    context (CompileLogger) fun extract(it: IrCall): RecieverCallData?
   }
 
-  data class QueryOneArgFunction(val methodName: String): DslFunction {
-    context (CompileLogger) override fun matchesMethod(it: IrCall): Boolean =
-      // E.g. is Query."map"
-      it.reciverIs<Query<*>>(methodName) && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
-
-    context (CompileLogger) operator fun <AP: Pattern<CallData.OneArgMember>> get(x: AP) =
-      customPattern1(x) { it: IrCall ->
-        if (matchesMethod(it)) {
-          it.match(
-            // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
-            case( /* .flatMap */ Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
-              Components1(CallData.OneArgMember(reciver, expression))
-            }
-          )
-        } else null
-      }
-  }
-
-  data class QueryLambdaFunction(val methodName: String, val exoMethodName: String? = null): DslFunction {
+  @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
+  data class QueryLambdaFunction(val methodName: String, val exoMethodName: String? = null): QueryDslFunction {
     context (CompileLogger) override fun matchesMethod(it: IrCall): Boolean =
       // E.g. is Query."map"
       it.reciverIs<Query<*>>(methodName) && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null &&
         if (exoMethodName != null) {
           it.isExoMethodAnnotated(exoMethodName)
         } else
-          true
+          // If it shouldn't have a @ExoMethod parameter, according to the QueryLambdaFunction spec, make sure it has no ExoMethod annotations or it could match to something that it shouldn't
+          it.isNotExoMethodAnnotated()
 
-    context (CompileLogger) operator fun <AP: Pattern<CallData.LambdaMember>> get(x: AP) =
-      customPattern1(x) { it: IrCall ->
-        if (matchesMethod(it)) {
-          it.match(
-            // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
-            case( /* .flatMap */ Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
-              expression.match(
-                case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
-                  val funExpression = this
-                  Components1(CallData.LambdaMember(reciver, funExpression, params, blockBody))
-                }
-              )
-            }
-          )
-        } else null
-      }
+    context(CompileLogger) override fun extract(expression: IrCall): CallData.LambdaMember? =
+      expression.match(
+        // e.g. Query.flatMap[Is()]
+        case(Call.LambdaFunctionMethod { matchesMethod(it) }[Is()]).then { queryCallData -> queryCallData }
+      )
+  }
+
+  @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
+  data class QueryMultiArgFunction(val methodName: String, val exoMethodName: String? = null): QueryDslFunction {
+    context (CompileLogger) override fun matchesMethod(it: IrCall): Boolean =
+      // E.g. is Query."map"
+      it.reciverIs<Query<*>>(methodName) &&
+        if (exoMethodName != null) {
+          it.isExoMethodAnnotated(exoMethodName)
+        } else
+          it.isNotExoMethodAnnotated()
+
+    context(CompileLogger) override fun extract(expression: IrCall): CallData.MultiArgMember? =
+      expression.match(
+        // e.g. Query.flatMap[Is()]
+        case(Call.MultiArgMethod { matchesMethod(it) }[Is()]).then { queryCallData -> queryCallData }
+      )
   }
 
   object Call {
     val QueryMap = QueryLambdaFunction("map", "mapSimple")
     val QueryFilter = QueryLambdaFunction("filter")
     val QueryTake = QueryLambdaFunction("take")
+    val QueryTakeSimple = QueryMultiArgFunction("take", "takeSimple")
     val QueryDrop = QueryLambdaFunction("drop")
+    val QueryDropSimple = QueryMultiArgFunction("drop", "dropSimple")
     val QueryFlatMap = QueryLambdaFunction("flatMap")
     val `from(expr)` = BindExpression("from")
     val `join(expr)` = BindExpression("join")
@@ -92,6 +80,46 @@ object ExtractorsDomain {
 
     data class OperatorCall(val x: IrExpression, val op: BinaryOperator, val y: IrExpression)
     data class UnaryOperatorCall(val x: IrExpression, val op: UnaryOperator)
+
+    data class LambdaFunctionMethod(val matchesMethod: (IrCall) -> Boolean) {
+      context (CompileLogger) operator fun <AP: Pattern<CallData.LambdaMember>> get(x: AP) =
+        customPattern1(x) { it: IrCall ->
+          if (matchesMethod(it)) {
+            it.match(
+              // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
+              case( /* .flatMap */ Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
+                expression.match(
+                  case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
+                    val funExpression = this
+                    Components1(CallData.LambdaMember(reciver, funExpression, params, blockBody))
+                  }
+                )
+              }
+            )
+          } else null
+        }
+    }
+
+    // A simple one or muti-argument function e.g. take(Int), drop(Int) etc....
+    data class MultiArgMethod(val matchesMethod: (IrCall) -> Boolean) {
+      context (CompileLogger) operator fun <AP: Pattern<CallData.MultiArgMember>> get(x: AP) =
+        customPattern1(x) { it: IrCall ->
+          if (matchesMethod(it)) {
+            it.match(
+              // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
+              case( /* .flatMap */ Ir.Call.FunctionMem[Is(), Is()]).then { reciver, expression ->
+                val argTypes =
+                  it.symbol.owner.simpleValueParams.map {
+                    if (it.isAnnotatedParseXR()) ArgType.ParsedXR else ArgType.Passthrough
+                  }
+
+                val parameterComponents = argTypes zip expression
+                Components1(CallData.MultiArgMember(reciver, parameterComponents))
+              }
+            )
+          } else null
+        }
+    }
 
     object InterpolateInvoke {
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
@@ -296,11 +324,17 @@ object ExtractorsDomain {
 
 }
 
+sealed interface RecieverCallData: CallData
 sealed interface CallData {
   // i.e. Something.someMethod { someLambda }
-  data class LambdaMember(val reciver: IrExpression, val functionExpression: IrFunctionExpression, val params:  List<IrValueParameter>, val body: IrBlockBody): CallData
+  data class LambdaMember(val reciver: IrExpression, val functionExpression: IrFunctionExpression, val params:  List<IrValueParameter>, val body: IrBlockBody): RecieverCallData
   // i.e. someMethod { someLambda }
   data class LambdaTopLevel(val functionExpression: IrFunctionExpression, val params:  List<IrValueParameter>, val body: IrBlockBody): CallData
 
-  data class OneArgMember(val reciver: IrExpression, val argValue: IrExpression): CallData
+  data class MultiArgMember(val reciver: IrExpression, val argValues: List<Pair<ArgType, IrExpression>>): RecieverCallData {
+    sealed interface ArgType {
+      object ParsedXR: ArgType
+      object Passthrough: ArgType
+    }
+  }
 }

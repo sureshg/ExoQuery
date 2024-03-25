@@ -13,6 +13,14 @@ class DynamicBindsAccum {
     binds.add(bindId to bind)
   }
 
+  operator fun plus(other: DynamicBindsAccum): DynamicBindsAccum {
+    val newBinds = DynamicBindsAccum()
+    newBinds.binds + this.binds
+    newBinds.binds + other.binds
+    return newBinds
+  }
+
+
   fun show() = pprint(binds)
 
   fun getBinds() = binds

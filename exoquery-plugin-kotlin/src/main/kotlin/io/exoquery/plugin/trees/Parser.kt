@@ -27,6 +27,9 @@ data class ParserContext(val internalVars: ScopeSymbols, val currentFile: IrFile
 object Parser {
   context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR, DynamicBindsAccum> =
     ParserCollector().let { par -> Pair(par.parseFunctionBlockBody(blockBody), par.binds) }
+
+  context(ParserContext, CompileLogger) fun parseExpression(expr: IrExpression): Pair<XR, DynamicBindsAccum> =
+    ParserCollector().let { par -> Pair(par.parse(expr), par.binds) }
 }
 
 /**

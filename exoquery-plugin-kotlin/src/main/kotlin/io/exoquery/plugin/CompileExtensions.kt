@@ -2,6 +2,7 @@ package io.exoquery.plugin
 
 import io.decomat.fail.fail
 import io.exoquery.annotation.ExoMethod
+import io.exoquery.annotation.ParseXR
 import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.xr.XR
@@ -12,6 +13,7 @@ import org.jetbrains.kotlin.ir.IrFileEntry
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConst
@@ -107,8 +109,14 @@ inline fun <reified T> IrCall.reciverIs(methodName: String) =
   this.dispatchReceiver?.isClass<T>() ?: false && this.symbol.safeName == methodName
 
 
-inline fun IrCall.isExoMethodAnnotated(name: String) =
+fun IrCall.isExoMethodAnnotated(name: String) =
   this.symbol.owner.annotations.findAnnotation(ExoMethod::class.fqNameForce)
     ?.let { it.getValueArgument(0) }
     ?.let { it is IrConst<*> && it.kind == IrConstKind.String && it.value as kotlin.String == name }
     ?: false
+
+fun IrCall.isNotExoMethodAnnotated() =
+  !this.symbol.owner.annotations.hasAnnotation(ExoMethod::class.fqNameForce)
+
+fun IrValueParameter.isAnnotatedParseXR() =
+  this.annotations.hasAnnotation(ParseXR::class.fqNameForce)

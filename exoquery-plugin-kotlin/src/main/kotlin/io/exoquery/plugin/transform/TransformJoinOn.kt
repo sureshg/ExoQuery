@@ -17,13 +17,13 @@ import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
-class TransformJoinOn(override val ctx: BuilderContext): Transformer() {
+class TransformJoinOn(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): Transformer() {
   context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
     ExtractorsDomain.Call.`join-on(expr)`.matchesMethod(expression)
 
   context(ParserContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrCall, superTransformer: VisitTransformExpressions): IrExpression {
+  override fun transformBase(expression: IrCall): IrExpression {
     // For join(addresses).on { id == person.id } :
     //    funExpression would be `id == person.id`. Actually it includes the "hidden" reciver so it would be:
     //    `$this$on.id == person.id`

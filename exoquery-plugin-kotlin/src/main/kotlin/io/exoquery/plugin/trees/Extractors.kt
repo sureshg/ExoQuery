@@ -301,11 +301,12 @@ object Ir {
 
     // Would like to have a list on the generic L here but that seems to slow down kotlin pattern match to a crawl
     object FunctionMem {
-      context (CompileLogger) operator fun <AP : Pattern<List<IrExpression>>> get(x: AP): Pattern1<AP, List<IrExpression>, IrCall> =
-        customPattern1(x) { it: IrCall ->
+      // Interesting here how we can have just AP/BP and not need the additional parameters A and B
+      context (CompileLogger) operator fun <AP: Pattern<IrExpression>, BP : Pattern<List<IrExpression>>> get(x: AP, y: BP): Pattern2<AP, BP, IrExpression, List<IrExpression>, IrCall> =
+        customPattern2(x, y) { it: IrCall ->
           val reciever = it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.all { it != null }) {
-            Components1(it.simpleValueArgs.requireNoNulls())
+            Components2(reciever, it.simpleValueArgs.requireNoNulls())
           } else {
             null
           }

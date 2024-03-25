@@ -2,6 +2,7 @@ package io.exoquery
 
 import io.exoquery.annotation.ExoInternal
 import io.exoquery.annotation.ExoMethod
+import io.exoquery.annotation.ParseXR
 import io.exoquery.select.InnerMost
 import io.exoquery.select.SelectClause
 import io.exoquery.select.program
@@ -131,6 +132,17 @@ sealed interface Query<T> {
   fun dropExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<T> =
     QueryContainer<T>(XR.Drop(this.xr, body as XR.Expression, loc), binds).withReifiedSubQueries()
 
+  @ExoMethod("takeSimple")
+  fun take(@ParseXR num: Int): Query<T> =  error("The take expression of the Query was not inlined")
+  fun takeSimpleExpr(numRaw: XR, binds: DynamicBinds, loc: XR.Location): Query<T> =
+    // NOTE: there can't be lifts here since there's no context(EnclosedExpression) but there could be other kinds of binds e.g. IdentOrigin Runtime Idents
+    QueryContainer<T>(XR.Take(this.xr, numRaw as XR.Expression, loc), binds).withReifiedSubQueries()
+
+  @ExoMethod("dropSimple")
+  fun drop(@ParseXR num: Int): Query<T> =  error("The take expression of the Query was not inlined")
+  fun dropSimpleExpr(numRaw: XR, binds: DynamicBinds, loc: XR.Location): Query<T> =
+    // NOTE: there can't be lifts here since there's no context(EnclosedExpression) but there could be other kinds of binds e.g. IdentOrigin Runtime Idents
+    QueryContainer<T>(XR.Drop(this.xr, numRaw as XR.Expression, loc), binds).withReifiedSubQueries()
 
 
   // Search for every Ident (i.e. GetValue) that has @SqlVariable in it's type
