@@ -1,8 +1,6 @@
 package io.exoquery
 
-import io.exoquery.annotation.ExoInternal
-import io.exoquery.annotation.ExoMethod
-import io.exoquery.annotation.ParseXR
+import io.exoquery.annotation.*
 import io.exoquery.select.InnerMost
 import io.exoquery.select.SelectClause
 import io.exoquery.select.program
@@ -96,49 +94,46 @@ sealed interface Query<T> {
 //  val map get() = MapClause<T>(xr)
 
   // Table<Person>().filter(name == "Joe")
-  fun <R> filterBy(f: context(EnclosedExpression) (T).() -> R): Query<T> = error("The map expression of the Query was not inlined")
+  //fun <R> filterBy(f: context(EnclosedExpression) (T).() -> R): Query<T> = error("The map expression of the Query was not inlined")
 
   // Table<Person>().map(name)
-  fun <R> mapBy(f: context(EnclosedExpression) (T).() -> R): Query<R> = error("The map expression of the Query was not inlined")
+  //fun <R> mapBy(f: context(EnclosedExpression) (T).() -> R): Query<R> = error("The map expression of the Query was not inlined")
 
-  @ExoMethod("mapSimple")
+  @LambdaMethodProducingXR("mapExpr")
   fun <R> map(f: context(EnclosedExpression) (T) -> R): Query<R> = error("The map expression of the Query was not inlined")
   fun <R> mapExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<R> =
     QueryContainer<R>(XR.Map(this.xr, id.first(), body as XR.Expression, loc), binds).withReifiedSubQueries()
 
+  @LambdaMethodProducingXR("filterExpr")
   fun <R> filter(f: context(EnclosedExpression) (T) -> R): Query<T> = error("The filter expression of the Query was not inlined")
   // TODO Need to understand how this would be parsed in the correlated subquery case
   fun <R> filterExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<R> =
     QueryContainer<R>(XR.Filter(this.xr, id.first(), body as XR.Expression, loc), binds).withReifiedSubQueries()
 
+  @LambdaMethodProducingXR("sortedByExpr")
   fun <R> sortedBy(f: context(EnclosedExpression) (T) -> R): Query<T> = error("The sort-by expression of the Query was not inlined")
   fun <R> sortedByExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<R> =
     QueryContainer<R>(XR.SortBy(this.xr, id.first(), body as XR.Expression, XR.Ordering.Asc, loc), binds).withReifiedSubQueries()
 
   // TODO sortedByDescending, sortedByAscending, sortedByOrders { expr }(Asc, Desc, etc.... <- make a DSL for this)
 
-  // Need this kind of API to enable quotation
-  //fun take(i: context(EnclosedExpression) () -> Int): Query<T>
-  //fun takeExpr(i: context(EnclosedExpression) () -> Int): Query<T>
-  //fun drop(i: context(EnclosedExpression) () -> Int): Query<T>
-  //fun dropExpr(i: context(EnclosedExpression) () -> Int): Query<T>
-
-  // but this is much more natural
+  @MethodProducingXR("takeExpr")
   fun take(f: context(EnclosedExpression) () -> Int): Query<T> = error("The take expression of the Query was not inlined")
   fun takeExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<T> =
     QueryContainer<T>(XR.Take(this.xr, body as XR.Expression, loc), binds).withReifiedSubQueries()
 
+  @MethodProducingXR("dropExpr")
   fun drop(f: context(EnclosedExpression) () -> Int): Query<T> = error("The take expression of the Query was not inlined")
   fun dropExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<T> =
     QueryContainer<T>(XR.Drop(this.xr, body as XR.Expression, loc), binds).withReifiedSubQueries()
 
-  @ExoMethod("takeSimple")
+  @MethodProducingXR("takeSimpleExpr")
   fun take(@ParseXR num: Int): Query<T> =  error("The take expression of the Query was not inlined")
   fun takeSimpleExpr(numRaw: XR, binds: DynamicBinds, loc: XR.Location): Query<T> =
     // NOTE: there can't be lifts here since there's no context(EnclosedExpression) but there could be other kinds of binds e.g. IdentOrigin Runtime Idents
     QueryContainer<T>(XR.Take(this.xr, numRaw as XR.Expression, loc), binds).withReifiedSubQueries()
 
-  @ExoMethod("dropSimple")
+  @MethodProducingXR("dropSimpleExpr")
   fun drop(@ParseXR num: Int): Query<T> =  error("The take expression of the Query was not inlined")
   fun dropSimpleExpr(numRaw: XR, binds: DynamicBinds, loc: XR.Location): Query<T> =
     // NOTE: there can't be lifts here since there's no context(EnclosedExpression) but there could be other kinds of binds e.g. IdentOrigin Runtime Idents
@@ -151,6 +146,7 @@ sealed interface Query<T> {
 
   // "Cannot use the value of the variable 'foo' outside of a Enclosed Expression context
 
+  @LambdaMethodProducingXR("flatMapExpr")
   fun <R> flatMap(f: (T) -> Query<R>): Query<R> = error("needs to be replaced by compiler")
   fun <R> flatMapExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<R> =
     QueryContainer<R>(XR.FlatMap(this.xr, id.first(), body as XR.Query, loc), binds).withReifiedSubQueries()

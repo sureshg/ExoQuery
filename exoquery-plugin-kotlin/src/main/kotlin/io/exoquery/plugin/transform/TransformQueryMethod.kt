@@ -10,9 +10,10 @@ import io.exoquery.plugin.logging.Messages
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import io.exoquery.plugin.trees.CallData.MultiArgMember.ArgType
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 
-class TransformQueryMethod(override val ctx: BuilderContext, val matcher: ExtractorsDomain.QueryDslFunction, val replacementMethod: String, val superTransformer: VisitTransformExpressions): Transformer() {
+class TransformQueryMethod(override val ctx: BuilderContext, val matcher: ExtractorsDomain.QueryDslFunction, val superTransformer: VisitTransformExpressions): Transformer() {
   context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
     matcher.matchesMethod(expression)
@@ -48,7 +49,6 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
   // parent symbols are collected in the parent context
   context(ParserContext, BuilderContext, CompileLogger)
   override fun transformBase(expression: IrCall): IrExpression {
-
     val callData =
       matcher.extract(expression) ?: parseError("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
       // TODO Needs to convey SourceLocation coordinates, look into the 'warn/error' thing to see how to do that
@@ -58,19 +58,19 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
     val lifter = makeLifter()
     val locExpr = lifter.liftLocation(expression.locationXR())
 
-    return  when (callData) {
+    return when (val callDataDetails = callData.first) {
         is CallData.LambdaMember -> {
-          val (caller, _, params, blockBody) = callData
+          val (caller, _, params, blockBody) = callDataDetails
           // List of the arguments passed to the lambda as identifiers
           val paramIdentExpr = lambdaArgsToListOfXR(params, expression.locationXR())
           val transformedCaller = caller.transform(superTransformer, internalVars)
           val (bodyExpr, bindsList) = processBlockBody(blockBody)
           // for:  query.map(p -> p.name)
           // it would be:  (query).callMethodWithType("map", <String>. bindsList())(XR.Function1(Id(p), Prop(p, name))
-          transformedCaller.callMethodWithType(replacementMethod, expression.type)(paramIdentExpr, bodyExpr, bindsList, locExpr)
+          transformedCaller.callMethodWithType(callData.second, expression.type)(paramIdentExpr, bodyExpr, bindsList, locExpr)
         }
         is CallData.MultiArgMember -> {
-          val (caller, argValues) = callData
+          val (caller, argValues) = callDataDetails
           val transformedCaller = caller.transform(superTransformer, internalVars)
           data class Fold(val args: List<IrExpression>, val binds: DynamicBindsAccum)
           val (args, binds) =
@@ -89,7 +89,7 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
           //  query.sortedByOrdExpr(XR.Expression, Asc, binds, location)
           // (this call is not actually used but serves as an example)
           val allArgs = listOf(*args.toTypedArray()) + listOf(binds.makeDynamicBindsIr(), locExpr)
-          transformedCaller.callMethodWithType(replacementMethod, expression.type)(*allArgs.toTypedArray())
+          transformedCaller.callMethodWithType(callData.second, expression.type)(*allArgs.toTypedArray())
         }
       }
   }

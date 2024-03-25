@@ -81,7 +81,6 @@ sealed interface XR {
   // ****************************************** Query ******************************************
   // *******************************************************************************************
 
-
   data class RuntimeQueryBind(val id: BID, override val type: XRType, override val loc: Location = Location.Synth): Query
 
   // TODO XRType needs to be Product
@@ -451,6 +450,16 @@ sealed interface XR {
     override fun equals(other: Any?): Boolean = other is Aggregation && other.id() == cid
   }
 
+
+//  /**
+//   * The element that unifies query and expression. For example
+//   * `people.map(_.age).avg` should be represented as:
+//   * `people.map(_.age).map(i -> sum(i)).value whose tree is:
+//   * ValueOf(Map(Map(people, x, x.age), i, sum(i)))
+//   */
+//  data class ValueOf(val head: Query, override val loc: Location = Location.Synth): XR.Expression {
+//    override val type: XRType = head.type
+//  }
 
 
   // **********************************************************************************************

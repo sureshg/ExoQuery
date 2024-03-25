@@ -26,52 +26,39 @@ object ExtractorsDomain {
 
   sealed interface QueryDslFunction {
     context (CompileLogger) fun matchesMethod(it: IrCall): Boolean
-    context (CompileLogger) fun extract(it: IrCall): RecieverCallData?
+    context (CompileLogger) fun extract(it: IrCall): Pair<RecieverCallData, String>?
   }
 
   @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
-  data class QueryLambdaFunction(val methodName: String, val exoMethodName: String? = null): QueryDslFunction {
+  class LambdaMethodProducingXR: QueryDslFunction {
     context (CompileLogger) override fun matchesMethod(it: IrCall): Boolean =
       // E.g. is Query."map"
-      it.reciverIs<Query<*>>(methodName) && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null &&
-        if (exoMethodName != null) {
-          it.isExoMethodAnnotated(exoMethodName)
-        } else
-          // If it shouldn't have a @ExoMethod parameter, according to the QueryLambdaFunction spec, make sure it has no ExoMethod annotations or it could match to something that it shouldn't
-          it.isNotExoMethodAnnotated()
+      it.simpleValueArgsCount == 1 && it.valueArguments.first() != null && it.isLambdaMethodProducingXR() != null
 
-    context(CompileLogger) override fun extract(expression: IrCall): CallData.LambdaMember? =
+    context(CompileLogger) override fun extract(expression: IrCall): Pair<CallData.LambdaMember, String>? =
       expression.match(
         // e.g. Query.flatMap[Is()]
-        case(Call.LambdaFunctionMethod { matchesMethod(it) }[Is()]).then { queryCallData -> queryCallData }
+        case(Call.LambdaFunctionMethod { matchesMethod(it) }[Is()]).then { queryCallData ->
+          expression.isLambdaMethodProducingXR()?.let { method -> queryCallData to method }
+        }
       )
   }
 
   @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
-  data class QueryMultiArgFunction(val methodName: String, val exoMethodName: String? = null): QueryDslFunction {
+  class MethodProducingXR: QueryDslFunction {
     context (CompileLogger) override fun matchesMethod(it: IrCall): Boolean =
-      // E.g. is Query."map"
-      it.reciverIs<Query<*>>(methodName) &&
-        if (exoMethodName != null) {
-          it.isExoMethodAnnotated(exoMethodName)
-        } else
-          it.isNotExoMethodAnnotated()
+      it.isMethodProducingXR() != null
 
-    context(CompileLogger) override fun extract(expression: IrCall): CallData.MultiArgMember? =
+    context(CompileLogger) override fun extract(expression: IrCall): Pair<CallData.MultiArgMember, String>? =
       expression.match(
         // e.g. Query.flatMap[Is()]
-        case(Call.MultiArgMethod { matchesMethod(it) }[Is()]).then { queryCallData -> queryCallData }
+        case(Call.MultiArgMethod { matchesMethod(it) }[Is()]).then { queryCallData ->
+          expression.isMethodProducingXR()?.let { method -> queryCallData to method }
+        }
       )
   }
 
   object Call {
-    val QueryMap = QueryLambdaFunction("map", "mapSimple")
-    val QueryFilter = QueryLambdaFunction("filter")
-    val QueryTake = QueryLambdaFunction("take")
-    val QueryTakeSimple = QueryMultiArgFunction("take", "takeSimple")
-    val QueryDrop = QueryLambdaFunction("drop")
-    val QueryDropSimple = QueryMultiArgFunction("drop", "dropSimple")
-    val QueryFlatMap = QueryLambdaFunction("flatMap")
     val `from(expr)` = BindExpression("from")
     val `join(expr)` = BindExpression("join")
     val `groupBy(expr)` = SelectClauseFunction("groupBy")

@@ -51,13 +51,17 @@ class VisitTransformExpressions(
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
 
     val transformPrint = TransformPrintSource(builderContext)
-    val queryMapTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryMap, "mapExpr", this)
-    val queryFilterTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryFilter, "filterExpr", this)
-    val queryFlatMapTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryFlatMap, "flatMapExpr", this)
-    val queryTakeTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryTake, "takeExpr", this)
-    val queryTakeSimpleTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryTakeSimple, "takeSimpleExpr", this)
-    val queryDropTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryDrop , "dropExpr", this)
-    val queryDropSimpleTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryDropSimple , "dropSimpleExpr", this)
+    val queryLambdaMethodTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.LambdaMethodProducingXR(), this)
+    val queryMethodTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.MethodProducingXR(), this)
+
+    // val queryMapTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryMap, "mapExpr", this)
+    // val queryFilterTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryFilter, "filterExpr", this)
+    // val queryFlatMapTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryFlatMap, "flatMapExpr", this)
+    // val queryTakeTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryTake, "takeExpr", this)
+    // val queryTakeSimpleTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryTakeSimple, "takeSimpleExpr", this)
+    // val queryDropTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryDrop , "dropExpr", this)
+    // val queryDropSimpleTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryDropSimple , "dropSimpleExpr", this)
+
     val selectTransformer = TransformSelect(builderContext, this)
     val makeTableTransformer = TransformTableQuery(builderContext)
     val joinOnTransformer = TransformJoinOn(builderContext, this)
@@ -85,15 +89,10 @@ class VisitTransformExpressions(
       groupByTransformer.matches(expression) -> groupByTransformer.transform(expression)
       sortedByTransformer.matches(expression) -> sortedByTransformer.transform(expression)
       whereTransformer.matches(expression) -> whereTransformer.transform(expression)
-      queryFlatMapTransformer.matches(expression) -> queryFlatMapTransformer.transform(expression)
       makeTableTransformer.matches(expression) -> makeTableTransformer.transform(expression)
-      queryMapTransformer.matches(expression) -> queryMapTransformer.transform(expression)
-      queryFilterTransformer.matches(expression) -> queryFilterTransformer.transform(expression)
       selectTransformer.matches(expression) -> selectTransformer.transform(expression)
-      queryTakeTransformer.matches(expression) -> queryTakeTransformer.transform(expression)
-      queryTakeSimpleTransformer.matches(expression) -> queryTakeSimpleTransformer.transform(expression)
-      queryDropTransformer.matches(expression) -> queryDropTransformer.transform(expression)
-      queryDropSimpleTransformer.matches(expression) -> queryDropSimpleTransformer.transform(expression)
+      queryMethodTransformer.matches(expression) -> queryMethodTransformer.transform(expression)
+      queryLambdaMethodTransformer.matches(expression) -> queryLambdaMethodTransformer.transform(expression)
 
       else ->
         // No additional data (i.e. Scope-Symbols) to add since none of the transformers was activated

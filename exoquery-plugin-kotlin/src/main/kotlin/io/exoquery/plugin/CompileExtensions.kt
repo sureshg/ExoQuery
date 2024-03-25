@@ -1,7 +1,9 @@
 package io.exoquery.plugin
 
 import io.decomat.fail.fail
-import io.exoquery.annotation.ExoMethod
+import io.exoquery.annotation.ExoMethodName
+import io.exoquery.annotation.LambdaMethodProducingXR
+import io.exoquery.annotation.MethodProducingXR
 import io.exoquery.annotation.ParseXR
 import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.trees.ParserContext
@@ -108,15 +110,24 @@ inline fun <reified T> IrType.isClass(): Boolean {
 inline fun <reified T> IrCall.reciverIs(methodName: String) =
   this.dispatchReceiver?.isClass<T>() ?: false && this.symbol.safeName == methodName
 
+fun IrCall.isMethodProducingXR() =
+  this.symbol.owner.annotations.findAnnotation(MethodProducingXR::class.fqNameForce)
+    ?.let { it.getValueArgument(0) }
+    ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }
+
+fun IrCall.isLambdaMethodProducingXR() =
+  this.symbol.owner.annotations.findAnnotation(LambdaMethodProducingXR::class.fqNameForce)
+    ?.let { it.getValueArgument(0) }
+    ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }
 
 fun IrCall.isExoMethodAnnotated(name: String) =
-  this.symbol.owner.annotations.findAnnotation(ExoMethod::class.fqNameForce)
+  this.symbol.owner.annotations.findAnnotation(ExoMethodName::class.fqNameForce)
     ?.let { it.getValueArgument(0) }
     ?.let { it is IrConst<*> && it.kind == IrConstKind.String && it.value as kotlin.String == name }
     ?: false
 
 fun IrCall.isNotExoMethodAnnotated() =
-  !this.symbol.owner.annotations.hasAnnotation(ExoMethod::class.fqNameForce)
+  !this.symbol.owner.annotations.hasAnnotation(ExoMethodName::class.fqNameForce)
 
 fun IrValueParameter.isAnnotatedParseXR() =
   this.annotations.hasAnnotation(ParseXR::class.fqNameForce)
