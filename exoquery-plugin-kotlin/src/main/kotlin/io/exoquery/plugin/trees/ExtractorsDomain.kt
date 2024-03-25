@@ -4,11 +4,10 @@ import io.decomat.*
 import io.exoquery.*
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.transform.BinaryOperators
 import io.exoquery.plugin.transform.UnaryOperators
 import io.exoquery.select.JoinOn
-import io.exoquery.select.SelectClause
+import io.exoquery.select.QueryClause
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.UnaryOperator
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
@@ -20,6 +19,13 @@ import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import io.exoquery.plugin.trees.CallData.MultiArgMember.ArgType
+
+// TODO Need to change all instances of FunctionMem... to return Caller as the reciver type
+//      so that we can support things like Query<Int>.avg because that inherently needs to
+//      be defined as an extension method and the BuilderExtensions.callMethod... needs to know
+//      whether it's a dispatch or extension reciver.
+//      Probably in the transforms when calling recursive transformations it will be used
+//      so it will be necessary to define ReciverCaller.transformWith as well
 
 object ExtractorsDomain {
   final val queryClassName = Query::class.qualifiedNameForce
@@ -59,8 +65,6 @@ object ExtractorsDomain {
   }
 
   object Call {
-    val `from(expr)` = BindExpression("from")
-    val `join(expr)` = BindExpression("join")
     val `groupBy(expr)` = SelectClauseFunction("groupBy")
     val `sortedBy(expr)` = SelectClauseFunction("sortedBy")
     val `where(expr)` = SelectClauseFunction("where")
@@ -135,18 +139,22 @@ object ExtractorsDomain {
     }
 
     // I.e. a bind expression like from/join in a SelectClause
-    class BindExpression(val memberName: String) {
+    object QueryClauseAliasedMethod {
+      data class Data(val caller: IrExpression, val args: List<IrExpression>, val newMethod: String)
+
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
-        it.reciverIs<SelectClause<*>>(memberName) && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
+        it.reciverIs<QueryClause<*>>() && it.isQueryClauseMethod() != null
 
-      context (CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
-        customPattern2(x, y) { it: IrCall ->
-          if (matchesMethod(it)) {
-            on(it).match(
+      context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
+        customPattern1(x) { call: IrCall ->
+          if (matchesMethod(call)) {
+            on(call).match(
               // (SelectValue).from(innerQuery) <- FunctionMem1, `from` is a member of SelectValue
-              case(Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
-                Components2(reciver, expression)
+              case(Ir.Call.FunctionMem[Is(), Is()]).then { reciver, params ->
+                call.isQueryClauseMethod()?.let { newMethod ->
+                  Components1(Data(reciver, params, newMethod))
+                }
               }
             )
           } else null
@@ -179,7 +187,7 @@ object ExtractorsDomain {
     class SelectClauseFunction(val methodName: String) {
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
-        it.reciverIs<SelectClause<*>>(methodName) && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
+        it.reciverIs<QueryClause<*>>(methodName) && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
 
       context (CompileLogger) operator fun <AP: Pattern<CallData.LambdaMember>> get(x: AP) =
         customPattern1(x) { it: IrCall ->

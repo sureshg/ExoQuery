@@ -25,28 +25,22 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
-class CallMethod(private val host: Host, private val funName: String, private val types: List<IrType>, private val tpe: IrType?) {
-  sealed interface Host {
-    data class DispatchReciver(val reciver: IrExpression): Host
-    data class ExtensionReciver(val reciver: IrExpression): Host
-    data class TopLevelMethod(val packageName: String): Host
-  }
-
+class CallMethod(private val caller: Caller, private val funName: String, private val types: List<IrType>, private val tpe: IrType?) {
   context(BuilderContext) operator fun invoke(vararg args: IrExpression): IrExpression {
     val invoke =
-      when (host) {
-        is Host.DispatchReciver -> host.reciver.type.findMethodOrFail(funName)
-        is Host.ExtensionReciver -> host.reciver.type.findMethodOrFail(funName)
-        is Host.TopLevelMethod -> pluginCtx.referenceFunctions(CallableId(FqName(host.packageName), Name.identifier(funName))).first()
+      when (caller) {
+        is Caller.DispatchReciver -> caller.reciver.type.findMethodOrFail(funName)
+        is Caller.ExtensionReciver -> caller.reciver.type.findMethodOrFail(funName)
+        is Caller.TopLevelMethod -> pluginCtx.referenceFunctions(CallableId(FqName(caller.packageName), Name.identifier(funName))).first()
       }
 
     return with (builder) {
       val invocation = if (tpe != null) irCall(invoke, tpe) else irCall(invoke)
       invocation.apply {
-        when (host) {
-          is Host.DispatchReciver -> { dispatchReceiver = host.reciver }
-          is Host.ExtensionReciver -> { extensionReceiver = host.reciver }
-          is Host.TopLevelMethod -> {}
+        when (caller) {
+          is Caller.DispatchReciver -> { dispatchReceiver = caller.reciver }
+          is Caller.ExtensionReciver -> { extensionReceiver = caller.reciver }
+          is Caller.TopLevelMethod -> {}
         }
 
         for ((index, tpe) in types.withIndex()) {
@@ -60,18 +54,20 @@ class CallMethod(private val host: Host, private val funName: String, private va
   }
 }
 
-fun IrExpression.callMethod(name: String) = CallMethod(CallMethod.Host.DispatchReciver(this), name, listOf(), null)
-fun IrExpression.callMethodWithType(name: String, fullOutputType: IrType) = CallMethod(CallMethod.Host.DispatchReciver(this), name, listOf(), fullOutputType)
+// TODO these should be implemented on Caller, not IrExpression
 
-fun IrExpression.callMethodTyped(name: String, typeParams: List<IrType>): CallMethod = CallMethod(CallMethod.Host.DispatchReciver(this), name, typeParams, null)
-fun IrExpression.callMethodTypedWithType(name: String, typeParams: List<IrType>, fullOutputType: IrType): CallMethod = CallMethod(CallMethod.Host.DispatchReciver(this), name, typeParams, fullOutputType)
+fun IrExpression.callMethod(name: String) = CallMethod(Caller.DispatchReciver(this), name, listOf(), null)
+fun IrExpression.callMethodWithType(name: String, fullOutputType: IrType) = CallMethod(Caller.DispatchReciver(this), name, listOf(), fullOutputType)
+
+fun IrExpression.callMethodTyped(name: String, typeParams: List<IrType>): CallMethod = CallMethod(Caller.DispatchReciver(this), name, typeParams, null)
+fun IrExpression.callMethodTypedWithType(name: String, typeParams: List<IrType>, fullOutputType: IrType): CallMethod = CallMethod(Caller.DispatchReciver(this), name, typeParams, fullOutputType)
 
 
-fun callMethod(packageName: String, name: String) = CallMethod(CallMethod.Host.TopLevelMethod(packageName), name, listOf(), null)
-fun callMethodWithType(packageName: String, name: String, tpe: IrType) = CallMethod(CallMethod.Host.TopLevelMethod(packageName), name, listOf(), tpe)
+fun callMethod(packageName: String, name: String) = CallMethod(Caller.TopLevelMethod(packageName), name, listOf(), null)
+fun callMethodWithType(packageName: String, name: String, tpe: IrType) = CallMethod(Caller.TopLevelMethod(packageName), name, listOf(), tpe)
 
-fun callMethodTyped(packageName: String, name: String, typeParams: List<IrType>) = CallMethod(CallMethod.Host.TopLevelMethod(packageName), name, typeParams, null)
-fun callMethodTypedWithTypes(packageName: String, name: String, typeParams: List<IrType>, tpe: IrType) = CallMethod(CallMethod.Host.TopLevelMethod(packageName), name, typeParams, tpe)
+fun callMethodTyped(packageName: String, name: String, typeParams: List<IrType>) = CallMethod(Caller.TopLevelMethod(packageName), name, typeParams, null)
+fun callMethodTypedWithTypes(packageName: String, name: String, typeParams: List<IrType>, tpe: IrType) = CallMethod(Caller.TopLevelMethod(packageName), name, typeParams, tpe)
 
 context (BuilderContext) fun createLambda0(functionBody: IrExpression, functionParent: IrDeclarationParent): IrFunctionExpression =
   with(builder) {

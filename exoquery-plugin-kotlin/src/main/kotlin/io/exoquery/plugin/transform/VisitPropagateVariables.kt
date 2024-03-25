@@ -5,10 +5,9 @@ import io.decomat.case
 import io.decomat.on
 import io.exoquery.plugin.buildLocationXR
 import io.exoquery.plugin.isClass
-import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.trees.ExtractorsDomain
-import io.exoquery.select.SelectClause
+import io.exoquery.select.QueryClause
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.IrElement
@@ -70,16 +69,13 @@ class VisitPropagateVariables(
     // NOTE proabably it's a good idea to only propate variable names starting from the SelectClause but
     // the from/join/etc... can Only be inside of a SelectClause so this shouldn't be an issue
     return on(expression).match(
-      case(ExtractorsDomain.Call.`from(expr)`[Is(), Is()]).thenThis { reciever, expr ->
+      case(ExtractorsDomain.Call.QueryClauseAliasedMethod[Is()]).thenThis { callData ->
         // Recurse inside the from in-case there's a query inside a query
+        // Note right now it only supports one argument but we can easily extend to multiple
+        val expr = callData.args.first()
         val newExpression = super.visitExpression(expr, null)
         val loc = makeLifter().liftLocation(expr.buildLocationXR())
-        reciever.callMethod("fromAliased").invoke(newExpression, builder.irString(varName), loc)
-      },
-      case(ExtractorsDomain.Call.`join(expr)`[Is(), Is()]).thenThis { reciever, expr ->
-        // Recurse inside the from in-case there's a query inside a query
-        val newExpression = super.visitExpression(expr, null)
-        reciever.callMethod("joinAliased").invoke(newExpression, builder.irString(varName))
+        callData.caller.callMethod(callData.newMethod).invoke(newExpression, builder.irString(varName), loc)
       },
       // This should be the catch-all but does it actully work?
       case(Is<Any>()).then {
@@ -94,7 +90,7 @@ class VisitPropagateVariables(
     val par = declaration.parent
 
     return when {
-      par is IrSimpleFunction && par.extensionReceiverParameter?.type?.isClass<SelectClause<*>>() ?: false -> {
+      par is IrSimpleFunction && par.extensionReceiverParameter?.type?.isClass<QueryClause<*>>() ?: false -> {
         //ctx.logger.warn("---------- Parent is (${par.extensionReceiverParameter?.type?.classFqName}): --------------\n${declaration.parent.dumpSimple()}\n-------------- Decl Is: -------------\n${declaration.dumpKotlinLike()}\n\n")
         val varName = declaration.name.asString()
         visitDeclaration(declaration, varName)

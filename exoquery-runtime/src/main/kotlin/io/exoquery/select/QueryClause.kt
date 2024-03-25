@@ -3,6 +3,7 @@ package io.exoquery.select
 import io.decomat.*
 import io.exoquery.*
 import io.exoquery.annotation.ExoInternal
+import io.exoquery.annotation.QueryClauseAliasedMethod
 import io.exoquery.xr.*
 
 
@@ -35,12 +36,13 @@ private fun freshIdentFrom(prefix: String = "x", allBindVars: Set<String>): Stri
 
 
 @OptIn(ExoInternal::class) // TODO Not sure if the output here QueryContainer(Ident(SqlVariable)) is right need to look into the shape
-class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpression<A>>(
+class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpression<A>>(
   { result ->
     QueryContainer<A>(XR.Marker(markerName, result.xr, XR.Location.Synth), result.binds)
   }
 ) {
 
+  @QueryClauseAliasedMethod("fromAliased")
   public suspend fun <R> from(query: Query<R>): SqlVariable<R> =
     fromAliased(query, query.freshIdent(), XR.Location.Synth)
 
@@ -66,10 +68,12 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressi
       (QueryContainer<A>(XR.FlatMap(query.xr, ident, resultQuery.xr, loc), query.binds + resultQuery.binds)) /*as Query<A>*/
     }
 
+  @Suppress("UNUSED_PARAMETER")
+  @QueryClauseAliasedMethod("joinAliased")
   public suspend fun <Q: Query<R>, R> join(query: Q) =
     JoinOn<Q, R, A>(query, XR.JoinType.Inner, this, null)
 
-  public suspend fun <Q: Query<R>, R> joinAliased(query: Q, alias: String) =
+  public suspend fun <Q: Query<R>, R> joinAliased(query: Q, alias: String, loc: XR.Location) =
     JoinOn<Q, R, A>(query, XR.JoinType.Inner, this, alias)
 
   public suspend fun <R> groupBy(f: context(EnclosedExpression) () -> R): Unit =
@@ -103,7 +107,7 @@ class SelectClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressi
     }
 }
 
-class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.JoinType, private val selectClause: SelectClause<A>, private val aliasRaw: String?) {
+class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.JoinType, private val queryClause: QueryClause<A>, private val aliasRaw: String?) {
   suspend fun on(cond: context(EnclosedExpression) (R).() -> Boolean): SqlVariable<R> =
     error("The join.on(...) expression of the Query was not inlined")
 
@@ -111,7 +115,7 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
   @OptIn(ExoInternal::class)
   @Suppress("UNCHECKED_CAST")
   suspend fun onExpr(joinIdentRaw: XR.Ident, bodyRaw: XR, onClauseBinds: DynamicBinds, loc: XR.Location): SqlVariable<R> =
-    with (selectClause) {
+    with (queryClause) {
       perform { mapping ->
         val joinIdentTpe = joinIdentRaw.type
         val joinIdentName = aliasRaw ?: joinIdentRaw.name

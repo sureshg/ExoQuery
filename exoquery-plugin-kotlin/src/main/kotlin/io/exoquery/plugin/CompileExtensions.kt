@@ -1,10 +1,7 @@
 package io.exoquery.plugin
 
 import io.decomat.fail.fail
-import io.exoquery.annotation.ExoMethodName
-import io.exoquery.annotation.LambdaMethodProducingXR
-import io.exoquery.annotation.MethodProducingXR
-import io.exoquery.annotation.ParseXR
+import io.exoquery.annotation.*
 import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.xr.XR
@@ -107,8 +104,16 @@ inline fun <reified T> IrType.isClass(): Boolean {
   return className == this.classFqName.toString() || this.superTypes().any { it.classFqName.toString() == className }
 }
 
+inline fun <reified T> IrCall.reciverIs() =
+  this.dispatchReceiver?.isClass<T>() ?: false
+
 inline fun <reified T> IrCall.reciverIs(methodName: String) =
   this.dispatchReceiver?.isClass<T>() ?: false && this.symbol.safeName == methodName
+
+fun IrCall.isQueryClauseMethod() =
+  this.symbol.owner.annotations.findAnnotation(QueryClauseAliasedMethod::class.fqNameForce)
+    ?.let { it.getValueArgument(0) }
+    ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }
 
 fun IrCall.isMethodProducingXR() =
   this.symbol.owner.annotations.findAnnotation(MethodProducingXR::class.fqNameForce)

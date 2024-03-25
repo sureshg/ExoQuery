@@ -39,14 +39,14 @@ object Model1 {
 }
 
 
-fun main() {
-  println("hello")
-  println("hello")
-  data class Person(val name: String, val age: Int)
-  val q = Table<Person>().map { p -> p.name == "Joe" }.take(10).drop(22)
-  val sql = q.xr.translateWith(PostgresDialect(TraceConfig.empty))
-  println(sql.toString())
-}
+//fun main() {
+//  println("hello")
+//  println("hello")
+//  data class Person(val name: String, val age: Int)
+//  val q = Table<Person>().map { p -> p.name == "Joe" }.take(10).drop(22)
+//  val sql = q.xr.translateWith(PostgresDialect(TraceConfig.empty))
+//  println(sql.toString())
+//}
 
 
 object Model1Simple {
@@ -78,6 +78,7 @@ object Model1Simple {
 
     // TODO some way to enforce ordering of where/groupBy/sortedBy/select at compile-time
     val x =
+      // hello
       query {
         val x = from(Table<Person>())
         val a = join(Table<Address>()).on { ownerId == x().id }
@@ -126,6 +127,9 @@ object Model1Simple {
   }
 }
 
+fun main() {
+  Model1Simple.use()
+}
 
 
 //

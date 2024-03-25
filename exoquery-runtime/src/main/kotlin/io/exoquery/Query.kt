@@ -2,7 +2,7 @@ package io.exoquery
 
 import io.exoquery.annotation.*
 import io.exoquery.select.InnerMost
-import io.exoquery.select.SelectClause
+import io.exoquery.select.QueryClause
 import io.exoquery.select.program
 import io.exoquery.norm.ReifyRuntimeIdents
 import io.exoquery.norm.ReifyRuntimeQueries
@@ -165,12 +165,12 @@ class Table<T> private constructor (override val xr: XR.Entity, override val bin
 }
 
 @Suppress("UNCHECKED_CAST")
-public fun <T, Q: Query<T>> query(block: suspend SelectClause<T>.() -> SqlExpression<T>): Q {
+public fun <T, Q: Query<T>> query(block: suspend QueryClause<T>.() -> SqlExpression<T>): Q {
   val markerId = UUID.randomUUID().toString()
 
   val q =
-    program<Query<T>, SqlExpression<T>, SelectClause<T>>(
-      machine = SelectClause<T>(markerId),
+    program<Query<T>, SqlExpression<T>, QueryClause<T>>(
+      machine = QueryClause<T>(markerId),
       f = block
     ) as Query<T>
 
