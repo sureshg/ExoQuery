@@ -111,17 +111,22 @@ inline fun <reified T> IrCall.reciverIs() =
 inline fun <reified T> IrCall.reciverIs(methodName: String) =
   this.dispatchReceiver?.isClass<T>() ?: false && this.symbol.safeName == methodName
 
-fun IrCall.isQueryClauseMethod() =
+fun IrCall.markedQueryClauseMethod() =
   this.symbol.owner.annotations.findAnnotation(QueryClauseAliasedMethod::class.fqNameForce)
     ?.let { it.getValueArgument(0) }
     ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }
 
-fun IrCall.isMethodProducingXR() =
+fun IrCall.markedQueryClauseUnitBind() =
+  this.symbol.owner.annotations.findAnnotation(QueryClauseUnitBind::class.fqNameForce)
+    ?.let { it.getValueArgument(0) }
+    ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }
+
+fun IrCall.markedMethodProducingXR() =
   this.symbol.owner.annotations.findAnnotation(MethodProducingXR::class.fqNameForce)
     ?.let { it.getValueArgument(0) }
     ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }
 
-fun IrCall.isLambdaMethodProducingXR() =
+fun IrCall.markedLambdaMethodProducingXR() =
   this.symbol.owner.annotations.findAnnotation(LambdaMethodProducingXR::class.fqNameForce)
     ?.let { it.getValueArgument(0) }
     ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }

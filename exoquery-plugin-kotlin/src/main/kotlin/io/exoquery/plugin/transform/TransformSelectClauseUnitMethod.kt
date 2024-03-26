@@ -2,6 +2,7 @@ package io.exoquery.plugin.transform
 
 import io.decomat.Is
 import io.decomat.case
+import io.decomat.match
 import io.decomat.on
 import io.exoquery.parseError
 import io.exoquery.plugin.locationXR
@@ -14,7 +15,7 @@ import io.exoquery.plugin.trees.makeDynamicBindsIr
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
-class TransformSelectClauseUnitMethod(override val ctx: BuilderContext, val matcher: ExtractorsDomain.Call.SelectClauseFunction, val replacementMethod: String, val superTransformer: VisitTransformExpressions): Transformer() {
+class TransformSelectClauseUnitMethod(override val ctx: BuilderContext, val matcher: ExtractorsDomain.Call.QueryClauseUnitBindMethod, val superTransformer: VisitTransformExpressions): Transformer() {
   context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
     matcher.matchesMethod(expression)
@@ -24,8 +25,8 @@ class TransformSelectClauseUnitMethod(override val ctx: BuilderContext, val matc
     // For join(addresses).on { id == person.id } :
     //    funExpression would be `id == person.id`. Actually it includes the "hidden" reciver so it would be:
     //    `$this$on.id == person.id`
-    val (caller, funExpression, params, blockBody) =
-      on(expression).match(
+    val (caller, _, blockBody, newMethod) =
+      expression.match(
         case(matcher[Is()]).then { queryCallData -> queryCallData }
       ) ?: parseError("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
 
@@ -47,6 +48,6 @@ class TransformSelectClauseUnitMethod(override val ctx: BuilderContext, val matc
 
     val bindsList = bindsAccum.makeDynamicBindsIr()
 
-    return newCaller.callMethod(replacementMethod).invoke(onLambdaBodyExpr, bindsList, loc)
+    return newCaller.callMethod(newMethod).invoke(onLambdaBodyExpr, bindsList, loc)
   }
 }

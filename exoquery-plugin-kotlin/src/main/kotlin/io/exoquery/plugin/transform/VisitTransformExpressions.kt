@@ -65,9 +65,7 @@ class VisitTransformExpressions(
     val selectTransformer = TransformSelect(builderContext, this)
     val makeTableTransformer = TransformTableQuery(builderContext)
     val joinOnTransformer = TransformJoinOn(builderContext, this)
-    val groupByTransformer = TransformSelectClauseUnitMethod(builderContext, ExtractorsDomain.Call.`groupBy(expr)`, "groupByExpr", this)
-    val sortedByTransformer = TransformSelectClauseUnitMethod(builderContext, ExtractorsDomain.Call.`sortedBy(expr)`, "sortedByExpr", this)
-    val whereTransformer = TransformSelectClauseUnitMethod(builderContext, ExtractorsDomain.Call.`where(expr)`, "whereExpr", this)
+    val queryClauseUnitBindMethod = TransformSelectClauseUnitMethod(builderContext, ExtractorsDomain.Call.QueryClauseUnitBindMethod, this)
 
     // TODO Catch parser errors here, make a warning via the compileLogger (in the BuilderContext) & don't transform the expresison
 
@@ -86,9 +84,7 @@ class VisitTransformExpressions(
       // (and this does not recursively transform stuff inside)
       transformPrint.matches(expression) -> transformPrint.transform(expression)
       joinOnTransformer.matches(expression) -> joinOnTransformer.transform(expression)
-      groupByTransformer.matches(expression) -> groupByTransformer.transform(expression)
-      sortedByTransformer.matches(expression) -> sortedByTransformer.transform(expression)
-      whereTransformer.matches(expression) -> whereTransformer.transform(expression)
+      queryClauseUnitBindMethod.matches(expression) -> queryClauseUnitBindMethod.transform(expression)
       makeTableTransformer.matches(expression) -> makeTableTransformer.transform(expression)
       selectTransformer.matches(expression) -> selectTransformer.transform(expression)
       queryMethodTransformer.matches(expression) -> queryMethodTransformer.transform(expression)

@@ -5,7 +5,6 @@ import io.exoquery.*
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.transform.BinaryOperators
-import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.plugin.transform.UnaryOperators
 import io.exoquery.select.JoinOn
@@ -41,13 +40,13 @@ object ExtractorsDomain {
   class LambdaMethodProducingXR: QueryDslFunction {
     context (CompileLogger) override fun matchesMethod(it: IrCall): Boolean =
       // E.g. is Query."map"
-      it.simpleValueArgsCount == 1 && it.valueArguments.first() != null && it.isLambdaMethodProducingXR() != null
+      it.simpleValueArgsCount == 1 && it.valueArguments.first() != null && it.markedLambdaMethodProducingXR() != null
 
     context(CompileLogger) override fun extract(expression: IrCall): Pair<CallData.LambdaMember, String>? =
       expression.match(
         // e.g. Query.flatMap[Is()]
         case(Call.LambdaFunctionMethod { matchesMethod(it) }[Is()]).then { queryCallData ->
-          expression.isLambdaMethodProducingXR()?.let { method -> queryCallData to method }
+          expression.markedLambdaMethodProducingXR()?.let { method -> queryCallData to method }
         }
       )
   }
@@ -55,22 +54,18 @@ object ExtractorsDomain {
   @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
   class MethodProducingXR: QueryDslFunction {
     context (CompileLogger) override fun matchesMethod(it: IrCall): Boolean =
-      it.isMethodProducingXR() != null
+      it.markedMethodProducingXR() != null
 
     context(CompileLogger) override fun extract(expression: IrCall): Pair<CallData.MultiArgMember, String>? =
       expression.match(
         // e.g. Query.flatMap[Is()]
         case(Call.MultiArgMethod { matchesMethod(it) }[Is()]).then { queryCallData ->
-          expression.isMethodProducingXR()?.let { method -> queryCallData to method }
+          expression.markedMethodProducingXR()?.let { method -> queryCallData to method }
         }
       )
   }
 
   object Call {
-    val `groupBy(expr)` = SelectClauseFunction("groupBy")
-    val `sortedBy(expr)` = SelectClauseFunction("sortedBy")
-    val `where(expr)` = SelectClauseFunction("where")
-
     data class OperatorCall(val x: IrExpression, val op: BinaryOperator, val y: IrExpression)
     data class UnaryOperatorCall(val x: IrExpression, val op: UnaryOperator)
 
@@ -146,7 +141,7 @@ object ExtractorsDomain {
 
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
-        it.reciverIs<QueryClause<*>>() && it.isQueryClauseMethod() != null
+        it.reciverIs<QueryClause<*>>() && it.markedQueryClauseMethod() != null
 
       context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
         customPattern1(x) { call: IrCall ->
@@ -154,7 +149,7 @@ object ExtractorsDomain {
             on(call).match(
               // (SelectValue).from(innerQuery) <- FunctionMem1, `from` is a member of SelectValue
               case(Ir.Call.FunctionMem[Is(), Is()]).then { reciver, params ->
-                call.isQueryClauseMethod()?.let { newMethod ->
+                call.markedQueryClauseMethod()?.let { newMethod ->
                   Components1(Data(reciver, params, newMethod))
                 }
               }
@@ -186,21 +181,22 @@ object ExtractorsDomain {
         }
     }
 
-    class SelectClauseFunction(val methodName: String) {
+    object QueryClauseUnitBindMethod {
+      data class Data(val caller: ReceiverCaller, val params: List<IrValueParameter>, val blockBody: IrBlockBody, val methodToCall: String)
+
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
-        it.reciverIs<QueryClause<*>>(methodName) && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
+        it.reciverIs<QueryClause<*>>() && it.markedQueryClauseUnitBind() != null
 
-      context (CompileLogger) operator fun <AP: Pattern<CallData.LambdaMember>> get(x: AP) =
+      context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
         customPattern1(x) { it: IrCall ->
           if (matchesMethod(it)) {
             on(it).match(
               // (joinClause).on { stuff } <- FunctionMem1, `on` is a member of joinClause
               case(Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
-                on(expression).match(
+                expression.match(
                   case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
-                    val funExpression = this
-                    Components1(CallData.LambdaMember(reciver, funExpression, params, blockBody))
+                    it.markedQueryClauseUnitBind()?.let { method -> Components1(Data(reciver, params, blockBody, method)) }
                   }
                 )
               }

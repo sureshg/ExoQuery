@@ -4,6 +4,7 @@ import io.decomat.*
 import io.exoquery.*
 import io.exoquery.annotation.ExoInternal
 import io.exoquery.annotation.QueryClauseAliasedMethod
+import io.exoquery.annotation.QueryClauseUnitBind
 import io.exoquery.xr.*
 
 
@@ -76,6 +77,7 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
   public suspend fun <Q: Query<R>, R> joinAliased(query: Q, alias: String, loc: XR.Location) =
     JoinOn<Q, R, A>(query, XR.JoinType.Inner, this, alias)
 
+  @QueryClauseUnitBind("groupByExpr")
   public suspend fun <R> groupBy(f: context(EnclosedExpression) () -> R): Unit =
     error("The groupBy(...) expression of the Query was not inlined")
 
@@ -85,6 +87,7 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
       (QueryContainer<A>(XR.FlatMap(XR.FlatGroupBy(expr, loc), XR.Ident.Unused, childQuery.xr, loc), childQuery.binds + binds))
     }
 
+  @QueryClauseUnitBind("sortedByExpr")
   public suspend fun <R> sortedBy(f: context(EnclosedExpression) () -> R): Unit =
     error("The sortedBy(...) expression of the Query was not inlined")
 
@@ -97,6 +100,7 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
   // TODO sortedByDescending
   // TODO sortedByOrders { expr }(Asc, Desc, etc.... <- make a DSL for this)
 
+  @QueryClauseUnitBind("whereExpr")
   public suspend fun <R> where(f: context(EnclosedExpression) () -> R): Unit =
     error("The where(...) expression of the Query was not inlined")
 
@@ -119,7 +123,6 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
       perform { mapping ->
         val joinIdentTpe = joinIdentRaw.type
         val joinIdentName = aliasRaw ?: joinIdentRaw.name
-        val loc = joinIdentRaw.loc
 
         val body = bodyRaw as XR.Expression
         val sqlVariable = SqlVariable<R>(joinIdentName)

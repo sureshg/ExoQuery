@@ -20,6 +20,9 @@ annotation class LambdaMethodProducingXR(val callMethod: String)
 @Retention(AnnotationRetention.BINARY)
 annotation class QueryClauseAliasedMethod(val callMethod: String)
 
+@Retention(AnnotationRetention.BINARY)
+annotation class QueryClauseUnitBind(val callMethod: String)
+
 
 /*
 Idea: Use annotations to tell the parsing system which expressions to parse and which functions to plug in for them
