@@ -87,7 +87,7 @@ object Model1Simple {
           x().age > 20
         }
         groupBy { x().name }
-        sortedBy { x().age }
+        sortedByUsing { x().age to x().name }(SortOrder.Asc, SortOrder.Desc)
         select { x() to a() }
       }.filter { p -> p.first.name == "Joe" }
 

@@ -58,6 +58,7 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
   //public suspend fun <R> yield(query: Query<R>): SqlVariable<R> =
 
   @Suppress("UNCHECKED_CAST")
+  @OptIn(ExoInternal::class)
   public suspend fun <R> fromAliased(query: Query<R>, alias: String, loc: XR.Location): SqlVariable<R> =
     perform { mapping ->
       val sqlVar = SqlVariable<R>(alias)
@@ -73,14 +74,14 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
   @QueryClauseAliasedMethod("joinAliased")
   public suspend fun <Q: Query<R>, R> join(query: Q) =
     JoinOn<Q, R, A>(query, XR.JoinType.Inner, this, null)
-
+  @OptIn(ExoInternal::class)
   public suspend fun <Q: Query<R>, R> joinAliased(query: Q, alias: String, loc: XR.Location) =
     JoinOn<Q, R, A>(query, XR.JoinType.Inner, this, alias)
 
   @QueryClauseUnitBind("groupByExpr")
   public suspend fun <R> groupBy(f: context(EnclosedExpression) () -> R): Unit =
     error("The groupBy(...) expression of the Query was not inlined")
-
+  @OptIn(ExoInternal::class)
   public suspend fun <R> groupByExpr(expr: XR.Expression, binds: DynamicBinds, loc: XR.Location): Unit =
     performUnit { mapping ->
       val childQuery = mapping()
@@ -90,24 +91,52 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
   @QueryClauseUnitBind("sortedByExpr")
   public suspend fun <R> sortedBy(f: context(EnclosedExpression) () -> R): Unit =
     error("The sortedBy(...) expression of the Query was not inlined")
-
+  @OptIn(ExoInternal::class)
   public suspend fun <R> sortedByExpr(expr: XR.Expression, binds: DynamicBinds, loc: XR.Location): Unit =
     performUnit { mapping ->
       val childQuery = mapping()
       (QueryContainer<A>(XR.FlatMap(XR.FlatSortBy(expr, ordering = XR.Ordering.Asc, loc), XR.Ident.Unused, childQuery.xr, loc), childQuery.binds + binds))
     }
 
+  @QueryClauseUnitBind("sortedByDescendingExpr")
+  public suspend fun <R> sortedByDescending(f: context(EnclosedExpression) () -> R): Unit =
+    error("The sortedBy(...) expression of the Query was not inlined")
+  @OptIn(ExoInternal::class)
+  public suspend fun <R> sortedByDescendingExpr(expr: XR.Expression, binds: DynamicBinds, loc: XR.Location): Unit =
+    performUnit { mapping ->
+      val childQuery = mapping()
+      (QueryContainer<A>(XR.FlatMap(XR.FlatSortBy(expr, ordering = XR.Ordering.Desc, loc), XR.Ident.Unused, childQuery.xr, loc), childQuery.binds + binds))
+    }
+
+  @QueryClauseUnitBind("sortedByUsingExpr")
+  public suspend fun <R> sortedByUsing(f: context(EnclosedExpression) () -> R): SortedByOrders<A> =
+    error("The sortedBy(...) expression of the Query was not inlined")
+  @OptIn(ExoInternal::class)
+  public suspend fun <R> sortedByUsingExpr(expr: XR.Expression, binds: DynamicBinds, loc: XR.Location): SortedByOrders<A> =
+    SortedByOrders(expr, binds, loc, this)
+
   // TODO sortedByDescending
-  // TODO sortedByOrders { expr }(Asc, Desc, etc.... <- make a DSL for this)
+  // TODO sorted { expr }(Asc, Desc, etc.... <- make a DSL for this)
 
   @QueryClauseUnitBind("whereExpr")
   public suspend fun <R> where(f: context(EnclosedExpression) () -> R): Unit =
     error("The where(...) expression of the Query was not inlined")
-
+  @OptIn(ExoInternal::class)
   public suspend fun <R> whereExpr(expr: XR.Expression, binds: DynamicBinds, loc: XR.Location): Unit =
     performUnit { mapping ->
       val childQuery = mapping()
       (QueryContainer<A>(XR.FlatMap(XR.FlatFilter(expr, loc), XR.Ident.Unused, childQuery.xr, loc), childQuery.binds + binds))
+    }
+}
+
+//expr: XR.Expression, binds: DynamicBinds, loc: XR.Location
+class SortedByOrders<A>(private val expr: XR.Expression, private val binds: DynamicBinds, private val loc: XR.Location, private val queryClause: QueryClause<A>) {
+  suspend operator fun invoke(vararg orders: SortOrder) =
+    with (queryClause) {
+      performUnit { mapping ->
+        val childQuery = mapping()
+        (QueryContainer<A>(XR.FlatMap(XR.FlatSortBy(expr, ordering = XR.Ordering.fromDslOrdering(orders.toList()), loc), XR.Ident.Unused, childQuery.xr, loc), childQuery.binds + binds))
+      }
     }
 }
 

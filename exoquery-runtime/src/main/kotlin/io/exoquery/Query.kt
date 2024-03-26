@@ -191,3 +191,13 @@ public fun <T, Q: Query<T>> query(block: suspend QueryClause<T>.() -> SqlExpress
    */
   return queryContainerRaw.withReifiedSubQueries().withReifiedIdents() as Q
 }
+
+
+sealed interface SortOrder {
+  object Asc: SortOrder
+  object AscNullsFirst: SortOrder
+  object AscNullsLast: SortOrder
+  object Desc: SortOrder
+  object DescNullsFirst: SortOrder
+  object DescNullsLast: SortOrder
+}

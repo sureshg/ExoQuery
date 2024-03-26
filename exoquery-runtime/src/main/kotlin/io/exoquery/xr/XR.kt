@@ -2,6 +2,7 @@ package io.exoquery.xr
 
 import io.decomat.ProductClass
 import io.exoquery.BID
+import io.exoquery.SortOrder
 import io.exoquery.printing.PrintXR
 import io.exoquery.printing.format
 import io.exoquery.sql.SqlIdiom
@@ -149,6 +150,23 @@ sealed interface XR {
     object DescNullsFirst: PropertyOrdering
     object AscNullsLast: PropertyOrdering
     object DescNullsLast: PropertyOrdering
+
+    companion object {
+      fun fromDslOrdering(orders: List<SortOrder>): XR.Ordering =
+        if (orders.size == 1) {
+          when (orders.first()) {
+            SortOrder.Asc -> Ordering.Asc
+            SortOrder.AscNullsFirst -> Ordering.AscNullsFirst
+            SortOrder.AscNullsLast -> Ordering.AscNullsLast
+            SortOrder.Desc -> Ordering.Desc
+            SortOrder.DescNullsFirst -> Ordering.DescNullsFirst
+            SortOrder.DescNullsLast -> Ordering.DescNullsLast
+          }
+        } else {
+          // Repeat for N size=1 orders each one of which should give a single XR.Ordering
+          Ordering.TupleOrdering(orders.map { fromDslOrdering(listOf(it)) })
+        }
+    }
   }
 
   // Treat this as a 2-slot use mapBody for matching since by-body is usually the less-important one
