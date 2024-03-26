@@ -2,6 +2,7 @@ package io.exoquery.plugin.trees
 
 import io.exoquery.RuntimeBindValue
 import io.exoquery.plugin.transform.BuilderContext
+import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.callMethod
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
@@ -16,7 +17,7 @@ context (BuilderContext) fun RuntimeBindValueExpr.makeDynamicBindsIr(): IrExpres
   when (this) {
     is RuntimeBindValueExpr.SqlVariableIdentExpr ->
       // Execute the expression `RuntimeBindValue.SqlVariableIdent()`
-      make<RuntimeBindValue.SqlVariableIdent>(sqlVariableInstance.callMethod("getVariableName")())
+      make<RuntimeBindValue.SqlVariableIdent>(Caller.DispatchReceiver(sqlVariableInstance).callMethod("getVariableName")())
     is RuntimeBindValueExpr.RuntimeQueryExpr ->
       make<RuntimeBindValue.RuntimeQuery>(queryElement)
   }

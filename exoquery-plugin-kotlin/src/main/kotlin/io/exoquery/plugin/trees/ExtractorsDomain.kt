@@ -5,6 +5,8 @@ import io.exoquery.*
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.transform.BinaryOperators
+import io.exoquery.plugin.transform.Caller
+import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.plugin.transform.UnaryOperators
 import io.exoquery.select.JoinOn
 import io.exoquery.select.QueryClause
@@ -140,7 +142,7 @@ object ExtractorsDomain {
 
     // I.e. a bind expression like from/join in a SelectClause
     object QueryClauseAliasedMethod {
-      data class Data(val caller: IrExpression, val args: List<IrExpression>, val newMethod: String)
+      data class Data(val caller: ReceiverCaller, val args: List<IrExpression>, val newMethod: String)
 
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
@@ -284,7 +286,7 @@ object ExtractorsDomain {
       context (CompileLogger) operator fun <AP: Pattern<String>> get(statements: AP) =
         customPattern1(statements) { it: IrCall ->
           on(it).match(
-            case(Ir.Call.FunctionMem0[Is<IrGetValue>()]).thenThis { getValue ->
+            case(Ir.Call.FunctionMem0[ReceiverCaller[Is<IrGetValue>()]]).thenThis { (getValue) ->
               when {
                 getValue.type.classFqName.toString() == SqlVariableFqName && this.symbol.safeName == "invoke" ->
                   Components1(getValue.symbol.safeName)
@@ -301,7 +303,7 @@ object ExtractorsDomain {
       context (CompileLogger) operator fun <AP: Pattern<IrType>> get(statements: AP) =
         customPattern1(statements) { it: IrCall ->
           on(it).match(
-            case(Ir.Call.FunctionMem0[Is<IrGetObjectValue>()]).thenThis { getObject ->
+            case(Ir.Call.FunctionMem0[ReceiverCaller[Is<IrGetObjectValue>()]]).thenThis { (getObject) ->
                 when {
                   getObject.type.classFqName.toString() == TableQueryCompanionFqName && type.classOrNull != null -> {
                     val firstArg = this.typeArguments.first()
@@ -322,11 +324,11 @@ object ExtractorsDomain {
 sealed interface RecieverCallData: CallData
 sealed interface CallData {
   // i.e. Something.someMethod { someLambda }
-  data class LambdaMember(val reciver: IrExpression, val functionExpression: IrFunctionExpression, val params:  List<IrValueParameter>, val body: IrBlockBody): RecieverCallData
+  data class LambdaMember(val reciver: ReceiverCaller, val functionExpression: IrFunctionExpression, val params:  List<IrValueParameter>, val body: IrBlockBody): RecieverCallData
   // i.e. someMethod { someLambda }
   data class LambdaTopLevel(val functionExpression: IrFunctionExpression, val params:  List<IrValueParameter>, val body: IrBlockBody): CallData
 
-  data class MultiArgMember(val reciver: IrExpression, val argValues: List<Pair<ArgType, IrExpression>>): RecieverCallData {
+  data class MultiArgMember(val reciver: ReceiverCaller, val argValues: List<Pair<ArgType, IrExpression>>): RecieverCallData {
     sealed interface ArgType {
       object ParsedXR: ArgType
       object Passthrough: ArgType

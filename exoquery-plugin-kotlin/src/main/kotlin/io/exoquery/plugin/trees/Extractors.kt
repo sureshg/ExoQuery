@@ -8,6 +8,9 @@ import io.exoquery.plugin.isDataClass
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.safeName
 import io.exoquery.parseError
+import io.exoquery.plugin.caller
+import io.exoquery.plugin.transform.Caller
+import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
@@ -261,6 +264,7 @@ object Ir {
 
   object Call {
 
+    // TODO get rid of this in favor of FunctionMem
     object FunctionRec {
       context (CompileLogger) operator fun <AP : Pattern<List<IrExpression>>> get(x: AP): Pattern1<AP, List<IrExpression>, IrCall> =
         customPattern1(x) { it: IrCall ->
@@ -273,6 +277,7 @@ object Ir {
         }
     }
 
+    // TODO get rid of this in favor of FunctionMem1
     object FunctionRec1 {
       // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
       context (CompileLogger) operator fun <AP : Pattern<A>, A:IrExpression, BP : Pattern<B>, B:IrExpression> get(x: AP, y: BP): Pattern2<AP, BP, A, B, IrCall> =
@@ -286,6 +291,7 @@ object Ir {
         }
     }
 
+    // TODO get rid of this in favor of FunctionMem1
     object FunctionRec0 {
       // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
       context (CompileLogger) operator fun <AP : Pattern<A>, A:IrExpression> get(x: AP): Pattern1<AP, A, IrCall> =
@@ -302,9 +308,9 @@ object Ir {
     // Would like to have a list on the generic L here but that seems to slow down kotlin pattern match to a crawl
     object FunctionMem {
       // Interesting here how we can have just AP/BP and not need the additional parameters A and B
-      context (CompileLogger) operator fun <AP: Pattern<IrExpression>, BP : Pattern<List<IrExpression>>> get(x: AP, y: BP): Pattern2<AP, BP, IrExpression, List<IrExpression>, IrCall> =
+      context (CompileLogger) operator fun <AP: Pattern<ReceiverCaller>, BP : Pattern<List<IrExpression>>> get(x: AP, y: BP): Pattern2<AP, BP, ReceiverCaller, List<IrExpression>, IrCall> =
         customPattern2(x, y) { it: IrCall ->
-          val reciever = it.dispatchReceiver
+          val reciever = it.caller()
           if (reciever != null && it.simpleValueArgs.all { it != null }) {
             Components2(reciever, it.simpleValueArgs.requireNoNulls())
           } else {
@@ -316,9 +322,9 @@ object Ir {
     // Member Function1
     object FunctionMem1 {
       // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
-      context (CompileLogger) operator fun <AP : Pattern<A>, A:IrExpression, BP : Pattern<B>, B:IrExpression> get(x: AP, y: BP): Pattern2<AP, BP, A, B, IrCall> =
+      context (CompileLogger) operator fun <AP : Pattern<A>, A:ReceiverCaller, BP : Pattern<B>, B:IrExpression> get(x: AP, y: BP): Pattern2<AP, BP, A, B, IrCall> =
         customPattern2(x, y) { it: IrCall ->
-          val reciever = it.dispatchReceiver
+          val reciever = it.caller()
           if (reciever != null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null }) {
             Components2(reciever, it.simpleValueArgs.first())
           } else {
@@ -329,9 +335,9 @@ object Ir {
 
     object FunctionMem0 {
       // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
-      context (CompileLogger) operator fun <AP : Pattern<A>, A:IrExpression> get(x: AP): Pattern1<AP, A, IrCall> =
+      context (CompileLogger) operator fun <AP : Pattern<A>, A:ReceiverCaller> get(x: AP): Pattern1<AP, A, IrCall> =
         customPattern1(x) { it: IrCall ->
-          val reciever = it.dispatchReceiver
+          val reciever = it.caller()
           if (reciever != null && it.simpleValueArgs.size == 0) {
             Components1(reciever)
           } else {

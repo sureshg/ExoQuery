@@ -3,6 +3,7 @@ package io.exoquery.plugin
 import io.decomat.fail.fail
 import io.exoquery.annotation.*
 import io.exoquery.plugin.transform.BuilderContext
+import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
@@ -136,3 +137,7 @@ fun IrCall.isNotExoMethodAnnotated() =
 
 fun IrValueParameter.isAnnotatedParseXR() =
   this.annotations.hasAnnotation(ParseXR::class.fqNameForce)
+
+fun IrCall.caller() =
+  this.extensionReceiver?.let { Caller.ExtensionReceiver(it) } ?:
+  this.dispatchReceiver?.let { Caller.DispatchReceiver(it) }
