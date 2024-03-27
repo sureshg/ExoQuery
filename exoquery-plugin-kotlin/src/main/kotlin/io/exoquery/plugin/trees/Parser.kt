@@ -150,11 +150,13 @@ private class ParserCollector {
         //error("----------- Checking: ${sym.safeName} against internalVars: ${internalVars.symbols.map { it.safeName }}")
 
         //  let-alises e.g: tmp0_safe_receiver since can't error on them
-        if (!internalVars.contains(sym) && !(sym.owner.let { it is IrVariable && it.origin == IrDeclarationOrigin.IR_TEMPORARY_VARIABLE }) ) {
-          val loc = this.location()
-          // TODO Need much longer and better error message (need to say what the clause is)
-          error("The symbol `${sym.safeName}` is external. Cannot find it in the symbols-list belonging to the clause ${internalVars.symbols.map { it.safeName }}", loc)
-        }
+
+        // TODO re-enable and if it's a @SqlVar then just let it be
+        //if (!internalVars.contains(sym) && !(sym.owner.let { it is IrVariable && it.origin == IrDeclarationOrigin.IR_TEMPORARY_VARIABLE }) ) {
+        //  val loc = this.location()
+        //  // TODO Need much longer and better error message (need to say what the clause is)
+        //  error("The symbol `${sym.safeName}` is external. Cannot find it in the symbols-list belonging to the clause ${internalVars.symbols.map { it.safeName }}", loc)
+        //}
 
         XR.Ident(sym.safeName, TypeParser.parse(this.type), this.locationXR()) // this.symbol.owner.type
 

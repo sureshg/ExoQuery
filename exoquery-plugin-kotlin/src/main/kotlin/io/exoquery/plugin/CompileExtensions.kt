@@ -111,7 +111,12 @@ inline fun <reified T> IrCall.reciverIs() =
 inline fun <reified T> IrCall.reciverIs(methodName: String) =
   this.dispatchReceiver?.isClass<T>() ?: false && this.symbol.safeName == methodName
 
-fun IrCall.markedQueryClauseMethod() =
+fun IrCall.markedQueryClauseDirectMethod() =
+  this.symbol.owner.annotations.findAnnotation(QueryClauseDirectMethod::class.fqNameForce)
+    ?.let { it.getValueArgument(0) }
+    ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }
+
+fun IrCall.markedQueryClauseAliasedMethod() =
   this.symbol.owner.annotations.findAnnotation(QueryClauseAliasedMethod::class.fqNameForce)
     ?.let { it.getValueArgument(0) }
     ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }

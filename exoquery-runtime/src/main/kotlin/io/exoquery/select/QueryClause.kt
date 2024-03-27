@@ -2,9 +2,7 @@ package io.exoquery.select
 
 import io.decomat.*
 import io.exoquery.*
-import io.exoquery.annotation.ExoInternal
-import io.exoquery.annotation.QueryClauseAliasedMethod
-import io.exoquery.annotation.QueryClauseUnitBind
+import io.exoquery.annotation.*
 import io.exoquery.xr.*
 
 
@@ -36,6 +34,7 @@ private fun freshIdentFrom(prefix: String = "x", allBindVars: Set<String>): Stri
 }
 
 
+
 @OptIn(ExoInternal::class) // TODO Not sure if the output here QueryContainer(Ident(SqlVariable)) is right need to look into the shape
 class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpression<A>>(
   { result ->
@@ -43,22 +42,10 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
   }
 ) {
 
-  @QueryClauseAliasedMethod("fromDirectAliased")
-  public suspend fun <R> fromDirect(query: Query<R>): R =
-    fromDirectAliased(query, query.freshIdent(), XR.Location.Synth)
+  @QueryClauseDirectMethod("from")
+  public suspend fun <R> fromDirect(query: Query<R>): @SqlVar R =
+    error("The fromDirect(...) expression of the Query was not inlined")
 
-  @Suppress("UNCHECKED_CAST")
-  @OptIn(ExoInternal::class)
-  public suspend fun <R> fromDirectAliased(query: Query<R>, alias: String, loc: XR.Location): R =
-    perform { mapping ->
-      val sqlVar = SqlVariable<R>(alias)
-      // Before going further, take any SqlVariable values and reify the actual name-fields into them
-      // since they are specifically returned from the select-value from/join clauses.
-      val resultQuery = mapping(IllegalArgumentException("stuff stuff") as R).withReifiedIdents()
-      val ident = XR.Ident(sqlVar.getVariableName(), resultQuery.xr.type, loc)
-      // No quoted context in this case so only the inner query of this has dynamic binds, we just get those
-      (QueryContainer<A>(XR.FlatMap(query.xr, ident, resultQuery.xr, loc), query.binds + resultQuery.binds)) /*as Query<A>*/
-    }
 
   @QueryClauseAliasedMethod("fromAliased")
   public suspend fun <R> from(query: Query<R>): SqlVariable<R> =
@@ -86,6 +73,10 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
       // No quoted context in this case so only the inner query of this has dynamic binds, we just get those
       (QueryContainer<A>(XR.FlatMap(query.xr, ident, resultQuery.xr, loc), query.binds + resultQuery.binds)) /*as Query<A>*/
     }
+
+  @QueryClauseDirectMethod("join")
+  // public suspend fun <Q: Query<R>, R> joinDirect(query: Q): R =
+  //   error("The joinDirect(...) expression of the Query was not inlined")
 
   @Suppress("UNUSED_PARAMETER")
   @QueryClauseAliasedMethod("joinAliased")
@@ -158,6 +149,10 @@ class SortedByOrders<A>(private val expr: XR.Expression, private val binds: Dyna
 }
 
 class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.JoinType, private val queryClause: QueryClause<A>, private val aliasRaw: String?) {
+  @QueryClauseDirectMethod("on")
+  suspend fun onDirect(cond: context(EnclosedExpression) (R).() -> Boolean): R =
+    error("The join.on(...) expression of the Query was not inlined")
+
   suspend fun on(cond: context(EnclosedExpression) (R).() -> Boolean): SqlVariable<R> =
     error("The join.on(...) expression of the Query was not inlined")
 
@@ -169,6 +164,8 @@ class JoinOn<Q: Query<R>, R, A>(private val query: Q, private val joinType: XR.J
       perform { mapping ->
         val joinIdentTpe = joinIdentRaw.type
         val joinIdentName = aliasRaw ?: joinIdentRaw.name
+
+        println("------------------------- joinIdentName: ${joinIdentName}, aliasRaw: ${aliasRaw}, joinIdentRaw.name: ${joinIdentRaw.name}")
 
         val body = bodyRaw as XR.Expression
         val sqlVariable = SqlVariable<R>(joinIdentName)

@@ -4,6 +4,10 @@ package io.exoquery.annotation
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoInternal
 
+@Target(AnnotationTarget.TYPE)
+@Retention(AnnotationRetention.BINARY)
+annotation class SqlVar
+
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoMethodName(val name: String)
 
@@ -19,6 +23,9 @@ annotation class MethodProducingXR(val callMethod: String)
 //      if we find a case where multiple are needed.
 @Retention(AnnotationRetention.BINARY)
 annotation class LambdaMethodProducingXR(val callMethod: String)
+
+@Retention(AnnotationRetention.BINARY)
+annotation class QueryClauseDirectMethod(val callMethod: String)
 
 @Retention(AnnotationRetention.BINARY)
 annotation class QueryClauseAliasedMethod(val callMethod: String)

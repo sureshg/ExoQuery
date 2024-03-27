@@ -5,6 +5,7 @@ import io.exoquery.plugin.trees.Lifter
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
@@ -14,7 +15,7 @@ data class BuilderContext(
   val compilerConfig: CompilerConfiguration,
   val scopeOwner: IrSymbol,
   val currentFile: IrFile,
-  val currentExpr: IrExpression,
+  val currentExpr: IrElement,
   val parentScopeSymbols: ScopeSymbols
 ) {
   val logger = CompileLogger(compilerConfig, currentFile.fileEntry, currentExpr)
@@ -30,6 +31,6 @@ data class TransformerOrigin(
   val currentFile: IrFile,
   val parentScopeSymbols: ScopeSymbols
 ) {
-  fun makeBuilderContext(expr: IrExpression, scopeOwner: IrSymbol) =
+  fun makeBuilderContext(expr: IrElement, scopeOwner: IrSymbol) =
     BuilderContext(pluginCtx, config, scopeOwner, currentFile, expr, parentScopeSymbols)
 }

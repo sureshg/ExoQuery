@@ -184,13 +184,7 @@ object Ir {
   object Variable {
     context (CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(name: AP, rhs: BP) =
       customPattern2(name, rhs) { it: IrVariable ->
-        if (it.initializer != null) {
-          Components2(it.name.asString(), it.initializer)
-        } else {
-          val msg = "Could not find a right-hand-side for the variable:${it.dumpKotlinLike()}"
-          error(msg)
-          parseError(msg)
-        }
+        it.initializer?.let { init -> Components2(it.name.asString(), init) }
       }
   }
 

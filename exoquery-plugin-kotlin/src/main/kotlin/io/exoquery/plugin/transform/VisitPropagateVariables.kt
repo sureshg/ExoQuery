@@ -2,17 +2,21 @@ package io.exoquery.plugin.transform
 
 import io.decomat.Is
 import io.decomat.case
+import io.decomat.match
 import io.decomat.on
 import io.exoquery.plugin.buildLocationXR
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.safeName
 import io.exoquery.plugin.trees.ExtractorsDomain
+import io.exoquery.plugin.trees.Ir
 import io.exoquery.select.QueryClause
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationBase
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrCall
@@ -48,6 +52,7 @@ import java.nio.file.Path
  *   b. Reset the variable and propagate into the expression inside the from/join/etc... since
  *      there could be sub queries in there.
  */
+@Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
 class VisitPropagateVariables(
   private val context: IrPluginContext,
   private val config: CompilerConfiguration,
@@ -63,6 +68,55 @@ class VisitPropagateVariables(
       builderContext.withCtxAndLogger { visitCallLiveVar(expression, currVarName) }
     } else
       super.visitCall(expression, currVarName)
+  }
+
+  override fun visitDeclaration(declaration: IrDeclarationBase, currVarName: String?): IrStatement {
+    return when {
+      // TODO be sure to check the the FULL PATH of the function
+      declaration is IrVariable  -> {
+        val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
+        val builderContext = ctx.makeBuilderContext(declaration, scopeOwner)
+        builderContext.withCtxAndLogger { variableDeclaration(declaration, currVarName) }
+      }
+      else ->
+        super.visitDeclaration(declaration, currVarName)
+    }
+  }
+
+  context(CompileLogger, BuilderContext) fun variableDeclaration(irVar: IrVariable, currVarName: String?): IrStatement {
+    // When the type has an annotation @SqlVar change it's the type of the declaration to @SqlVariable
+    // change the initializer fromDirect -> fromAliased (make sure the initializer exists or throw an error)
+
+    // Once all other transforms are done
+    // also make a visitor separately that visits every get-call of every type that has an @SqlVar annotation
+    // since there should be none left after all transformations (they should all have been turned into XR) throw an error if any exist
+    // as a backup we should replaece them all with expressions SqlVariable.invokeHidden() which would throw an error but at least be valid at compile-time
+    // that way we will emit errors but the transformations in the AST will at least be valid
+
+    return irVar.match(
+      case(Ir.Variable[Is(), ExtractorsDomain.Call.QueryClauseDirectMethod[Is()]]).then { varName, (methodData) ->
+        val (caller, args, newMethod) = methodData
+
+        // need to recursively transform the arguments e.g. if there are any @QueryClauseAliasedMethod/DirectMethod inside of it
+        // for example if it's a `val x = from( query { ... })` and the inner query has variables that also need to be transformed
+        val newArgs = args.map { super.visitExpression(it, varName) }
+        // also need to visit the caller for the same reason, this is especially important for `val x = join(tbl).on(...)`
+        // because the `join` clause needs to be changed for joinAliased in via the visitCallLiveVar visitor here
+        val newCaller = caller.transform(this, varName)
+
+        val newCall = newCaller.callMethod(newMethod)(*newArgs.toTypedArray())
+        irVar.type = newCall.type
+        irVar.initializer = newCall
+        irVar
+      }
+    ) ?: run {
+      super.visitDeclaration(irVar, currVarName)
+    }
+
+
+    // TODO Once these are detected, find instances of @QueryClauseDirectMethod (e.g. fromDirect) that are not in the expected form i.e. var x = from(...) and throw an error
+    //      it seems that just replacing the type here makes actual instances of the variable usable (at least via something line println(x)) so need to look into
+    //      what is required further.
   }
 
   context(CompileLogger, BuilderContext) fun visitCallLiveVar(expression: IrCall, varName: String): IrElement {

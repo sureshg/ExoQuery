@@ -135,13 +135,13 @@ object ExtractorsDomain {
 
     }
 
-    // I.e. a bind expression like from/join in a SelectClause
-    object QueryClauseAliasedMethod {
+    // TODO extract out common parts of this in QueryClauseAliasedMethod
+    object QueryClauseDirectMethod {
       data class Data(val caller: ReceiverCaller, val args: List<IrExpression>, val newMethod: String)
 
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
-        it.reciverIs<QueryClause<*>>() && it.markedQueryClauseMethod() != null
+        (it.reciverIs<QueryClause<*>>() || it.reciverIs<JoinOn<*, *, *>>()) && it.markedQueryClauseDirectMethod() != null
 
       context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
         customPattern1(x) { call: IrCall ->
@@ -149,7 +149,30 @@ object ExtractorsDomain {
             on(call).match(
               // (SelectValue).from(innerQuery) <- FunctionMem1, `from` is a member of SelectValue
               case(Ir.Call.FunctionMem[Is(), Is()]).then { reciver, params ->
-                call.markedQueryClauseMethod()?.let { newMethod ->
+                call.markedQueryClauseDirectMethod()?.let { newMethod ->
+                  Components1(Data(reciver, params, newMethod))
+                }
+              }
+            )
+          } else null
+        }
+    }
+
+    // I.e. a bind expression like from/join in a SelectClause
+    object QueryClauseAliasedMethod {
+      data class Data(val caller: ReceiverCaller, val args: List<IrExpression>, val newMethod: String)
+
+      context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
+        // E.g. is Query."map"
+        it.reciverIs<QueryClause<*>>() && it.markedQueryClauseAliasedMethod() != null
+
+      context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
+        customPattern1(x) { call: IrCall ->
+          if (matchesMethod(call)) {
+            on(call).match(
+              // (SelectValue).from(innerQuery) <- FunctionMem1, `from` is a member of SelectValue
+              case(Ir.Call.FunctionMem[Is(), Is()]).then { reciver, params ->
+                call.markedQueryClauseAliasedMethod()?.let { newMethod ->
                   Components1(Data(reciver, params, newMethod))
                 }
               }

@@ -24,20 +24,23 @@ object Model1 {
     var start = System.currentTimeMillis()
     val x =
       query {
-        val x = from(Table<Person>())
-        val a = join(Table<Address>()).on { street == x().name?.first?.name }
-        x
+        val x = fromDirect(Table<Person>())
+        println("================= Value: ==============" + x)
+        val a = join(Table<Address>()).on { street == x.name?.first?.name }
+        a
       }
     println("------------ Query Making Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
 
     println("=============== XR ===============")
     println(x.xr.showRaw())
 
-    val tokenized = PostgresDialect(TraceConfig(listOf(TraceType.SqlNormalizations, TraceType.Normalizations, TraceType.RepropagateTypes))).translate(x.xr)
+    //TraceConfig(listOf(TraceType.SqlNormalizations, TraceType.Normalizations, TraceType.RepropagateTypes))
+    val tokenized = PostgresDialect(TraceConfig.empty).translate(x.xr)
     println("=============== Tokenized ===============")
     println(SqlFormatter.format(tokenized.toString()))
   }
 }
+
 
 
 //fun main() {
@@ -129,8 +132,7 @@ object Model1Simple {
   }
 }
 
-fun main() {
-}
+
 
 
 //
@@ -199,16 +201,21 @@ object Model4 {
     // TODO Need to try a nested `select {  }` inside of from and `join`
     val x =
       query {
-        val p = from(Table<Person>())
-        val a = join(Table<Address>()).on { street == p().name }
-        groupBy { p().name }
-        select { p() to a() }
+        val p = fromDirect(Table<Person>())
+        val a = join(Table<Address>()).onDirect { street == p.name }
+        groupBy { p.name }
+        select { p to a }
       }
 
-    println("=============== Raw ===============\n" + x)
-    println("=============== Code ===============\n" + x)
+    println("=============== SQL ===============\n" + x)
+    println(SqlFormatter.format(PostgresDialect(TraceConfig.empty).translate(x.xr).toString()))
   }
 }
+
+fun main() {
+  Model4.use()
+}
+
 
 
 
