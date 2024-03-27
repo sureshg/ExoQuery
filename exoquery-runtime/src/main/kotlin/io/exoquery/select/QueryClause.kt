@@ -43,6 +43,23 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
   }
 ) {
 
+  @QueryClauseAliasedMethod("fromDirectAliased")
+  public suspend fun <R> fromDirect(query: Query<R>): R =
+    fromDirectAliased(query, query.freshIdent(), XR.Location.Synth)
+
+  @Suppress("UNCHECKED_CAST")
+  @OptIn(ExoInternal::class)
+  public suspend fun <R> fromDirectAliased(query: Query<R>, alias: String, loc: XR.Location): R =
+    perform { mapping ->
+      val sqlVar = SqlVariable<R>(alias)
+      // Before going further, take any SqlVariable values and reify the actual name-fields into them
+      // since they are specifically returned from the select-value from/join clauses.
+      val resultQuery = mapping(IllegalArgumentException("stuff stuff") as R).withReifiedIdents()
+      val ident = XR.Ident(sqlVar.getVariableName(), resultQuery.xr.type, loc)
+      // No quoted context in this case so only the inner query of this has dynamic binds, we just get those
+      (QueryContainer<A>(XR.FlatMap(query.xr, ident, resultQuery.xr, loc), query.binds + resultQuery.binds)) /*as Query<A>*/
+    }
+
   @QueryClauseAliasedMethod("fromAliased")
   public suspend fun <R> from(query: Query<R>): SqlVariable<R> =
     fromAliased(query, query.freshIdent(), XR.Location.Synth)

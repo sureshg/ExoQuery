@@ -6,6 +6,7 @@ import io.exoquery.select.QueryClause
 import io.exoquery.select.program
 import io.exoquery.norm.ReifyRuntimeIdents
 import io.exoquery.norm.ReifyRuntimeQueries
+import io.exoquery.util.head
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import java.util.*
@@ -68,8 +69,18 @@ class SqlVariable<T>(variableName: String /* don't want this to intersect with e
     fun <T> new(name: String) = SqlVariable<T>(name)
   }
 
+  fun invokeHidden(): T =
+    throw IllegalStateException("meaningful error about how can't use a sql variable in a runtime context and it should be impossible anyway becuase its not an EnclosedExpression")
+
   context(EnclosedExpression) operator fun invoke(): T =
     throw IllegalStateException("meaningful error about how can't use a sql variable in a runtime context and it should be impossible anyway becuase its not an EnclosedExpression")
+}
+
+class GroupedQuery<T>(private val head: XR.Query, private val byAlias: XR.Ident, private val byBody: XR.Expression, private val mapBinds: DynamicBinds) {
+  @LambdaMethodProducingXR("mapExpr")
+  fun <R> map(f: context(EnclosedExpression) (T) -> R): Query<R> = error("The map expression of the Query was not inlined")
+  fun <R> mapExpr(mapAlias: List<XR.Ident>, mapBody: XR, binds: DynamicBinds, loc: XR.Location): Query<R> =
+    QueryContainer<R>(XR.GroupByMap(head, byAlias, byBody, mapAlias.head, mapBody as XR.Expression, loc), mapBinds + binds).withReifiedSubQueries()
 }
 
 
@@ -103,6 +114,11 @@ sealed interface Query<T> {
   fun <R> map(f: context(EnclosedExpression) (T) -> R): Query<R> = error("The map expression of the Query was not inlined")
   fun <R> mapExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<R> =
     QueryContainer<R>(XR.Map(this.xr, id.first(), body as XR.Expression, loc), binds).withReifiedSubQueries()
+
+  @LambdaMethodProducingXR("groupByExpr")
+  fun <R> groupBy(f: context(EnclosedExpression) (T) -> R): GroupedQuery<R> =  error("The groupBy expression of the Query was not inlined")
+  fun <R> groupByExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): GroupedQuery<R> =
+    GroupedQuery<R>(this.xr, id.head, body as XR.Expression, binds)
 
   @LambdaMethodProducingXR("filterExpr")
   fun <R> filter(f: context(EnclosedExpression) (T) -> R): Query<T> = error("The filter expression of the Query was not inlined")

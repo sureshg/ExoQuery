@@ -7,6 +7,7 @@ import io.exoquery.sql.SqlQueryApply
 import io.exoquery.util.Globals
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
+import kotlin.reflect.KProperty
 
 object Model1 {
   data class Person(val id: Int, val name: Name?, val age: Int)
@@ -47,6 +48,7 @@ object Model1 {
 //  val sql = q.xr.translateWith(PostgresDialect(TraceConfig.empty))
 //  println(sql.toString())
 //}
+
 
 
 object Model1Simple {
@@ -128,7 +130,6 @@ object Model1Simple {
 }
 
 fun main() {
-  Model1Simple.use()
 }
 
 

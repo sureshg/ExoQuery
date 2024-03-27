@@ -15,6 +15,10 @@ class SanitySpec: FreeSpec({
       val q = qr1.filter { x -> x.s == "Joe" }
       q.xr.show() shouldBe """query("TestEntity").filter { x -> x.s == "Joe" }"""
     }
+    "groupBy/map" {
+      val q = qr1.groupBy { x -> x.i }.map { i -> i } // TODO need an aggregation operator DSL function
+      println(q.xr.show()) //shouldBe """query("TestEntity").filter { x -> x.s == "Joe" }"""
+    }
     "flatMap" {
       val q = qr1.flatMap { x -> qr2.filter { y -> y.s == x.s } }
       q.xr.show() shouldBe """query("TestEntity").flatMap { x -> query("TestEntity2").filter { y -> y.s == x.s } }"""

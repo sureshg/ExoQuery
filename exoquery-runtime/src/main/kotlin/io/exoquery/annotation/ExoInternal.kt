@@ -14,6 +14,9 @@ annotation class ParseXR
 @Retention(AnnotationRetention.BINARY)
 annotation class MethodProducingXR(val callMethod: String)
 
+// TODO having the lambda ident be a List<XR.Ident> where basically every single lambda-funciton has only
+//      one is confusing. Maybe go back to having only one in this case. We can introduce new annotation/transformer
+//      if we find a case where multiple are needed.
 @Retention(AnnotationRetention.BINARY)
 annotation class LambdaMethodProducingXR(val callMethod: String)
 
