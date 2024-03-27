@@ -114,9 +114,12 @@ class VisitPropagateVariables(
     }
 
 
-    // TODO Once these are detected, find instances of @QueryClauseDirectMethod (e.g. fromDirect) that are not in the expected form i.e. var x = from(...) and throw an error
+    // TODO Once these are detected, find instances of @QueryClauseDirectMethod (e.g. fromDirect) that are not in the expected form i.e. var x = from(Table<Person>) and throw an error
     //      it seems that just replacing the type here makes actual instances of the variable usable (at least via something line println(x)) so need to look into
-    //      what is required further.
+    //      what is required further. However, if you do something like x.firstName then it will say "class cast exception SqlVariable to Person." That means that
+    //      certainly for the sake of sanity at the end of the compiler plugins' running there should be a step to convert x (and all of these variables)
+    //      into their SqlVariable.invoke() forms. The interesting question is, what is their type going to be at that time? If it is SqlVariable, how do we know
+    //      which ones to add the .invoke() to?
   }
 
   context(CompileLogger, BuilderContext) fun visitCallLiveVar(expression: IrCall, varName: String): IrElement {

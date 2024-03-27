@@ -203,6 +203,7 @@ object Model4 {
       query {
         val p = fromDirect(Table<Person>())
         val a = join(Table<Address>()).onDirect { street == p.name }
+        println(p.name)
         groupBy { p.name }
         select { p to a }
       }
