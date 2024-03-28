@@ -161,6 +161,14 @@ class ApplyMap(val traceConfig: TraceConfig) {
         trace("ApplyMap inside sortBy for $q") andReturn { XR.Map.csf(XR.SortBy.csf(a, b, er, comp.ordering)(comp), b, c)(compLeft) }
       },
 
+      // TODO This is not in Quill. Is it valid?
+      // a.map(b => c).distinctOn(d => e) =>
+      //    a.distinctOn(b => e[d := c]).map(b => c)
+      // case(XR.DistinctOn[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
+      //   val er = BetaReduction(e, d to c)
+      //   trace("ApplyMap inside sortBy for $q") andReturn { XR.Map.csf(XR.DistinctOn.csf(a, b, er)(comp), b, c)(compLeft) }
+      // },
+
 //      // a.map(b => c).sortBy(d => e) =>
 //      //    a.sortBy(b => e[d := c]).map(b => c)
 //      case SortBy(DetachableMap(a, b, c), d, e, f) =>

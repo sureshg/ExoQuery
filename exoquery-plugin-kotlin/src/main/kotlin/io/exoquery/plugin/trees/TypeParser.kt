@@ -3,15 +3,43 @@ package io.exoquery.plugin.trees
 import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
+import io.exoquery.ParseError
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.parseError
+import io.exoquery.plugin.location
+import io.exoquery.plugin.locationXR
 import io.exoquery.xr.XRType
+import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isBoolean
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 object TypeParser {
-  context(ParserContext, CompileLogger) fun parse(expr: IrType): XRType =
+  context(ParserContext, CompileLogger) fun of(expr: IrExpression) =
+    ofElementWithType(expr, expr.type)
+
+  context(ParserContext, CompileLogger) fun of(expr: IrVariable) =
+    ofElementWithType(expr, expr.type)
+
+  context(ParserContext, CompileLogger) fun of(expr: IrValueParameter) =
+    ofElementWithType(expr, expr.type)
+
+  context(ParserContext, CompileLogger) private fun ofElementWithType(expr: IrElement, type: IrType) =
+    try {
+      parse(type)
+    } catch (e: ParseError) {
+      val loc = expr.location()
+      parseError(
+        """|(${loc.path}:${loc.line}:${loc.column}) ERROR Could not parse type: ${type.dumpKotlinLike()} 
+           |====== from the statement ======
+           |${expr.dumpKotlinLike()}
+           |""".trimMargin())
+    }
+
+  context(ParserContext, CompileLogger) private fun parse(expr: IrType): XRType =
     on(expr).match<XRType>(
       // TODO why for Components1 it's (type) bot for Components2 it's (type, type)
       //     think this is a bug with DecoMat.
@@ -40,7 +68,11 @@ object TypeParser {
         //error("----------- Got here: ${type} ----------")
         XRType.Generic
       }
-
-    ) ?: parseError("Could not parse type from: ${expr.dumpKotlinLike()}")
+    ) ?: run {
+      val loc = currentLocation()
+      parseError(
+        """|(${loc.path}:${loc.line}:${loc.column}) ERROR Could not parse type from: ${expr.dumpKotlinLike()}
+           |""".trimMargin())
+    }
 
 }

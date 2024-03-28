@@ -27,6 +27,7 @@ import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.types.checker.SimpleClassicTypeSystemContext.isExtensionFunctionType
 import kotlin.reflect.KClass
 
 val KClass<*>.qualifiedNameForce get(): String =
@@ -45,6 +46,7 @@ fun IrType.findMethodOrFail(methodName: String) = run {
 
 // WARNING assuming (for now) that the extension methods are in the same package as the Class they're being called from.
 // can relax this assumption later by adding an optional package-field to ReplacementMethodToCall and propagating it here
+// TODO Need to filter by reciever type i.e. what if there are multiple extension functions named the same thing
 context(BuilderContext) fun IrType.findExtensionMethodOrFail(methodName: String) = run {
   (this
     .classOrNull ?: error("Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} type is not a class."))

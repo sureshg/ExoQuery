@@ -34,7 +34,7 @@ class TransformJoinOn(override val ctx: BuilderContext, val superTransformer: Vi
     val reciverParam = funExpression.function.extensionReceiverParameter ?: structError("Extension Reciever for on-clause was null")
     val reciverSymbol = reciverParam.symbol.safeName
     val paramIdent = run {
-      val tpe = TypeParser.parse(reciverParam.type)
+      val tpe = TypeParser.of(reciverParam)
       XR.Ident(reciverSymbol, tpe, reciverParam.location().toLocationXR())
     }
 

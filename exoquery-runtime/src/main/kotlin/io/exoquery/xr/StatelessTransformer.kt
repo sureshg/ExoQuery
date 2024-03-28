@@ -26,6 +26,8 @@ interface StatelessTransformer {
       }
     }
 
+  fun invokeIdent(xr: XR.Ident) = xr
+
   operator fun invoke(xr: XR.Variable): XR.Variable = with(xr) { Variable.cs(name, invoke(rhs)) }
   operator fun invoke(xr: XR.Branch): XR.Branch = with(xr) { XR.Branch.cs(invoke(cond), invoke(then)) }
   operator fun invoke(xr: XR.Block): XR.Block = with(xr) { Block.cs(stmts.map { invoke(it) }, invoke(output)) }
@@ -38,7 +40,7 @@ interface StatelessTransformer {
         is Function1 -> Function1.cs(param, invoke(body))
         is FunctionN -> FunctionN.cs(params, invoke(body))
         is FunctionApply -> FunctionApply.cs(invoke(function), args.map { invoke(it) })
-        is Ident -> this
+        is Ident -> invokeIdent(this)
         is IdentOrigin -> this
         is Property -> Property.cs(invoke(of), name)
         is UnaryOp -> UnaryOp.cs(op, invoke(expr))
@@ -57,23 +59,23 @@ interface StatelessTransformer {
   operator fun invoke(xr: XR.Query): XR.Query =
     with(xr) {
       when (this) {
-        is FlatMap -> FlatMap.cs(invoke(head), id, invoke(body))
-        is XR.Map -> XR.Map.cs(invoke(head), id, invoke(body))
+        is FlatMap -> FlatMap.cs(invoke(head), invokeIdent(id), invoke(body))
+        is XR.Map -> XR.Map.cs(invoke(head), invokeIdent(id), invoke(body))
         is Entity -> this
-        is Filter -> Filter.cs(invoke(head), id, invoke(body))
+        is Filter -> Filter.cs(invoke(head), invokeIdent(id), invoke(body))
         is Union -> Union.cs(invoke(a), invoke(b))
         is UnionAll -> UnionAll.cs(invoke(a), invoke(b))
         is Distinct -> Distinct.cs(invoke(head))
-        is DistinctOn -> DistinctOn.cs(invoke(head), id, invoke(by))
+        is DistinctOn -> DistinctOn.cs(invoke(head), invokeIdent(id), invoke(by))
         is Drop -> Drop.cs(invoke(head), invoke(num))
-        is SortBy -> SortBy.cs(invoke(head), id, invoke(criteria), ordering)
+        is SortBy -> SortBy.cs(invoke(head), invokeIdent(id), invoke(criteria), ordering)
         is Take -> Take.cs(invoke(head), invoke(num))
-        is FlatJoin -> FlatJoin.cs(invoke(head), id, invoke(on))
+        is FlatJoin -> FlatJoin.cs(invoke(head), invokeIdent(id), invoke(on))
         is FlatGroupBy -> FlatGroupBy.cs(invoke(by))
         is FlatSortBy -> FlatSortBy.cs(invoke(by), ordering)
         is FlatFilter -> FlatFilter.cs(invoke(by))
-        is ConcatMap -> ConcatMap.cs(invoke(head), id, invoke(body))
-        is GroupByMap -> GroupByMap.cs(invoke(head), byAlias, invoke(byBody), mapAlias, invoke(mapBody))
+        is ConcatMap -> ConcatMap.cs(invoke(head), invokeIdent(id), invoke(body))
+        is GroupByMap -> GroupByMap.cs(invoke(head), invokeIdent(byAlias), invoke(byBody), invokeIdent(mapAlias), invoke(mapBody))
         is Nested -> Nested.cs(invoke(head))
         // Infix can both be Expression and Query
         is Infix -> Infix.cs(parts, params.map { invoke(it) })

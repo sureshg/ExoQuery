@@ -129,6 +129,22 @@ sealed interface Query<T> {
   fun <R> filterExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<R> =
     QueryContainer<R>(XR.Filter(this.xr, id.first(), body as XR.Expression, loc), binds).withReifiedSubQueries()
 
+  /** @see distinctExpr */
+  @MethodProducingXR("distinctExpr")
+  fun distinct(): Query<T> = error("The sort-by expression of the Query was not inlined")
+  fun distinctExpr(binds: DynamicBinds, loc: XR.Location): Query<T> =
+    QueryContainer<T>(XR.Distinct(this.xr, loc), binds).withReifiedSubQueries()
+
+  @LambdaMethodProducingXR("distinctExpr")
+  fun <R> distinctBy(): Query<T> = error("The sort-by expression of the Query was not inlined")
+  fun distinctExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<T> =
+    QueryContainer<T>(XR.DistinctOn(this.xr, id.first(), body as XR.Expression, loc), binds).withReifiedSubQueries()
+
+  @MethodProducingXR("distinctExpr")
+  fun nested(): Query<T> = error("The sort-by expression of the Query was not inlined")
+  fun nestedExpr(binds: DynamicBinds, loc: XR.Location): Query<T> =
+    QueryContainer<T>(XR.Nested(this.xr, loc), binds).withReifiedSubQueries()
+
   @LambdaMethodProducingXR("sortedByExpr")
   fun <R> sortedBy(f: context(EnclosedExpression) (T) -> R): Query<T> = error("The sort-by expression of the Query was not inlined")
   fun <R> sortedByExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<R> =
@@ -170,6 +186,10 @@ sealed interface Query<T> {
   fun <R> flatMapExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<R> =
     QueryContainer<R>(XR.FlatMap(this.xr, id.first(), body as XR.Query, loc), binds).withReifiedSubQueries()
 
+  @LambdaMethodProducingXR("concatMapExpr")
+  fun <R> concatMap(f: (T) -> Iterable<R>): Query<R> = error("needs to be replaced by compiler")
+  fun <R> concatMapExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<R> =
+    QueryContainer<R>(XR.ConcatMap(this.xr, id.first(), body as XR.Expression, loc), binds).withReifiedSubQueries()
 }
 
 data class QueryContainer<T>(override val xr: XR.Query, override val binds: DynamicBinds): Query<T>

@@ -22,6 +22,8 @@ data class CompileLogger(val messageCollector: MessageCollector, val currentFile
     messageCollector.report(CompilerMessageSeverity.ERROR, msg, loc)
   }
 
+  fun currentLocation() = macroInvokeSite.location(currentFile)
+
   companion object {
     operator fun invoke(config: CompilerConfiguration, currentFile: IrFileEntry, macroInvokeSite: IrElement) =
       config.get(CLIConfigurationKeys.MESSAGE_COLLECTOR_KEY, MessageCollector.NONE).let {

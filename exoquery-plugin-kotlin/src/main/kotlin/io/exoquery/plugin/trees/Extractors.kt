@@ -3,12 +3,9 @@
 package io.exoquery.plugin.trees
 
 import io.decomat.*
-import io.exoquery.plugin.dataClassProperties
-import io.exoquery.plugin.isDataClass
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.safeName
 import io.exoquery.parseError
-import io.exoquery.plugin.caller
+import io.exoquery.plugin.*
 import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.xr.XRType
@@ -107,7 +104,7 @@ object Ir {
         customPattern1(realType) { it: IrType ->
           val cls = it.classOrNull
           val simpleTypeArgs = it.simpleTypeArgs
-          if (cls != null && simpleTypeArgs.size == 1 && it.classFqName?.asString() == queryTypeName) {
+          if (cls != null && simpleTypeArgs.size == 1 && it.isClass<io.exoquery.Query<*>>()) {
             Components1(simpleTypeArgs.first())
           }
           else null

@@ -62,7 +62,7 @@ private class ParserCollector {
   context(ParserContext, CompileLogger) fun parseBlockStatement(expr: IrStatement): XR.Variable =
     on(expr).match(
       case(Ir.Variable[Is(), Is()]).thenThis { name, rhs ->
-        val irType = TypeParser.parse(type)
+        val irType = TypeParser.of(this)
         XR.Variable(XR.Ident(name, irType, rhs.locationXR()), parseExpr(rhs), expr.loc)
       }
     ) ?: parseError("Could not parse Ir Variable statement from:\n${expr.dumpSimple()}")
@@ -110,7 +110,7 @@ private class ParserCollector {
         // Add the query expression to the binds list
         binds.add(bindId, RuntimeBindValueExpr.RuntimeQueryExpr(expr))
 
-        XR.RuntimeQueryBind(bindId, TypeParser.parse(expr.type), expr.loc)
+        XR.RuntimeQueryBind(bindId, TypeParser.of(expr), expr.loc)
       },
 
       // Binary Operators
@@ -141,7 +141,7 @@ private class ParserCollector {
           this.dispatchReceiver?.let { RuntimeBindValueExpr.SqlVariableIdentExpr(it) } ?: DomainErrors.NoDispatchRecieverFoundForSqlVarCall(this)
         )
         //warn(binds.show().toString())
-        XR.IdentOrigin(bindId, symName, TypeParser.parse(this.type), expr.locationXR())
+        XR.IdentOrigin(bindId, symName, TypeParser.of(this), expr.locationXR())
       },
 
       // Other situations where you might have an identifier which is not an SqlVar e.g. with variable bindings in a Block (inside an expression)
@@ -158,7 +158,7 @@ private class ParserCollector {
         //  error("The symbol `${sym.safeName}` is external. Cannot find it in the symbols-list belonging to the clause ${internalVars.symbols.map { it.safeName }}", loc)
         //}
 
-        XR.Ident(sym.safeName, TypeParser.parse(this.type), this.locationXR()) // this.symbol.owner.type
+        XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR()) // this.symbol.owner.type
 
         // TODO Need to enhance parseFail to return the failed symbol so later when the
         //      compile-time message is produced we can get the row/column of the bad symbol
@@ -180,7 +180,7 @@ private class ParserCollector {
             else -> parseError("Illegal argument in the `getSqlVar` function:\n${this.dumpKotlinLike()}")
           }
 
-        XR.Ident(argValue, TypeParser.parse(this.type), this.locationXR())
+        XR.Ident(argValue, TypeParser.of(this), this.locationXR())
       },
       // case(Ir.Call.Function[Is()]).thenIf { (list) -> list.size == 2 }.thenThis { list ->
       //   val a = list.get(0)

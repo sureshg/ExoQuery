@@ -23,7 +23,7 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
     val lifter = makeLifter()
     val paramIdentXR = run {
       val name = lambdaArg.name.asString()
-      val tpe = TypeParser.parse(lambdaArg.type)
+      val tpe = TypeParser.of(lambdaArg)
       XR.Ident(name, tpe, location)
     }
     val paramIdentExpr = lifter.liftIdent(paramIdentXR)

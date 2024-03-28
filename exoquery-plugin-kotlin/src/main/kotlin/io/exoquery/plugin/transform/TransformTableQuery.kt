@@ -61,7 +61,7 @@ class TransformTableQuery(val ctx: BuilderContext) {
         val lifter = ctx.makeLifter()
         val builder = ctx.builder
 
-        val xrType = TypeParser.parse(entityClass).productOrFail(entityClass)
+        val xrType = TypeParser.of(this).productOrFail(entityClass)
         val xr = XR.Entity(entityClass.classOrFail("Error derving class of TableQuery").safeName, xrType, expression.locationXR())
         val caller = this.dispatchReceiver ?: kotlin.error("Dispatch reciever of the following expression was null. This should not be possible:\n" + expression.dumpKotlinLike())
 

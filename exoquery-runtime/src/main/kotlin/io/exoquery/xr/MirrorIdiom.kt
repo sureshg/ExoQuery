@@ -130,7 +130,7 @@ class MirrorIdiom {
       is XR.Map -> "${head.token}.map { ${id.token} -> ${body.token} }"
       is FlatMap -> "${head.token}.flatMap { ${id.token} -> ${body.token} }"
       is ConcatMap -> "${head.token}.concatMap { ${id.token} -> ${body.token} }"
-      is SortBy -> "${head.token}.sortBy { ${id.token} -> ${criteria.token})(${ordering.token} }"
+      is SortBy -> "${head.token}.sortedBy { ${id.token} -> ${criteria.token} }(${ordering.token})"
       is GroupByMap -> "${head.token}.groupByMap { ${byAlias.token} -> ${byBody.token} } { ${mapAlias.token} -> ${mapBody.token} }"
       is Take -> "${head.token}.take(${num.token})"
       is Drop -> "${head.token}.drop(${num.token})"

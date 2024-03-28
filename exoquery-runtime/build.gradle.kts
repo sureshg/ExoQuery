@@ -50,7 +50,7 @@ dependencies {
     ksp("io.exoquery:decomat-ksp:0.1.215")
     implementation("io.exoquery:pprint-kotlin:2.0.1")
     // Actually this is going to be 0.0.5 - using an unpublished one now
-    implementation("io.exoquery:decomat-core:0.1.215")
+    api("io.exoquery:decomat-core:0.1.215")
     implementation("com.facebook:ktfmt:0.43")
     api("io.exoquery:terpal-runtime:1.0.6")
     api("com.github.vertical-blank:sql-formatter:2.0.4")
