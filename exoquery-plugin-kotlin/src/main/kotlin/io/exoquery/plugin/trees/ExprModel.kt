@@ -1,6 +1,7 @@
 package io.exoquery.plugin.trees
 
 import io.exoquery.RuntimeBindValue
+import io.exoquery.plugin.ReplacementMethodToCall
 import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.callMethod
@@ -17,7 +18,7 @@ context (BuilderContext) fun RuntimeBindValueExpr.makeDynamicBindsIr(): IrExpres
   when (this) {
     is RuntimeBindValueExpr.SqlVariableIdentExpr ->
       // Execute the expression `RuntimeBindValue.SqlVariableIdent()`
-      make<RuntimeBindValue.SqlVariableIdent>(Caller.DispatchReceiver(sqlVariableInstance).callMethod("getVariableName")())
+      make<RuntimeBindValue.SqlVariableIdent>(Caller.DispatchReceiver(sqlVariableInstance).callMethod(ReplacementMethodToCall("getVariableName"))())
     is RuntimeBindValueExpr.RuntimeQueryExpr ->
       make<RuntimeBindValue.RuntimeQuery>(queryElement)
   }

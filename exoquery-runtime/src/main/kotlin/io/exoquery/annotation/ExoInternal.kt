@@ -8,6 +8,12 @@ annotation class ExoInternal
 @Retention(AnnotationRetention.BINARY)
 annotation class SqlVar
 
+final enum class ChangeReciever {
+  ToDispatch,
+  ToExtension,
+  DoNothing
+}
+
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoMethodName(val name: String)
 
@@ -16,22 +22,22 @@ annotation class ExoMethodName(val name: String)
 annotation class ParseXR
 
 @Retention(AnnotationRetention.BINARY)
-annotation class MethodProducingXR(val callMethod: String)
+annotation class MethodProducingXR(val callMethod: String, val change: ChangeReciever = ChangeReciever.DoNothing)
 
 // TODO having the lambda ident be a List<XR.Ident> where basically every single lambda-funciton has only
 //      one is confusing. Maybe go back to having only one in this case. We can introduce new annotation/transformer
 //      if we find a case where multiple are needed.
 @Retention(AnnotationRetention.BINARY)
-annotation class LambdaMethodProducingXR(val callMethod: String)
+annotation class LambdaMethodProducingXR(val callMethod: String, val change: ChangeReciever = ChangeReciever.DoNothing)
 
 @Retention(AnnotationRetention.BINARY)
-annotation class QueryClauseDirectMethod(val callMethod: String)
+annotation class QueryClauseDirectMethod(val callMethod: String, val change: ChangeReciever = ChangeReciever.DoNothing)
 
 @Retention(AnnotationRetention.BINARY)
-annotation class QueryClauseAliasedMethod(val callMethod: String)
+annotation class QueryClauseAliasedMethod(val callMethod: String, val change: ChangeReciever = ChangeReciever.DoNothing)
 
 @Retention(AnnotationRetention.BINARY)
-annotation class QueryClauseUnitBind(val callMethod: String)
+annotation class QueryClauseUnitBind(val callMethod: String, val change: ChangeReciever = ChangeReciever.DoNothing)
 
 
 /*

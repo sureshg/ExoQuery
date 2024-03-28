@@ -7,7 +7,6 @@ import io.decomat.on
 import io.exoquery.plugin.buildLocationXR
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.safeName
 import io.exoquery.plugin.trees.ExtractorsDomain
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.select.QueryClause
@@ -95,7 +94,7 @@ class VisitPropagateVariables(
 
     return irVar.match(
       case(Ir.Variable[Is(), ExtractorsDomain.Call.QueryClauseDirectMethod[Is()]]).then { varName, (methodData) ->
-        val (caller, args, newMethod) = methodData
+        val (caller, args, replacementMethod) = methodData
 
         // need to recursively transform the arguments e.g. if there are any @QueryClauseAliasedMethod/DirectMethod inside of it
         // for example if it's a `val x = from( query { ... })` and the inner query has variables that also need to be transformed
@@ -104,7 +103,7 @@ class VisitPropagateVariables(
         // because the `join` clause needs to be changed for joinAliased in via the visitCallLiveVar visitor here
         val newCaller = caller.transform(this, varName)
 
-        val newCall = newCaller.callMethod(newMethod)(*newArgs.toTypedArray())
+        val newCall = newCaller.callMethod(replacementMethod)(*newArgs.toTypedArray())
         irVar.type = newCall.type
         irVar.initializer = newCall
         irVar
@@ -132,7 +131,7 @@ class VisitPropagateVariables(
         val expr = callData.args.first()
         val newExpression = super.visitExpression(expr, null)
         val loc = makeLifter().liftLocation(expr.buildLocationXR())
-        callData.caller.callMethod(callData.newMethod).invoke(newExpression, builder.irString(varName), loc)
+        callData.caller.callMethod(callData.replacementMethodToCall).invoke(newExpression, builder.irString(varName), loc)
       },
       // This should be the catch-all but does it actully work?
       case(Is<Any>()).then {

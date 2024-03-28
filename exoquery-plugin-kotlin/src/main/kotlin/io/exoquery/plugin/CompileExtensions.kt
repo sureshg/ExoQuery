@@ -1,9 +1,11 @@
 package io.exoquery.plugin
 
+import io.decomat.*
 import io.decomat.fail.fail
 import io.exoquery.annotation.*
 import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.transform.Caller
+import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
@@ -15,17 +17,16 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
-import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrConst
-import org.jetbrains.kotlin.ir.expressions.IrConstKind
-import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.Name
 import kotlin.reflect.KClass
 
 val KClass<*>.qualifiedNameForce get(): String =
@@ -40,6 +41,17 @@ fun IrType.findMethodOrFail(methodName: String) = run {
     .classOrNull ?: error("Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} type is not a class."))
     .functions
     .find { it.safeName == methodName } ?: error("Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} because the method does not exist.")
+}
+
+// WARNING assuming (for now) that the extension methods are in the same package as the Class they're being called from.
+// can relax this assumption later by adding an optional package-field to ReplacementMethodToCall and propagating it here
+context(BuilderContext) fun IrType.findExtensionMethodOrFail(methodName: String) = run {
+  (this
+    .classOrNull ?: error("Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} type is not a class."))
+    .let { classSym ->
+      pluginCtx.referenceFunctions(CallableId(FqName(classSym.owner.packageFqName.toString()), Name.identifier(methodName))).firstOrNull()
+        ?: error("Cannot locate the extension method ${classSym.owner.packageFqName.toString()}.${methodName} from the type: ${this.dumpKotlinLike()} because the method does not exist.")
+    }
 }
 
 fun IrClassSymbol.isDataClass() = this.owner.isData
@@ -111,30 +123,42 @@ inline fun <reified T> IrCall.reciverIs() =
 inline fun <reified T> IrCall.reciverIs(methodName: String) =
   this.dispatchReceiver?.isClass<T>() ?: false && this.symbol.safeName == methodName
 
+data class ReplacementMethodToCall(val methodToCall: String, val callerType: ChangeReciever = ChangeReciever.DoNothing) {
+  companion object {
+    fun from(call: IrConstructorCall) =
+      call.getValueArgument(0)?.let { firstArg ->
+        if (firstArg is IrConst<*> && firstArg.kind == IrConstKind.String) {
+          val secondArg: ChangeReciever =
+            call.getValueArgument(1)?.let { secondArg ->
+              secondArg.match(
+                case(Ir.GetEnumValue[Is()]).then { it.safeName }
+              )
+            }?.let { secondArgValue ->
+              ChangeReciever.valueOf(secondArgValue)
+            }
+            ?: ChangeReciever.DoNothing
+
+          ReplacementMethodToCall(firstArg.value as String, secondArg)
+        } else
+          null
+      }
+  }
+}
+
 fun IrCall.markedQueryClauseDirectMethod() =
-  this.symbol.owner.annotations.findAnnotation(QueryClauseDirectMethod::class.fqNameForce)
-    ?.let { it.getValueArgument(0) }
-    ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }
+  this.symbol.owner.annotations.findAnnotation(QueryClauseDirectMethod::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
 
 fun IrCall.markedQueryClauseAliasedMethod() =
-  this.symbol.owner.annotations.findAnnotation(QueryClauseAliasedMethod::class.fqNameForce)
-    ?.let { it.getValueArgument(0) }
-    ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }
+  this.symbol.owner.annotations.findAnnotation(QueryClauseAliasedMethod::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
 
 fun IrCall.markedQueryClauseUnitBind() =
-  this.symbol.owner.annotations.findAnnotation(QueryClauseUnitBind::class.fqNameForce)
-    ?.let { it.getValueArgument(0) }
-    ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }
+  this.symbol.owner.annotations.findAnnotation(QueryClauseUnitBind::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
 
 fun IrCall.markedMethodProducingXR() =
-  this.symbol.owner.annotations.findAnnotation(MethodProducingXR::class.fqNameForce)
-    ?.let { it.getValueArgument(0) }
-    ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }
+  this.symbol.owner.annotations.findAnnotation(MethodProducingXR::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
 
 fun IrCall.markedLambdaMethodProducingXR() =
-  this.symbol.owner.annotations.findAnnotation(LambdaMethodProducingXR::class.fqNameForce)
-    ?.let { it.getValueArgument(0) }
-    ?.let { if (it is IrConst<*> && it.kind == IrConstKind.String) it.value as String else null }
+  this.symbol.owner.annotations.findAnnotation(LambdaMethodProducingXR::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
 
 fun IrCall.isExoMethodAnnotated(name: String) =
   this.symbol.owner.annotations.findAnnotation(ExoMethodName::class.fqNameForce)
@@ -149,5 +173,11 @@ fun IrValueParameter.isAnnotatedParseXR() =
   this.annotations.hasAnnotation(ParseXR::class.fqNameForce)
 
 fun IrCall.caller() =
-  this.extensionReceiver?.let { Caller.ExtensionReceiver(it) } ?:
-  this.dispatchReceiver?.let { Caller.DispatchReceiver(it) }
+  this.extensionReceiver?.let {
+    val changeRecieverCall =
+
+    Caller.ExtensionReceiver(it)
+  } ?:
+  this.dispatchReceiver?.let {
+    Caller.DispatchReceiver(it)
+  }

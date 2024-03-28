@@ -4,14 +4,12 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.match
 import io.decomat.on
+import io.exoquery.annotation.ChangeReciever
 import io.exoquery.structError
 import io.exoquery.parseError
-import io.exoquery.plugin.location
-import io.exoquery.plugin.locationXR
+import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
-import io.exoquery.plugin.safeName
-import io.exoquery.plugin.toLocationXR
 import io.exoquery.plugin.trees.*
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.expressions.IrCall
@@ -59,7 +57,7 @@ class TransformJoinOn(override val ctx: BuilderContext, val superTransformer: Vi
 
     val bindsList = bindsAccum.makeDynamicBindsIr()
 
-    return newCaller.callMethod("onExpr").invoke(paramIdentExpr, onLambdaBodyExpr, bindsList, loc)
+    return newCaller.callMethod(ReplacementMethodToCall("onExpr", ChangeReciever.ToExtension)).invoke(paramIdentExpr, onLambdaBodyExpr, bindsList, loc)
   }
 }
 

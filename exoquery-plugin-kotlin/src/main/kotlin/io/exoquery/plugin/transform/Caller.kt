@@ -27,4 +27,20 @@ sealed interface Caller {
   data class DispatchReceiver(override val reciver: IrExpression): ReceiverCaller(reciver)
   data class ExtensionReceiver(override val reciver: IrExpression): ReceiverCaller(reciver)
   data class TopLevelMethod(val packageName: String): Caller
+
+  fun toDispatch() =
+    when (this) {
+      is Caller.DispatchReceiver -> this
+      is Caller.ExtensionReceiver -> Caller.DispatchReceiver(reciver)
+      // Can't do anything if it's a top-level method so ignore
+      is Caller.TopLevelMethod -> this
+    }
+
+  fun toExtension() =
+    when (this) {
+      is Caller.DispatchReceiver -> Caller.ExtensionReceiver(reciver)
+      is Caller.ExtensionReceiver -> this
+      // Can't do anything if it's a top-level method so ignore
+      is Caller.TopLevelMethod -> this
+    }
 }

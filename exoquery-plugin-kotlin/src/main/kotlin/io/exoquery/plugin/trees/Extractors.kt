@@ -195,6 +195,13 @@ object Ir {
       }
   }
 
+  object GetEnumValue {
+    operator fun get(value: Pattern0<IrSymbol>) =
+      customPattern1(value) { it: IrGetEnumValue ->
+        Components1(it.symbol)
+      }
+  }
+
 
 
   object Const {

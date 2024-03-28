@@ -25,7 +25,7 @@ class TransformSelectClauseUnitMethod(override val ctx: BuilderContext, val matc
     // For join(addresses).on { id == person.id } :
     //    funExpression would be `id == person.id`. Actually it includes the "hidden" reciver so it would be:
     //    `$this$on.id == person.id`
-    val (caller, _, blockBody, newMethod) =
+    val (caller, _, blockBody, annotationData) =
       expression.match(
         case(matcher[Is()]).then { queryCallData -> queryCallData }
       ) ?: parseError("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
@@ -48,6 +48,6 @@ class TransformSelectClauseUnitMethod(override val ctx: BuilderContext, val matc
 
     val bindsList = bindsAccum.makeDynamicBindsIr()
 
-    return newCaller.callMethod(newMethod).invoke(onLambdaBodyExpr, bindsList, loc)
+    return newCaller.callMethod(annotationData).invoke(onLambdaBodyExpr, bindsList, loc)
   }
 }

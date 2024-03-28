@@ -79,15 +79,18 @@ class SqlVariable<T>(variableName: String /* don't want this to intersect with e
 class GroupedQuery<T>(private val head: XR.Query, private val byAlias: XR.Ident, private val byBody: XR.Expression, private val mapBinds: DynamicBinds) {
   @LambdaMethodProducingXR("mapExpr")
   fun <R> map(f: context(EnclosedExpression) (T) -> R): Query<R> = error("The map expression of the Query was not inlined")
+  // TODO move into an extension method
   fun <R> mapExpr(mapAlias: List<XR.Ident>, mapBody: XR, binds: DynamicBinds, loc: XR.Location): Query<R> =
     QueryContainer<R>(XR.GroupByMap(head, byAlias, byBody, mapAlias.head, mapBody as XR.Expression, loc), mapBinds + binds).withReifiedSubQueries()
 }
 
-
+// TODO Tomorrow: Move out all __Expr methods into separate space and use ChangeReciever annotations to delegate to call them
+//      then check that Query<T>.___autocomplete___ is only the non __Expr methods. Then need to do similar things on Table<T>
+//      the latter may involve copying some methods.
 sealed interface Query<T> {
-  // TODO mark ExoInternal
+  // TODO mark ExoInternal (may need to mark a bunch of other stuff with it as well)
   val xr: XR.Query
-  // TODO mark ExoInternal
+  // TODO mark ExoInternal (may need to mark a bunch of other stuff with it as well)
   val binds: DynamicBinds
 
   fun withReifiedIdents(): Query<T> {

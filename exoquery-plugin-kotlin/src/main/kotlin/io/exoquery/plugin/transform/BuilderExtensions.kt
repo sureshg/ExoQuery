@@ -1,5 +1,8 @@
 package io.exoquery.plugin.transform
 
+import io.exoquery.annotation.ChangeReciever
+import io.exoquery.plugin.ReplacementMethodToCall
+import io.exoquery.plugin.findExtensionMethodOrFail
 import io.exoquery.plugin.findMethodOrFail
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
@@ -25,12 +28,21 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
-class CallMethod(private val caller: Caller, private val funName: String, private val types: List<IrType>, private val tpe: IrType?) {
+class CallMethod(private val callerRaw: Caller, private val replacementFun: ReplacementMethodToCall, private val types: List<IrType>, private val tpe: IrType?) {
   context(BuilderContext) operator fun invoke(vararg args: IrExpression): IrExpression {
+    val caller =
+      when (replacementFun.callerType) {
+        ChangeReciever.ToDispatch -> callerRaw.toDispatch()
+        ChangeReciever.ToExtension -> callerRaw.toExtension()
+        ChangeReciever.DoNothing -> callerRaw
+      }
+
+    val funName = replacementFun.methodToCall
+
     val invoke =
       when (caller) {
         is Caller.DispatchReceiver -> caller.reciver.type.findMethodOrFail(funName)
-        is Caller.ExtensionReceiver -> caller.reciver.type.findMethodOrFail(funName)
+        is Caller.ExtensionReceiver -> caller.reciver.type.findExtensionMethodOrFail(funName)
         is Caller.TopLevelMethod -> pluginCtx.referenceFunctions(CallableId(FqName(caller.packageName), Name.identifier(funName))).first()
       }
 
@@ -56,18 +68,18 @@ class CallMethod(private val caller: Caller, private val funName: String, privat
 
 // TODO these should be implemented on Caller, not IrExpression
 
-fun ReceiverCaller.callMethod(name: String) = CallMethod(this, name, listOf(), null)
-fun ReceiverCaller.callMethodWithType(name: String, fullOutputType: IrType) = CallMethod(this, name, listOf(), fullOutputType)
+fun ReceiverCaller.callMethod(name: ReplacementMethodToCall) = CallMethod(this, name, listOf(), null)
+fun ReceiverCaller.callMethodWithType(name: ReplacementMethodToCall, fullOutputType: IrType) = CallMethod(this, name, listOf(), fullOutputType)
 
-fun ReceiverCaller.callMethodTyped(name: String, typeParams: List<IrType>): CallMethod = CallMethod(this, name, typeParams, null)
-fun ReceiverCaller.callMethodTypedWithType(name: String, typeParams: List<IrType>, fullOutputType: IrType): CallMethod = CallMethod(this, name, typeParams, fullOutputType)
+fun ReceiverCaller.callMethodTyped(name: ReplacementMethodToCall, typeParams: List<IrType>): CallMethod = CallMethod(this, name, typeParams, null)
+fun ReceiverCaller.callMethodTypedWithType(name: ReplacementMethodToCall, typeParams: List<IrType>, fullOutputType: IrType): CallMethod = CallMethod(this, name, typeParams, fullOutputType)
 
 
-fun callMethod(packageName: String, name: String) = CallMethod(Caller.TopLevelMethod(packageName), name, listOf(), null)
-fun callMethodWithType(packageName: String, name: String, tpe: IrType) = CallMethod(Caller.TopLevelMethod(packageName), name, listOf(), tpe)
+fun callMethod(packageName: String, name: String) = CallMethod(Caller.TopLevelMethod(packageName), ReplacementMethodToCall(name), listOf(), null)
+fun callMethodWithType(packageName: String, name: String, tpe: IrType) = CallMethod(Caller.TopLevelMethod(packageName), ReplacementMethodToCall(name), listOf(), tpe)
 
-fun callMethodTyped(packageName: String, name: String, typeParams: List<IrType>) = CallMethod(Caller.TopLevelMethod(packageName), name, typeParams, null)
-fun callMethodTypedWithTypes(packageName: String, name: String, typeParams: List<IrType>, tpe: IrType) = CallMethod(Caller.TopLevelMethod(packageName), name, typeParams, tpe)
+fun callMethodTyped(packageName: String, name: String, typeParams: List<IrType>) = CallMethod(Caller.TopLevelMethod(packageName), ReplacementMethodToCall(name), typeParams, null)
+fun callMethodTypedWithTypes(packageName: String, name: String, typeParams: List<IrType>, tpe: IrType) = CallMethod(Caller.TopLevelMethod(packageName), ReplacementMethodToCall(name), typeParams, tpe)
 
 context (BuilderContext) fun createLambda0(functionBody: IrExpression, functionParent: IrDeclarationParent): IrFunctionExpression =
   with(builder) {

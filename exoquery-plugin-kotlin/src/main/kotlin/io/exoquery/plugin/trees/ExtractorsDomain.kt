@@ -33,7 +33,7 @@ object ExtractorsDomain {
 
   sealed interface QueryDslFunction {
     context (CompileLogger) fun matchesMethod(it: IrCall): Boolean
-    context (CompileLogger) fun extract(it: IrCall): Pair<RecieverCallData, String>?
+    context (CompileLogger) fun extract(it: IrCall): Pair<RecieverCallData, ReplacementMethodToCall>?
   }
 
   @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
@@ -42,11 +42,11 @@ object ExtractorsDomain {
       // E.g. is Query."map"
       it.simpleValueArgsCount == 1 && it.valueArguments.first() != null && it.markedLambdaMethodProducingXR() != null
 
-    context(CompileLogger) override fun extract(expression: IrCall): Pair<CallData.LambdaMember, String>? =
+    context(CompileLogger) override fun extract(expression: IrCall): Pair<CallData.LambdaMember, ReplacementMethodToCall>? =
       expression.match(
         // e.g. Query.flatMap[Is()]
         case(Call.LambdaFunctionMethod { matchesMethod(it) }[Is()]).then { queryCallData ->
-          expression.markedLambdaMethodProducingXR()?.let { method -> queryCallData to method }
+          expression.markedLambdaMethodProducingXR()?.let { annotationData -> queryCallData to annotationData }
         }
       )
   }
@@ -56,11 +56,11 @@ object ExtractorsDomain {
     context (CompileLogger) override fun matchesMethod(it: IrCall): Boolean =
       it.markedMethodProducingXR() != null
 
-    context(CompileLogger) override fun extract(expression: IrCall): Pair<CallData.MultiArgMember, String>? =
+    context(CompileLogger) override fun extract(expression: IrCall): Pair<CallData.MultiArgMember, ReplacementMethodToCall>? =
       expression.match(
         // e.g. Query.flatMap[Is()]
         case(Call.MultiArgMethod { matchesMethod(it) }[Is()]).then { queryCallData ->
-          expression.markedMethodProducingXR()?.let { method -> queryCallData to method }
+          expression.markedMethodProducingXR()?.let { annotationData -> queryCallData to annotationData }
         }
       )
   }
@@ -137,7 +137,7 @@ object ExtractorsDomain {
 
     // TODO extract out common parts of this in QueryClauseAliasedMethod
     object QueryClauseDirectMethod {
-      data class Data(val caller: ReceiverCaller, val args: List<IrExpression>, val newMethod: String)
+      data class Data(val caller: ReceiverCaller, val args: List<IrExpression>, val replacementMethodToCall: ReplacementMethodToCall)
 
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
@@ -149,8 +149,8 @@ object ExtractorsDomain {
             on(call).match(
               // (SelectValue).from(innerQuery) <- FunctionMem1, `from` is a member of SelectValue
               case(Ir.Call.FunctionMem[Is(), Is()]).then { reciver, params ->
-                call.markedQueryClauseDirectMethod()?.let { newMethod ->
-                  Components1(Data(reciver, params, newMethod))
+                call.markedQueryClauseDirectMethod()?.let { annotationData ->
+                  Components1(Data(reciver, params, annotationData))
                 }
               }
             )
@@ -160,7 +160,7 @@ object ExtractorsDomain {
 
     // I.e. a bind expression like from/join in a SelectClause
     object QueryClauseAliasedMethod {
-      data class Data(val caller: ReceiverCaller, val args: List<IrExpression>, val newMethod: String)
+      data class Data(val caller: ReceiverCaller, val args: List<IrExpression>, val replacementMethodToCall: ReplacementMethodToCall)
 
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
@@ -205,7 +205,7 @@ object ExtractorsDomain {
     }
 
     object QueryClauseUnitBindMethod {
-      data class Data(val caller: ReceiverCaller, val params: List<IrValueParameter>, val blockBody: IrBlockBody, val methodToCall: String)
+      data class Data(val caller: ReceiverCaller, val params: List<IrValueParameter>, val blockBody: IrBlockBody, val replacementMethodToCall: ReplacementMethodToCall)
 
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"

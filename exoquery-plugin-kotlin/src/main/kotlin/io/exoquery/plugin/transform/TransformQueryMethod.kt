@@ -7,6 +7,7 @@ import io.exoquery.xr.XR
 import io.exoquery.plugin.trees.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
+import io.exoquery.plugin.printing.dumpSimple
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import io.exoquery.plugin.trees.CallData.MultiArgMember.ArgType
@@ -65,6 +66,8 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
           val paramIdentExpr = lambdaArgsToListOfXR(params, expression.locationXR())
           val transformedCaller = caller.transform(superTransformer, internalVars)
           val (bodyExpr, bindsList) = processBlockBody(blockBody)
+          //error("============ Caller Type is: ${callData.second.callerType}")
+
           // for:  query.map(p -> p.name)
           // it would be:  (query).callMethodWithType("map", <String>. bindsList())(XR.Function1(Id(p), Prop(p, name))
           transformedCaller.callMethodWithType(callData.second, expression.type)(paramIdentExpr, bodyExpr, bindsList, locExpr)
