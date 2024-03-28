@@ -51,6 +51,9 @@ interface StatelessTransformer {
         // Infix can both be Expression and Query
         is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type, loc)
         is Aggregation -> Aggregation.cs(op, invoke(expr))
+        is MethodCall -> MethodCall.cs(invoke(head), args.map { invoke(it) })
+        is GlobalCall -> GlobalCall.cs(args.map { invoke(it) })
+        is ValueOf -> ValueOf.cs(invoke(head))
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
       }

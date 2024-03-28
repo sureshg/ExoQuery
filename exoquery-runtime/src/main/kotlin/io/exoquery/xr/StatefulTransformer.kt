@@ -118,6 +118,19 @@ interface StatefulTransformer<T> {
           val (bodyA, stateA) = invoke(expr)
           Aggregation.cs(op, bodyA) to stateA
         }
+        is MethodCall -> {
+          val (headA, stateA) = invoke(head)
+          val (argsA, stateB) = stateA.applyList(args) { t, v -> t.invoke(v) }
+          MethodCall.cs(headA, argsA) to stateB
+        }
+        is GlobalCall -> {
+          val (argsA, stateA) = applyList(args) { t, v -> t.invoke(v) }
+          GlobalCall.cs(argsA) to stateA
+        }
+        is ValueOf -> {
+          val (headA, stateA) = invoke(head)
+          ValueOf.cs(headA) to stateA
+        }
         is XR.Block -> invoke(this)
         is Const -> this to this@StatefulTransformer
         is Ident -> this to this@StatefulTransformer

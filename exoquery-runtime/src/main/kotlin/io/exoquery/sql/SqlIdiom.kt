@@ -80,11 +80,60 @@ abstract class SqlIdiom {
       is XR.Property      -> token
       is Ident            -> token
       is XR.When          -> token
+      is XR.GlobalCall    -> token
+      is XR.MethodCall    -> token
+      is XR.ValueOf       -> token
       is XR.Function1, is XR.FunctionN, is XR.FunctionApply, is XR.Marker, is XR.Block, is XR.IdentOrigin ->
         xrError("Malformed or unsupported construct: $this.")
     }
 
   val XR.Ident.token get(): Token = name.token
+
+  /**
+   * For example something like `people.map(_.age).avg` would be something like `people.map(_.age).value.avg`
+   * This should in-turn take advantage of GlobalCall so it shold really be something like: `people.map(_.age).value.globalCall("kotlin.Int", "avg")`.
+   * In the AST this would be something like: `GlobalCall("kotlin.Int", "avg", listOf(ValueOf( <people.map(_.age)> )))`.
+   * Now on an SQL level we don't
+   */
+  val XR.ValueOf.token get(): Token = head.token
+
+  fun tokenizeMethodCallFqName(name: XR.FqName): Token =
+    // TODO this should be per dialect, maybe even configureable. I.e. every dialect should have it's supported MethodCall functions
+    //      this list of method-names should techinically be available to the parser when it is parsing so appropriate
+    //      cannot-parse exceptions will be thrown if it is not. We could also introduce a "Promiscuous-Parser" mode where that is disabled.
+    when {
+      name.name == "split" -> "split".token
+      name.name == "startsWith" -> "startsWith".token
+      name.name == "split" -> "split".token
+      name.name == "toUpperCase" -> "toUpperCase".token
+      name.name == "toLowerCase" -> "toLowerCase".token
+      name.name == "toLong" -> "toLong".token
+      name.name == "toInt" -> "toInt".token
+      else -> throw IllegalArgumentException("Unknown method: ${name.toString()}")
+    }
+
+  fun tokenizeGlobalCallFqName(name: XR.FqName): Token =
+    // TODO this should be per dialect, maybe even configureable. I.e. every dialect should have it's supported MethodCall functions
+    when {
+      name.name == "min" -> "min".token
+      name.name == "max" -> "max".token
+      name.name == "avg" -> "avg".token
+      name.name == "sum" -> "sum".token
+      name.name == "size" -> "size".token
+      else -> throw IllegalArgumentException("Unknown global method: ${name.toString()}")
+    }
+
+  val XR.MethodCall.token get(): Token = run {
+    val argsToken = (listOf(head) + args).map { it -> it.token }.mkStmt()
+    +"${tokenizeMethodCallFqName(name)}(${argsToken})"
+  }
+
+  val XR.GlobalCall.token get(): Token = run {
+    val argsToken = args.map { it -> it.token }.mkStmt()
+    +"${tokenizeGlobalCallFqName(name)}(${argsToken})"
+  }
+
+
 
   val XR.When.token get(): Token = run {
     val whenThens = branches.map { it -> +"WHEN ${it.cond.token} THEN ${it.then.token}" }

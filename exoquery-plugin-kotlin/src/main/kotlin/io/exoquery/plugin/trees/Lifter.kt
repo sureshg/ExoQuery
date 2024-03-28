@@ -122,6 +122,9 @@ class Lifter(val builderCtx: BuilderContext) {
       is XR.Visibility.Hidden -> makeObject<XR.Visibility.Hidden>()
     }
 
+  fun XR.FqName.lift(): IrExpression =
+    make<FqName>(this.component1().lift(), this.component2().lift())
+
   fun XR.Expression.lift(): IrExpression =
     when(this) {
       is BinaryOp -> make<BinaryOp>(this.component1().lift(), this.component2().lift(), this.component3().lift(), this.component4().lift())
@@ -140,6 +143,9 @@ class Lifter(val builderCtx: BuilderContext) {
       is Marker -> make<Marker>(this.component1().lift(), this.component2().liftOrNull { it.lift() }, this.component3().lift())
       is Product -> make<Product>(this.component1().lift(), this.component2().lift { it.lift({ it.lift() }, { it.lift() }) }, this.component3().lift())
       is Infix -> make<Lifter>(this.component1().lift { it.lift() }, this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift(), this.component5().lift(), this.component6().lift())
+      is MethodCall -> make<MethodCall>(this.component1().lift(), this.component2().lift(), this.component3().lift { it.lift() }, this.component4().lift(), this.component5().lift())
+      is GlobalCall -> make<GlobalCall>(this.component1().lift(), this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift())
+      is ValueOf -> make<ValueOf>(this.component1().lift(), this.component2().lift())
       is Aggregation -> make<Aggregation>(this.component1().lift(), this.component2().lift())
     }
 

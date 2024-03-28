@@ -69,6 +69,9 @@ class MirrorIdiom {
       is Product -> "${name}(${fields.map { (k, v) -> "${k}: ${v.token}" }.joinToString(", ")})"
       is Property -> "${of.tokenScoped}.${name}"
       is Aggregation -> "${expr.token}.${op.token}"
+      is MethodCall -> "Call(${head.token}.${name.name}(${args.token { it.token }}))"
+      is GlobalCall -> "GCall(${name.name}(${args.token { it.token }}))"
+      is ValueOf -> "${head.token}.value"
       is Ident -> token
       is IdentOrigin -> token
       is Const -> token

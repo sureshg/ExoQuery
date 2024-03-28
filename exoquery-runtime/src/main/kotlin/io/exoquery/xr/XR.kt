@@ -129,6 +129,31 @@ sealed interface XR {
     override fun equals(other: Any?): Boolean = other is ConcatMap && other.id() == cid
   }
 
+  data class FqName(val path: String, val name: String) {
+    companion object {
+      operator fun invoke(fullPath: String): FqName = FqName(fullPath.dropLastWhile { it != '.' }, fullPath.takeLastWhile { it != '.' })
+    }
+  }
+
+  /**
+   * This is the primary to way to turn a query into an expression both for things like aggregations
+   * and co-related subqueries. For example an aggregation Query<Int>.avg in something like `people.map(_.age).avg`
+   * should actually be represented as `people.map(_.age).map(i -> sum(i)).value` whose tree is:
+   * `ValueOf(Map(Map(people, x, x.age), i, sum(i)))`. In situations where GlobalCall/MethodCall are used perhaps
+   * we shold use this as well to convert to expressions. To fully support that we might need to have
+   * the reverse of ValueOf that would convert a XR.Expression back into an XR.Query.
+   */
+  @Mat
+  data class ValueOf(@Slot val head: XR.Query, override val loc: Location = Location.Synth): Expression, PC<ValueOf> {
+    override val productComponents = productOf(this, head)
+    override val type get() = head.type
+    companion object {}
+    override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is ValueOf && other.id() == cid
+  }
+
   @Mat
   data class SortBy(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val criteria: XR.Expression, @CS val ordering: XR.Ordering, override val loc: Location = Location.Synth): Query, PC<SortBy> {
     override val productComponents = productOf(this, head, criteria, ordering)
@@ -448,13 +473,15 @@ sealed interface XR {
    * Aggregation(max, p.age)
    * ```
    * Firmly as an expression type.
+   *
+   * TODO Possibly we don't even need these and can just use GlobalCall instead to do something like GlobalCall("max", p.age)
    */
   @Mat
   data class Aggregation(@CS val op: AggregationOperator, @Slot val expr: XR.Expression, override val loc: Location = Location.Synth): Expression, PC<Aggregation> {
     override val productComponents = productOf(this, expr)
     override val type by lazy {
       when (op) {
-        AggregationOperator.`min` -> expr.type
+        AggregationOperator.`min` -> expr.type // TODO since they could be BooleanValue? When adding String etc... to XRType should probably make all of them like this? Or maybe they shuold be removed due to the reason above.
         AggregationOperator.`max` -> expr.type
         AggregationOperator.`avg` -> XRType.Value
         AggregationOperator.`sum` -> XRType.Value
@@ -466,6 +493,26 @@ sealed interface XR {
     private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is Aggregation && other.id() == cid
+  }
+
+  @Mat
+  data class MethodCall(@Slot val head: XR.Expression, val name: XR.FqName, @Slot val args: List<XR.Expression>, override val type: XRType, override val loc: Location = Location.Synth): Expression, PC<MethodCall> {
+    override val productComponents = productOf(this, head, args)
+    companion object {}
+    override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is MethodCall && other.id() == cid
+  }
+
+  @Mat
+  data class GlobalCall(val name: XR.FqName, @Slot val args: List<XR.Expression>, override val type: XRType, override val loc: Location = Location.Synth): Expression, PC<GlobalCall> {
+    override val productComponents = productOf(this, args)
+    companion object {}
+    override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is GlobalCall && other.id() == cid
   }
 
 
