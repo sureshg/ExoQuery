@@ -111,6 +111,19 @@ object Ir {
         }
     }
 
+    object KotlinList {
+      private val queryTypeName = io.exoquery.Query::class.qualifiedName!!
+      context(CompileLogger) operator fun <AP: Pattern<IrType>> get(realType: AP) =
+        customPattern1(realType) { it: IrType ->
+          val cls = it.classOrNull
+          val simpleTypeArgs = it.simpleTypeArgs
+          if (cls != null && simpleTypeArgs.size == 1 && it.isClass<List<*>>()) {
+            Components1(simpleTypeArgs.first())
+          }
+          else null
+        }
+    }
+
     object DataClass {
       context(CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<List<Pair<String, IrType>>>> get(name: AP, fields: BP) =
         customPattern2(name, fields) { it: IrType ->
@@ -311,6 +324,19 @@ object Ir {
           val reciever = it.caller()
           if (reciever != null && it.simpleValueArgs.all { it != null }) {
             Components2(reciever, it.simpleValueArgs.requireNoNulls())
+          } else {
+            null
+          }
+        }
+    }
+
+    object FunctionMemAllowNulls {
+      // Interesting here how we can have just AP/BP and not need the additional parameters A and B
+      context (CompileLogger) operator fun <AP: Pattern<ReceiverCaller>, BP : Pattern<List<IrExpression>>> get(x: AP, y: BP): Pattern2<AP, BP, ReceiverCaller, List<IrExpression?>, IrCall> =
+        customPattern2(x, y) { it: IrCall ->
+          val reciever = it.caller()
+          if (reciever != null) {
+            Components2(reciever, it.simpleValueArgs)
           } else {
             null
           }

@@ -231,9 +231,13 @@ object ExtractorsDomain {
     object `x op y` {
       context (CompileLogger) operator fun <AP: Pattern<OperatorCall>> get(x: AP) =
         customPattern1(x) { it: IrCall ->
-          on(it).match(
-            case(Ir.Call.FunctionUntethered2[Is(), Is()]).thenThis { arg1, arg2 -> Triple(this.symbol.safeName, arg1, arg2) },
-            case(Ir.Call.FunctionRec1[Is(), Is()]).thenThis { arg1, arg2 -> Triple(this.symbol.safeName, arg1, arg2) }
+          it.match(
+            case(Ir.Call.FunctionUntethered2[Is(), Is()])
+              .thenIfThis { _, _ -> BinaryOperators.operators.get(symbol.safeName) != null }
+              .thenThis { arg1, arg2 -> Triple(this.symbol.safeName, arg1, arg2) },
+            case(Ir.Call.FunctionRec1[Is(), Is()])
+              .thenIfThis { _, _ -> BinaryOperators.operators.get(symbol.safeName) != null }
+              .thenThis { arg1, arg2 -> Triple(this.symbol.safeName, arg1, arg2) }
           )?.let { result ->
             val (opName, arg1, arg2) = result
             BinaryOperators.operators.get(opName)?.let { op ->

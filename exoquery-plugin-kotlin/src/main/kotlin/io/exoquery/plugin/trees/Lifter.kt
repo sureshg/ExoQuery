@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.ir.expressions.IrGetObjectValue
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isVararg
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -70,7 +71,7 @@ class Lifter(val builderCtx: BuilderContext) {
     } else {
       val fullPath = elementType.fullPathOfBasic()
       val classId = ClassId.topLevel(FqName(fullPath))
-      val expressionType = context.referenceConstructors(classId).first().owner.returnType
+      val expressionType = context.referenceConstructors(classId).firstOrNull()?.owner?.returnType ?: throw IllegalStateException("Cannot find a constructor for: ${classId} for the element type: ${elementType}")
       val expressions = this.map { elementLifter(it) }
       val variadics = irBuilder.irVararg(expressionType, expressions)
       val listOfCall = irBuilder.irCall(listOfRef).apply { putValueArgument(0, variadics) }
@@ -123,7 +124,7 @@ class Lifter(val builderCtx: BuilderContext) {
     }
 
   fun XR.FqName.lift(): IrExpression =
-    make<FqName>(this.component1().lift(), this.component2().lift())
+    make<XR.FqName>(this.component1().lift(), this.component2().lift())
 
   fun XR.Expression.lift(): IrExpression =
     when(this) {
@@ -143,8 +144,15 @@ class Lifter(val builderCtx: BuilderContext) {
       is Marker -> make<Marker>(this.component1().lift(), this.component2().liftOrNull { it.lift() }, this.component3().lift())
       is Product -> make<Product>(this.component1().lift(), this.component2().lift { it.lift({ it.lift() }, { it.lift() }) }, this.component3().lift())
       is Infix -> make<Lifter>(this.component1().lift { it.lift() }, this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift(), this.component5().lift(), this.component6().lift())
-      is MethodCall -> make<MethodCall>(this.component1().lift(), this.component2().lift(), this.component3().lift { it.lift() }, this.component4().lift(), this.component5().lift())
-      is GlobalCall -> make<GlobalCall>(this.component1().lift(), this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift())
+      is MethodCall -> {
+        // Need to do this this way instead of the standard lift { lift } since there's no constructor for XR.Expression, should look more into why
+        val liftComponents = this.component3().map { it.lift() }.lift { it }
+        make<MethodCall>(this.component1().lift(), this.component2().lift(), liftComponents, this.component4().lift(), this.component5().lift())
+      }
+      is GlobalCall -> {
+        val liftComponents = this.component2().map { it.lift() }.lift { it }
+        make<GlobalCall>(this.component1().lift(), liftComponents, this.component3().lift(), this.component4().lift())
+      }
       is ValueOf -> make<ValueOf>(this.component1().lift(), this.component2().lift())
       is Aggregation -> make<Aggregation>(this.component1().lift(), this.component2().lift())
     }

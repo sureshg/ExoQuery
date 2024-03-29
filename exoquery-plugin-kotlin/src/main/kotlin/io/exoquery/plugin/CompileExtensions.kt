@@ -176,8 +176,6 @@ fun IrValueParameter.isAnnotatedParseXR() =
 
 fun IrCall.caller() =
   this.extensionReceiver?.let {
-    val changeRecieverCall =
-
     Caller.ExtensionReceiver(it)
   } ?:
   this.dispatchReceiver?.let {

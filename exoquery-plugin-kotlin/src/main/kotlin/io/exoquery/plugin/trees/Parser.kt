@@ -2,6 +2,7 @@ package io.exoquery.plugin.trees
 
 import io.decomat.Is
 import io.decomat.case
+import io.decomat.match
 import io.decomat.on
 import io.exoquery.BID
 import io.exoquery.Query
@@ -20,6 +21,9 @@ import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.module
+import org.jetbrains.kotlin.ir.util.shallowCopyOrNull
 import java.util.UUID
 
 data class ParserContext(val internalVars: ScopeSymbols, val currentFile: IrFile)
@@ -197,9 +201,36 @@ private class ParserCollector {
         val casesAst = cases.filterNot { it is IrElseBranch }.map { parseBranch(it) }
         val elseBranchOrLast = elseBranch ?: casesAst.lastOrNull() ?: parseError("Empty when expression not allowed:\n${this.dumpKotlinLike()}")
         XR.When(casesAst, elseBranchOrLast.then, expr.loc)
-      }
-    ) ?: parseError(
-      """|======= Could not parse expression from: =======
+      },
+
+
+      // Need to allow possibility of nulls here because even simple things like String.split can have nulls (i.e. for the 2nd/3rd args)
+      case(Ir.Call.FunctionMemAllowNulls[Is(), Is()]).thenIfThis { caller, args ->
+        symbol.safeName == "split"
+      }.thenThis { caller, args ->
+        fun parseArg(expr: IrExpression): List<XR.Expression> =
+          when (expr) {
+            is IrVararg -> {
+              expr.elements.toList().map { elem ->
+                when (elem) {
+                  is IrExpression -> parseExpr(elem)
+                  else -> throwParseErrorMsg(elem, "Invalid Variadic Element")
+                }
+              }
+            }
+            else -> listOf(parseExpr(expr))
+          }
+
+        XR.MethodCall(
+          parseExpr(caller.reciver), XR.FqName(symbol.owner.parent.kotlinFqName.toString(), symbol.safeName), args.flatMap { arg -> arg?.let { parseArg(it) } ?: listOf(XR.Const.Null(locationXR())) },
+          TypeParser.of(symbol.owner), locationXR()
+        )
+      },
+    ) ?: throwParseErrorMsg(expr)
+
+  fun throwParseErrorMsg(expr: IrElement, heading: String = "Could not parse expression from"): Nothing =
+    parseError(
+      """|======= ${heading}: =======
          |${expr.dumpKotlinLike()}
          |--------- With the Tree ---------
          |${expr.dumpSimple()}

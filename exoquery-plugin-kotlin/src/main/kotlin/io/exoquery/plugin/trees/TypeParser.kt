@@ -10,6 +10,7 @@ import io.exoquery.plugin.location
 import io.exoquery.plugin.locationXR
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -23,6 +24,9 @@ object TypeParser {
 
   context(ParserContext, CompileLogger) fun of(expr: IrVariable) =
     ofElementWithType(expr, expr.type)
+
+  context(ParserContext, CompileLogger) fun of(expr: IrFunction) =
+    ofElementWithType(expr, expr.returnType)
 
   context(ParserContext, CompileLogger) fun of(expr: IrValueParameter) =
     ofElementWithType(expr, expr.type)
@@ -45,6 +49,11 @@ object TypeParser {
       //     think this is a bug with DecoMat.
       case(Ir.Type.SqlVariable[Is()]).then { realType ->
         parse(realType)
+      },
+
+      // For now treat lists like value types, may way to change in future
+      case(Ir.Type.KotlinList[Is()]).then { realType ->
+        XRType.Value
       },
 
       case(Ir.Type.Query[Is()]).then { realType ->

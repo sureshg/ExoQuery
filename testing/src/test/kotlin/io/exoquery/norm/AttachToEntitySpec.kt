@@ -73,11 +73,13 @@ class AttachToEntitySpec: FreeSpec({
 //        attachToEntity(q.ast) mustEqual n.ast
 //      }
 
-//      "concatMap" {
-//        val q = qr1.filter { t -> t.i == 1 }.concatMap { t -> t.s.split(" ") }
-//        val n = qr1.sortedBy { 1 }.filter { t -> t.i == 1 }.concatMap { t -> t.s.split(" ") }
-//        attachToEntity(q.xr) shouldBe n.xr
-//      }
+      "concatMap" {
+        val q = qr1.filter { t -> t.i == 1 }.concatMap { t -> t.s.split(" ") }
+        println("=================Value: " + q.xr.showRaw(true))
+
+        //val n = qr1.sortedBy { 1 }.filter { t -> t.i == 1 }.concatMap { t -> t.s.split(" ") }
+        //attachToEntity(q.xr) shouldBe n.xr
+      }
 
 //      "concatMap" in {
 //        val q = quote {
