@@ -125,7 +125,7 @@ abstract class SqlIdiom {
 
   val XR.MethodCall.token get(): Token = run {
     val argsToken = (listOf(head) + args).map { it -> it.token }.mkStmt()
-    +"${tokenizeMethodCallFqName(name)}(${argsToken})"
+    +"${tokenizeMethodCallFqName(name.name)}(${argsToken})"
   }
 
   val XR.GlobalCall.token get(): Token = run {

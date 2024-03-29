@@ -123,6 +123,9 @@ class Lifter(val builderCtx: BuilderContext) {
       is XR.Visibility.Hidden -> makeObject<XR.Visibility.Hidden>()
     }
 
+  fun XR.MethodCallName.lift(): IrExpression =
+    make<XR.MethodCallName>(this.component1().lift(), this.component2().lift())
+
   fun XR.FqName.lift(): IrExpression =
     make<XR.FqName>(this.component1().lift(), this.component2().lift())
 

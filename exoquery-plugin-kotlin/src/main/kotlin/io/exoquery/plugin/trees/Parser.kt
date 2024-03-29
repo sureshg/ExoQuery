@@ -13,6 +13,7 @@ import io.exoquery.plugin.transform.ScopeSymbols
 import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.transform.VisitTransformExpressions
+import io.exoquery.xr.MethodWhitelist
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
@@ -20,13 +21,16 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.module
 import org.jetbrains.kotlin.ir.util.shallowCopyOrNull
 import java.util.UUID
 
-data class ParserContext(val internalVars: ScopeSymbols, val currentFile: IrFile)
+data class ParserContext(val internalVars: ScopeSymbols, val currentFile: IrFile, val methodWhitelist: MethodWhitelist = MethodWhitelist.default)
 
 object Parser {
   context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR, DynamicBindsAccum> =
@@ -206,8 +210,12 @@ private class ParserCollector {
 
       // Need to allow possibility of nulls here because even simple things like String.split can have nulls (i.e. for the 2nd/3rd args)
       case(Ir.Call.FunctionMemAllowNulls[Is(), Is()]).thenIfThis { caller, args ->
-        symbol.safeName == "split"
+        methodWhitelist.containsMethod(symbol.safeName)
       }.thenThis { caller, args ->
+        val methodCallName = XR.MethodCallName(symbol.fqNameXR(), caller.reciver.type.fqNameXR())
+        if (!methodWhitelist.contains(methodCallName))
+          throwParseErrorMsg(expr, "The expression was not in the whitelist.", "The expression was: \n${methodCallName}")
+
         fun parseArg(expr: IrExpression): List<XR.Expression> =
           when (expr) {
             is IrVararg -> {
@@ -222,20 +230,29 @@ private class ParserCollector {
           }
 
         XR.MethodCall(
-          parseExpr(caller.reciver), XR.FqName(symbol.owner.parent.kotlinFqName.toString(), symbol.safeName), args.flatMap { arg -> arg?.let { parseArg(it) } ?: listOf(XR.Const.Null(locationXR())) },
+          parseExpr(caller.reciver), methodCallName, args.flatMap { arg -> arg?.let { parseArg(it) } ?: listOf(XR.Const.Null(locationXR())) },
           TypeParser.of(symbol.owner), locationXR()
         )
       },
     ) ?: throwParseErrorMsg(expr)
 
-  fun throwParseErrorMsg(expr: IrElement, heading: String = "Could not parse expression from"): Nothing =
+  fun IrSimpleFunctionSymbol.fqNameXR() =
+    XR.FqName(this.owner.parent.kotlinFqName.toString(), this.safeName)
+
+  fun IrType.fqNameXR() =
+    this.classFqName?.let { name ->
+      XR.FqName(name.parent().toString(), name.shortName().asString())
+    } ?: parseError("Could not get the classFqName for the type: ${this.dumpKotlinLike()}")
+
+
+  fun throwParseErrorMsg(expr: IrElement, heading: String = "Could not parse expression from", additionalMsg: String = ""): Nothing =
     parseError(
       """|======= ${heading}: =======
          |${expr.dumpKotlinLike()}
          |--------- With the Tree ---------
          |${expr.dumpSimple()}
-         |
-      """.trimMargin())
+      """.trimMargin() + if (additionalMsg != "") "\n" + "--------- Additional Data ---------\n" + additionalMsg else ""
+    )
 
   context (ParserContext, CompileLogger) fun parseConst(irConst: IrConst<*>): XR =
     if (irConst.value == null) XR.Const.Null(irConst.loc)

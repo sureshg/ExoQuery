@@ -6,6 +6,8 @@ import io.exoquery.SortOrder
 import io.exoquery.printing.PrintXR
 import io.exoquery.printing.format
 import io.exoquery.sql.SqlIdiom
+import io.exoquery.util.dropLastSegment
+import io.exoquery.util.takeLastSegment
 import io.decomat.Matchable as Mat
 import io.decomat.Component as Slot
 import io.decomat.MiddleComponent as MSlot
@@ -131,8 +133,11 @@ sealed interface XR {
 
   data class FqName(val path: String, val name: String) {
     companion object {
-      operator fun invoke(fullPath: String): FqName = FqName(fullPath.dropLastWhile { it != '.' }, fullPath.takeLastWhile { it != '.' })
+      operator fun invoke(fullPath: String): FqName =
+        FqName(fullPath.dropLastSegment(), fullPath.takeLastSegment())
     }
+
+    override fun toString(): String = "$path.$name"
   }
 
   /**
@@ -496,7 +501,16 @@ sealed interface XR {
   }
 
   @Mat
-  data class MethodCall(@Slot val head: XR.Expression, val name: XR.FqName, @Slot val args: List<XR.Expression>, override val type: XRType, override val loc: Location = Location.Synth): Expression, PC<MethodCall> {
+  data class MethodCallName(@Slot val name: XR.FqName, @Slot val originalType: XR.FqName): PC<MethodCallName> {
+    override val productComponents = productOf(this, name, originalType)
+    companion object {}
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is MethodCallName && other.id() == cid
+  }
+
+  @Mat
+  data class MethodCall(@Slot val head: XR.Expression, val name: XR.MethodCallName, @Slot val args: List<XR.Expression>, override val type: XRType, override val loc: Location = Location.Synth): Expression, PC<MethodCall> {
     override val productComponents = productOf(this, head, args)
     companion object {}
     override fun toString() = show()
