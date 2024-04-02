@@ -138,6 +138,7 @@ interface StatefulTransformer<T> {
         is Const.Null -> this to this@StatefulTransformer
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this to this@StatefulTransformer
+        is RuntimeExpression -> this to this@StatefulTransformer
       }
     }
 
@@ -234,7 +235,7 @@ interface StatefulTransformer<T> {
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this to this@StatefulTransformer
         // If there is a runtime-bind can't do anything with it
-        is RuntimeQueryBind -> this to this@StatefulTransformer
+        is RuntimeQuery -> this to this@StatefulTransformer
       }
     }
 

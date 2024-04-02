@@ -1,25 +1,20 @@
 package io.exoquery.plugin.trees
 
 import io.exoquery.RuntimeBindValue
-import io.exoquery.plugin.ReplacementMethodToCall
 import io.exoquery.plugin.transform.BuilderContext
-import io.exoquery.plugin.transform.Caller
-import io.exoquery.plugin.transform.callMethod
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
 // The values of this class and RuntimeBindValue need to match because the Expressions in here generates the IR in RuntimeBindValue
-sealed interface RuntimeBindValueExpr {
-  // assert that the expression is of type SqlVariable
-  data class SqlVariableIdentExpr(val sqlVariableInstance: IrExpression): RuntimeBindValueExpr
-  data class RuntimeQueryExpr(val queryElement: IrExpression): RuntimeBindValueExpr
+sealed interface RuntimeBind {
+  data class ExpressionXR(val expressionElement: IrExpression): RuntimeBind
+  data class QueryXR(val queryElement: IrExpression): RuntimeBind
 }
 
-context (BuilderContext) fun RuntimeBindValueExpr.makeDynamicBindsIr(): IrExpression =
+context (BuilderContext) fun RuntimeBind.makeDynamicBindsIr(): IrExpression =
   when (this) {
-    is RuntimeBindValueExpr.SqlVariableIdentExpr ->
-      // Execute the expression `RuntimeBindValue.SqlVariableIdent()`
-      make<RuntimeBindValue.SqlVariableIdent>(Caller.DispatchReceiver(sqlVariableInstance).callMethod(ReplacementMethodToCall("getVariableName"))())
-    is RuntimeBindValueExpr.RuntimeQueryExpr ->
+    is RuntimeBind.ExpressionXR ->
+      make<RuntimeBindValue.RuntimeExpression>(expressionElement)
+    is RuntimeBind.QueryXR ->
       make<RuntimeBindValue.RuntimeQuery>(queryElement)
   }
 

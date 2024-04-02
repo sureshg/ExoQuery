@@ -27,7 +27,6 @@ import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.types.checker.SimpleClassicTypeSystemContext.isExtensionFunctionType
 import kotlin.reflect.KClass
 
 val KClass<*>.qualifiedNameForce get(): String =
@@ -92,6 +91,9 @@ fun IrElement.location(fileEntry: IrFileEntry): CompilerMessageSourceLocation {
   )!!
   return messageWithRange
 }
+
+fun CompilerMessageSourceLocation.show() =
+  "${path}:${line}:${column}}"
 
 context(ParserContext) fun IrElement.location(): CompilerMessageSourceLocation =
   this.location(currentFile.fileEntry)
@@ -176,8 +178,8 @@ fun IrValueParameter.isAnnotatedParseXR() =
 
 fun IrCall.caller() =
   this.extensionReceiver?.let {
-    Caller.ExtensionReceiver(it)
+    Caller.Extension(it)
   } ?:
   this.dispatchReceiver?.let {
-    Caller.DispatchReceiver(it)
+    Caller.Dispatch(it)
   }

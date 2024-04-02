@@ -56,6 +56,7 @@ interface StatelessTransformer {
         is ValueOf -> ValueOf.cs(invoke(head))
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
+        is RuntimeExpression -> this
       }
     }
 
@@ -85,7 +86,7 @@ interface StatelessTransformer {
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this
         // If there is a runtime bind, can't do anything with it
-        is RuntimeQueryBind -> this
+        is RuntimeQuery -> this
       }
     }
 }

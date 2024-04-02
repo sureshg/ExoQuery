@@ -2,33 +2,26 @@ package io.exoquery.plugin.trees
 
 import io.decomat.Is
 import io.decomat.case
-import io.decomat.match
 import io.decomat.on
 import io.exoquery.BID
 import io.exoquery.Query
+import io.exoquery.SQL
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.printing.DomainErrors
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.ScopeSymbols
 import io.exoquery.parseError
 import io.exoquery.plugin.*
-import io.exoquery.plugin.transform.VisitTransformExpressions
 import io.exoquery.xr.MethodWhitelist
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.module
-import org.jetbrains.kotlin.ir.util.shallowCopyOrNull
-import java.util.UUID
 
 data class ParserContext(val internalVars: ScopeSymbols, val currentFile: IrFile, val methodWhitelist: MethodWhitelist = MethodWhitelist.default)
 
@@ -36,6 +29,7 @@ object Parser {
   context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR, DynamicBindsAccum> =
     ParserCollector().let { par -> Pair(par.parseFunctionBlockBody(blockBody), par.binds) }
 
+  // TODO rename to invoke? or just parse
   context(ParserContext, CompileLogger) fun parseExpression(expr: IrExpression): Pair<XR, DynamicBindsAccum> =
     ParserCollector().let { par -> Pair(par.parse(expr), par.binds) }
 }
@@ -114,11 +108,17 @@ private class ParserCollector {
       case(Ir.Expression[Is()]).thenIf { it.isClass<Query<*>>() }.then { expr ->
         // Assuming that recursive transforms have already converted queries inside here
         val bindId = BID.new()
-
         // Add the query expression to the binds list
-        binds.add(bindId, RuntimeBindValueExpr.RuntimeQueryExpr(expr))
+        binds.add(bindId, RuntimeBind.ExpressionXR(expr))
+        XR.RuntimeQuery(bindId, TypeParser.of(expr), expr.loc)
+      },
 
-        XR.RuntimeQueryBind(bindId, TypeParser.of(expr), expr.loc)
+      case(Ir.Expression[Is()]).thenIf { it.isClass<SQL>() }.then { expr ->
+        // Assuming that recursive transforms have already converted queries inside here
+        val bindId = BID.new()
+        // Add the query expression to the binds list
+        binds.add(bindId, RuntimeBind.ExpressionXR(expr))
+        XR.RuntimeQuery(bindId, TypeParser.of(expr), expr.loc)
       },
 
       // Binary Operators
@@ -140,16 +140,18 @@ private class ParserCollector {
 
 
       // TODO exclude anything here that's not an SqlVariable
-      case (ExtractorsDomain.Call.InvokeSqlVariable[Is()]).thenThis { symName ->
+      case (ExtractorsDomain.Call.InvokeSqlExpression[Is()]).thenThis { sqlExpressionExpr ->
         // Add the bind to the parser context to be returned when parsing is done
         val bindId = BID.new()
         //warn("=================== Making new Bind: ${bindId} ===================")
         binds.add(
           bindId, /*the SqlVariable instance*/
-          this.dispatchReceiver?.let { RuntimeBindValueExpr.SqlVariableIdentExpr(it) } ?: DomainErrors.NoDispatchRecieverFoundForSqlVarCall(this)
+          RuntimeBind.ExpressionXR(sqlExpressionExpr.reciver)
         )
         //warn(binds.show().toString())
-        XR.IdentOrigin(bindId, symName, TypeParser.of(this), expr.locationXR())
+        // TODO get rid of ident-origin, just the the runtime
+        //XR.IdentOrigin(bindId, symName, TypeParser.of(this), expr.locationXR())
+        XR.RuntimeExpression(bindId, TypeParser.of(expr), loc)
       },
 
       // Other situations where you might have an identifier which is not an SqlVar e.g. with variable bindings in a Block (inside an expression)
@@ -245,14 +247,16 @@ private class ParserCollector {
     } ?: parseError("Could not get the classFqName for the type: ${this.dumpKotlinLike()}")
 
 
-  fun throwParseErrorMsg(expr: IrElement, heading: String = "Could not parse expression from", additionalMsg: String = ""): Nothing =
+  context (CompileLogger, ParserContext) fun throwParseErrorMsg(expr: IrElement, heading: String = "Could not parse expression from", additionalMsg: String = ""): Nothing {
     parseError(
-      """|======= ${heading}: =======
+      """|${expr.location().show()}}
+         |======= ${heading}: =======
          |${expr.dumpKotlinLike()}
          |--------- With the Tree ---------
          |${expr.dumpSimple()}
       """.trimMargin() + if (additionalMsg != "") "\n" + "--------- Additional Data ---------\n" + additionalMsg else ""
     )
+  }
 
   context (ParserContext, CompileLogger) fun parseConst(irConst: IrConst<*>): XR =
     if (irConst.value == null) XR.Const.Null(irConst.loc)

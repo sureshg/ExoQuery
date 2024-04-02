@@ -23,6 +23,20 @@ class SanitySpec: FreeSpec({
       val q = qr1.flatMap { x -> qr2.filter { y -> y.s == x.s } }
       q.xr.show() shouldBe """query("TestEntity").flatMap { x -> query("TestEntity2").filter { y -> y.s == x.s } }"""
     }
+
+    "infix - query" {
+      // TODO what happens if the user does = SQL<Query<TestEntity>>("foobar").asValue().map { t -> t }
+
+      val q = SQL<TestEntity>("foobar").asQuery().map { t -> t.i }
+      q.xr.show() shouldBe """SQL("foobar").map { t -> t.i }"""
+    }
+    "infix - expression" {
+      val q = qr1.filter { t -> t.i == SQL<Int>("foobar").asValue() }
+      q.xr.show() shouldBe """query("TestEntity").filter { t -> t.i == SQL("foobar") }"""
+    }
+
+    // TODO Infixes with stuff inside
+
     "flatJoin" {
       val q =
         query {

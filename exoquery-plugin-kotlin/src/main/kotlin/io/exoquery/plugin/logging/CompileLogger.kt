@@ -11,6 +11,8 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrFileEntry
 import org.jetbrains.kotlin.wasm.ir.source.location.SourceLocation
 
+typealias Location = CompilerMessageSourceLocation
+
 data class CompileLogger(val messageCollector: MessageCollector, val currentFile: IrFileEntry, val macroInvokeSite: IrElement) {
   fun warn(msg: String) =
     messageCollector.report(CompilerMessageSeverity.WARNING, msg, macroInvokeSite.location(currentFile))
@@ -18,7 +20,7 @@ data class CompileLogger(val messageCollector: MessageCollector, val currentFile
   fun error(msg: String) =
     messageCollector.report(CompilerMessageSeverity.ERROR, msg, macroInvokeSite.location(currentFile))
 
-  fun error(msg: String, loc: CompilerMessageSourceLocation) {
+  fun error(msg: String, loc: Location) {
     messageCollector.report(CompilerMessageSeverity.ERROR, msg, loc)
   }
 

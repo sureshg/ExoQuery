@@ -1,6 +1,5 @@
 package io.exoquery.xr
 
-import io.decomat.ProductClass
 import io.exoquery.BID
 import io.exoquery.SortOrder
 import io.exoquery.printing.PrintXR
@@ -80,11 +79,13 @@ sealed interface XR {
   sealed interface Expression: XR
   sealed interface Query: XR
 
+  // Runtime constructs
+  data class RuntimeQuery(val id: BID, override val type: XRType, override val loc: Location = Location.Synth): Query
+  data class RuntimeExpression(val id: BID, override val type: XRType, override val loc: Location = Location.Synth): Expression
+
   // *******************************************************************************************
   // ****************************************** Query ******************************************
   // *******************************************************************************************
-
-  data class RuntimeQueryBind(val id: BID, override val type: XRType, override val loc: Location = Location.Synth): Query
 
   // TODO XRType needs to be Product
   @Mat

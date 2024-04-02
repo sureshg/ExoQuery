@@ -12,12 +12,14 @@ fun XR.collectBinds() =
 fun <T> Query<T>.freshIdent(prefix: String = "x") =
   freshIdent(prefix, listOf(), listOf(this))
 
+// Conflicting identifiers could live inside all XR values in all binds and all of their ancestors
 fun freshIdent(prefix: String = "x", xrs: List<XR> = listOf(), queries: List<Query<*>> = listOf(), binds: List<DynamicBinds> = listOf()): String =
   freshIdentFrom(prefix,
     (
       xrs.flatMap { it.collectBinds() } +
-        queries.flatMap { it.xr.collectBinds() + it.binds.allVals() } +
-        binds.flatMap { it.sqlVars() }
+        queries.flatMap {
+          it.xr.collectBinds() +
+            it.binds.allAncestors().flatMap { it.getXRs() }.flatMap { it.collectBinds() } }
       ).toSet())
 
 private fun freshIdentFrom(prefix: String = "x", allBindVars: Set<String>): String {
@@ -68,7 +70,7 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
       val sqlVar = SqlVariable<R>(alias)
       // Before going further, take any SqlVariable values and reify the actual name-fields into them
       // since they are specifically returned from the select-value from/join clauses.
-      val resultQuery = mapping(sqlVar).withReifiedIdents()
+      val resultQuery = mapping(sqlVar).withReifiedRuntimes()
       val ident = XR.Ident(sqlVar.getVariableName(), resultQuery.xr.type, loc)
       // No quoted context in this case so only the inner query of this has dynamic binds, we just get those
       (QueryContainer<A>(XR.FlatMap(query.xr, ident, resultQuery.xr, loc), query.binds + resultQuery.binds)) /*as Query<A>*/

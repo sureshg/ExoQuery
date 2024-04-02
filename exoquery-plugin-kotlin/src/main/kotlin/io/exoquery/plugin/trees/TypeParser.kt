@@ -8,6 +8,9 @@ import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.parseError
 import io.exoquery.plugin.location
 import io.exoquery.plugin.locationXR
+import io.exoquery.plugin.logging.Location
+import io.exoquery.plugin.show
+import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -31,13 +34,20 @@ object TypeParser {
   context(ParserContext, CompileLogger) fun of(expr: IrValueParameter) =
     ofElementWithType(expr, expr.type)
 
+  context(ParserContext, CompileLogger) fun ofTypeAt(type: IrType, loc: Location): XRType =
+    try {
+      parse(type)
+    } catch (e: ParseError) {
+      parseError("""(${loc.show()}) ERROR Could not parse type: ${type.dumpKotlinLike()}""")
+    }
+
   context(ParserContext, CompileLogger) private fun ofElementWithType(expr: IrElement, type: IrType) =
     try {
       parse(type)
     } catch (e: ParseError) {
       val loc = expr.location()
       parseError(
-        """|(${loc.path}:${loc.line}:${loc.column}) ERROR Could not parse type: ${type.dumpKotlinLike()} 
+        """|(${loc.show()}) ERROR Could not parse type: ${type.dumpKotlinLike()} 
            |====== from the statement ======
            |${expr.dumpKotlinLike()}
            |""".trimMargin())

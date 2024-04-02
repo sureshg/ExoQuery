@@ -77,6 +77,7 @@ class MirrorIdiom {
       is Const -> token
       is Marker -> token
       is Infix -> token
+      is RuntimeExpression -> """runtimeExpr(${id.value.takeLast(4)})"""
     }
 
   val Infix.token get(): String {
@@ -89,7 +90,7 @@ class MirrorIdiom {
     val parts = this.parts
     val params = params.map { tokenParam(it) }
     val body = Interpolator.interlace(parts, params, {""}, { it }, { a, b -> a + b })
-    return """infix"${body}""""
+    return """SQL("${body}")"""
   }
 
   val Branch.token get(): String = "${cond} -> ${then}"
@@ -148,7 +149,7 @@ class MirrorIdiom {
       is Nested -> "${head.token}.nested"
       is Marker -> token
       is Infix -> token
-      is RuntimeQueryBind -> """runtimeQuery(${id.value.takeLast(4)})"""
+      is RuntimeQuery -> """runtimeQuery(${id.value.takeLast(4)})"""
     }
 
 }

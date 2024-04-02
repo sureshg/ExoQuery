@@ -3,7 +3,6 @@ package io.exoquery.plugin.transform
 import io.decomat.Is
 import io.decomat.case
 import io.decomat.match
-import io.decomat.on
 import io.exoquery.parseError
 import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.CompileLogger
@@ -48,6 +47,6 @@ class TransformSelectClauseUnitMethod(override val ctx: BuilderContext, val matc
 
     val bindsList = bindsAccum.makeDynamicBindsIr()
 
-    return newCaller.callMethod(annotationData).invoke(onLambdaBodyExpr, bindsList, loc)
+    return newCaller.call(annotationData).invoke(onLambdaBodyExpr, bindsList, loc)
   }
 }

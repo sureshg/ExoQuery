@@ -5,6 +5,7 @@ import io.exoquery.*
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.transform.BinaryOperators
+import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.plugin.transform.UnaryOperators
 import io.exoquery.select.JoinOn
@@ -109,32 +110,6 @@ object ExtractorsDomain {
         }
     }
 
-    object InterpolateInvoke {
-      context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
-        it.reciverIs<SqlInterpolator>("invoke") //&& it.simpleValueArgsCount == 2 && it.valueArguments.all{ it != null }
-
-      context (CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<List<IrExpression>>> get(reciver: AP, terpComps: BP) =
-        customPattern2(reciver, terpComps) { call: IrCall ->
-          val caller = call.dispatchReceiver.also { if (it == null) error("Dispatch reciver of the Interpolator invocation `${call.dumpKotlinLike()}` was null. This should not be possible.") }
-          if (matchesMethod(call) && caller != null) {
-            val x = call.simpleValueArgs.first()
-            on(x).match(
-              case(Ir.StringConcatenation[Is()]).then { components ->
-                Components2(caller, components)
-              },
-              // TODO does this work?
-              // it's a single string-const in this case
-//              case(Ir.Const[Is()]).then { const ->
-//                Components2(caller, listOf(const))
-//              }
-            )
-          } else {
-            null
-          }
-        }
-
-    }
-
     // TODO extract out common parts of this in QueryClauseAliasedMethod
     object QueryClauseDirectMethod {
       data class Data(val caller: ReceiverCaller, val args: List<IrExpression>, val replacementMethodToCall: ReplacementMethodToCall)
@@ -228,6 +203,10 @@ object ExtractorsDomain {
         }
     }
 
+    // (SqlExpression<*>.asQuery)
+    // (SqlExpression<*>.asValue)
+    // (SqlExpression<*>.invoke)
+
     object `x op y` {
       context (CompileLogger) operator fun <AP: Pattern<OperatorCall>> get(x: AP) =
         customPattern1(x) { it: IrCall ->
@@ -303,16 +282,25 @@ object ExtractorsDomain {
         }
     }
 
-    object InvokeSqlVariable {
+    object InvokeSqlExpression {
       private val SqlVariableFqName = SqlVariable::class.qualifiedName.toString()
 
-      context (CompileLogger) operator fun <AP: Pattern<String>> get(statements: AP) =
+      context (CompileLogger) operator fun <AP: Pattern<ReceiverCaller>> get(statements: AP) =
         customPattern1(statements) { it: IrCall ->
           on(it).match(
-            case(Ir.Call.FunctionMem0[ReceiverCaller[Is<IrGetValue>()]]).thenThis { (getValue) ->
+            case(Ir.Call.FunctionMem0[Is()]).thenThis { caller ->
+              val callerExpr = caller.reciver
+              //if (this.symbol.safeName == "invoke")
+              //  parseError("==================== Matching FunMem0 from: ${it.dumpKotlinLike()} - ${callerExpr.type.isClass<SqlExpression<*>>() && (this.symbol.safeName == "invoke" || this.symbol.safeName == "asValue")} ========================")
               when {
-                getValue.type.classFqName.toString() == SqlVariableFqName && this.symbol.safeName == "invoke" ->
-                  Components1(getValue.symbol.safeName)
+                callerExpr.type.isClass<SqlExpression<*>>() && (this.symbol.safeName == "invoke" || this.symbol.safeName == "asValue") -> {
+                  // validate that the caller is a dispatch
+                  when (caller) {
+                    is Caller.Dispatch -> parseError("Reciever of a SqlExpression invocation was a dispatch, this should not be possible. SqlExpression.invoke should be a extension method. Error occured: ${it.dumpKotlinLike()}")
+                    else -> {}
+                  }
+                  Components1(caller)
+                }
                 else -> null
               }
             }

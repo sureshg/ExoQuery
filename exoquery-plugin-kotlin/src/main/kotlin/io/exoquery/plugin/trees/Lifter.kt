@@ -14,8 +14,8 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetObjectValue
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWith
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isVararg
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -158,6 +158,7 @@ class Lifter(val builderCtx: BuilderContext) {
       }
       is ValueOf -> make<ValueOf>(this.component1().lift(), this.component2().lift())
       is Aggregation -> make<Aggregation>(this.component1().lift(), this.component2().lift())
+      is RuntimeExpression -> make<RuntimeExpression>(this.component1().lift(), this.component2().lift(), this.component3().lift())
     }
 
   fun <T> T?.liftOrNull(lifter: (T) -> IrExpression) =
@@ -198,7 +199,7 @@ class Lifter(val builderCtx: BuilderContext) {
       // The below must go in Function/Query/Expression/Action lift clauses
       is Marker -> make<Marker>(this.component1().lift(), this.component2()?.lift() ?: builderCtx.builder.irNull(), this.component3().lift())
       is Infix -> make<Lifter>(this.component1().lift { it.lift() }, this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift(), this.component5().lift())
-      is RuntimeQueryBind -> make<RuntimeQueryBind>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is RuntimeQuery -> make<RuntimeQuery>(this.component1().lift(), this.component2().lift(), this.component3().lift())
     }
 
   fun XR.JoinType.lift(): IrExpression =

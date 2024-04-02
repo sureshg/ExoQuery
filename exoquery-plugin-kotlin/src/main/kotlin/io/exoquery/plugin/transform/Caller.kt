@@ -19,27 +19,27 @@ sealed class ReceiverCaller(open val reciver: IrExpression): Caller, PC<Receiver
 
   fun <D> transform(transformer: IrElementTransformer<D>, data: D) =
     when (this) {
-      is Caller.DispatchReceiver -> Caller.DispatchReceiver(reciver.transform(transformer, data))
-      is Caller.ExtensionReceiver -> Caller.ExtensionReceiver(reciver.transform(transformer, data))
+      is Caller.Dispatch -> Caller.Dispatch(reciver.transform(transformer, data))
+      is Caller.Extension -> Caller.Extension(reciver.transform(transformer, data))
     }
 }
 sealed interface Caller {
-  data class DispatchReceiver(override val reciver: IrExpression): ReceiverCaller(reciver)
-  data class ExtensionReceiver(override val reciver: IrExpression): ReceiverCaller(reciver)
+  data class Dispatch(override val reciver: IrExpression): ReceiverCaller(reciver)
+  data class Extension(override val reciver: IrExpression): ReceiverCaller(reciver)
   data class TopLevelMethod(val packageName: String): Caller
 
   fun toDispatch() =
     when (this) {
-      is Caller.DispatchReceiver -> this
-      is Caller.ExtensionReceiver -> Caller.DispatchReceiver(reciver)
+      is Caller.Dispatch -> this
+      is Caller.Extension -> Caller.Dispatch(reciver)
       // Can't do anything if it's a top-level method so ignore
       is Caller.TopLevelMethod -> this
     }
 
   fun toExtension() =
     when (this) {
-      is Caller.DispatchReceiver -> Caller.ExtensionReceiver(reciver)
-      is Caller.ExtensionReceiver -> this
+      is Caller.Dispatch -> Caller.Extension(reciver)
+      is Caller.Extension -> this
       // Can't do anything if it's a top-level method so ignore
       is Caller.TopLevelMethod -> this
     }

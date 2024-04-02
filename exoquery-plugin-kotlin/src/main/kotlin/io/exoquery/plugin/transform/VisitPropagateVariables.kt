@@ -103,7 +103,7 @@ class VisitPropagateVariables(
         // because the `join` clause needs to be changed for joinAliased in via the visitCallLiveVar visitor here
         val newCaller = caller.transform(this, varName)
 
-        val newCall = newCaller.callMethod(replacementMethod)(*newArgs.toTypedArray())
+        val newCall = newCaller.call(replacementMethod)(*newArgs.toTypedArray())
         irVar.type = newCall.type
         irVar.initializer = newCall
         irVar
@@ -131,7 +131,7 @@ class VisitPropagateVariables(
         val expr = callData.args.first()
         val newExpression = super.visitExpression(expr, null)
         val loc = makeLifter().liftLocation(expr.buildLocationXR())
-        callData.caller.callMethod(callData.replacementMethodToCall).invoke(newExpression, builder.irString(varName), loc)
+        callData.caller.call(callData.replacementMethodToCall).invoke(newExpression, builder.irString(varName), loc)
       },
       // This should be the catch-all but does it actully work?
       case(Is<Any>()).then {

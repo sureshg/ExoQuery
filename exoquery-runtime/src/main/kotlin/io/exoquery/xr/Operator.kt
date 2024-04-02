@@ -32,6 +32,7 @@ object NumericOperator {
   /*data*/ object mod : BinaryOperator { override val symbol = "%" }
 }
 
+// TODO remove these and replace with XR.MethodCall/GlobalCall
 object StringOperator {
   /*data*/ object `+`          : BinaryOperator { override val symbol = "+" }
   /*data*/ object `startsWith` : BinaryOperator, YieldsBool { override val symbol = "startsWith" }
@@ -50,6 +51,7 @@ object SetOperator {
   /*data*/ object `isEmpty` : PostfixUnaryOperator, YieldsBool { override val symbol = "isEmpty" }
 }
 
+// TODO remove these and replace with XR.GlobalCall and custom aggregation methods in the DSL
 sealed interface AggregationOperator: Operator {
   /*data*/ object `min` : AggregationOperator { override val symbol = "min" }
   /*data*/ object `max` : AggregationOperator { override val symbol = "max" }

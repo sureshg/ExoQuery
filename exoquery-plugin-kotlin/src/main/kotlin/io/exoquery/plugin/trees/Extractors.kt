@@ -213,6 +213,15 @@ object Ir {
   }
 
 
+  object ConstString {
+    operator fun get(value: Pattern0<String>) =
+      customPattern1(value) { it: IrConst<*> ->
+        if (it.kind == IrConstKind.String)
+          Components1((Const.Value.fromIrConst(it) as Ir.Const.Value.String).value)
+        else
+          null
+      }
+  }
 
   object Const {
     /**
@@ -222,20 +231,20 @@ object Ir {
      * between a null value whose type is Null and a null value that has some other type e.g. Int?)
      */
     sealed interface Value {
-      companion object {
-        data class Boolean(val value: kotlin.Boolean) : Value
-        data class Char(val value: kotlin.Char) : Value
-        data class Byte(val value: kotlin.Byte) : Value
-        data class Short(val value: kotlin.Short) : Value
-        data class Int(val value: kotlin.Int) : Value
-        data class Long(val value: kotlin.Long) : Value
-        data class String(val value: kotlin.String) : Value
-        data class Float(val value: kotlin.Float) : Value
-        data class Double(val value: kotlin.Double) : Value
-        object Null: Value {
-          override fun toString(): kotlin.String = "Null"
-        }
+      data class Boolean(val value: kotlin.Boolean) : Value
+      data class Char(val value: kotlin.Char) : Value
+      data class Byte(val value: kotlin.Byte) : Value
+      data class Short(val value: kotlin.Short) : Value
+      data class Int(val value: kotlin.Int) : Value
+      data class Long(val value: kotlin.Long) : Value
+      data class String(val value: kotlin.String) : Value
+      data class Float(val value: kotlin.Float) : Value
+      data class Double(val value: kotlin.Double) : Value
+      object Null: Value {
+        override fun toString(): kotlin.String = "Null"
+      }
 
+      companion object {
         fun fromIrConst(it: IrConst<*>): Value =
           when (it.kind) {
             IrConstKind.Boolean -> Boolean(it.value as kotlin.Boolean)

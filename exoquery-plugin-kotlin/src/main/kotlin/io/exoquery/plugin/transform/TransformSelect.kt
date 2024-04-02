@@ -45,6 +45,6 @@ class TransformSelect(override val ctx: BuilderContext, val superTransformer: Vi
     val bindsList = bindsAccum.makeDynamicBindsIr()
     val loc = lifter.liftLocation(expression.locationXR())
 
-    return callMethodWithType("io.exoquery", "selectExpr", expression.type).invoke(onLambdaBodyExpr, bindsList, loc)
+    return callWithOutput("io.exoquery", "selectExpr", expression.type).invoke(onLambdaBodyExpr, bindsList, loc)
   }
 }

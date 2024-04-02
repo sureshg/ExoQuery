@@ -3,7 +3,6 @@ package io.exoquery.plugin.transform
 import io.decomat.Is
 import io.decomat.case
 import io.decomat.match
-import io.decomat.on
 import io.exoquery.annotation.ChangeReciever
 import io.exoquery.structError
 import io.exoquery.parseError
@@ -57,7 +56,7 @@ class TransformJoinOn(override val ctx: BuilderContext, val superTransformer: Vi
 
     val bindsList = bindsAccum.makeDynamicBindsIr()
 
-    return newCaller.callMethod(ReplacementMethodToCall("onExpr", ChangeReciever.ToExtension)).invoke(paramIdentExpr, onLambdaBodyExpr, bindsList, loc)
+    return newCaller.call(ReplacementMethodToCall("onExpr", ChangeReciever.ToExtension)).invoke(paramIdentExpr, onLambdaBodyExpr, bindsList, loc)
   }
 }
 

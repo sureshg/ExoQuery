@@ -85,6 +85,8 @@ abstract class SqlIdiom {
       is XR.ValueOf       -> token
       is XR.Function1, is XR.FunctionN, is XR.FunctionApply, is XR.Marker, is XR.Block, is XR.IdentOrigin ->
         xrError("Malformed or unsupported construct: $this.")
+      is XR.RuntimeExpression ->
+        xrError("Runtime Expression detected during SQL Tokenization phase. This should have been spliced into the main-tree beforehand: $this.")
     }
 
   val XR.Ident.token get(): Token = name.token

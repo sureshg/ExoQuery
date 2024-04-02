@@ -1,17 +1,14 @@
 package io.exoquery.plugin.transform
 
-import io.decomat.*
 import io.exoquery.parseError
 import io.exoquery.plugin.locationXR
 import io.exoquery.xr.XR
 import io.exoquery.plugin.trees.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
-import io.exoquery.plugin.printing.dumpSimple
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import io.exoquery.plugin.trees.CallData.MultiArgMember.ArgType
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 
 class TransformQueryMethod(override val ctx: BuilderContext, val matcher: ExtractorsDomain.QueryDslFunction, val superTransformer: VisitTransformExpressions): Transformer() {
@@ -70,7 +67,7 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
 
           // for:  query.map(p -> p.name)
           // it would be:  (query).callMethodWithType("map", <String>. bindsList())(XR.Function1(Id(p), Prop(p, name))
-          transformedCaller.callMethodWithType(callData.second, expression.type)(paramIdentExpr, bodyExpr, bindsList, locExpr)
+          transformedCaller.callWithOutput(callData.second, expression.type)(paramIdentExpr, bodyExpr, bindsList, locExpr)
         }
         is CallData.MultiArgMember -> {
           val (caller, argValues) = callDataDetails
@@ -92,7 +89,7 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
           //  query.sortedByOrdExpr(XR.Expression, Asc, binds, location)
           // (this call is not actually used but serves as an example)
           val allArgs = listOf(*args.toTypedArray()) + listOf(binds.makeDynamicBindsIr(), locExpr)
-          transformedCaller.callMethodWithType(callData.second, expression.type)(*allArgs.toTypedArray())
+          transformedCaller.callWithOutput(callData.second, expression.type)(*allArgs.toTypedArray())
         }
       }
   }

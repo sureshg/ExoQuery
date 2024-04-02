@@ -7,9 +7,9 @@ import io.exoquery.pprint
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
 class DynamicBindsAccum {
-  private val binds = mutableListOf<Pair<BID, RuntimeBindValueExpr>>()
+  private val binds = mutableListOf<Pair<BID, RuntimeBind>>()
 
-  fun add(bindId: BID, bind: RuntimeBindValueExpr) {
+  fun add(bindId: BID, bind: RuntimeBind) {
     binds.add(bindId to bind)
   }
 
@@ -23,7 +23,7 @@ class DynamicBindsAccum {
 
   fun show() = pprint(binds)
 
-  fun getBinds() = binds
+  fun getBoth(): List<Pair<BID, RuntimeBind>> = binds.toList()
 
   companion object {
     fun empty() = DynamicBindsAccum()
@@ -33,7 +33,7 @@ class DynamicBindsAccum {
 // create an IrExpression DynamicBind(listOf(Pair(BID, RuntimeBindValue), etc...))
 context(BuilderContext) fun DynamicBindsAccum.makeDynamicBindsIr(): IrExpression {
   return with (makeLifter()) {
-    val bindsList = getBinds().map { pair ->
+    val bindsList = getBoth().map { pair ->
       pair.lift(
         {bid -> bid.lift()},
         { it.makeDynamicBindsIr() })

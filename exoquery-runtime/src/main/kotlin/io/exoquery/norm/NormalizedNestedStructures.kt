@@ -72,7 +72,7 @@ class NormalizeNestedStructures(val normalize: StatelessTransformer) {
         // Not sure why Quill didn't normalize Infixes (maybe it didn't matter because normalization is mainly for XR.Query)
         is Infix -> Infix.cs(parts, params.map { normalize(it) }).nullIfSameAs(q)
         is Marker -> Marker.cs(name, expr?.let { normalize(it) }).nullIfSameAs(q)
-        is RuntimeQueryBind -> null
+        is RuntimeQuery -> null
       }
     }
 
