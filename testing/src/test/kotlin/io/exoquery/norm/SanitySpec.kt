@@ -1,11 +1,14 @@
 package io.exoquery.norm
 
 import io.exoquery.*
+import io.exoquery.printing.exoPrint
 import io.exoquery.select
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 
 class SanitySpec: FreeSpec({
+  val dol = '$'
+
   "basic operations" - {
     "map" {
       val q = qr1.map { x -> x.s }
@@ -24,15 +27,35 @@ class SanitySpec: FreeSpec({
       q.xr.show() shouldBe """query("TestEntity").flatMap { x -> query("TestEntity2").filter { y -> y.s == x.s } }"""
     }
 
-    "infix - query" {
-      // TODO what happens if the user does = SQL<Query<TestEntity>>("foobar").asValue().map { t -> t }
+    "infix" - {
+      "query" - {
+        "simple" {
+          // TODO what happens if the user does = SQL<Query<TestEntity>>("foobar").asValue().map { t -> t }
 
-      val q = SQL<TestEntity>("foobar").asQuery().map { t -> t.i }
-      q.xr.show() shouldBe """SQL("foobar").map { t -> t.i }"""
-    }
-    "infix - expression" {
-      val q = qr1.filter { t -> t.i == SQL<Int>("foobar").asValue() }
-      q.xr.show() shouldBe """query("TestEntity").filter { t -> t.i == SQL("foobar") }"""
+          val q = SQL<TestEntity>("foobar").asQuery().map { t -> t.i }
+          q.xr.show() shouldBe """SQL("foobar").map { t -> t.i }"""
+        }
+        "composite - query inside" {
+          val q = SQL<TestEntity>("foobar(${Table<TestEntity>().filter { tt -> tt.s == "inner" }})").asQuery().map { t -> t.i }
+
+          q.xr.show() shouldBe """SQL("foobar(${dol}{query("TestEntity").filter { tt -> tt.s == "inner" }})").map { t -> t.i }"""
+        }
+      }
+      "expression" - {
+        "simple" {
+          val q = qr1.filter { t -> t.i == SQL<Int>("foobar").asValue() }
+          q.xr.show() shouldBe """query("TestEntity").filter { t -> t.i == SQL("foobar") }"""
+        }
+        "composite - expression inside" {
+          val q = qr1.filter { t -> t.i == SQL<Int>("foobar(${t.i})").asValue() }
+          q.xr.show() shouldBe """query("TestEntity").filter { t -> t.i == SQL("foobar(${dol}{t.i})") }"""
+        }
+        "composite - query inside" {
+          val q = qr1.filter { t -> t.i == SQL<Int>("foobar(${Table<TestEntity>().filter { tt -> tt.s == "inner" }})").asValue() }
+          println("--------------- Output Value -----------\n" + exoPrint(q))
+          //println(q.xr.show())
+        }
+      }
     }
 
     // TODO Infixes with stuff inside

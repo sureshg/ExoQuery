@@ -80,8 +80,12 @@ class TransformInterepolatorInvoke(override val ctx: BuilderContext, val superTr
         Parser.parseExpression(param)
       }
 
+    //error("----------- Original Binds List ----------\n" + paramsAndBinds.map { it.second.show() })
+
     val binds = paramsAndBinds.map { it.second }.fold(DynamicBindsAccum.empty()) { a, b -> a + b }
     val params = paramsAndBinds.map { it.first }
+
+    warn("----------- Ouptut Binds List ----------\n" + binds.show())
 
     return with(ctx) {
       val lifter = makeLifter()

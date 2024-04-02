@@ -1,5 +1,6 @@
 package io.exoquery
 
+import io.exoquery.printing.exoPrint
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 
@@ -20,7 +21,10 @@ fun interpolatorBody(): Nothing = throw IllegalStateException("interpolator coul
 object SQL {
   operator fun <T> invoke(expr: context(EnclosedExpression) () -> String): SqlInfixValue<T> = interpolatorBody()
   operator fun <T> invoke(expr: String): SqlInfixValue<T> = interpolatorBody()
-  fun <T> interpolate(parts: List<String>, params: List<XR>, type: XRType, binds: DynamicBinds, loc: XR.Location): SqlInfixValue<T> =
-    SqlInfixValue<T>(XR.Infix(parts, params, false, false, type, loc), binds)
+  fun <T> interpolate(parts: List<String>, params: List<XR>, type: XRType, binds: DynamicBinds, loc: XR.Location): SqlInfixValue<T> {
+    val out = SqlInfixValue<T>(XR.Infix(parts, params, false, false, type, loc), binds)
+    println("------------------- Create Infix Value: -------------\n" + out.xr.showRaw() + "\n----------- Binds ---------\n" + exoPrint(out.binds))
+    return out
+  }
 }
 

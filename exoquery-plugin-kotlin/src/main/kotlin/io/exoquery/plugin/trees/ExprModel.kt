@@ -5,16 +5,16 @@ import io.exoquery.plugin.transform.BuilderContext
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
 // The values of this class and RuntimeBindValue need to match because the Expressions in here generates the IR in RuntimeBindValue
-sealed interface RuntimeBind {
-  data class ExpressionXR(val expressionElement: IrExpression): RuntimeBind
-  data class QueryXR(val queryElement: IrExpression): RuntimeBind
+sealed interface RuntimeBindValueExpr {
+  data class ExpressionXR(val expressionElement: IrExpression): RuntimeBindValueExpr
+  data class QueryXR(val queryElement: IrExpression): RuntimeBindValueExpr
 }
 
-context (BuilderContext) fun RuntimeBind.makeDynamicBindsIr(): IrExpression =
+context (BuilderContext) fun RuntimeBindValueExpr.makeDynamicBindsIr(): IrExpression =
   when (this) {
-    is RuntimeBind.ExpressionXR ->
+    is RuntimeBindValueExpr.ExpressionXR ->
       make<RuntimeBindValue.RuntimeExpression>(expressionElement)
-    is RuntimeBind.QueryXR ->
+    is RuntimeBindValueExpr.QueryXR ->
       make<RuntimeBindValue.RuntimeQuery>(queryElement)
   }
 

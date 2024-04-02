@@ -5,6 +5,7 @@ import io.exoquery.select.InnerMost
 import io.exoquery.select.QueryClause
 import io.exoquery.select.program
 import io.exoquery.norm.ReifyRuntimes
+import io.exoquery.printing.exoPrint
 import io.exoquery.util.head
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
@@ -92,6 +93,23 @@ interface ContainerOfXR {
   val binds: DynamicBinds
 }
 
+fun <T> Query<T>.withReifiedRuntimes(): Query<T> {
+  println("-------------- Searching Binds --------------\n" + exoPrint(binds))
+  val (reifiedXR, idsAndQueries) = ReifyRuntimes.ofQueryXR(binds, xr)
+  val idsToRemove = idsAndQueries.map { it.id }
+  val idsToAdd = idsAndQueries.map { it.value.binds.list }.flatten()
+  return QueryContainer<T>(reifiedXR, (binds - idsToRemove) + idsToAdd)
+}
+
+fun <T> SqlExpression<T>.withReifiedRuntimes(): SqlExpression<T> {
+  println("-------------- Searching Binds --------------\n" + exoPrint(binds))
+  val (reifiedXR, idsAndQueries) = ReifyRuntimes.ofExpressionXR(binds, xr)
+  val idsToRemove = idsAndQueries.map { it.id }
+  val idsToAdd = idsAndQueries.map { it.value.binds.list }.flatten()
+  return SqlExpressionContainer<T>(reifiedXR, (binds - idsToRemove) + idsToAdd)
+}
+
+
 // TODO Tomorrow: Move out all __Expr methods into separate space and use ChangeReciever annotations to delegate to call them
 //      then check that Query<T>.___autocomplete___ is only the non __Expr methods. Then need to do similar things on Table<T>
 //      the latter may involve copying some methods.
@@ -100,13 +118,6 @@ sealed interface Query<T>: ContainerOfXR {
   override val xr: XR.Query
   // TODO mark ExoInternal (may need to mark a bunch of other stuff with it as well)
   override val binds: DynamicBinds
-
-  fun withReifiedRuntimes(): Query<T> {
-    val (reifiedXR, idsAndQueries) = ReifyRuntimes.ofQuery(binds, xr)
-    val idsToRemove = idsAndQueries.map { it.id }
-    val idsToAdd = idsAndQueries.map { it.value.binds.list }.flatten()
-    return QueryContainer<T>(reifiedXR, (binds - idsToRemove) + idsToAdd)
-  }
 
 //  val map get() = MapClause<T>(xr)
 

@@ -109,17 +109,18 @@ private class ParserCollector {
         // Assuming that recursive transforms have already converted queries inside here
         val bindId = BID.new()
         // Add the query expression to the binds list
-        binds.add(bindId, RuntimeBind.ExpressionXR(expr))
+        binds.add(bindId, RuntimeBindValueExpr.QueryXR(expr))
         XR.RuntimeQuery(bindId, TypeParser.of(expr), expr.loc)
       },
 
-      case(Ir.Expression[Is()]).thenIf { it.isClass<SQL>() }.then { expr ->
-        // Assuming that recursive transforms have already converted queries inside here
-        val bindId = BID.new()
-        // Add the query expression to the binds list
-        binds.add(bindId, RuntimeBind.ExpressionXR(expr))
-        XR.RuntimeQuery(bindId, TypeParser.of(expr), expr.loc)
-      },
+      // Shouldn't need this since it should be parsed by the Query or SqlExpression parsers
+      //case(Ir.Expression[Is()]).thenIf { it.isClass<SQL>() }.then { expr ->
+      //  // Assuming that recursive transforms have already converted queries inside here
+      //  val bindId = BID.new()
+      //  // Add the query expression to the binds list
+      //  binds.add(bindId, RuntimeBindValueExpr.ExpressionXR(expr))
+      //  XR.RuntimeExpression(bindId, TypeParser.of(expr), expr.loc)
+      //},
 
       // Binary Operators
       case(ExtractorsDomain.Call.`x op y`[Is()]).thenThis { opCall ->
@@ -146,7 +147,7 @@ private class ParserCollector {
         //warn("=================== Making new Bind: ${bindId} ===================")
         binds.add(
           bindId, /*the SqlVariable instance*/
-          RuntimeBind.ExpressionXR(sqlExpressionExpr.reciver)
+          RuntimeBindValueExpr.ExpressionXR(sqlExpressionExpr.reciver)
         )
         //warn(binds.show().toString())
         // TODO get rid of ident-origin, just the the runtime

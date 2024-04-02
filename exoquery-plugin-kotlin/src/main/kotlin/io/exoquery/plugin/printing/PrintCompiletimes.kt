@@ -1,20 +1,19 @@
-package io.exoquery.printing
+package io.exoquery.plugin.printing
 
 import io.exoquery.fansi.Attrs
 import io.exoquery.pprint.PPrinter
 import io.exoquery.pprint.PPrinterConfig
 import io.exoquery.pprint.Tree
-import io.exoquery.xr.MirrorIdiom
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
+import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
-fun exoPrint(value: Any) =
-  PrintXR(PrintXR.defaultConfig)(value).toString()
-
-
-class PrintXR(config: PPrinterConfig = defaultConfig): PPrinter(config) {
+class PrintCompiletimes(config: PPrinterConfig = defaultConfig): PPrinter(config) {
   override fun treeify(x: Any?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree =
     when (x) {
+      is IrExpression ->
+        Tree.Literal(x.dumpKotlinLike())
       is XRType ->
         when(x) {
           is XRType.Product -> Tree.Literal("${x.name}(...)")
@@ -25,10 +24,7 @@ class PrintXR(config: PPrinterConfig = defaultConfig): PPrinter(config) {
       is XR ->
         when (val tree = super.treeify(x, escapeUnicode, showFieldNames)) {
           is Tree.Apply -> {
-            val superNodes = tree.body.asSequence()
-              .filterNot { (it is Tree.KeyValue && it.key == "loc") }
-              .filterNot { (it is Tree.Apply && it.prefix == "Location") }
-              .filterNot { (it is Tree.Literal && it.body.startsWith("<Location:")) }.toList()
+            val superNodes = tree.body.asSequence().filterNot { (it is Tree.Literal && it.body.startsWith("<Location:")) }.toList()
             Tree.Apply(tree.prefix, superNodes.iterator())
           }
           else -> tree
@@ -39,7 +35,8 @@ class PrintXR(config: PPrinterConfig = defaultConfig): PPrinter(config) {
   companion object {
     val defaultConfig = PPrinterConfig(defaultWidth = 200, defaultShowFieldNames = false)
     val BlackWhite =
-      PrintXR(PPrinterConfig().copy(
+      PrintCompiletimes(
+        PPrinterConfig().copy(
         colorLiteral = Attrs.Empty,
         colorApplyPrefix = Attrs.Empty
       ))
