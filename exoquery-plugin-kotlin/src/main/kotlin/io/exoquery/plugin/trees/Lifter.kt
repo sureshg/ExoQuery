@@ -200,6 +200,7 @@ class Lifter(val builderCtx: BuilderContext) {
       is Marker -> make<Marker>(this.component1().lift(), this.component2()?.lift() ?: builderCtx.builder.irNull(), this.component3().lift())
       is Infix -> make<Lifter>(this.component1().lift { it.lift() }, this.component2().lift { it.lift() }, this.component3().lift(), this.component4().lift(), this.component5().lift())
       is RuntimeQuery -> make<RuntimeQuery>(this.component1().lift(), this.component2().lift(), this.component3().lift())
+      is QueryOf -> make<QueryOf>(this.component1().lift(), this.component2().lift())
     }
 
   fun XR.JoinType.lift(): IrExpression =

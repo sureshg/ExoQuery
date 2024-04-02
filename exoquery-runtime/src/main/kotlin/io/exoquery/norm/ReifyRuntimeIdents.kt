@@ -23,20 +23,40 @@ data class ReifyRuntimes internal constructor (override val state: List<Reified>
 
   val runtimeQueryBinds =
     binds.list.mapNotNull { (bid, runtimeValue) ->
-      if (runtimeValue is RuntimeBindValue.RuntimeQuery) bid to runtimeValue.value else null
+      when (runtimeValue) {
+        is RuntimeBindValue.RuntimeQuery -> bid to runtimeValue.value
+        else -> null
+      }
     }.toMap()
 
   val runtimeExpressionBinds =
     binds.list.mapNotNull { (bid, runtimeValue) ->
-      if (runtimeValue is RuntimeBindValue.RuntimeExpression) bid to runtimeValue.value else null
+      when (runtimeValue) {
+        is RuntimeBindValue.RuntimeExpression -> bid to runtimeValue.value
+        else -> null
+      }
     }.toMap()
+
+  fun failReify(xr: XR): Nothing = throw ReifyIdentError("Cannot find runtime binding for ${xr}")
+
+  override fun invoke(xr: XR): Pair<XR, StatefulTransformer<List<Reified>>> =
+    when(xr) {
+      is XR.RuntimeQuery -> {
+        val runtimeValue = runtimeQueryBinds.get(xr.id) ?: failReify(xr)
+        runtimeValue.xr to withState(state + Reified.Query(xr.id, runtimeValue))
+      }
+      is XR.RuntimeExpression -> {
+        val runtimeValue = runtimeExpressionBinds.get(xr.id) ?: failReify(xr)
+        runtimeValue.xr to withState(state + Reified.Expression(xr.id, runtimeValue))
+      }
+      else -> super.invoke(xr)
+    }
 
   override fun invoke(xr: XR.Query): Pair<XR.Query, StatefulTransformer<List<Reified>>> =
     when(xr) {
       is XR.RuntimeQuery -> {
-        println("-------------- Searching Binds --------------\n" + exoPrint(binds))
-        val runtimeValue = runtimeQueryBinds.get(xr.id) ?: throw ReifyIdentError("Cannot find runtime binding for ${xr}")
-        runtimeValue.xr to withState(state + Reified.Query(xr.id, runtimeValue.withReifiedRuntimes()))
+        val runtimeValue = runtimeQueryBinds.get(xr.id) ?: failReify(xr)
+        runtimeValue.xr to withState(state + Reified.Query(xr.id, runtimeValue))
       }
       else -> super.invoke(xr)
     }
@@ -44,9 +64,8 @@ data class ReifyRuntimes internal constructor (override val state: List<Reified>
   override fun invoke(xr: XR.Expression): Pair<XR.Expression, StatefulTransformer<List<Reified>>> =
     when(xr) {
       is XR.RuntimeExpression -> {
-        println("-------------- Searching Binds --------------\n" + exoPrint(binds))
-        val runtimeValue = runtimeExpressionBinds.get(xr.id) ?: throw ReifyIdentError("Cannot find runtime binding for ${xr}")
-        runtimeValue.xr to withState(state + Reified.Expression(xr.id, runtimeValue.withReifiedRuntimes()))
+        val runtimeValue = runtimeExpressionBinds.get(xr.id) ?: failReify(xr)
+        runtimeValue.xr to withState(state + Reified.Expression(xr.id, runtimeValue))
       }
       else -> super.invoke(xr)
     }
@@ -56,6 +75,8 @@ data class ReifyRuntimes internal constructor (override val state: List<Reified>
       ReifyRuntimes(listOf(), binds)(xr).let { (newXR, state) -> Pair(newXR, state.state) }
 
     fun ofExpressionXR(binds: DynamicBinds, xr: XR.Expression) =
-      ReifyRuntimes(listOf(), binds)(xr).let { (newXR, state) -> Pair(newXR, state.state) }
+      ReifyRuntimes(listOf(), binds)(xr).let { (newXR, state) ->
+        Pair(newXR, state.state)
+      }
   }
 }

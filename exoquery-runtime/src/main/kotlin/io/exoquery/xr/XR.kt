@@ -146,8 +146,8 @@ sealed interface XR {
    * and co-related subqueries. For example an aggregation Query<Int>.avg in something like `people.map(_.age).avg`
    * should actually be represented as `people.map(_.age).map(i -> sum(i)).value` whose tree is:
    * `ValueOf(Map(Map(people, x, x.age), i, sum(i)))`. In situations where GlobalCall/MethodCall are used perhaps
-   * we shold use this as well to convert to expressions. To fully support that we might need to have
-   * the reverse of ValueOf that would convert a XR.Expression back into an XR.Query.
+   * we shold use this as well to convert to expressions. To fully support that we have
+   * the reverse of ValueOf i.e. QueryOf that converts a XR.Expression back into an XR.Query.
    */
   @Mat
   data class ValueOf(@Slot val head: XR.Query, override val loc: Location = Location.Synth): Expression, PC<ValueOf> {
@@ -158,6 +158,17 @@ sealed interface XR {
     private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is ValueOf && other.id() == cid
+  }
+
+  @Mat
+  data class QueryOf(@Slot val head: XR.Expression, override val loc: Location = Location.Synth): Query, PC<QueryOf> {
+    override val productComponents = productOf(this, head)
+    override val type get() = head.type
+    companion object {}
+    override fun toString() = show()
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is QueryOf && other.id() == cid
   }
 
   @Mat

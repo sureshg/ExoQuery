@@ -46,6 +46,9 @@ interface SqlExpression<T>: ContainerOfXR {
   override val binds: DynamicBinds
 }
 
+fun <T> SqlExpression<T>.convertToQuery(): Query<T> = QueryContainer<T>(XR.QueryOf(xr), binds)
+fun <T> Query<T>.convertToSqlExpression(): SqlExpression<T> = SqlExpressionContainer<T>(XR.ValueOf(xr), binds)
+
 fun <T> select(clause: context(EnclosedExpression) () -> T): SqlExpression<T> = error("The map expression of the Query was not inlined")
 fun <T> selectExpr(body: XR, binds: DynamicBinds, loc: XR.Location): SqlExpression<T> =
   SqlExpressionContainer<T>(body as XR.Expression, binds)
@@ -94,20 +97,43 @@ interface ContainerOfXR {
 }
 
 fun <T> Query<T>.withReifiedRuntimes(): Query<T> {
-  println("-------------- Searching Binds --------------\n" + exoPrint(binds))
-  val (reifiedXR, idsAndQueries) = ReifyRuntimes.ofQueryXR(binds, xr)
+  // first recursively reify all the binds inside the query to take care of any binds-in-binds
+  val reifiedBinds = DynamicBinds(binds.list.map { (id, value) ->
+    id to (when (value) {
+      is RuntimeBindValue.RuntimeQuery -> value.withReifiedRuntimes()
+      is RuntimeBindValue.RuntimeExpression -> value.withReifiedRuntimes()
+    })
+  })
+  println("-------------- Query: Before Reification --------------\n" + this.show())
+  val (reifiedXR, idsAndQueries) = ReifyRuntimes.ofQueryXR(reifiedBinds, xr)
   val idsToRemove = idsAndQueries.map { it.id }
   val idsToAdd = idsAndQueries.map { it.value.binds.list }.flatten()
-  return QueryContainer<T>(reifiedXR, (binds - idsToRemove) + idsToAdd)
+  val output = QueryContainer<T>(reifiedXR, (binds - idsToRemove) + idsToAdd)
+  println("-------------- Query: After Reification --------------\n" + output.show())
+  return output
 }
 
+
+
 fun <T> SqlExpression<T>.withReifiedRuntimes(): SqlExpression<T> {
-  println("-------------- Searching Binds --------------\n" + exoPrint(binds))
-  val (reifiedXR, idsAndQueries) = ReifyRuntimes.ofExpressionXR(binds, xr)
+  // first recursively reify all the binds inside the expression to take care of any binds-in-binds
+  val reifiedBinds = DynamicBinds(binds.list.map { (id, value) ->
+    id to (when (value) {
+      is RuntimeBindValue.RuntimeQuery -> value.withReifiedRuntimes()
+      is RuntimeBindValue.RuntimeExpression -> value.withReifiedRuntimes()
+    })
+  })
+  println("-------------- SqlExpression: Before Reification --------------\n" + this.show())
+  val (reifiedXR, idsAndQueries) = ReifyRuntimes.ofExpressionXR(reifiedBinds, xr)
   val idsToRemove = idsAndQueries.map { it.id }
   val idsToAdd = idsAndQueries.map { it.value.binds.list }.flatten()
-  return SqlExpressionContainer<T>(reifiedXR, (binds - idsToRemove) + idsToAdd)
+  val output = SqlExpressionContainer<T>(reifiedXR, (binds - idsToRemove) + idsToAdd)
+  println("-------------- SqlExpression: After Reification --------------\n" + output.show())
+  return output
 }
+
+fun <T> Query<T>.show() = exoPrint(this)
+fun <T> SqlExpression<T>.show() = exoPrint(this)
 
 
 // TODO Tomorrow: Move out all __Expr methods into separate space and use ChangeReciever annotations to delegate to call them

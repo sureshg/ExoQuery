@@ -73,6 +73,7 @@ class NormalizeNestedStructures(val normalize: StatelessTransformer) {
         is Infix -> Infix.cs(parts, params.map { normalize(it) }).nullIfSameAs(q)
         is Marker -> Marker.cs(name, expr?.let { normalize(it) }).nullIfSameAs(q)
         is RuntimeQuery -> null
+        is QueryOf -> null
       }
     }
 

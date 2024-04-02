@@ -81,6 +81,7 @@ interface StatelessTransformer {
         is ConcatMap -> ConcatMap.cs(invoke(head), invokeIdent(id), invoke(body))
         is GroupByMap -> GroupByMap.cs(invoke(head), invokeIdent(byAlias), invoke(byBody), invokeIdent(mapAlias), invoke(mapBody))
         is Nested -> Nested.cs(invoke(head))
+        is QueryOf -> QueryOf.cs(invoke(head))
         // Infix can both be Expression and Query
         is Infix -> Infix.cs(parts, params.map { invoke(it) })
         // The below must go in Function/Query/Expression/Action invoke clauses

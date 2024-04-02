@@ -150,6 +150,7 @@ class MirrorIdiom {
       is Marker -> token
       is Infix -> token
       is RuntimeQuery -> """runtimeQuery(${id.value.takeLast(4)})"""
+      is QueryOf -> "${head.token}.asQuery"
     }
 
 }

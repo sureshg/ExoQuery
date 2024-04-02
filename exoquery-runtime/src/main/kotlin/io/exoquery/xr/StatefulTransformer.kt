@@ -232,6 +232,10 @@ interface StatefulTransformer<T> {
           val (paramsA, stateA) = applyList(params) { t, v -> t.invoke(v) }
           Infix(parts, paramsA, pure, transparent, type, loc) to stateA
         }
+        is QueryOf -> {
+          val (headA, stateA) = invoke(head)
+          QueryOf.cs(headA) to stateA
+        }
         // The below must go in Function/Query/Expression/Action invoke clauses
         is Marker -> this to this@StatefulTransformer
         // If there is a runtime-bind can't do anything with it

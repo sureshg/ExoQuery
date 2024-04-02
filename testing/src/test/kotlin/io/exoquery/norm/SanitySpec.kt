@@ -37,7 +37,6 @@ class SanitySpec: FreeSpec({
         }
         "composite - query inside" {
           val q = SQL<TestEntity>("foobar(${Table<TestEntity>().filter { tt -> tt.s == "inner" }})").asQuery().map { t -> t.i }
-
           q.xr.show() shouldBe """SQL("foobar(${dol}{query("TestEntity").filter { tt -> tt.s == "inner" }})").map { t -> t.i }"""
         }
       }
@@ -52,8 +51,7 @@ class SanitySpec: FreeSpec({
         }
         "composite - query inside" {
           val q = qr1.filter { t -> t.i == SQL<Int>("foobar(${Table<TestEntity>().filter { tt -> tt.s == "inner" }})").asValue() }
-          println("--------------- Output Value -----------\n" + exoPrint(q))
-          //println(q.xr.show())
+          q.xr.show() shouldBe """query("TestEntity").filter { t -> t.i == SQL("foobar(${dol}{query("TestEntity").filter { tt -> tt.s == "inner" }})") }"""
         }
       }
     }

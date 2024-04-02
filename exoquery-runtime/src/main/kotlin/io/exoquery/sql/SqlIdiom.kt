@@ -162,21 +162,25 @@ abstract class SqlIdiom {
     fields.map { it -> it.second.token }.mkStmt()
 
   val XR.Query.token get(): Token =
-  // This case typically happens when you have a select inside of an insert
-  // infix or a set operation (e.g. query[Person].exists).
-  // have a look at the SqlDslSpec `forUpdate` and `insert with subselects` tests
-  // for more details.
-  // Right now we are not removing extra select clauses here (via RemoveUnusedSelects) since I am not sure what
-    // kind of impact that could have on selects. Can try to do that in the future.
-    if (Globals.querySubexpand) {
-      val nestedExpanded = ExpandNestedQueries(::joinAlias)(SqlQueryApply(traceConfig)(this))
-      // TODO Need to implement
-      //RemoveExtraAlias(strategy)(nestedExpanded).token
-      nestedExpanded.token
-    } else
-      SqlQueryApply(traceConfig)(this).token
+    when (this) {
+      is XR.QueryOf -> head.token
+      else -> {
+        // This case typically happens when you have a select inside of an insert
+        // infix or a set operation (e.g. query[Person].exists).
+        // have a look at the SqlDslSpec `forUpdate` and `insert with subselects` tests
+        // for more details.
+        // Right now we are not removing extra select clauses here (via RemoveUnusedSelects) since I am not sure what
+        // kind of impact that could have on selects. Can try to do that in the future.
+        if (Globals.querySubexpand) {
+          val nestedExpanded = ExpandNestedQueries(::joinAlias)(SqlQueryApply(traceConfig)(this))
+          // TODO Need to implement
+          //RemoveExtraAlias(strategy)(nestedExpanded).token
+          nestedExpanded.token
+        } else
+          SqlQueryApply(traceConfig)(this).token
+      }
+    }
 
-  //val XR.token get(): Token = TODO()
 
   private val ` AS` get() =
     when(useActionTableAliasAs) {
