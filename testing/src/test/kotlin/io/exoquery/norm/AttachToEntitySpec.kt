@@ -172,7 +172,10 @@ class AttachToEntitySpec: FreeSpec({
 //      }
     }
   }
-//
+
+  val iqr1 = SQL<TestEntity>("$qr1").asQuery()
+
+// Kotlin:
 //  val iqr1 = quote {
 //    sql"$qr1".as[Query[TestEntity]]
 //  }

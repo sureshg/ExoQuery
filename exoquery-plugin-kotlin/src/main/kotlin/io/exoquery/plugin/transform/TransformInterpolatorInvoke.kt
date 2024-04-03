@@ -17,6 +17,8 @@ import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrConst
+import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -72,7 +74,7 @@ class TransformInterepolatorInvoke(override val ctx: BuilderContext, val superTr
       }
 
     val (parts, paramsRaw) =
-      UnzipPartsParams<IrExpression>({ it.isClass<String>() }, concatStringExprs, { ctx.builder.irString("") })
+      UnzipPartsParams<IrExpression>({ it.isClass<String>() && it is IrConst<*> && it.kind == IrConstKind.String }, concatStringExprs, { ctx.builder.irString("") })
         .invoke(comps)
 
     val paramsAndBinds =
@@ -98,16 +100,13 @@ class TransformInterepolatorInvoke(override val ctx: BuilderContext, val superTr
       val xrType = TypeParser.ofTypeAt(typeArg, expression.location())
       val typeLifted = lifter.liftXRType(xrType)
 
-      val callOutput =
-        caller.callDispatchWithParamsAndOutput("interpolate", listOf(typeArg), expression.type)(
-          partsLifted,
-          paramsLifted,
-          typeLifted,
-          bindsLifted,
-          locLifted
-        )
-
-      callOutput
+      caller.callDispatchWithParamsAndOutput("interpolate", listOf(typeArg), expression.type)(
+        partsLifted,
+        paramsLifted,
+        typeLifted,
+        bindsLifted,
+        locLifted
+      )
     }
   }
 }

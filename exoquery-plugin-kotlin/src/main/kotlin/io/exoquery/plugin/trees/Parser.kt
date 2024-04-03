@@ -2,6 +2,7 @@ package io.exoquery.plugin.trees
 
 import io.decomat.Is
 import io.decomat.case
+import io.decomat.match
 import io.decomat.on
 import io.exoquery.BID
 import io.exoquery.Query
@@ -105,7 +106,15 @@ private class ParserCollector {
       // This could a runtime binding e.g. a variable representing a query etc...
       // can we assume it will be recurisvely transformed and just take the XR from it?
       // or do we need to transform it here
-      case(Ir.Expression[Is()]).thenIf { it.isClass<Query<*>>() }.then { expr ->
+      case(Ir.Expression[Is()]).thenIf {
+        it.isClass<Query<*>>() && run {
+          //if (it is IrCall) error("------------------- Here:  Sym: ${it.symbol.safeName} - ${it.dumpKotlinLike()}-------------")
+          // It could be something odd like SQL<Query<T>>(...).invoke() so make sure its not that
+          it.match(
+            case(ExtractorsDomain.Call.InvokeSqlExpression[Is()]).then { it }
+          ) == null
+        }
+      }.then { expr ->
         // Assuming that recursive transforms have already converted queries inside here
         val bindId = BID.new()
         // Add the query expression to the binds list

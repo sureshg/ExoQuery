@@ -38,6 +38,10 @@ data class EntityExpression(override val xr: XR.Entity): Expression
 
 // TODO find a way to make this private so user cannot grab it since only supposed to be used in query functions
 class EnclosedExpression
+fun enclosedExpressionError(msg: String = ""): Nothing {
+  val output = "Enclosed Expression should not exist outside of a query function" + if (msg.isNotEmpty()) " $msg" else ""
+  throw IllegalStateException(output)
+}
 
 context(EnclosedExpression) fun <T> param(value: T): T = error("Lifting... toto write this message")
 
@@ -222,7 +226,7 @@ sealed interface Query<T>: ContainerOfXR {
   // "Cannot use the value of the variable 'foo' outside of a Enclosed Expression context
 
   @LambdaMethodProducingXR("flatMapExpr")
-  fun <R> flatMap(f: (T) -> Query<R>): Query<R> = error("needs to be replaced by compiler")
+  fun <R> flatMap(f: context(EnclosedExpression) (T) -> Query<R>): Query<R> = error("needs to be replaced by compiler")
   fun <R> flatMapExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<R> =
     QueryContainer<R>(XR.FlatMap(this.xr, id.first(), body as XR.Query, loc), binds).withReifiedRuntimes()
 

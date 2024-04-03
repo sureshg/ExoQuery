@@ -9,6 +9,7 @@ import io.exoquery.plugin.logging.Messages
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import io.exoquery.plugin.trees.CallData.MultiArgMember.ArgType
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 
 class TransformQueryMethod(override val ctx: BuilderContext, val matcher: ExtractorsDomain.QueryDslFunction, val superTransformer: VisitTransformExpressions): Transformer() {
@@ -89,7 +90,8 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
           //  query.sortedByOrdExpr(XR.Expression, Asc, binds, location)
           // (this call is not actually used but serves as an example)
           val allArgs = listOf(*args.toTypedArray()) + listOf(binds.makeDynamicBindsIr(), locExpr)
-          transformedCaller.callWithOutput(callData.second, expression.type)(*allArgs.toTypedArray())
+          val out = transformedCaller.callWithOutput(callData.second, expression.type)(*allArgs.toTypedArray())
+          out
         }
       }
   }
