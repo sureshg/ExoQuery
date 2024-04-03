@@ -108,12 +108,12 @@ fun <T> Query<T>.withReifiedRuntimes(): Query<T> {
       is RuntimeBindValue.RuntimeExpression -> value.withReifiedRuntimes()
     })
   })
-  println("-------------- Query: Before Reification --------------\n" + this.show())
+  //println("-------------- Query: Before Reification --------------\n" + this.show())
   val (reifiedXR, idsAndQueries) = ReifyRuntimes.ofQueryXR(reifiedBinds, xr)
   val idsToRemove = idsAndQueries.map { it.id }
   val idsToAdd = idsAndQueries.map { it.value.binds.list }.flatten()
   val output = QueryContainer<T>(reifiedXR, (binds - idsToRemove) + idsToAdd)
-  println("-------------- Query: After Reification --------------\n" + output.show())
+  //println("-------------- Query: After Reification --------------\n" + output.show())
   return output
 }
 
@@ -127,12 +127,12 @@ fun <T> SqlExpression<T>.withReifiedRuntimes(): SqlExpression<T> {
       is RuntimeBindValue.RuntimeExpression -> value.withReifiedRuntimes()
     })
   })
-  println("-------------- SqlExpression: Before Reification --------------\n" + this.show())
+  //println("-------------- SqlExpression: Before Reification --------------\n" + this.show())
   val (reifiedXR, idsAndQueries) = ReifyRuntimes.ofExpressionXR(reifiedBinds, xr)
   val idsToRemove = idsAndQueries.map { it.id }
   val idsToAdd = idsAndQueries.map { it.value.binds.list }.flatten()
   val output = SqlExpressionContainer<T>(reifiedXR, (binds - idsToRemove) + idsToAdd)
-  println("-------------- SqlExpression: After Reification --------------\n" + output.show())
+  //println("-------------- SqlExpression: After Reification --------------\n" + output.show())
   return output
 }
 

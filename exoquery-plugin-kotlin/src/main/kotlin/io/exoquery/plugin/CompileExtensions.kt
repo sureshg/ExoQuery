@@ -93,7 +93,7 @@ fun IrElement.location(fileEntry: IrFileEntry): CompilerMessageSourceLocation {
 }
 
 fun CompilerMessageSourceLocation.show() =
-  "${path}:${line}:${column}}"
+  "${path}:${line}:${column}"
 
 context(ParserContext) fun IrElement.location(): CompilerMessageSourceLocation =
   this.location(currentFile.fileEntry)

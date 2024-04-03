@@ -23,7 +23,7 @@ object SQL {
   operator fun <T> invoke(expr: String): SqlInfixValue<T> = interpolatorBody()
   fun <T> interpolate(parts: List<String>, params: List<XR>, type: XRType, binds: DynamicBinds, loc: XR.Location): SqlInfixValue<T> {
     val out = SqlInfixValue<T>(XR.Infix(parts, params, false, false, type, loc), binds)
-    println("------------------- Create Infix Value: -------------\n" + out.xr.showRaw() + "\n----------- Binds ---------\n" + exoPrint(out.binds))
+    //println("------------------- Create Infix Value: -------------\n" + out.xr.showRaw() + "\n----------- Binds ---------\n" + exoPrint(out.binds))
     return out
   }
 }

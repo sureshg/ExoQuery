@@ -460,6 +460,18 @@ object Ir {
       customPattern1(statements) { it: IrReturn -> Components1(it.value) }
   }
 
+  object ReturnBlockInto {
+    operator fun <AP: Pattern<A>, A: IrExpression> get(statements: AP) =
+      customPattern1(statements) { it: IrBlockBody ->
+        it.match(
+          case(Ir.BlockBody[List1[Ir.Return[Is()]]])
+            .then { (irReturn) ->
+              Components1(irReturn.value)
+            }
+        )
+      }
+  }
+
   /** I.e. a Lambda! */
   object FunctionExpression {
     operator fun <AP: Pattern<A>, A: IrSimpleFunction> get(body: AP)  /*: Pattern1<AP, A, IrFunctionExpression>*/ =

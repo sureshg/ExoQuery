@@ -5,6 +5,7 @@ import io.exoquery.SQL
 import io.exoquery.parseError
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.reciverIs
 import io.exoquery.plugin.safeName
 import io.exoquery.terpal.Interpolator
@@ -34,17 +35,19 @@ object ExtractorsInterpolate {
 
       context (CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<List<IrExpression>>> get(reciver: AP, terpComps: BP) =
         customPattern2(reciver, terpComps) { call: IrCall ->
-          if (matchesMethod(call)) {
+          val firstArg = call.simpleValueArgs.first()
+          if (matchesMethod(call) && firstArg != null) {
             val caller: IrExpression = call.dispatchReceiver ?: parseError("Dispatch reciver of the Interpolator invocation `${call.dumpKotlinLike()}` was null. This should not be possible.")
             // Don't need to do any more sophisticated matching (e.g. what kind of `invoke` method it is because the invoke(string) only allows strings hence i.e. no generics
             // and the invoke(() -> String) only allows string-returning lambdas. Hence there's no possibility of ambiguity here.
-            call.simpleValueArgs.first().match(
-              case(ExtractorsDomain.Call.LambdaFunctionMethod { it.symbol.safeName == "invoke" }[Is()]).then { lambdaComponents ->
-                lambdaComponents.match(
-                  case(Ir.StringConcatenation[Is()]).then { components ->
+            firstArg.match(
+              case(Ir.FunctionExpression.withBlock[Is(), Is()]).then { _, blockBody ->
+                // since lambda is actually FunctionExpression(IrBlockBody(IrReturn))
+                blockBody.match(
+                  case(Ir.ReturnBlockInto[Ir.StringConcatenation[Is()]]).then { (components) ->
                     Components2(caller, components)
                   },
-                  case(Ir.Const[Is()]).thenThis { _ ->
+                  case(Ir.ReturnBlockInto[Ir.Const[Is()]]).thenThis { _ ->
                     Components2(caller, listOf(this))
                   }
                 )

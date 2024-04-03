@@ -27,11 +27,10 @@ class SanitySpec: FreeSpec({
       q.xr.show() shouldBe """query("TestEntity").flatMap { x -> query("TestEntity2").filter { y -> y.s == x.s } }"""
     }
 
+    // TODO move into a more detailed infix test suite
     "infix" - {
       "query" - {
         "simple" {
-          // TODO what happens if the user does = SQL<Query<TestEntity>>("foobar").asValue().map { t -> t }
-
           val q = SQL<TestEntity>("foobar").asQuery().map { t -> t.i }
           q.xr.show() shouldBe """SQL("foobar").map { t -> t.i }"""
         }
@@ -61,11 +60,11 @@ class SanitySpec: FreeSpec({
             val i = join(SQL<TestEntity2> { "foobar(${t().s})" }.asQuery()).on { i == t().i }
             select { t to i }
           }
-          println(q.xr.show())
+          q.xr.show() shouldBe """query("TestEntity").flatMap { t -> SQL("foobar(${dol}{t.s})").join { i -> i.i == t.i }.map { i -> Tuple(first: t, second: i) } }"""
         }
         "composite - expression + query inside" {
           val q = Table<TestEntity2>().flatMap { t2 -> SQL<TestEntity>("foobar(${Table<TestEntity>().filter { tt -> tt.s == "inner" }})").asQuery().map { t -> t.i } }
-          println(q.xr.show())
+          q.xr.show() shouldBe """query("TestEntity2").flatMap { t2 -> SQL("foobar(${dol}{query("TestEntity").filter { tt -> tt.s == "inner" }})").map { t -> t.i } }"""
         }
       }
       "expression" - {

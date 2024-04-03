@@ -9,6 +9,7 @@ import io.exoquery.plugin.location
 import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
+import io.exoquery.plugin.show
 import io.exoquery.plugin.trees.*
 import io.exoquery.plugin.trees.ExtractorsInterpolate.Call
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
@@ -48,14 +49,15 @@ class TransformInterepolatorInvoke(override val ctx: BuilderContext, val superTr
       } ?: run {
         val bar = "\${bar}"
         parseError(
-          """|======= Parsing Error =======
-           |The contents of Interpolator.invoke(...) must be a single String concatenation statement e.g:
-           |myInterpolator.invoke("foo $bar baz")
-           |
-           |==== However, the following was found: ====
-           |${expression.dumpKotlinLike()}
-           |======= IR: =======
-           |${expression.dumpSimple()}"
+         """|${expression.location().show()}
+            |======= Parsing Error =======
+            |The contents of Interpolator.invoke(...) must be a single String concatenation statement e.g:
+            |myInterpolator.invoke("foo $bar baz")
+            |
+            |==== However, the following was found: ====
+            |${expression.dumpKotlinLike()}
+            |======= IR: =======
+            |${expression.dumpSimple()}"
         """.trimMargin()
         )
       }
