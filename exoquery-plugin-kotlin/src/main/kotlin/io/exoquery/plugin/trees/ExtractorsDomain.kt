@@ -282,6 +282,28 @@ object ExtractorsDomain {
         }
     }
 
+    object InvokeQuery {
+      context (CompileLogger) operator fun <AP: Pattern<ReceiverCaller>> get(statements: AP) =
+        customPattern1(statements) { it: IrCall ->
+          on(it).match(
+            case(Ir.Call.FunctionMem0[Is()]).thenThis { caller ->
+              val callerExpr = caller.reciver
+              when {
+                callerExpr.type.isClass<Query<*>>() && (this.symbol.safeName == "invoke" || this.symbol.safeName == "value") -> {
+                  // validate that the caller is a dispatch
+                  when (caller) {
+                    is Caller.Dispatch -> parseError("Reciever of a SqlExpression invocation was a dispatch, this should not be possible. SqlExpression.invoke should be a extension method. Error occured: ${it.dumpKotlinLike()}")
+                    else -> {}
+                  }
+                  Components1(caller)
+                }
+                else -> null
+              }
+            }
+          )
+        }
+    }
+
     object InvokeSqlExpression {
       private val SqlVariableFqName = SqlVariable::class.qualifiedName.toString()
 
@@ -290,10 +312,8 @@ object ExtractorsDomain {
           on(it).match(
             case(Ir.Call.FunctionMem0[Is()]).thenThis { caller ->
               val callerExpr = caller.reciver
-              //if (this.symbol.safeName == "invoke")
-              //  parseError("==================== Matching FunMem0 from: ${it.dumpKotlinLike()} - ${callerExpr.type.isClass<SqlExpression<*>>() && (this.symbol.safeName == "invoke" || this.symbol.safeName == "asValue")} ========================")
               when {
-                callerExpr.type.isClass<SqlExpression<*>>() && (this.symbol.safeName == "invoke" || this.symbol.safeName == "asValue") -> {
+                callerExpr.type.isClass<SqlExpression<*>>() && (this.symbol.safeName == "invoke" || this.symbol.safeName == "value") -> {
                   // validate that the caller is a dispatch
                   when (caller) {
                     is Caller.Dispatch -> parseError("Reciever of a SqlExpression invocation was a dispatch, this should not be possible. SqlExpression.invoke should be a extension method. Error occured: ${it.dumpKotlinLike()}")

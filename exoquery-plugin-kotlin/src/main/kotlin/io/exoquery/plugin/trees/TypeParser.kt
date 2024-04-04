@@ -72,6 +72,7 @@ object TypeParser {
 
       case(Ir.Type.DataClass[Is(), Is()]).then { name, props ->
         val fieldTypeXRs = props.map { (fieldName, fieldType) -> fieldName to parse(fieldType) }
+        warn("------------- Parsed Class props of: ${name}: ${fieldTypeXRs.map { (a, b) -> "$a -> $b" }} -------------------")
         XRType.Product(name, fieldTypeXRs)
       },
 

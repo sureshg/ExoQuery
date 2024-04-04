@@ -28,16 +28,23 @@ abstract class SqlIdiom {
 
   fun querifyAst(ast: XR, traceConfig: TraceConfig) = SqlQueryApply(traceConfig)(ast)
 
+  fun normalizeQuery(xr: XR.Query): SqlQuery {
+    val q = SqlNormalize(traceConf = traceConfig, disableApplyMap = false)(xr)
+    val sqlQuery = querifyAst(q, traceConfig)
+    trace("SQL: ${sqlQuery.show()}").andLog()
+    val expanded = ExpandNestedQueries(::joinAlias)(sqlQuery)
+    trace("Expanded SQL: ${expanded.show()}").andLog()
+    val aliasesRemoved = RemoveExtraAlias()(expanded)
+    trace("Aliases Remove SQL: ${aliasesRemoved.show()}").andLog()
+    return aliasesRemoved
+  }
+
   fun translate(xr: XR): Token {
     // TODO caching
     return when {
       xr is XR.Query -> {
-        val q = SqlNormalize(traceConf = traceConfig, disableApplyMap = false)(xr)
-        val sqlQuery = querifyAst(q, traceConfig)
-        trace("SQL: ${sqlQuery.show()}").andLog()
-        val expanded = ExpandNestedQueries(::joinAlias)(sqlQuery)
-        trace("Expanded SQL: ${expanded.show()}").andLog()
-        val tokenized = expanded.token
+        val normed = normalizeQuery(xr)
+        val tokenized = normed.token
         trace("Tokenized SQL: ${tokenized}").andLog()
         tokenized
       }
@@ -45,6 +52,8 @@ abstract class SqlIdiom {
         xr.token
     }
   }
+
+  fun show(xr: XR): String = translate(xr).token.toString()
 
 
   val productAggregationToken: ProductAggregationToken get() = ProductAggregationToken.Star

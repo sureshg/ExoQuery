@@ -210,7 +210,7 @@ suspend fun <Q: Query<R>, R, A> JoinOn<Q, R, A>.onExpr(joinIdentRaw: XR.Ident, b
       val joinIdentTpe = joinIdentRaw.type
       val joinIdentName = aliasRaw ?: joinIdentRaw.name
 
-      println("------------------------- joinIdentName: ${joinIdentName}, aliasRaw: ${aliasRaw}, joinIdentRaw.name: ${joinIdentRaw.name}")
+      //println("------------------------- joinIdentName: ${joinIdentName}, aliasRaw: ${aliasRaw}, joinIdentRaw.name: ${joinIdentRaw.name}")
 
       val body = bodyRaw as XR.Expression
       val sqlVariable = SqlVariable<R>(joinIdentName)

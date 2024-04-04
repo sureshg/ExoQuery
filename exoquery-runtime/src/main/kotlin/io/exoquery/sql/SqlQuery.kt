@@ -338,7 +338,8 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 // since these become select-clauses:
                 //   SelectValue(p.name,p.age.max)
                 // since the `p` variable is in the `from` part of the query
-                val realiasedSelect = BetaReduction(byBody, byAlias to mapAlias)
+                // (also need to make sure that the `a` variable does not have p's type)
+                val realiasedSelect = BetaReduction(mapBody, TypeBehavior.ReplaceWithReduction, mapAlias to byAlias)
                 b.copy(groupBy = groupByClause, select = selectValues(realiasedSelect), type = type)
               }
             }

@@ -59,12 +59,15 @@ fun IrClassSymbol.isDataClass() = this.owner.isData
 
 fun IrClassSymbol.dataClassProperties() =
   if (this.isDataClass()) {
-    val constructorParams = this.constructors.firstOrNull()?.owner?.valueParameters?.map { it.name }?.toSet() ?: setOf()
-    this.owner.properties
-      .filter { constructorParams.contains(it.name) && it.getter != null }
-      .map { it.name.toString() to it.getter!!.returnType }
+    // NOTE: Does not support data-classes with multiple constructors.
+    // Constructor params are in the right order. The properties of the class are not.
+    val constructorParams = this.constructors.firstOrNull()?.owner?.valueParameters ?: setOf()
+    //this.owner.properties
+    //  .filter { constructorParams.contains(it.name) && it.getter != null }
+    //  .map { it.name.toString() to it.getter!!.returnType }
+    constructorParams.map { param -> param.name.asString() to param.type }
   }
-  else sequenceOf()
+  else listOf()
 
 val IrSymbol.safeName   get() =
   (if (owner is IrFunction && (owner as IrFunction).isPropertyAccessor) {

@@ -105,20 +105,19 @@ private class ParserCollector {
       // This could a runtime binding e.g. a variable representing a query etc...
       // can we assume it will be recurisvely transformed and just take the XR from it?
       // or do we need to transform it here
-      case(Ir.Expression[Is()]).thenIf {
-        it.isClass<Query<*>>() && run {
-          //if (it is IrCall) error("------------------- Here:  Sym: ${it.symbol.safeName} - ${it.dumpKotlinLike()}-------------")
-          // It could be something odd like SQL<Query<T>>(...).invoke() so make sure its not that
-          it.match(
-            case(ExtractorsDomain.Call.InvokeSqlExpression[Is()]).then { it }
-          ) == null
-        }
-      }.then { expr ->
+      case(Ir.Expression[Is()]).thenIf { it.isClass<Query<*>>() }.then { expr ->
         // Assuming that recursive transforms have already converted queries inside here
         val bindId = BID.new()
         // Add the query expression to the binds list
         binds.add(bindId, RuntimeBindValueExpr.QueryXR(expr))
         XR.RuntimeQuery(bindId, TypeParser.of(expr), expr.loc)
+      },
+
+      case(ExtractorsDomain.Call.InvokeQuery[Is()]).then { exprCaller ->
+        val expr = exprCaller.reciver
+        val bindId = BID.new()
+        binds.add(bindId, RuntimeBindValueExpr.QueryXR(expr))
+        XR.ValueOf(XR.RuntimeQuery(bindId, TypeParser.of(expr), expr.loc), expr.loc)
       },
 
       // Shouldn't need this since it should be parsed by the Query or SqlExpression parsers

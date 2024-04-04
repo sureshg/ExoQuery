@@ -38,7 +38,7 @@ ${ir?.dumpSimple()}
           val tpe = ir.value.type
           val additionalData: String =
             if (true) {
-              (tpe.classOrNull?.dataClassProperties() ?: sequenceOf())
+              (tpe.classOrNull?.dataClassProperties() ?: listOf())
                 .map { (name, value) -> "$name: ${value.dumpKotlinLike()}" }
                 .joinToString(", ", "[", "]")
             } else {

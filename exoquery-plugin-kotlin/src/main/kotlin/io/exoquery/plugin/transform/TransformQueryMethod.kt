@@ -9,6 +9,7 @@ import io.exoquery.plugin.logging.Messages
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import io.exoquery.plugin.trees.CallData.MultiArgMember.ArgType
+import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 
@@ -22,6 +23,7 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
     val paramIdentXR = run {
       val name = lambdaArg.name.asString()
       val tpe = TypeParser.of(lambdaArg)
+      warn("------------- Data class props of: ${name}: ${if (tpe is XRType.Product) tpe.fields.map { (a, b) -> "$a -> $b" }.toString() else ""} -------------------")
       XR.Ident(name, tpe, location)
     }
     val paramIdentExpr = lifter.liftIdent(paramIdentXR)
