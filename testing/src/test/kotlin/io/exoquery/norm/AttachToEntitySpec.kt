@@ -9,6 +9,7 @@ import io.kotest.matchers.shouldBe
 import io.exoquery.xr.XR
 import io.exoquery.xr.XR.*
 import io.exoquery.xr.csf
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.equals.shouldBeEqual
 
 class AttachToEntitySpec: FreeSpec({
@@ -334,15 +335,13 @@ class AttachToEntitySpec: FreeSpec({
 //    }
 //  }
 
-  "falls back to the query if it's not possible to flatten it" {
-//    "union" {
-//      val q = qr1.union(qr2)
-//      val n = qr1.union(qr2).sortedBy { x -> 1 }
-//      attachToEntity(q.xr) shouldBeEqual n.xr
-//    }
+  "falls back to the query if it's not possible to flatten it" - {
+    "union" {
+      val q = qr1.union(qr2)
+      val n = qr1.union(qr2).sortedBy { x -> 1 }
+      attachToEntity(q.xr) shouldBeEqual n.xr
+    }
 
-
-//  "falls back to the query if it's not possible to flatten it" - {
 //    "union" in {
 //      val q = quote {
 //        qr1.union(qr2)
@@ -352,6 +351,13 @@ class AttachToEntitySpec: FreeSpec({
 //      }
 //      attachToEntity(q.ast) mustEqual n.ast
 //    }
+
+    "unionAll" {
+      val q = qr1.unionAll(qr2)
+      val n = qr1.unionAll(qr2).sortedBy { x -> 1 }
+      attachToEntity(q.xr) shouldBeEqual n.xr
+    }
+
 //    "unionAll" in {
 //      val q = quote {
 //        qr1.unionAll(qr2)
@@ -361,15 +367,13 @@ class AttachToEntitySpec: FreeSpec({
 //      }
 //      attachToEntity(q.ast) mustEqual n.ast
 //    }
-//    "outer join" in {
-//      val q = quote {
-//        qr1.leftJoin(qr2).on((a, b) => true)
-//      }
-//      val n = quote {
-//        qr1.leftJoin(qr2).on((a, b) => true).sortBy(x => 1)
-//      }
-//      attachToEntity(q.ast) mustEqual n.ast
-//    }
+
+    "groupBy.map" {
+      val q = qr1.groupBy { a -> a.i }.map { a -> 1 }
+      val n = qr1.groupBy { a -> a.i }.map { a -> 1 }.sortedBy { x -> 1 }
+      attachToEntity(q.xr) shouldBeEqual n.xr
+    }
+
 //    "groupBy.map" in {
 //      val q = quote {
 //        qr1.groupBy(a => a.i).map(a => 1)
@@ -380,7 +384,13 @@ class AttachToEntitySpec: FreeSpec({
 //      attachToEntity(q.ast) mustEqual n.ast
 //    }
 //  }
-//
+
+    "fails if the entity isn't found" {
+      shouldThrow<TransformXrError> {
+        attachToEntity(Map(Marker("a", XR.Const.Null()), Ident("b"), Ident("c")))
+      }
+    }
+
 //  "fails if the entity isn't found" in {
 //    intercept[IllegalStateException] {
 //      attachToEntity(Map(Ident("a"), Ident("b"), Ident("c")))

@@ -12,8 +12,7 @@ import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.ScopeSymbols
 import io.exoquery.parseError
 import io.exoquery.plugin.*
-import io.exoquery.xr.MethodWhitelist
-import io.exoquery.xr.XR
+import io.exoquery.xr.*
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrFile
@@ -215,8 +214,34 @@ private class ParserCollector {
       case(Ir.When[Is()]).thenThis { cases ->
         val elseBranch = cases.find { it is IrElseBranch }?.let { parseBranch(it) }
         val casesAst = cases.filterNot { it is IrElseBranch }.map { parseBranch(it) }
-        val elseBranchOrLast = elseBranch ?: casesAst.lastOrNull() ?: parseError("Empty when expression not allowed:\n${this.dumpKotlinLike()}")
-        XR.When(casesAst, elseBranchOrLast.then, expr.loc)
+        val allReturnsAreBoolean = cases.all { it.result.type.isClass<Boolean>() }
+
+        // Kotlin converts (A && B) to `if(A) B else false`. This undoes that
+        if (
+            allReturnsAreBoolean &&
+            elseBranch != null && casesAst.size == 1
+              && casesAst.first().then.type is XRType.Boolean
+              // Implicitly the else-clause in this case cannot have additional conditions
+              && elseBranch.cond == XR.Const.Boolean(true) && elseBranch.then == XR.Const.Boolean(false)
+          ) {
+          val firstClause = casesAst.first()
+          firstClause.cond `+&&+` firstClause.then
+        }
+        // Kotlin converts (A || B) to `if(A) true else B`. This undoes that
+        else if (
+          allReturnsAreBoolean &&
+          elseBranch != null && casesAst.size == 1
+          && casesAst.first().then == XR.Const.Boolean(true)
+          // Implicitly the else-clause in this case cannot have additional conditions
+          && elseBranch.cond == XR.Const.Boolean(true)
+        ) {
+          val firstClause = casesAst.first()
+          firstClause.cond `+||+` elseBranch.then
+        }
+        else {
+          val elseBranchOrLast = elseBranch ?: casesAst.lastOrNull() ?: parseError("Empty when expression not allowed:\n${this.dumpKotlinLike()}")
+          XR.When(casesAst, elseBranchOrLast.then, expr.loc)
+        }
       },
 
 

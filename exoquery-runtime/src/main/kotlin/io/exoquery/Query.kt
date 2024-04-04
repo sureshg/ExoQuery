@@ -173,6 +173,19 @@ sealed interface Query<T>: ContainerOfXR {
   fun <R> filterExpr(id: List<XR.Ident>, body: XR, binds: DynamicBinds, loc: XR.Location): Query<R> =
     QueryContainer<R>(XR.Filter(this.xr, id.first(), body as XR.Expression, loc), binds).withReifiedRuntimes()
 
+  @MethodProducingXR("unionExpr")
+  fun <T> union(other: Query<T>): Query<T> = error("The union expression of the Query was not inlined")
+  // In this case `other` is passed through directly. This is because the `other` query is already a QueryContainer
+  // also, it shouldn't be possible to have any binds from this expression (since nothing is being parsed) but add them anyway
+  // if for some odd reason they are introduced.
+  fun <T> unionExpr(other: Query<T>, binds: DynamicBinds, loc: XR.Location): Query<T> =
+    QueryContainer<T>(XR.Union(this.xr, other.xr, loc), this.binds + other.binds + binds).withReifiedRuntimes()
+
+  @MethodProducingXR("unionAllExpr")
+  fun <T> unionAll(other: Query<T>): Query<T> = error("The union-all expression of the Query was not inlined")
+  fun <T> unionAllExpr(other: Query<T>, binds: DynamicBinds, loc: XR.Location): Query<T> =
+    QueryContainer<T>(XR.UnionAll(this.xr, other.xr, loc), this.binds + other.binds + binds).withReifiedRuntimes()
+
   /** @see distinctExpr */
   @MethodProducingXR("distinctExpr")
   fun distinct(): Query<T> = error("The sort-by expression of the Query was not inlined")

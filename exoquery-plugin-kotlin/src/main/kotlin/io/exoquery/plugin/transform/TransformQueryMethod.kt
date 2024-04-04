@@ -77,7 +77,12 @@ class TransformQueryMethod(override val ctx: BuilderContext, val matcher: Extrac
           val (args, binds) =
             argValues.fold(Fold(listOf(), DynamicBindsAccum())) { fold, (argType, argExpr) ->
               when (argType) {
-                is ArgType.Passthrough -> Fold(fold.args + argExpr, fold.binds)
+                is ArgType.Passthrough -> {
+                  // need to recursively transform args since there could be other query clauses
+                  // e.g. (query.filter {...}) union (...)) i.e. the filter needs to be transformed into a filterExpr
+                  val argExprTransformed = argExpr.transform(superTransformer, internalVars)
+                  Fold(fold.args + argExprTransformed, fold.binds)
+                }
                 is ArgType.ParsedXR -> {
                   val (body, binds) = Parser.parseExpression(argExpr)
                   val liftedXR = lifter.liftXR(body)
