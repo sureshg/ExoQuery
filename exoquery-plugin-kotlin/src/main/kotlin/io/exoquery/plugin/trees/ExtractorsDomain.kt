@@ -329,20 +329,19 @@ object ExtractorsDomain {
     }
 
     object MakeTable {
-      val TableQueryCompanionFqName = Table.Companion::class.qualifiedName.toString()
+      //val TableQueryCompanionFqName = Table.Companion::class.qualifiedName.toString()
 
       context (CompileLogger) operator fun <AP: Pattern<IrType>> get(statements: AP) =
         customPattern1(statements) { it: IrCall ->
           on(it).match(
-            case(Ir.Call.FunctionMem0[ReceiverCaller[Is<IrGetObjectValue>()]]).thenThis { (getObject) ->
-                when {
-                  getObject.type.classFqName.toString() == TableQueryCompanionFqName && type.classOrNull != null -> {
-                    val firstArg = this.typeArguments.first()
-                    if (firstArg == null) kotlin.error("First type-argument to the TableQuery call was null. This should be impossible.")
-                    else Components1(firstArg as IrType)
-                  }
-                  else -> null
-                }
+            case(Ir.Call.FunctionMem0[ReceiverCaller[Is<IrGetObjectValue>()]])
+              .thenIfThis { (getObject) ->
+                getObject.type.isClass<Table.Companion>() && type.classOrNull != null
+              }
+              .thenThis {
+                val firstArg = this.typeArguments.first()
+                if (firstArg == null) kotlin.error("First type-argument to the TableQuery call was null. This should be impossible.")
+                else Components1(firstArg as IrType)
               }
           )
         }

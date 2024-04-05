@@ -37,7 +37,10 @@ class Tracer(
     object Println: OutputSource
   }
 
-  fun print(str: String) = outputSource.output(str + "\n")
+  fun tracesEnabled(): Boolean =
+    traceConfig.enabledTraces.contains(traceType) || globalTracesEnabled(traceType)
+
+  fun print(str: String) = if (tracesEnabled()) outputSource.output(str + "\n") else Unit
 
   override fun interpolate(parts: () -> List<String>, params: () -> List<Any>): Traceable =
     Traceable(parts, params, traceType, color, defaultIndent, traceConfig, globalTracesEnabled, outputSource)

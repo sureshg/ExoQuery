@@ -68,7 +68,7 @@ class SanitySpec: FreeSpec({
           select { a() to b() }
         }
       q.xr.show() shouldBe """query("TestEntity").flatMap { a -> query("TestEntity2").join { b -> b.s == a.s }.flatMap { b -> flatFilter { a.i == 123 }.flatMap { unused -> flatGroupBy { b.s }.flatMap { unused -> flatSortBy { a.l }(Ordering.Asc).map { unused -> Tuple(first: a, second: b) } } } } }"""
-      Dialect.show(q.xr) shouldBe "SELECT a.s, a.i, a.l, a.o, a.b, b.s, b.i, b.l, b.o, b.b FROM TestEntity a LEFT JOIN TestEntity2 b ON b.s = a.s WHERE a.i = 123 GROUP BY b.s ORDER BY a.l ASC"
+      Dialect.show(q.xr) shouldBe "SELECT a.s, a.i, a.l, a.o, a.b, b.s, b.i, b.l, b.o, b.b FROM TestEntity a INNER JOIN TestEntity2 b ON b.s = a.s WHERE a.i = 123 GROUP BY b.s ORDER BY a.l ASC"
     }
     "size" {
       val q = qr1.size()

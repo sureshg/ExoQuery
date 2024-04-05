@@ -523,8 +523,8 @@ abstract class SqlIdiom {
 
   val XR.JoinType.token get(): Token =
     when (this) {
-      is Left -> +"INNER JOIN"
-      is Inner -> +"LEFT JOIN"
+      is Left -> +"LEFT JOIN"
+      is Inner -> +"INNER JOIN"
       // is RightJoin -> +"RIGHT JOIN"
       // is FullJoin -> +"FULL JOIN"
     }
