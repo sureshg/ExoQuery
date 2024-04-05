@@ -161,6 +161,9 @@ fun IrCall.markedQueryClauseAliasedMethod() =
 fun IrCall.markedQueryClauseUnitBind() =
   this.symbol.owner.annotations.findAnnotation(QueryClauseUnitBind::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
 
+fun IrCall.markedQueryClauseJoinMethod() =
+  this.symbol.owner.annotations.findAnnotation(QueryClauseJoinMethod::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
+
 fun IrCall.markedMethodProducingXR() =
   this.symbol.owner.annotations.findAnnotation(MethodProducingXR::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
 

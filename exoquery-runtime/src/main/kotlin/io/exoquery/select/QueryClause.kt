@@ -44,14 +44,14 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
   }
 ) {
 
-  @QueryClauseDirectMethod("from")
-  public suspend fun <R> fromDirect(query: Query<R>): @SqlVar R =
+  @QueryClauseDirectMethod("varFrom")
+  public suspend fun <R> from(query: Query<R>): @SqlVar R =
     error("The fromDirect(...) expression of the Query was not inlined")
 
 
-  @QueryClauseAliasedMethod("fromAliased")
-  public suspend fun <R> from(query: Query<R>): SqlVariable<R> =
-    fromAliased(query, query.freshIdent(), XR.Location.Synth)
+  @QueryClauseAliasedMethod("varFromAliased")
+  public suspend fun <R> varFrom(query: Query<R>): SqlVariable<R> =
+    varFromAliased(query, query.freshIdent(), XR.Location.Synth)
 
   // TODO Delgate to this as well
   //public suspend fun <R> fromUnaliased(query: Query<R>, loc: XR.Location): SqlVariable<R> =
@@ -65,7 +65,7 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
 
   @Suppress("UNCHECKED_CAST")
   @OptIn(ExoInternal::class)
-  public suspend fun <R> fromAliased(query: Query<R>, alias: String, loc: XR.Location): SqlVariable<R> =
+  public suspend fun <R> varFromAliased(query: Query<R>, alias: String, loc: XR.Location): SqlVariable<R> =
     perform { mapping ->
       val sqlVar = SqlVariable<R>(alias)
       // Before going further, take any SqlVariable values and reify the actual name-fields into them
@@ -76,9 +76,13 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
       (QueryContainer<A>(XR.FlatMap(query.xr, ident, resultQuery.xr, loc), query.binds + resultQuery.binds)) /*as Query<A>*/
     }
 
-  @QueryClauseDirectMethod("join")
-  // public suspend fun <Q: Query<R>, R> joinDirect(query: Q): R =
-  //   error("The joinDirect(...) expression of the Query was not inlined")
+  @Suppress("UNUSED_PARAMETER")
+  @QueryClauseAliasedMethod("varJoinAliased")
+  public suspend fun <Q: Query<R>, R> varJoin(query: Q) =
+    VariableJoinOn<Q, R, A>(query, XR.JoinType.Inner, this, null)
+  @OptIn(ExoInternal::class)
+  public suspend fun <Q: Query<R>, R> varJoinAliased(query: Q, alias: String, loc: XR.Location) =
+    VariableJoinOn<Q, R, A>(query, XR.JoinType.Inner, this, alias)
 
   @Suppress("UNUSED_PARAMETER")
   @QueryClauseAliasedMethod("joinAliased")
@@ -109,7 +113,7 @@ class QueryClause<A>(markerName: String) : ProgramBuilder<Query<A>, SqlExpressio
     }
 
   @QueryClauseUnitBind("sortedByDescendingExpr")
-  public suspend fun <R> sortedByDescending(f: context(EnclosedExpression) () -> R): Unit =
+  suspend fun <R> sortedByDescending(f: context(EnclosedExpression) () -> R): Unit =
     error("The sortedBy(...) expression of the Query was not inlined")
   @OptIn(ExoInternal::class)
   public suspend fun <R> sortedByDescendingExpr(expr: XR.Expression, binds: DynamicBinds, loc: XR.Location): Unit =
@@ -150,61 +154,66 @@ class SortedByOrders<A>(private val expr: XR.Expression, private val binds: Dyna
     }
 }
 
-class JoinOn<Q: Query<R>, R, A>(internal val query: Q, internal val joinType: XR.JoinType, internal val queryClause: QueryClause<A>, internal val aliasRaw: String?) {
-@QueryClauseDirectMethod("on")
-suspend fun onDirect(cond: context(EnclosedExpression) (R).() -> Boolean): R =
+class JoinOn<Q: Query<R>, R, A>(internal val query: Q, internal val joinType: XR.JoinType, internal val queryClause: QueryClause<A>, internal val aliasRaw: String?)
+class VariableJoinOn<Q : Query<R>, R, A>(internal val query: Q, internal val joinType: XR.JoinType, internal val queryClause: QueryClause<A>, internal val aliasRaw: String?)
+
+@QueryClauseDirectMethod("onInner")
+suspend fun <Q: Query<R>, R, A> JoinOn<Q, R, A>.on(cond: context(EnclosedExpression) (R).() -> Boolean): R =
+  error("The join.on(...) expression of the Query was not inlined")
+@QueryClauseJoinMethod("onExpr")
+suspend fun <Q: Query<R>, R, A> JoinOn<Q, R, A>.onInner(cond: context(EnclosedExpression) (R).() -> Boolean): SqlVariable<R> =
   error("The join.on(...) expression of the Query was not inlined")
 
-suspend fun on(cond: context(EnclosedExpression) (R).() -> Boolean): SqlVariable<R> =
+@QueryClauseJoinMethod("onExprVar")
+suspend fun <Q: Query<R>, R, A> VariableJoinOn<Q, R, A>.on(cond: context(EnclosedExpression) (R).() -> Boolean): SqlVariable<R> =
   error("The join.on(...) expression of the Query was not inlined")
 
-//  //// TODO some internal annotation?
-//  @OptIn(ExoInternal::class)
-//  @Suppress("UNCHECKED_CAST")
-//  suspend fun onExpr(joinIdentRaw: XR.Ident, bodyRaw: XR, onClauseBinds: DynamicBinds, loc: XR.Location): SqlVariable<R> =
-//    with (queryClause) {
-//      perform { mapping ->
-//        val joinIdentTpe = joinIdentRaw.type
-//        val joinIdentName = aliasRaw ?: joinIdentRaw.name
-//
-//        println("------------------------- joinIdentName: ${joinIdentName}, aliasRaw: ${aliasRaw}, joinIdentRaw.name: ${joinIdentRaw.name}")
-//
-//        val body = bodyRaw as XR.Expression
-//        val sqlVariable = SqlVariable<R>(joinIdentName)
-//        val outputQuery = mapping(sqlVariable)
-//        val ident = XR.Ident(sqlVariable.getVariableName(), outputQuery.xr.type, loc)
-//
-//        val freshIdentForCond = run {
-//          // Need to consider all the alises that could come from any of the other sources before making a new variable for the element.
-//          // however, if the alias is not-null we can rely on just that on being duplicated
-//          if (aliasRaw != null) {
-//            val name = freshIdent(joinIdentName, listOf(body), listOf(query, outputQuery), listOf(onClauseBinds))
-//            XR.Ident(name, joinIdentTpe, loc)
-//          } else {
-//            XR.Ident(joinIdentName, joinIdentTpe, loc)
-//          }
-//        }
-//        val freshCondBody = BetaReduction(body, joinIdentRaw to freshIdentForCond)
-//
-//        // Need to combine the binds of the query that was inside the join-clause together with the joinClause-binds themselves (i.e. the ones
-//        // produced by the macros that call onExpr) as well as any binds from previous monadic-program calls
-//        val totalBinds = query.binds + onClauseBinds + outputQuery.binds
-//        // Finally assemble the output query
-//        (QueryContainer<R>(XR.FlatMap(
-//          // Good example of beta reduction
-//          XR.FlatJoin(joinType, query.xr, freshIdentForCond, freshCondBody, loc), ident, outputQuery.xr, loc), totalBinds
-//          // Maybe there should be some kind of global-flag to disable reduction above
-//          // XR.FlatJoin(joinType, query.xr, cond.ident, cond.xr.body), ident, outputQuery.xr), query.binds + binds
-//        ) as Query<A>)
-//      }
-//    }
-}
 
-
-// TODO some internal annotation?
 @OptIn(ExoInternal::class)
 @Suppress("UNCHECKED_CAST")
 suspend fun <Q: Query<R>, R, A> JoinOn<Q, R, A>.onExpr(joinIdentRaw: XR.Ident, bodyRaw: XR, onClauseBinds: DynamicBinds, loc: XR.Location): SqlVariable<R> =
+  with (queryClause) {
+    perform { mapping ->
+      val joinIdentTpe = joinIdentRaw.type
+      val joinIdentName = aliasRaw ?: joinIdentRaw.name
+
+      //println("------------------------- joinIdentName: ${joinIdentName}, aliasRaw: ${aliasRaw}, joinIdentRaw.name: ${joinIdentRaw.name}")
+
+      val body = bodyRaw as XR.Expression
+      val sqlVariable = SqlVariable<R>(joinIdentName)
+      val outputQuery = mapping(sqlVariable)
+      val ident = XR.Ident(sqlVariable.getVariableName(), outputQuery.xr.type, loc)
+
+      val freshIdentForCond = run {
+        // Need to consider all the alises that could come from any of the other sources before making a new variable for the element.
+        // however, if the alias is not-null we can rely on just that on being duplicated
+        if (aliasRaw != null) {
+          val name = freshIdent(joinIdentName, listOf(body), listOf(query, outputQuery), listOf(onClauseBinds))
+          XR.Ident(name, joinIdentTpe, loc)
+        } else {
+          XR.Ident(joinIdentName, joinIdentTpe, loc)
+        }
+      }
+      val freshCondBody = BetaReduction(body, joinIdentRaw to freshIdentForCond)
+
+      // Need to combine the binds of the query that was inside the join-clause together with the joinClause-binds themselves (i.e. the ones
+      // produced by the macros that call onExpr) as well as any binds from previous monadic-program calls
+      val totalBinds = query.binds + onClauseBinds + outputQuery.binds
+      // Finally assemble the output query
+      (QueryContainer<R>(XR.FlatMap(
+        // Good example of beta reduction
+        XR.FlatJoin(joinType, query.xr, freshIdentForCond, freshCondBody, loc), ident, outputQuery.xr, loc), totalBinds
+        // Maybe there should be some kind of global-flag to disable reduction above
+        // XR.FlatJoin(joinType, query.xr, cond.ident, cond.xr.body), ident, outputQuery.xr), query.binds + binds
+      ) as Query<A>)
+    }
+  }
+
+
+
+@OptIn(ExoInternal::class)
+@Suppress("UNCHECKED_CAST")
+suspend fun <Q: Query<R>, R, A> VariableJoinOn<Q, R, A>.onExprVar(joinIdentRaw: XR.Ident, bodyRaw: XR, onClauseBinds: DynamicBinds, loc: XR.Location): SqlVariable<R> =
   with (queryClause) {
     perform { mapping ->
       val joinIdentTpe = joinIdentRaw.type

@@ -1,9 +1,8 @@
 package io.exoquery.norm
 
 import io.exoquery.*
-import io.exoquery.printing.exoPrint
 import io.exoquery.select
-import io.exoquery.sql.token
+import io.exoquery.select.on
 import io.exoquery.util.TraceConfig
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
@@ -42,7 +41,7 @@ class InfixSpec: FreeSpec({
         val q = query {
           val t = from(Table<TestEntity>())
           // I.e. it is impossible to call ${t().s} unside of a "foobar(...)" unless you use the SQL{...} syntax because the SQL(...) cannot have an EnclosedContext
-          val i = join(SQL<TestEntity2> { "foobar(${t().s})" }.asQuery()).on { i == t().i }
+          val i = join(SQL<TestEntity2> { "foobar(${t.s})" }.asQuery()).on { i == t.i }
           select { t to i }
         }
         q.xr.show() shouldBe """query("TestEntity").flatMap { t -> SQL("foobar(${dol}{t.s})").join { i -> i.i == t.i }.map { i -> Tuple(first: t, second: i) } }"""

@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import io.exoquery.plugin.trees.CallData.MultiArgMember.ArgType
+import io.exoquery.select.VariableJoinOn
 
 // TODO Need to change all instances of FunctionMem... to return Caller as the reciver type
 //      so that we can support things like Query<Int>.avg because that inherently needs to
@@ -116,7 +117,7 @@ object ExtractorsDomain {
 
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
-        (it.reciverIs<QueryClause<*>>() || it.reciverIs<JoinOn<*, *, *>>()) && it.markedQueryClauseDirectMethod() != null
+        (it.reciverIs<QueryClause<*>>() || it.reciverIs<JoinOn<*, *, *>>() || it.reciverIs<VariableJoinOn<*, *, *>>()) && it.markedQueryClauseDirectMethod() != null
 
       context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
         customPattern1(x) { call: IrCall ->
@@ -157,20 +158,23 @@ object ExtractorsDomain {
     }
 
     object `join-on(expr)` {
+      data class Data(val caller: ReceiverCaller, val funExpression: IrFunctionExpression, val params: List<IrValueParameter>, val blockBody: IrBlockBody, val replacementMethodToCall: ReplacementMethodToCall)
+
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
-        it.reciverIs<JoinOn<*, *, *>>("on") && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
+        it.markedQueryClauseJoinMethod() != null && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
 
-      context (CompileLogger) operator fun <AP: Pattern<CallData.LambdaMember>> get(x: AP) =
-        customPattern1(x) { it: IrCall ->
-          if (matchesMethod(it)) {
-            on(it).match(
+      context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
+        customPattern1(x) { call: IrCall ->
+          if (matchesMethod(call)) {
+            call.match(
               // (joinClause).on { stuff } <- FunctionMem1, `on` is a member of joinClause
               case(Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
                 on(expression).match(
                   case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
-                    val funExpression = this
-                    Components1(CallData.LambdaMember(reciver, funExpression, params, blockBody))
+                    call.markedQueryClauseJoinMethod()?.let { newMethod ->
+                      Components1(Data(reciver, this, params, blockBody, newMethod))
+                    }
                   }
                 )
               }

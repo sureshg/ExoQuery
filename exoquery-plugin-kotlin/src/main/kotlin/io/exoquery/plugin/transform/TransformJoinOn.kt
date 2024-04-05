@@ -24,25 +24,25 @@ class TransformJoinOn(override val ctx: BuilderContext, val superTransformer: Vi
     // For join(addresses).on { id == person.id } :
     //    funExpression would be `id == person.id`. Actually it includes the "hidden" reciver so it would be:
     //    `$this$on.id == person.id`
-    val (caller, funExpression, params, blockBody) =
+    val matchData =
       expression.match(
         case(ExtractorsDomain.Call.`join-on(expr)`[Is()]).then { queryCallData -> queryCallData }
       ) ?: parseError("Illegal block on function:\n${Messages.PrintingMessage(expression)}")
 
      //There actually IS a reciver to this function and it should be named $this$on
-    val reciverParam = funExpression.function.extensionReceiverParameter ?: structError("Extension Reciever for on-clause was null")
+    val reciverParam = matchData.funExpression.function.extensionReceiverParameter ?: structError("Extension Reciever for on-clause was null")
     val reciverSymbol = reciverParam.symbol.safeName
     val paramIdent = run {
       val tpe = TypeParser.of(reciverParam)
       XR.Ident(reciverSymbol, tpe, reciverParam.location().toLocationXR())
     }
 
-    // TODO Recursively transform the block body?
+    // Question: Recursively transform the block body first?
 
     // parse the `on` clause of the join.on(...)
     val (onLambdaBody, bindsAccum) =
       with(makeParserContext(expression).copy(internalVars + ScopeSymbols(listOf(reciverParam.symbol)))) {
-        Parser.parseFunctionBlockBody(blockBody)
+        Parser.parseFunctionBlockBody(matchData.blockBody)
       }
 
     val lifter = makeLifter()
@@ -52,11 +52,11 @@ class TransformJoinOn(override val ctx: BuilderContext, val superTransformer: Vi
 
     // To transform the TableQuery etc... in the join(<Heree>).on clause before the `on`
     // No scope symbols into caller since it comes Before the on-clause i.e. before any symbols could be created
-    val newCaller = caller.transform(superTransformer, internalVars)
+    val newCaller = matchData.caller.transform(superTransformer, internalVars)
 
     val bindsList = bindsAccum.makeDynamicBindsIr()
 
-    return newCaller.call(ReplacementMethodToCall("onExpr", ChangeReciever.ToExtension)).invoke(paramIdentExpr, onLambdaBodyExpr, bindsList, loc)
+    return newCaller.call(matchData.replacementMethodToCall).invoke(paramIdentExpr, onLambdaBodyExpr, bindsList, loc)
   }
 }
 

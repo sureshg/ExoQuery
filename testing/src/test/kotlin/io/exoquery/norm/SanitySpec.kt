@@ -1,11 +1,9 @@
 package io.exoquery.norm
 
 import io.exoquery.*
-import io.exoquery.printing.exoPrint
 import io.exoquery.select
-import io.exoquery.sql.token
+import io.exoquery.select.on
 import io.exoquery.util.TraceConfig
-import io.exoquery.util.TraceType
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 
@@ -51,17 +49,17 @@ class SanitySpec: FreeSpec({
     "flatJoin" {
       val q =
         query {
-          val a = from(qr1)
-          val b = join(qr2).on { s == a().s }
+          val a = varFrom(qr1)
+          val b = varJoin(qr2).on { s == a().s }
           select { a() to b() }
         }
       q.xr.show() shouldBe """query("TestEntity").flatMap { a -> query("TestEntity2").join { b -> b.s == a.s }.map { b -> Tuple(first: a, second: b) } }"""
     }
-    "flatJoin + where + groupBy + sortBy" {
+    "variable: flatJoin + where + groupBy + sortBy" {
       val q =
         query {
-          val a = from(qr1)
-          val b = join(qr2).on { s == a().s }
+          val a = varFrom(qr1)
+          val b = varJoin(qr2).on { s == a().s }
           where { a().i == 123 }
           groupBy { b().s }
           sortedBy { a().l }

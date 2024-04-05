@@ -1,13 +1,11 @@
 import com.github.vertical_blank.sqlformatter.SqlFormatter
 import io.exoquery.*
-import io.exoquery.annotation.ExoInternal
 import io.exoquery.norm.RepropagateTypes
+import io.exoquery.select.on
 import io.exoquery.sql.ExpandNestedQueries
 import io.exoquery.sql.SqlQueryApply
 import io.exoquery.util.Globals
 import io.exoquery.util.TraceConfig
-import io.exoquery.util.TraceType
-import kotlin.reflect.KProperty
 
 object Model1 {
   data class Person(val id: Int, val name: Name?, val age: Int)
@@ -24,10 +22,10 @@ object Model1 {
     var start = System.currentTimeMillis()
     val x =
       query {
-        val x = fromDirect(Table<Person>())
+        val x = from(Table<Person>())
         println("================= Value: ==============" + x)
         val a = join(Table<Address>()).on { street == x.name?.first?.name }
-        a
+        select { a }
       }
     println("------------ Query Making Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
 
@@ -85,8 +83,8 @@ object Model1Simple {
     val x =
       // hello
       query {
-        val x = from(Table<Person>())
-        val a = join(Table<Address>()).on { ownerId == x().id }
+        val x = varFrom(Table<Person>())
+        val a = varJoin(Table<Address>()).on { ownerId == x().id }
         where {
           // TODO shuold be able to have query { ... } inside of here with an exists clause
           x().age > 20
@@ -180,7 +178,7 @@ object Model3 {
     // TODO Need to try a nested `select {  }` inside of from and `join`
     val x =
       query {
-        val p = from(Table<Person>())
+        val p = varFrom(Table<Person>())
         val a = join(Table<Address>()).on { street == p().name }
         p
       }
@@ -201,8 +199,8 @@ object Model4 {
     // TODO Need to try a nested `select {  }` inside of from and `join`
     val x =
       query {
-        val p = fromDirect(Table<Person>())
-        val a = join(Table<Address>()).onDirect { street == p.name }
+        val p = from(Table<Person>())
+        val a = join(Table<Address>()).on { street == p.name }
         //println(p.name) // Should give a class-cast exception
         groupBy { p.name }
         select { p to a }

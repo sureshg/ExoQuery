@@ -2,6 +2,7 @@ package io.exoquery.norm
 
 import io.kotest.core.spec.style.FreeSpec
 import io.exoquery.*
+import io.exoquery.select.on
 import io.exoquery.util.TraceConfig
 
 class NestedQuerySpec: FreeSpec({
@@ -26,15 +27,15 @@ class NestedQuerySpec: FreeSpec({
   "flat-in-flat" - {
     "basic" {
       val q = query {
-        val a = fromDirect(A)
+        val a = from(A)
         val bc = join(
           query {
-            val b = fromDirect(B)
-            val c = join(C).onDirect { s == b.s }
+            val b = from(B)
+            val c = join(C).on { s == b.s }
             //select { BC(b, c) }
             select { b to c }
           }
-        ).onDirect { first.i == a.i }
+        ).on { first.i == a.i }
         //).onDirect { bt.i == a.i }
         //select { ABC(a, bc.bt, bc.ct) }
         select { a to bc.first }

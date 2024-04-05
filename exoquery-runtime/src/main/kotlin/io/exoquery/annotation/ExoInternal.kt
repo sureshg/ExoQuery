@@ -34,6 +34,9 @@ annotation class LambdaMethodProducingXR(val callMethod: String, val change: Cha
 annotation class QueryClauseDirectMethod(val callMethod: String, val change: ChangeReciever = ChangeReciever.DoNothing)
 
 @Retention(AnnotationRetention.BINARY)
+annotation class QueryClauseJoinMethod(val callMethod: String, val change: ChangeReciever = ChangeReciever.DoNothing)
+
+@Retention(AnnotationRetention.BINARY)
 annotation class QueryClauseAliasedMethod(val callMethod: String, val change: ChangeReciever = ChangeReciever.DoNothing)
 
 @Retention(AnnotationRetention.BINARY)
