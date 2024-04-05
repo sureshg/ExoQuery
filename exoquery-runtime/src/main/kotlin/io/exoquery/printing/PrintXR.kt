@@ -4,15 +4,20 @@ import io.exoquery.fansi.Attrs
 import io.exoquery.pprint.PPrinter
 import io.exoquery.pprint.PPrinterConfig
 import io.exoquery.pprint.Tree
-import io.exoquery.xr.MirrorIdiom
-import io.exoquery.xr.XR
-import io.exoquery.xr.XRType
+import io.exoquery.sql.DistinctKind
+import io.exoquery.xr.*
 
 fun exoPrint(value: Any) =
   PrintXR(PrintXR.defaultConfig)(value).toString()
 
 
+fun <T> iteratorOf(vararg elements: T): Iterator<T> = elements.iterator()
+
+
 class PrintXR(config: PPrinterConfig = defaultConfig): PPrinter(config) {
+  fun treeifySuper(x: Any?) =
+    super.treeify(x, escapeUnicode = config.defaultEscapeUnicode, showFieldNames = defaultConfig.defaultShowFieldNames)
+
   override fun treeify(x: Any?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree =
     when (x) {
       is XRType ->
@@ -20,8 +25,12 @@ class PrintXR(config: PPrinterConfig = defaultConfig): PPrinter(config) {
           is XRType.Product -> Tree.Literal("${x.name}(...)")
           else -> Tree.Literal(x.shortString())
         }
+      is XR.Infix -> Tree.Apply("Infix", iteratorOf(treeifySuper(x.parts), treeifySuper(x.params)))
+      is XR.Ident -> Tree.Apply("Id", iteratorOf(Tree.Literal(x.name)))
       is XR.Location.File -> Tree.Literal("<Location:${x.path}:${x.row}:${x.col}>")
       is XR.Location.Synth -> Tree.Literal("<Location:Synthetic>")
+      is DistinctKind -> Tree.Literal(x::class.simpleName ?: "BinaryOp?")
+      is Operator -> Tree.Literal(x.symbol)
       is XR ->
         when (val tree = super.treeify(x, escapeUnicode, showFieldNames)) {
           is Tree.Apply -> {

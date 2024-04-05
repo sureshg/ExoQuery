@@ -27,7 +27,7 @@ class Tracer(
     fun output(str: String): Unit {
       when (this) {
         is InMem -> this.dump(str)
-        is Println -> println(str)
+        is Println -> print(str) // The \n is already being done in in the .output beforehand
       }
     }
 
@@ -36,6 +36,8 @@ class Tracer(
     }
     object Println: OutputSource
   }
+
+  fun print(str: String) = outputSource.output(str + "\n")
 
   override fun interpolate(parts: () -> List<String>, params: () -> List<Any>): Traceable =
     Traceable(parts, params, traceType, color, defaultIndent, traceConfig, globalTracesEnabled, outputSource)
@@ -69,9 +71,9 @@ class Traceable(
 
   val qprint =
     if (color)
-      PrintXR(PPrinterConfig(defaultShowFieldNames = false))
+      PrintXR(PPrinterConfig(defaultShowFieldNames = false, defaultWidth = 300))
     else
-      PrintXR(PPrinterConfig(defaultShowFieldNames = false, colorLiteral = Attrs.Empty, colorApplyPrefix = Attrs.Empty))
+      PrintXR(PPrinterConfig(defaultShowFieldNames = false, colorLiteral = Attrs.Empty, colorApplyPrefix = Attrs.Empty, defaultWidth = 300))
 
   fun generateStringForCommand(value: Any, indent: Int): String {
     val objectString = qprint(value).toString()

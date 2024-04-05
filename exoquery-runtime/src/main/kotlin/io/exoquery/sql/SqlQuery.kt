@@ -345,7 +345,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             }
 
             this is Map -> {
-              val b = base(head, alias, nestNextMap = false)
+              val b = base(head, id, nestNextMap = false)
               val aggs = b.select.filter { it.expr is XR.Aggregation }
               if (!b.distinct.isDistinct && aggs.isEmpty())
                 trace("Flattening| Map(Ident) [Simple]") andReturn {
@@ -354,7 +354,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
               else
                 trace("Flattening| Map(Ident) [Complex]") andReturn {
                   FlattenSqlQuery(
-                    from = listOf(QueryContext(invoke(head), alias.name)),
+                    from = listOf(QueryContext(invoke(head), id.name)),
                     select = selectValues(body),
                     type = type
                   )
@@ -364,18 +364,18 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             this is XR.Filter -> {
               // If it's a filter, pass on the value of nestNextMap in case there is a future map we need to nest
               val b = base(head, id, nestNextMap)
-              // If the filter body uses the filter alias, make sure it matches one of the aliases in the fromContexts
+              // If the filter body uses the filter id, make sure it matches one of the aliases in the fromContexts
               if (b.where == null && (!CollectXR.byType<XR.Ident>(body).map { it.name }
-                  .contains(alias.name) || collectAliases(b.from).contains(alias.name)))
+                  .contains(id.name) || collectAliases(b.from).contains(id.name)))
                 trace("Flattening| Filter(Ident) [Simple]") andReturn {
                   b.copy(where = body, type = type)
                 }
               else
                 trace("Flattening| Filter(Ident) [Complex]") andReturn {
                   FlattenSqlQuery(
-                    from = listOf(QueryContext(invoke(head), alias.name)),
+                    from = listOf(QueryContext(invoke(head), id.name)),
                     where = body,
-                    select = select(alias.name, type, id.loc),
+                    select = select(id.name, type, id.loc),
                     type = type
                   )
                 }
@@ -387,7 +387,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
               val b = base(head, id, nestNextMap = false)
               val criteria = orderByCriteria(criteria, ordering, b.from)
-              // If the sortBy body uses the filter alias, make sure it matches one of the aliases in the fromContexts
+              // If the sortBy body uses the filter id, make sure it matches one of the aliases in the fromContexts
               if (b.where == null && (!allIdentsIn(criteria).contains(id.name) || collectAliases(b.from).contains(id.name)))
                 trace("Flattening| SortBy(Ident) [Simple]") andReturn {
                   b.copy(orderBy = criteria, type = type)
@@ -456,7 +456,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
               when (head) {
                 // Ideally we don't need to make an extra sub-query for every single case of
                 // distinct-on but it only works when the parent AST is an entity. That's because DistinctOn
-                // selects from an alias of an outer clause. For example, query[Person].map(p => Name(p.firstName, p.lastName)).distinctOn(_.name)
+                // selects from an id of an outer clause. For example, query[Person].map(p => Name(p.firstName, p.lastName)).distinctOn(_.name)
                 // (Let's say Person(firstName, lastName, age), Name(first, last)) will turn into
                 // SELECT DISTINCT ON (p.name), p.firstName AS first, p.lastName AS last, p.age FROM Person
                 // This doesn't work because `name` in `p.name` doesn't exist yet. Therefore we have to nest this in a subquery:
@@ -465,15 +465,15 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 // query[Person].distinctOn(_.firstName) which should be fine: SELECT (x.firstName), x.firstName, x.lastName, a.age FROM Person x
                 // since all the fields inside the (...) of the DISTINCT ON must be contained in the entity.
                 is XR.Entity -> {
-                  val b = base(head, alias, nestNextMap = false)
+                  val b = base(head, id, nestNextMap = false)
                   b.copy(distinct = DistinctKind.DistinctOn(distinctList), type = type)
                 }
 
                 else ->
                   trace("Flattening| DistinctOn") andReturn {
                     FlattenSqlQuery(
-                      from = listOf(QueryContext(invoke(head), alias.name)),
-                      select = select(alias.name, type, alias.loc),
+                      from = listOf(QueryContext(invoke(head), id.name)),
+                      select = select(id.name, type, id.loc),
                       distinct = DistinctKind.DistinctOn(distinctList),
                       type = type
                     )
