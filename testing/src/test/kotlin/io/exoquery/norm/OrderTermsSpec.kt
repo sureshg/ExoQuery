@@ -24,10 +24,7 @@ class OrderTermsSpec: FreeSpec({
   "sortedBy" - {
     "a.sortedBy(b => c).filter(d => e)" {
       val q = qr1.sortedBy { b -> b.s }.filter { d -> d.s == "s1" }
-      println(q.xr.showRaw())
       val n = qr1.filter { d -> d.s == "s1" }.sortedBy { b -> b.s }
-      println(n.xr.showRaw())
-      println(OrderTerms(q.xr)?.showRaw())
       OrderTerms(q.xr) shouldBe n.xr
     }
   }
