@@ -66,7 +66,8 @@ class MirrorIdiom {
       is Function1 -> "(${params.token { it.token }}) -> ${body.token}"
       is FunctionN -> "(${params.token { it.token }}) -> ${body.token}"
       is FunctionApply -> "${function.tokenScoped}.apply(${args.token { it.token }})"
-      is Product -> "${name}(${fields.map { (k, v) -> "${k}: ${v.token}" }.joinToString(", ")})"
+      // Product is typically a className "foo.bar.baz.MyClass". Just take the last segment of that.
+      is Product -> "${name.takeLastWhile { it != '.' }}(${fields.map { (k, v) -> "${k}: ${v.token}" }.joinToString(", ")})"
       is Property -> "${of.tokenScoped}.${name}"
       is Aggregation -> "${expr.token}.${op.token}"
       is MethodCall -> "Call(${head.token}.${name.name}(${args.token { it.token }}))"

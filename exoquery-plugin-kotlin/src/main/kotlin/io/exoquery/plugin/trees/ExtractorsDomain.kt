@@ -4,11 +4,11 @@ import io.decomat.*
 import io.exoquery.*
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.BinaryOperators
 import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.plugin.transform.UnaryOperators
-import io.exoquery.select.JoinOn
 import io.exoquery.select.QueryClause
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.UnaryOperator
@@ -17,11 +17,10 @@ import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import io.exoquery.plugin.trees.CallData.MultiArgMember.ArgType
-import io.exoquery.select.VariableJoinOn
+import org.jetbrains.kotlin.ir.types.classFqName
 
 // TODO Need to change all instances of FunctionMem... to return Caller as the reciver type
 //      so that we can support things like Query<Int>.avg because that inherently needs to
@@ -65,6 +64,30 @@ object ExtractorsDomain {
           expression.markedMethodProducingXR()?.let { annotationData -> queryCallData to annotationData }
         }
       )
+  }
+
+  object CaseClassConstructorCall {
+    data class Data(val className: String, val fields: List<Field>)
+    data class Field(val name: String, val value: IrExpression?)
+
+    context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
+      customPattern1(x) { call: IrConstructorCall ->
+        when {
+          call.symbol.safeName == "<init>" -> {
+            val className: String = call.type.classFqName?.asString() ?: call.type.dumpKotlinLike()
+            if (!call.symbol.owner.isPrimary)
+              parseError("Detected construction of the class ${className} using a non-primary constructor. This is not allowed.")
+
+            val params = call.symbol.owner.simpleValueParams.map { it.name.asString() }.toList()
+            val args = call.valueArguments.toList()
+            if (params.size != args.size)
+              parseError("Cannot parse constructor of ${className} its params ${params} do not have the same cardinality as its arguments ${args.map { it?.dumpKotlinLike() }}")
+            val fields = (params zip args).map { (name, value) -> Field(name, value)}
+            Components1(Data(className, fields))
+          }
+          else -> null
+        }
+      }
   }
 
   object Call {
@@ -117,7 +140,7 @@ object ExtractorsDomain {
 
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
-        (it.reciverIs<QueryClause<*>>() || it.reciverIs<JoinOn<*, *, *>>() || it.reciverIs<VariableJoinOn<*, *, *>>()) && it.markedQueryClauseDirectMethod() != null
+        it.markedQueryClauseDirectMethod() != null
 
       context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
         customPattern1(x) { call: IrCall ->
@@ -162,7 +185,7 @@ object ExtractorsDomain {
 
       context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
         // E.g. is Query."map"
-        it.markedQueryClauseJoinMethod() != null && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
+        it.markedQueryClauseJoinMethod() != null
 
       context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
         customPattern1(x) { call: IrCall ->
@@ -170,8 +193,9 @@ object ExtractorsDomain {
             call.match(
               // (joinClause).on { stuff } <- FunctionMem1, `on` is a member of joinClause
               case(Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
-                on(expression).match(
+                expression.match(
                   case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
+                    //error("--------------- Considering here: ${call.dumpKotlinLike()}")
                     call.markedQueryClauseJoinMethod()?.let { newMethod ->
                       Components1(Data(reciver, this, params, blockBody, newMethod))
                     }

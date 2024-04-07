@@ -1,5 +1,6 @@
 package io.exoquery.sql
 
+import com.github.vertical_blank.sqlformatter.SqlFormatter
 import io.exoquery.util.*
 import io.exoquery.xr.*
 import io.exoquery.xr.EqualityOperator.*
@@ -34,7 +35,7 @@ abstract class SqlIdiom {
     trace("SQL: ${sqlQuery.show()}").andLog()
     val expanded = ExpandNestedQueries(::joinAlias)(sqlQuery)
     trace("Expanded SQL: ${expanded.show()}").andLog()
-    val aliasesRemoved = RemoveExtraAlias()(expanded)
+    val aliasesRemoved = expanded //RemoveExtraAlias()(expanded)
     trace("Aliases Remove SQL: ${aliasesRemoved.show()}").andLog()
     return aliasesRemoved
   }
@@ -53,7 +54,16 @@ abstract class SqlIdiom {
     }
   }
 
-  fun show(xr: XR): String = translate(xr).token.toString()
+  fun show(xr: XR, pretty: Boolean = false): String {
+    val sqlString = translate(xr).token.toString()
+    val formatted =
+      if (pretty)
+        SqlFormatter.format(sqlString)
+      else
+        sqlString
+
+    return formatted
+  }
 
 
   val productAggregationToken: ProductAggregationToken get() = ProductAggregationToken.Star

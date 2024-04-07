@@ -2,11 +2,9 @@ package io.exoquery.plugin.trees
 
 import io.decomat.Is
 import io.decomat.case
-import io.decomat.match
 import io.decomat.on
 import io.exoquery.BID
 import io.exoquery.Query
-import io.exoquery.SQL
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.ScopeSymbols
@@ -101,6 +99,10 @@ private class ParserCollector {
 
     // TODO was in the middle of working on pattern-matching for Unary functions
     on(expr).match<XR>(
+
+      case(ExtractorsDomain.CaseClassConstructorCall[Is()]).then { data ->
+        XR.Product(data.className, data.fields.map { (name, valueOpt) -> name to (valueOpt?.let { parseExpr(it) } ?: XR.Const.Null(expr.loc)) }, expr.loc)
+      },
 
       // This could a runtime binding e.g. a variable representing a query etc...
       // can we assume it will be recurisvely transformed and just take the XR from it?

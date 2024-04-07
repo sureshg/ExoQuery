@@ -25,23 +25,38 @@ class NestedQuerySpec: FreeSpec({
   val Dialect = PostgresDialect(TraceConfig.empty)
 
   "flat-in-flat" - {
-    "basic" {
+//    "basic" {
+//      val q = query {
+//        val a = from(A)
+//        val bc = join(
+//          query {
+//            val b = from(B)
+//            val c = join(C).on { s == b.s }
+//            //select { BC(b, c) }
+//            select { b to c }
+//          }
+//        ).on { first.i == a.i }
+//        //).onDirect { bt.i == a.i }
+//        //select { ABC(a, bc.bt, bc.ct) }
+//        select { a to bc.first }
+//      }
+//      println(q.xr.show())
+//      println(Dialect.show(q.xr))
+//    }
+    "case class" { //// //// ////
       val q = query {
         val a = from(A)
         val bc = join(
           query {
             val b = from(B)
             val c = join(C).on { s == b.s }
-            //select { BC(b, c) }
-            select { b to c }
+            select { BC(b, c) }
           }
-        ).on { first.i == a.i }
-        //).onDirect { bt.i == a.i }
-        //select { ABC(a, bc.bt, bc.ct) }
-        select { a to bc.first }
+        ).on { bt.i == a.i }
+        select { ABC(a, bc.bt, bc.ct) }
       }
       println(q.xr.show())
-      println(Dialect.show(q.xr))
+      println(Dialect.show(q.xr, true))
     }
   }
 })

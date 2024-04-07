@@ -162,7 +162,7 @@ suspend fun <Q: Query<R>, R, A> JoinOn<Q, R, A>.on(cond: context(EnclosedExpress
   error("The join.on(...) expression of the Query was not inlined")
 @QueryClauseJoinMethod("onExpr")
 suspend fun <Q: Query<R>, R, A> JoinOn<Q, R, A>.onInner(cond: context(EnclosedExpression) (R).() -> Boolean): SqlVariable<R> =
-  error("The join.on(...) expression of the Query was not inlined")
+  error("The join.onInner(...) expression of the Query was not inlined")
 
 @QueryClauseJoinMethod("onExprVar")
 suspend fun <Q: Query<R>, R, A> VariableJoinOn<Q, R, A>.on(cond: context(EnclosedExpression) (R).() -> Boolean): SqlVariable<R> =
