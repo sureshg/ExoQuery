@@ -32,3 +32,7 @@ class CliProcessor: CommandLineProcessor {
         }
     }
 }
+
+fun main() {
+    println("hello")
+}

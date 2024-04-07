@@ -9,7 +9,7 @@ import io.exoquery.xr.*
 class OrderTerms(val traceConfig: TraceConfig) {
 
   operator fun invoke(xr: XR.Query): XR.Query? =
-    xr.match(
+    on(xr).match(
       // a.sortBy(b => c).filter(d => e) =>
       //     a.filter(d => e).sortBy(b => c)
       //
@@ -17,7 +17,7 @@ class OrderTerms(val traceConfig: TraceConfig) {
       // case Filter(SortBy(a, b, c), d, e) =>
       //     Some(SortBy(Filter(a, d, e), b, c))
       case(Filter[SortBy[Is(), Is()], Is()]).then { (a, b, c), d, e ->
-        SortBy.csf(Filter.csf(a, b, c)(comp), d, e, compLeft.ordering)(compLeft)
+        SortBy.csf(Filter.csf(a, d, e)(comp), b, c, compLeft.ordering)(compLeft)
       },
 
       // a.flatMap(b => c).take(n).map(d => e) =>

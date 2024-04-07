@@ -173,7 +173,7 @@ sealed interface XR {
 
   @Mat
   data class SortBy(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val criteria: XR.Expression, @CS val ordering: XR.Ordering, override val loc: Location = Location.Synth): Query, PC<SortBy> {
-    override val productComponents = productOf(this, head, criteria, ordering)
+    override val productComponents = productOf(this, head, id, criteria)
     override val type get() = head.type
     companion object {}
     override fun toString() = show()

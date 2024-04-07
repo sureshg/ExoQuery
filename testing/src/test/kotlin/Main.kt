@@ -214,7 +214,8 @@ object Model4 {
 }
 
 fun main() {
-  Model4.use()
+  //Model4.use()
+  println("hello")
 }
 
 

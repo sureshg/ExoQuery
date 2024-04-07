@@ -101,7 +101,7 @@ class VisitPropagateVariables(
         val newArgs = args.map { super.visitExpression(it, varName) }
         // also need to visit the caller for the same reason, this is especially important for `val x = join(tbl).on(...)`
         // because the `join` clause needs to be changed for joinAliased in via the visitCallLiveVar visitor here
-        val newCaller = caller.transform(this, varName)
+        val newCaller = caller.transform(this@VisitPropagateVariables, varName)
 
         val newCall = newCaller.call(replacementMethod)(*newArgs.toTypedArray())
         irVar.type = newCall.type
