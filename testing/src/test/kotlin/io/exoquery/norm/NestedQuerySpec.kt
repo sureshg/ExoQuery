@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.exoquery.*
 import io.exoquery.select.on
 import io.exoquery.util.TraceConfig
+import io.exoquery.util.TraceType
 
 /*
 
@@ -47,6 +48,7 @@ class NestedQuerySpec: FreeSpec({
 
 
 
+  //val Dialect = PostgresDialect(TraceConfig(listOf(TraceType.Normalizations, TraceType.Standard, TraceType.SqlNormalizations)))
   val Dialect = PostgresDialect(TraceConfig.empty)
 
   "flat-in-flat" - {
@@ -96,6 +98,7 @@ class NestedQuerySpec: FreeSpec({
         select { GranParChii(grann, parrChii.parr, parrChii.chii) }
       }
       println(q.xr.showRaw())
+      println(Dialect.normalizeQuery(q.xr).showRaw())
       println(Dialect.show(q.xr, true))
     }
   }

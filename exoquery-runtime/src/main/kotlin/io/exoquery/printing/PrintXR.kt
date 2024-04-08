@@ -25,9 +25,10 @@ class PrintXR(config: PPrinterConfig = defaultConfig): PPrinter(config) {
     when (x) {
       is XRType ->
         when(x) {
-          is XRType.Product -> Tree.Literal("${x.name}(...)")
+          is XRType.Product -> Tree.Literal("${x.name.takeLastWhile { it != '.' }}(...)")
           else -> Tree.Literal(x.shortString())
         }
+      is XR.Product -> Tree.Apply("Product", (listOf(treeifyThis(x.name.takeLastWhile { it != '.' })) + x.fields.map { treeifyThis(it) }).iterator())
       is XR.Infix -> Tree.Apply("Infix", iteratorOf(treeifySuper(x.parts), treeifySuper(x.params)))
       is XR.Ident -> Tree.Apply("Id", iteratorOf(Tree.Literal(x.name), treeifyThis(x.type)))
       is XR.Location.File -> Tree.Literal("<Location:${x.path}:${x.row}:${x.col}>")

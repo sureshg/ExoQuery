@@ -35,10 +35,11 @@ class SqlNormalize(
 
   inline fun ((Query) -> Query).andThen(phaseTitle: String, crossinline f: (Query) -> Query): (Query) -> Query = { qRaw ->
     // Too much noise when both before and after the phase are printed
+    demarcate("Beginning: ${phaseTitle}", qRaw)
     //demarcate(phaseTitle, q)
     val q = this(qRaw)
     val output = f(q)
-    demarcate("Completed: ${phaseTitle}", output)
+    //demarcate("Completed: ${phaseTitle}", output)
     output
   }
 

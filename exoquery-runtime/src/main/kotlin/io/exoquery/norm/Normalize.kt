@@ -11,8 +11,7 @@ import io.exoquery.xr.XR
 class Normalize(override val traceConf: TraceConfig, val disableApplyMap: Boolean): StatelessTransformer, HasPhasePrinting {
 
   override val traceType: TraceType = TraceType.Normalizations
-  override val trace: Tracer =
-    Tracer(TraceType.AvoidAliasConflict, traceConf, 1)
+  override val trace: Tracer = Tracer(traceType, traceConf, 1)
 
   val DealiasPhase by lazy { DealiasApply(traceConf) }
   val AvoidAliasConflictPhase by lazy { AvoidAliasConflictApply(traceConf) }

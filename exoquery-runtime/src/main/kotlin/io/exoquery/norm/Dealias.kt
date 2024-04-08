@@ -21,8 +21,9 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //            (FlatMap(a, b, cn), cnt)
 //        }
         is FlatMap -> {
-          val (a, b, c, t) = dealias(head, id, body)
-          FlatMap.cs(a, b, c) to t
+          val (a, b, c, _) = dealias(head, id, body)
+          val (cn, cnt) = invoke(c) // need to recursively dealias this clause e.g. if it is a map-clause that has another alias inside
+          FlatMap.cs(a, b, cn) to cnt
         }
 
 //      case ConcatMap(a, b, c) =>
@@ -33,8 +34,9 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //        }
 
         is ConcatMap -> {
-          val (a, b, c, t) = dealias(head, id, body)
-          ConcatMap.cs(a, b, c) to t
+          val (a, b, c, _) = dealias(head, id, body)
+          val (cn, cnt) = invoke(c)
+          ConcatMap.cs(a, b, cn) to cnt
         }
 
 //      case Map(a, b, c) =>
@@ -164,6 +166,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
     return when {
       alias != null -> {
         val retypedAlias = alias.copy(type = b.type)
+        trace("Dealias (Q/Expr) $b into $retypedAlias").andLog()
         DealiasResultA(an, retypedAlias, BetaReduction(c, b to retypedAlias), t)
       }
       else ->
@@ -177,6 +180,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
     return when {
       alias != null -> {
         val retypedAlias = alias.copy(type = b.type)
+        trace("Dealias (Q/Q) $b into $retypedAlias").andLog()
         DealiasResultB(an, retypedAlias, BetaReduction.ofQuery(c, b to retypedAlias), t)
       }
       else ->
