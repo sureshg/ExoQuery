@@ -120,7 +120,7 @@ data class SelectPropertyProtractor(val from: List<FromContext>) {
         val effectiveQuat = nonAbstractQuat(prop.type, alternateQuat)
 
         when(effectiveQuat) {
-          is XRType.Product -> ProtractQuat(isEntity)(effectiveQuat, id)
+          is XRType.Product -> ProtractQuat(isEntity)(effectiveQuat, prop)
           else              -> listOf(prop to listOf())
         }
       }

@@ -18,6 +18,9 @@ class PrintXR(config: PPrinterConfig = defaultConfig): PPrinter(config) {
   fun treeifySuper(x: Any?) =
     super.treeify(x, escapeUnicode = config.defaultEscapeUnicode, showFieldNames = defaultConfig.defaultShowFieldNames)
 
+  fun treeifyThis(x: Any?) =
+    treeify(x, escapeUnicode = config.defaultEscapeUnicode, showFieldNames = defaultConfig.defaultShowFieldNames)
+
   override fun treeify(x: Any?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree =
     when (x) {
       is XRType ->
@@ -26,7 +29,7 @@ class PrintXR(config: PPrinterConfig = defaultConfig): PPrinter(config) {
           else -> Tree.Literal(x.shortString())
         }
       is XR.Infix -> Tree.Apply("Infix", iteratorOf(treeifySuper(x.parts), treeifySuper(x.params)))
-      is XR.Ident -> Tree.Apply("Id", iteratorOf(Tree.Literal(x.name)))
+      is XR.Ident -> Tree.Apply("Id", iteratorOf(Tree.Literal(x.name), treeifyThis(x.type)))
       is XR.Location.File -> Tree.Literal("<Location:${x.path}:${x.row}:${x.col}>")
       is XR.Location.Synth -> Tree.Literal("<Location:Synthetic>")
       is DistinctKind -> Tree.Literal(x::class.simpleName ?: "BinaryOp?")

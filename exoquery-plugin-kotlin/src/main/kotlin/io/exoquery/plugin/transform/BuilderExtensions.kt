@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
@@ -29,7 +30,7 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
 class CallMethod(private val callerRaw: Caller, private val replacementFun: ReplacementMethodToCall, private val types: List<IrType>, private val tpe: IrType?) {
-  context(BuilderContext) operator fun invoke(vararg args: IrExpression): IrExpression {
+  context(BuilderContext) operator fun invoke(vararg args: IrExpression): IrCall {
     val caller =
       when (replacementFun.callerType) {
         ChangeReciever.ToDispatch -> callerRaw.toDispatch()

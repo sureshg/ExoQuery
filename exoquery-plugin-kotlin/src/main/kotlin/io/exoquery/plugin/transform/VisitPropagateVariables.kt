@@ -102,16 +102,24 @@ class VisitPropagateVariables(
         // also need to visit the caller for the same reason, this is especially important for `val x = join(tbl).on(...)`
         // because the `join` clause needs to be changed for joinAliased in via the visitCallLiveVar visitor here
         val newCaller = caller.transform(this@VisitPropagateVariables, varName)
-
         val newCall = newCaller.call(replacementMethod)(*newArgs.toTypedArray())
         irVar.type = newCall.type
-        irVar.initializer = newCall
+        // recursively call the variable-aliased transformer on the resulting tree since we want to use the current varName
+        // as the aliased clause. For example if we're doing join(...).on(...) we've turned it into join(...).onInner(...)
+        // which we in turn want to transfrom to join(...).onAliased(...).
+        irVar.initializer = visitCallLiveVar(newCall, varName) as IrCall
         irVar
       }
     ) ?: run {
       super.visitDeclaration(irVar, currVarName)
     }
 
+    // TODO if there are any instances of a Get(@SqlVar T) outside of a quoted context then immediately throw an error since you're not allowed to do that.
+    //      alternative we could do this at the end and see if there are @SqlVar remaining but has their type been transformed into SqlVariable?
+    //      I think it has because I got class-cast T to SqlVariable<T> exceptions before. THat means we need to know which SqlVariable instances
+    //      came from an @SqlVar and which did not.
+
+    // TODO Find any instances of @SqlVar remaining after all transformations and throw an error
 
     // TODO Once these are detected, find instances of @QueryClauseDirectMethod (e.g. fromDirect) that are not in the expected form i.e. var x = from(Table<Person>) and throw an error
     //      it seems that just replacing the type here makes actual instances of the variable usable (at least via something line println(x)) so need to look into

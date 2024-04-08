@@ -27,11 +27,12 @@ abstract class SqlIdiom {
 
   val trace: Tracer by lazy { Tracer(TraceType.SqlNormalizations, traceConfig, 1) }
 
-  fun querifyAst(ast: XR, traceConfig: TraceConfig) = SqlQueryApply(traceConfig)(ast)
+  fun normalizeQuery(xr: XR.Query) =
+    SqlNormalize(traceConf = traceConfig, disableApplyMap = false)(xr)
 
-  fun normalizeQuery(xr: XR.Query): SqlQuery {
-    val q = SqlNormalize(traceConf = traceConfig, disableApplyMap = false)(xr)
-    val sqlQuery = querifyAst(q, traceConfig)
+  fun prepareQuery(xr: XR.Query): SqlQuery {
+    val q = normalizeQuery(xr)
+    val sqlQuery = SqlQueryApply(traceConfig)(q)
     trace("SQL: ${sqlQuery.show()}").andLog()
     val expanded = ExpandNestedQueries(::joinAlias)(sqlQuery)
     trace("Expanded SQL: ${expanded.show()}").andLog()
