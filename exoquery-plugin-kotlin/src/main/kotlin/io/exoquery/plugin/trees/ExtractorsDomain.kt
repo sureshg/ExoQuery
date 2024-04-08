@@ -357,19 +357,25 @@ object ExtractorsDomain {
     }
 
     object MakeTable {
-      //val TableQueryCompanionFqName = Table.Companion::class.qualifiedName.toString()
+      data class Data(val tableType: IrType, val replacementMethodToCall: ReplacementMethodToCall)
 
-      context (CompileLogger) operator fun <AP: Pattern<IrType>> get(statements: AP) =
-        customPattern1(statements) { it: IrCall ->
-          on(it).match(
+      context (CompileLogger) operator fun <AP: Pattern<Data>> get(statements: AP) =
+        customPattern1(statements) { call: IrCall ->
+          call.match(
+            case(Ir.Call.FunctionMem0[Is()])
+              .thenIf { _ -> call.markedTableConstructor() && call.type.isClass<Table<*>>() }
+              .then { caller ->
+                Components1(Data(call.type.simpleTypeArgs.first(), ReplacementMethodToCall("fromExpr")))
+              },
             case(Ir.Call.FunctionMem0[ReceiverCaller[Is<IrGetObjectValue>()]])
               .thenIfThis { (getObject) ->
                 getObject.type.isClass<Table.Companion>() && type.classOrNull != null
               }
-              .thenThis {
-                val firstArg = this.typeArguments.first()
+              .then {
+                val caller = this.compInner
+                val firstArg = comp.typeArguments.first()
                 if (firstArg == null) kotlin.error("First type-argument to the TableQuery call was null. This should be impossible.")
-                else Components1(firstArg as IrType)
+                else Components1(Data(firstArg, ReplacementMethodToCall("fromExpr")))
               }
           )
         }

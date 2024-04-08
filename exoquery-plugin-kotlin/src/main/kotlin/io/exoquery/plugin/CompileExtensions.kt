@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import kotlin.reflect.KClass
@@ -119,6 +120,11 @@ inline fun <reified T> IrExpression.isClass(): Boolean {
   return className == this.type.classFqName.toString() || type.superTypes().any { it.classFqName.toString() == className }
 }
 
+inline fun <reified T> classIdOf(): ClassId {
+  val className = T::class.qualifiedNameForce
+  return ClassId.topLevel(FqName(className))
+}
+
 inline fun <reified T> IrType.isClass(): Boolean {
   val className = T::class.qualifiedNameForce
   return className == this.classFqName.toString() || this.superTypes().any { it.classFqName.toString() == className }
@@ -169,6 +175,9 @@ fun IrCall.markedMethodProducingXR() =
 
 fun IrCall.markedLambdaMethodProducingXR() =
   this.symbol.owner.annotations.findAnnotation(LambdaMethodProducingXR::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
+
+fun IrCall.markedTableConstructor() =
+  this.symbol.owner.annotations.findAnnotation(ExoTableConstructor::class.fqNameForce) != null
 
 fun IrCall.isExoMethodAnnotated(name: String) =
   this.symbol.owner.annotations.findAnnotation(ExoMethodName::class.fqNameForce)

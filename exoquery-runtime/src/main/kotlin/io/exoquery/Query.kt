@@ -264,15 +264,6 @@ sealed interface Query<T>: ContainerOfXR {
 
 data class QueryContainer<T>(override val xr: XR.Query, override val binds: DynamicBinds): Query<T>
 
-// TODO make this constructor private? Shuold have a TableQuery.fromExpr constructor
-class Table<T> private constructor (override val xr: XR.Entity, override val binds: DynamicBinds): Query<T> {
-  companion object {
-    // TODO need to implement this in the plugin
-    operator fun <T> invoke(): Table<T> = error("The TableQuery create-table expression was not inlined")
-    fun <T> fromExpr(entity: EntityExpression) = Table<T>(entity.xr, DynamicBinds.empty())
-  }
-}
-
 @Suppress("UNCHECKED_CAST")
 public fun <T, Q: Query<T>> query(block: suspend QueryClause<T>.() -> SqlExpression<T>): Q {
   val markerId = UUID.randomUUID().toString()

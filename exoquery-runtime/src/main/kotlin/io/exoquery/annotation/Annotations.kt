@@ -42,6 +42,9 @@ annotation class QueryClauseAliasedMethod(val callMethod: String, val change: Ch
 @Retention(AnnotationRetention.BINARY)
 annotation class QueryClauseUnitBind(val callMethod: String, val change: ChangeReciever = ChangeReciever.DoNothing)
 
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoTableConstructor
+
 
 /*
 Idea: Use annotations to tell the parsing system which expressions to parse and which functions to plug in for them

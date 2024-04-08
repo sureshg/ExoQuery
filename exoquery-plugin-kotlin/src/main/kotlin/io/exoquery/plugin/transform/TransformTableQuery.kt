@@ -4,15 +4,19 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.EntityExpression
+import io.exoquery.Table
+import io.exoquery.plugin.classIdOf
 import io.exoquery.plugin.locationXR
 import io.exoquery.xr.XR
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.DomainErrors
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.trees.*
+import io.exoquery.terpal.parseError
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
@@ -20,11 +24,14 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 
-class TransformTableQuery(val ctx: BuilderContext) {
+class TransformTableQuery(override val ctx: BuilderContext): Transformer() {
   private val compileLogger = ctx.logger
 
-  fun matches(expression: IrCall): Boolean = run {
+  context(BuilderContext, CompileLogger)
+  override fun matchesBase(expression: IrCall): Boolean = run {
     with(compileLogger) {
       on(expression).match(
         case(ExtractorsDomain.Call.MakeTable[Is()]).then { true }
@@ -40,14 +47,6 @@ class TransformTableQuery(val ctx: BuilderContext) {
     }
   }
 
-  fun transform(expression: IrCall): IrExpression =
-    // Technically we don't care about any scope-symbols in here but propagate them in case we might want then in the future
-    with (ParserContext(ctx.parentScopeSymbols, ctx.currentFile)) {
-      with (compileLogger) {
-        transformInternal(expression)
-      }
-    }
-
   fun XRType.productOrFail(originalType: IrType): XRType.Product =
     when(this) {
       is XRType.Product -> this
@@ -55,32 +54,22 @@ class TransformTableQuery(val ctx: BuilderContext) {
 
     }
 
-  context(ParserContext, CompileLogger) fun transformInternal(expression: IrCall): IrExpression =
+  context(ParserContext, BuilderContext, CompileLogger)
+  override fun transformBase(expression: IrCall): IrExpression =
     on(expression).match(
-      case(ExtractorsDomain.Call.MakeTable[Is()]).thenThis { entityClass ->
+      case(ExtractorsDomain.Call.MakeTable[Is()]).thenThis { tableData ->
         val lifter = ctx.makeLifter()
-        val builder = ctx.builder
-
+        val entityClass = tableData.tableType
         val xrType = TypeParser.of(this).productOrFail(entityClass)
         val xr = XR.Entity(entityClass.classOrFail("Error derving class of TableQuery").safeName, xrType, expression.locationXR())
-        val caller = this.dispatchReceiver ?: kotlin.error("Dispatch reciever of the following expression was null. This should not be possible:\n" + expression.dumpKotlinLike())
+
+        val tableCompanionRef = pluginCtx.referenceClass(classIdOf<Table.Companion>()) ?: parseError("Cannot find the table-constructor class ${classIdOf<Table.Companion>()}. This should be impossible.")
+        val caller = builder.irGetObject(tableCompanionRef)
 
         val entityExpression = EntityExpression(xr)
         val liftedEntity = lifter.liftExpression(entityExpression)
 
-        val fromExprFunction =
-          caller.type.classOrFail("Error looking up class info from ${caller.dumpKotlinLike()} during TableQuery deduction")
-            .functions
-            .find { it.safeName == "fromExpr" }
-            ?: kotlin.error("Cannot locate the TableQuery function fromExpr from the caller type: ${caller.type.dumpKotlinLike()}")
-
-        with(builder) {
-          this.irCall(fromExprFunction, expression.type).apply {
-            this.dispatchReceiver = caller
-            putTypeArgument(0, expression.type)
-            putValueArgument(0, liftedEntity)
-          }
-        }
+        Caller.Dispatch(caller).callWithParams(tableData.replacementMethodToCall, listOf(expression.type)).invoke(liftedEntity)
       }
     ) ?: expression
 }
