@@ -17,13 +17,16 @@ import io.exoquery.xrError
 import io.exoquery.sql.UnnestProperty
 import org.jetbrains.kotlin.resolve.constants.NullValue
 import io.exoquery.xr.XR.Location.Synth
+import org.jetbrains.kotlin.utils.join
 
 abstract class SqlIdiom {
 
   abstract val traceConfig: TraceConfig
   abstract val concatFunction: String
   abstract val useActionTableAliasAs: ActionTableAliasBehavior
-  open fun joinAlias(alias: List<String>): String = alias.joinToString("_")
+
+  val aliasSeparator: String get() = "_"
+  open fun joinAlias(alias: List<String>): String = alias.joinToString(aliasSeparator)
 
   val trace: Tracer by lazy { Tracer(TraceType.SqlNormalizations, traceConfig, 1) }
 
@@ -68,7 +71,7 @@ abstract class SqlIdiom {
 
 
   val productAggregationToken: ProductAggregationToken get() = ProductAggregationToken.Star
-  val seriesSepartor: String get() = "."
+
 
 
   sealed interface ActionTableAliasBehavior {
@@ -632,12 +635,12 @@ abstract class SqlIdiom {
         // SELECT /*this ->*/ foobar... FROM (SELECT foo.bar AS foobar ...)
         // When it's just a top-level select the prefix will be empty
         ast is Ident && ast.visibility == Hidden ->
-          (prefix.joinToString(seriesSepartor)).token
+          joinAlias(prefix).token
         // This happens when the SQL dialect supports some notion of structured-data
         // and we are selecting something from a nested expression
         // SELECT /*this ->*/ (someExpression).otherStuff FROM (....)
         else ->
-          +"${scopedTokenizer(ast)}.${(prefix.joinToString(seriesSepartor))}"
+          +"${scopedTokenizer(ast)}.${(joinAlias(prefix).token)}"
       }
     }
 
