@@ -13,14 +13,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.equals.shouldBeEqual
 
 class AttachToEntitySpec: FreeSpec({
-  val replaceTempIdent: StatelessTransformer = object: StatelessTransformer {
-    override fun invokeIdent(xr: Ident): Ident =
-      when {
-        xr.isTemporary() -> XR.Ident.csf("x")(xr)
-        else -> xr
-      }
-  }
-
   val attachToEntity = { x: XR.Query ->
     AttachToEntity({ a: XR.Query, b: XR.Ident -> SortBy(a, b, XR.Const.Int(1), Ordering.Asc) }).invoke(x)
       .let {  replaceTempIdent(it) }

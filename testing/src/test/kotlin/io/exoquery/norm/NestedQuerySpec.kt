@@ -4,7 +4,6 @@ import io.kotest.core.spec.style.FreeSpec
 import io.exoquery.*
 import io.exoquery.select.on
 import io.exoquery.util.TraceConfig
-import io.exoquery.util.TraceType
 
 /*
 
@@ -47,7 +46,7 @@ class NestedQuerySpec: FreeSpec({
   data class ChaiiBayy(val chii: Chii, val bayy: Bayy)
   data class GrannParr(val grann: Grann, val parr: Parr)
   data class ParrChii(val parr: Parr, val chii: Chii)
-  data class GranParChii(val grann: Grann, val parr: Parr, val chii: Chii)
+  data class GranParrChii(val grann: Grann, val parr: Parr, val chii: Chii)
   data class GranParrChiiBayy(val grann: Grann, val parr: Parr, val chii: Chii, val bayy: Bayy)
 
 
@@ -116,7 +115,7 @@ class NestedQuerySpec: FreeSpec({
             select { ParrChii(parr, chii) }
           }
         ).on { parr.i == grann.i }
-        select { GranParChii(grann, parrChii.parr, parrChii.chii) }
+        select { GranParrChii(grann, parrChii.parr, parrChii.chii) }
       }
       println(q.xr.showRaw())
       println(Dialect.normalizeQuery(q.xr).showRaw())
