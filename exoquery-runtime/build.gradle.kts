@@ -1,7 +1,7 @@
 plugins {
     id("publish")
     id("com.google.devtools.ksp") version "1.8.21-1.0.11"
-    id("io.exoquery.terpal-plugin") version "1.0.6"
+    id("io.exoquery.terpal-plugin") version "1.8.21-0.1.0"
 }
 
 kotlin {

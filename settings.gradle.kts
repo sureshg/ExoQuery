@@ -1,5 +1,9 @@
 pluginManagement {
     includeBuild("exoquery-plugin-gradle")
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
 }
 
 includeBuild("exoquery-runtime")
