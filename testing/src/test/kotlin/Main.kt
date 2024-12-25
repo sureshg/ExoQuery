@@ -19,36 +19,36 @@ object Model1 {
     // Problem of "p" vs "x". Ident needs to get the runtime value of the variable
     // That means we need a separate binding map for runtime values or an expression-container
 
-    var start = System.currentTimeMillis()
     val x =
       query {
         val x = from(Table<Person>())
-        println("================= Value: ==============" + x)
         val a = join(Table<Address>()).on { street == x.name?.first?.name }
         select { a }
       }
-    println("------------ Query Making Time: ${(System.currentTimeMillis() - start).toDouble()/1000} ----------")
 
     println("=============== XR ===============")
     println(x.xr.showRaw())
 
     //TraceConfig(listOf(TraceType.SqlNormalizations, TraceType.Normalizations, TraceType.RepropagateTypes))
-    val tokenized = PostgresDialect(TraceConfig.empty).translate(x.xr)
-    println("=============== Tokenized ===============")
-    println(SqlFormatter.format(tokenized.toString()))
+
+    for (i in 0..10) {
+      val startTime = System.currentTimeMillis()
+      val tokenized = PostgresDialect(TraceConfig.empty).translate(x.xr).toString()
+      println("------------ PostgresDialect Time: ${(System.currentTimeMillis() - startTime).toDouble()} ----------")
+    }
+
+
+    //val tokenized = PostgresDialect(TraceConfig.empty).translate(x.xr).toString()
+    //println("=============== Tokenized ===============")
+    //println(SqlFormatter.format(tokenized.toString()))
   }
 }
 
 
 
-//fun main() {
-//  println("hello")
-//  println("hello")
-//  data class Person(val name: String, val age: Int)
-//  val q = Table<Person>().map { p -> p.name == "Joe" }.take(10).drop(22)
-//  val sql = q.xr.translateWith(PostgresDialect(TraceConfig.empty))
-//  println(sql.toString())
-//}
+fun main() {
+  Model1.use()
+}
 
 
 
@@ -213,10 +213,6 @@ object Model4 {
   }
 }
 
-fun main() {
-  //Model4.use()
-  println("hello")
-}
 
 
 
