@@ -4,6 +4,8 @@ import io.exoquery.fansi.Attrs
 import io.exoquery.pprint.PPrinterConfig
 import io.exoquery.printing.PrintXR
 import io.exoquery.terpal.Interpolator
+import io.exoquery.xr.XR
+import io.exoquery.xr.XRType
 
 data class DebugDump(val info: MutableList<DebugMsg> = mutableListOf()){
   fun dump(str: String) = info.add(DebugMsg.Fragment(str))
@@ -78,14 +80,25 @@ class Traceable(
 
   private val elementPrefix = "|  "
 
-  val qprint =
+  val printXR =
     if (color)
-      PrintXR(PPrinterConfig(defaultShowFieldNames = false, defaultWidth = 300))
+      PrintXR(XR.serializer(), PPrinterConfig(defaultShowFieldNames = false, defaultWidth = 300))
     else
-      PrintXR(PPrinterConfig(defaultShowFieldNames = false, colorLiteral = Attrs.Empty, colorApplyPrefix = Attrs.Empty, defaultWidth = 300))
+      PrintXR(XR.serializer(), PPrinterConfig(defaultShowFieldNames = false, colorLiteral = Attrs.Empty, colorApplyPrefix = Attrs.Empty, defaultWidth = 300))
+
+  val printXRType =
+    if (color)
+      PrintXR(XRType.serializer(), PPrinterConfig(defaultShowFieldNames = false, defaultWidth = 300))
+    else
+      PrintXR(XRType.serializer(), PPrinterConfig(defaultShowFieldNames = false, colorLiteral = Attrs.Empty, colorApplyPrefix = Attrs.Empty, defaultWidth = 300))
 
   fun generateStringForCommand(value: Any, indent: Int): String {
-    val objectString = qprint(value).toString()
+    val objectString =
+      when (value) {
+        is XR -> printXR(value).toString()
+        is XRType -> printXRType(value).toString()
+        else -> value.toString()
+      }
     val oneLine      = objectString.toString().fitsOnOneLine
     return when(oneLine) {
       true -> "${indent.prefix}> ${objectString}"
@@ -110,7 +123,9 @@ class Traceable(
     val elements = params.map {
       when (it) {
         is String -> Splice.Simple(it)
-        else -> Splice.Show(qprint(it).toString())
+        is XR -> Splice.Show(printXR(it).toString())
+        is XRType -> Splice.Show(printXRType(it).toString())
+        else -> Splice.Show(it.toString())
       }
     }
 

@@ -60,14 +60,15 @@ sealed interface XR {
     return PrintXR.BlackWhite.invoke(this).plainText
   }
 
+  @Serializable
   sealed interface Location {
-    data class File(val path: String, val row: Int, val col: Int): Location
-    object Synth: Location
+    @Serializable data class File(val path: String, val row: Int, val col: Int): Location
+    @Serializable data object Synth: Location
   }
 
 
   fun showRaw(color: Boolean = true): String {
-    val str = PrintXR()(this)
+    val str = PrintXR(XR.serializer())(this)
     return if (color) str.toString() else str.plainText
   }
 
