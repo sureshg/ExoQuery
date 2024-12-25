@@ -383,8 +383,8 @@ object Ir {
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           val isProperty =
             when(it.origin) {
-              is IrStatementOrigin.GET_PROPERTY -> true
-              is IrStatementOrigin.GET_LOCAL_PROPERTY -> true
+              IrStatementOrigin.GET_PROPERTY -> true
+              IrStatementOrigin.GET_LOCAL_PROPERTY -> true
               else -> false
             }
 
