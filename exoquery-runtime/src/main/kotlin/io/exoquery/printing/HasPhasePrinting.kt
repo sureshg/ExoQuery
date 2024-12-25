@@ -17,10 +17,10 @@ interface HasPhasePrinting {
 //  def title[T](label: String, traceType: TraceType = TraceType.Standard): T => T =
 //    trace[T](("=".repeat(10)) + s" $label " + ("=".repeat(10)), 0, traceType)
 
-  fun demarcate(heading: String, q: XR.Query) {
-    trace.print(title("$heading"))
-    trace.interpolate({ listOf("", "") }, { listOf(q) }).andLog()
-  }
+  //fun demarcate(heading: String, q: XR.Query) {
+  //  trace.print(title("$heading"))
+  //  trace.interpolate({ listOf("", "") }, { listOf(q) }).andLog()
+  //}
 
 
 //  private def demarcate(heading: String) =

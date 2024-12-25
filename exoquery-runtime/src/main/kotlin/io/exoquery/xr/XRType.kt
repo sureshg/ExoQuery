@@ -1,6 +1,9 @@
 package io.exoquery.xr
 
+import kotlinx.serialization.Serializable
+
 // Formerly Quat
+@Serializable
 sealed class XRType {
   fun isAbstract() =
     when (this) {
@@ -11,6 +14,7 @@ sealed class XRType {
 
   fun nonAbstract() = !isAbstract()
 
+  @Serializable
   data class Product(val name: String, val fields: List<Pair<String, XRType>>): XRType() {
     private val fieldsHash by lazy { fields.toMap() }
     /**
@@ -25,9 +29,10 @@ sealed class XRType {
         fieldsHash.get(name)
   }
 
+  @Serializable
   sealed class Boolean: XRType()
-  object BooleanValue: Boolean()
-  object BooleanExpression: Boolean()
+  @Serializable object BooleanValue: Boolean()
+  @Serializable object BooleanExpression: Boolean()
 
   object Unknown: XRType()
   object Null: XRType()

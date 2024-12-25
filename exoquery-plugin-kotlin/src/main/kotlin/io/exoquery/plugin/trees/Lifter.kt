@@ -4,7 +4,7 @@ import io.exoquery.*
 import io.exoquery.xr.XR.*
 import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.xr.*
-import io.exoquery.xr.XR.Query
+//import io.exoquery.xr.XR.Query
 
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall

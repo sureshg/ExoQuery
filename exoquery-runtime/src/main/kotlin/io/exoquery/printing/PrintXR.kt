@@ -1,10 +1,12 @@
 package io.exoquery.printing
 
+import io.decomat.*
 import io.exoquery.fansi.Attrs
 import io.exoquery.pprint.PPrinter
 import io.exoquery.pprint.PPrinterConfig
 import io.exoquery.pprint.Tree
 import io.exoquery.xr.*
+import io.decomat.HasProductClass as PC
 
 fun exoPrint(value: Any) =
   PrintXR(PrintXR.defaultConfig)(value).toString()
@@ -34,6 +36,15 @@ class PrintXR(config: PPrinterConfig = defaultConfig): PPrinter(config) {
       is XR.Location.Synth -> Tree.Literal("<Location:Synthetic>")
       //is DistinctKind -> Tree.Literal(x::class.simpleName ?: "BinaryOp?")
       is Operator -> Tree.Literal(x.symbol)
+      is PC<*> -> Tree.Apply(x::class.simpleName ?: "PC?", run {
+        when (val pc = x.productComponents) {
+          is ProductClass0 -> iteratorOf()
+          is ProductClass1<*, *> -> iteratorOf(treeifyThis(pc.a))
+          is ProductClass2<*, *, *> -> iteratorOf(treeifyThis(pc.a), treeifyThis(pc.b))
+          is ProductClass2M<*, *, *, *> -> iteratorOf(treeifyThis(pc.a), treeifyThis(pc.m), treeifyThis(pc.b))
+          else -> iteratorOf()
+        }
+      })
       is XR ->
         when (val tree = super.treeify(x, escapeUnicode, showFieldNames)) {
           is Tree.Apply -> {

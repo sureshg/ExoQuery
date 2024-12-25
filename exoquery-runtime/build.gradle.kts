@@ -2,6 +2,8 @@ plugins {
     id("publish")
     id("com.google.devtools.ksp") version "2.0.0-1.0.24"
     id("io.exoquery.terpal-plugin") version "2.0.0-1.0.0.PL"
+    kotlin("jvm") version "2.0.0"
+    kotlin("plugin.serialization") version "2.0.0"
 }
 
 kotlin {
@@ -46,6 +48,9 @@ ksp {
 }
 
 dependencies {
+    api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
+    api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.6.2")
+
     api(kotlin("reflect"))
     testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
     // Actually this is going to be 0.0.5 - using an unpublished one now

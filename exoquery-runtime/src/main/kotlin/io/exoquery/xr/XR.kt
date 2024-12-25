@@ -6,6 +6,8 @@ import io.exoquery.printing.PrintXR
 import io.exoquery.printing.format
 import io.exoquery.util.dropLastSegment
 import io.exoquery.util.takeLastSegment
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import io.decomat.Matchable as Mat
 import io.decomat.Component as Slot
 import io.decomat.MiddleComponent as MSlot
@@ -37,6 +39,7 @@ import io.decomat.HasProductClass as PC
  * could be anything from an Ident("x") to a `ReturningAction`. This syntax tree
  * attempts to balance expressability with an approporiate of constraints via subtyping relations.
  */
+@Serializable
 sealed interface XR {
   // The primary types of XR are Query, Expression, Function, and Action
   // there are additional values that are useful for pattern matching in various situations
@@ -44,7 +47,6 @@ sealed interface XR {
     // Things that store their own XRType. Right now this is just an Ident but in the future
     // it will also be a lifted value.
     sealed interface Terminal: Expression, XR
-    sealed interface FlatUnit: XR.Query
     sealed interface Function: XR {
       val params: List<XR.Ident>
       val body: XR.Expression
@@ -69,13 +71,16 @@ sealed interface XR {
     return if (color) str.toString() else str.plainText
   }
 
+  @Serializable
   sealed interface Expression: XR
-  sealed interface Query: XR
 
 
+
+  @Serializable
   @Mat
   data class BinaryOp(@Slot val a: XR.Expression, @CS val op: BinaryOperator, @Slot val b: XR.Expression, override val loc: Location = Location.Synth) : Expression, PC<BinaryOp> {
-    override val productComponents = productOf(this, a, b)
+    // TODO mark this @Transient in the PC class?
+    @Transient override val productComponents = productOf(this, a, b)
     override val type by lazy {
       when (op) {
         is YieldsBool -> XRType.BooleanExpression
@@ -84,14 +89,15 @@ sealed interface XR {
     }
     companion object {}
     override fun toString() = show()
-    private val cid = id()
+    @Transient private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is BinaryOp && other.id() == cid
   }
 
+  @Serializable
   @Mat
   data class UnaryOp(@CS val op: UnaryOperator, @Slot val expr: XR.Expression, override val loc: Location = Location.Synth) : Expression, PC<UnaryOp> {
-    override val productComponents = productOf(this, expr)
+    @Transient override val productComponents = productOf(this, expr)
     override val type by lazy {
       when (op) {
         is YieldsBool -> XRType.BooleanExpression
@@ -100,15 +106,16 @@ sealed interface XR {
     }
     companion object {}
     override fun toString() = show()
-    private val cid = id()
+    @Transient private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is UnaryOp && other.id() == cid
   }
 
+  @Serializable
   @Mat
   data class Ident(@Slot val name: String, override val type: XRType, override val loc: Location = Location.Synth, val visibility: Visibility = Visibility.Visible) : XR, Labels.Terminal, PC<XR.Ident> {
 
-    override val productComponents = productOf(this, name)
+    @Transient override val productComponents = productOf(this, name)
     companion object {
       context(Ident) fun fromThis(name: String) = copy(name = name)
       fun from(ident: Ident): Copy = Copy(ident)
@@ -120,17 +127,18 @@ sealed interface XR {
     }
 
     override fun toString() = show()
-    private val cid = id()
+    @Transient private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is Ident && other.id() == cid
   }
 
   // ConstType<Const.Boolean>: PC<Const.Boolean>
 
+  @Serializable
   sealed class ConstType<T>: PC<ConstType<T>>, XR.Expression {
     abstract val value: T
     override val productComponents by lazy { productOf(this, value) }
-    override val type = XRType.Value
+    @Transient override val type = XRType.Value
     override fun toString() = show()
     companion object {
       data class ConstTypeId<T>(val value: T)
@@ -139,28 +147,30 @@ sealed interface XR {
     override fun hashCode() = cid.hashCode()
   }
 
+  @Serializable
   sealed interface Const: Expression {
-    data class Boolean(override val value: kotlin.Boolean, override val loc: Location = Location.Synth) : ConstType<kotlin.Boolean>(), Const { override fun equals(other: Any?) = other is Const.Boolean && other.value == value }
-    data class Char(override val value: kotlin.Char, override val loc: Location = Location.Synth) : ConstType<kotlin.Char>(), Const { override fun equals(other: Any?) = other is Const.Char && other.value == value }
-    data class Byte(override val value: kotlin.Int, override val loc: Location = Location.Synth) : ConstType<kotlin.Int>(), Const { override fun equals(other: Any?) = other is Const.Byte && other.value == value }
-    data class Short(override val value: kotlin.Short, override val loc: Location = Location.Synth) : ConstType<kotlin.Short>(), Const { override fun equals(other: Any?) = other is Const.Short && other.value == value }
-    data class Int(override val value: kotlin.Int, override val loc: Location = Location.Synth) : ConstType<kotlin.Int>(), Const { override fun equals(other: Any?) = other is Const.Int && other.value == value }
-    data class Long(override val value: kotlin.Long, override val loc: Location = Location.Synth) : ConstType<kotlin.Long>(), Const { override fun equals(other: Any?) = other is Const.Long && other.value == value }
-    data class String(override val value: kotlin.String, override val loc: Location = Location.Synth) : ConstType<kotlin.String>(), Const { override fun equals(other: Any?) = other is Const.String && other.value == value }
-    data class Float(override val value: kotlin.Float, override val loc: Location = Location.Synth) : ConstType<kotlin.Float>(), Const { override fun equals(other: Any?) = other is Const.Float && other.value == value }
-    data class Double(override val value: kotlin.Double, override val loc: Location = Location.Synth) : ConstType<kotlin.Double>(), Const { override fun equals(other: Any?) = other is Const.Double && other.value == value }
-    data class Null(override val loc: Location = Location.Synth): Const {
+    @Serializable data class Boolean(override val value: kotlin.Boolean, override val loc: Location = Location.Synth) : ConstType<kotlin.Boolean>(), Const { override fun equals(other: Any?) = other is Const.Boolean && other.value == value }
+    @Serializable data class Char(override val value: kotlin.Char, override val loc: Location = Location.Synth) : ConstType<kotlin.Char>(), Const { override fun equals(other: Any?) = other is Const.Char && other.value == value }
+    @Serializable data class Byte(override val value: kotlin.Int, override val loc: Location = Location.Synth) : ConstType<kotlin.Int>(), Const { override fun equals(other: Any?) = other is Const.Byte && other.value == value }
+    @Serializable data class Short(override val value: kotlin.Short, override val loc: Location = Location.Synth) : ConstType<kotlin.Short>(), Const { override fun equals(other: Any?) = other is Const.Short && other.value == value }
+    @Serializable data class Int(override val value: kotlin.Int, override val loc: Location = Location.Synth) : ConstType<kotlin.Int>(), Const { override fun equals(other: Any?) = other is Const.Int && other.value == value }
+    @Serializable data class Long(override val value: kotlin.Long, override val loc: Location = Location.Synth) : ConstType<kotlin.Long>(), Const { override fun equals(other: Any?) = other is Const.Long && other.value == value }
+    @Serializable data class String(override val value: kotlin.String, override val loc: Location = Location.Synth) : ConstType<kotlin.String>(), Const { override fun equals(other: Any?) = other is Const.String && other.value == value }
+    @Serializable data class Float(override val value: kotlin.Float, override val loc: Location = Location.Synth) : ConstType<kotlin.Float>(), Const { override fun equals(other: Any?) = other is Const.Float && other.value == value }
+    @Serializable data class Double(override val value: kotlin.Double, override val loc: Location = Location.Synth) : ConstType<kotlin.Double>(), Const { override fun equals(other: Any?) = other is Const.Double && other.value == value }
+    @Serializable data class Null(override val loc: Location = Location.Synth): Const {
       override fun toString(): kotlin.String = "Null"
       object Id
       override fun hashCode() = Id.hashCode()
       override fun equals(other: Any?) = other is Null
-      override val type = XRType.Value
+      @Transient override val type = XRType.Value
     }
   }
 
+  @Serializable
   sealed interface Visibility {
-    object Hidden: Visibility { override fun toString() = "Hidden" }
-    object Visible: Visibility { override fun toString() = "Visible" }
+    @Serializable object Hidden: Visibility { override fun toString() = "Hidden" }
+    @Serializable object Visible: Visibility { override fun toString() = "Visible" }
   }
 }
 
