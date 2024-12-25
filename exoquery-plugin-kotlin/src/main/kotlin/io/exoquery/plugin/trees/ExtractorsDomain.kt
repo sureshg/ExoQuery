@@ -9,7 +9,6 @@ import io.exoquery.plugin.transform.BinaryOperators
 import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.plugin.transform.UnaryOperators
-import io.exoquery.select.QueryClause
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.UnaryOperator
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
@@ -30,40 +29,10 @@ import org.jetbrains.kotlin.ir.types.classFqName
 //      so it will be necessary to define ReciverCaller.transformWith as well
 
 object ExtractorsDomain {
-  final val queryClassName = Query::class.qualifiedNameForce
 
   sealed interface QueryDslFunction {
     context (CompileLogger) fun matchesMethod(it: IrCall): Boolean
     context (CompileLogger) fun extract(it: IrCall): Pair<RecieverCallData, ReplacementMethodToCall>?
-  }
-
-  @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
-  class LambdaMethodProducingXR: QueryDslFunction {
-    context (CompileLogger) override fun matchesMethod(it: IrCall): Boolean =
-      // E.g. is Query."map"
-      it.simpleValueArgsCount == 1 && it.valueArguments.first() != null && it.markedLambdaMethodProducingXR() != null
-
-    context(CompileLogger) override fun extract(expression: IrCall): Pair<CallData.LambdaMember, ReplacementMethodToCall>? =
-      expression.match(
-        // e.g. Query.flatMap[Is()]
-        case(Call.LambdaFunctionMethod { matchesMethod(it) }[Is()]).then { queryCallData ->
-          expression.markedLambdaMethodProducingXR()?.let { annotationData -> queryCallData to annotationData }
-        }
-      )
-  }
-
-  @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
-  class MethodProducingXR: QueryDslFunction {
-    context (CompileLogger) override fun matchesMethod(it: IrCall): Boolean =
-      it.markedMethodProducingXR() != null
-
-    context(CompileLogger) override fun extract(expression: IrCall): Pair<CallData.MultiArgMember, ReplacementMethodToCall>? =
-      expression.match(
-        // e.g. Query.flatMap[Is()]
-        case(Call.MultiArgMethod { matchesMethod(it) }[Is()]).then { queryCallData ->
-          expression.markedMethodProducingXR()?.let { annotationData -> queryCallData to annotationData }
-        }
-      )
   }
 
   object CaseClassConstructorCall {
@@ -113,123 +82,6 @@ object ExtractorsDomain {
         }
     }
 
-    // A simple one or muti-argument function e.g. take(Int), drop(Int) etc....
-    data class MultiArgMethod(val matchesMethod: (IrCall) -> Boolean) {
-      context (CompileLogger) operator fun <AP: Pattern<CallData.MultiArgMember>> get(x: AP) =
-        customPattern1(x) { it: IrCall ->
-          if (matchesMethod(it)) {
-            it.match(
-              // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
-              case( /* .flatMap */ Ir.Call.FunctionMem[Is(), Is()]).then { reciver, expression ->
-                val argTypes =
-                  it.symbol.owner.simpleValueParams.map {
-                    if (it.isAnnotatedParseXR()) ArgType.ParsedXR else ArgType.Passthrough
-                  }
-
-                val parameterComponents = argTypes zip expression
-                Components1(CallData.MultiArgMember(reciver, parameterComponents))
-              }
-            )
-          } else null
-        }
-    }
-
-    // TODO extract out common parts of this in QueryClauseAliasedMethod
-    object QueryClauseDirectMethod {
-      data class Data(val caller: ReceiverCaller, val args: List<IrExpression>, val replacementMethodToCall: ReplacementMethodToCall)
-
-      context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
-        // E.g. is Query."map"
-        it.markedQueryClauseDirectMethod() != null
-
-      context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
-        customPattern1(x) { call: IrCall ->
-          if (matchesMethod(call)) {
-            on(call).match(
-              // (SelectValue).from(innerQuery) <- FunctionMem1, `from` is a member of SelectValue
-              case(Ir.Call.FunctionMem[Is(), Is()]).then { reciver, params ->
-                call.markedQueryClauseDirectMethod()?.let { annotationData ->
-                  Components1(Data(reciver, params, annotationData))
-                }
-              }
-            )
-          } else null
-        }
-    }
-
-    // I.e. a bind expression like from/join in a SelectClause
-    object QueryClauseAliasedMethod {
-      data class Data(val caller: ReceiverCaller, val args: List<IrExpression>, val replacementMethodToCall: ReplacementMethodToCall)
-
-      context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
-        // E.g. is Query."map"
-        it.reciverIs<QueryClause<*>>() && it.markedQueryClauseAliasedMethod() != null
-
-      context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
-        customPattern1(x) { call: IrCall ->
-          if (matchesMethod(call)) {
-            on(call).match(
-              // (SelectValue).from(innerQuery) <- FunctionMem1, `from` is a member of SelectValue
-              case(Ir.Call.FunctionMem[Is(), Is()]).then { reciver, params ->
-                call.markedQueryClauseAliasedMethod()?.let { newMethod ->
-                  Components1(Data(reciver, params, newMethod))
-                }
-              }
-            )
-          } else null
-        }
-    }
-
-    object `join-on(expr)` {
-      data class Data(val caller: ReceiverCaller, val funExpression: IrFunctionExpression, val params: List<IrValueParameter>, val blockBody: IrBlockBody, val replacementMethodToCall: ReplacementMethodToCall)
-
-      context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
-        // E.g. is Query."map"
-        it.markedQueryClauseJoinMethod() != null
-
-      context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
-        customPattern1(x) { call: IrCall ->
-          if (matchesMethod(call)) {
-            call.match(
-              // (joinClause).on { stuff } <- FunctionMem1, `on` is a member of joinClause
-              case(Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
-                expression.match(
-                  case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
-                    //error("--------------- Considering here: ${call.dumpKotlinLike()}")
-                    call.markedQueryClauseJoinMethod()?.let { newMethod ->
-                      Components1(Data(reciver, this, params, blockBody, newMethod))
-                    }
-                  }
-                )
-              }
-            )
-          } else null
-        }
-    }
-
-    object QueryClauseUnitBindMethod {
-      data class Data(val caller: ReceiverCaller, val params: List<IrValueParameter>, val blockBody: IrBlockBody, val replacementMethodToCall: ReplacementMethodToCall)
-
-      context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
-        // E.g. is Query."map"
-        it.reciverIs<QueryClause<*>>() && it.markedQueryClauseUnitBind() != null
-
-      context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
-        customPattern1(x) { it: IrCall ->
-          if (matchesMethod(it)) {
-            on(it).match(
-              // (joinClause).on { stuff } <- FunctionMem1, `on` is a member of joinClause
-              case(Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
-                expression.match(
-                  case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
-                    it.markedQueryClauseUnitBind()?.let { method -> Components1(Data(reciver, params, blockBody, method)) }
-                  }
-                )
-              }
-            )
-          } else null
-        }
-    }
 
     // (SqlExpression<*>.asQuery)
     // (SqlExpression<*>.asValue)
@@ -307,77 +159,6 @@ object ExtractorsDomain {
               }
             )
           } else null
-        }
-    }
-
-    object InvokeQuery {
-      context (CompileLogger) operator fun <AP: Pattern<ReceiverCaller>> get(statements: AP) =
-        customPattern1(statements) { it: IrCall ->
-          on(it).match(
-            case(Ir.Call.FunctionMem0[Is()]).thenThis { caller ->
-              val callerExpr = caller.reciver
-              when {
-                callerExpr.type.isClass<Query<*>>() && (this.symbol.safeName == "invoke" || this.symbol.safeName == "value") -> {
-                  // validate that the caller is a dispatch
-                  when (caller) {
-                    is Caller.Dispatch -> parseError("Reciever of a SqlExpression invocation was a dispatch, this should not be possible. SqlExpression.invoke should be a extension method. Error occured: ${it.dumpKotlinLike()}")
-                    else -> {}
-                  }
-                  Components1(caller)
-                }
-                else -> null
-              }
-            }
-          )
-        }
-    }
-
-    object InvokeSqlExpression {
-      private val SqlVariableFqName = SqlVariable::class.qualifiedName.toString()
-
-      context (CompileLogger) operator fun <AP: Pattern<ReceiverCaller>> get(statements: AP) =
-        customPattern1(statements) { it: IrCall ->
-          on(it).match(
-            case(Ir.Call.FunctionMem0[Is()]).thenThis { caller ->
-              val callerExpr = caller.reciver
-              when {
-                callerExpr.type.isClass<SqlExpression<*>>() && (this.symbol.safeName == "invoke" || this.symbol.safeName == "value") -> {
-                  // validate that the caller is a dispatch
-                  when (caller) {
-                    is Caller.Dispatch -> parseError("Reciever of a SqlExpression invocation was a dispatch, this should not be possible. SqlExpression.invoke should be a extension method. Error occured: ${it.dumpKotlinLike()}")
-                    else -> {}
-                  }
-                  Components1(caller)
-                }
-                else -> null
-              }
-            }
-          )
-        }
-    }
-
-    object MakeTable {
-      data class Data(val tableType: IrType, val replacementMethodToCall: ReplacementMethodToCall)
-
-      context (CompileLogger) operator fun <AP: Pattern<Data>> get(statements: AP) =
-        customPattern1(statements) { call: IrCall ->
-          call.match(
-            case(Ir.Call.FunctionMem0[Is()])
-              .thenIf { _ -> call.markedTableConstructor() && call.type.isClass<Table<*>>() }
-              .then { caller ->
-                Components1(Data(call.type.simpleTypeArgs.first(), ReplacementMethodToCall("fromExpr")))
-              },
-            case(Ir.Call.FunctionMem0[ReceiverCaller[Is<IrGetObjectValue>()]])
-              .thenIfThis { (getObject) ->
-                getObject.type.isClass<Table.Companion>() && type.classOrNull != null
-              }
-              .then {
-                val caller = this.compInner
-                val firstArg = comp.typeArguments.first()
-                if (firstArg == null) kotlin.error("First type-argument to the TableQuery call was null. This should be impossible.")
-                else Components1(Data(firstArg, ReplacementMethodToCall("fromExpr")))
-              }
-          )
         }
     }
   }

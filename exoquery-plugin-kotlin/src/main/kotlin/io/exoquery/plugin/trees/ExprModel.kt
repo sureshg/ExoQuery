@@ -1,20 +1,21 @@
 package io.exoquery.plugin.trees
 
-import io.exoquery.RuntimeBindValue
+import io.exoquery.BID
+import io.exoquery.Runtimes
 import io.exoquery.plugin.transform.BuilderContext
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
-// The values of this class and RuntimeBindValue need to match because the Expressions in here generates the IR in RuntimeBindValue
-sealed interface RuntimeBindValueExpr {
-  data class ExpressionXR(val expressionElement: IrExpression): RuntimeBindValueExpr
-  data class QueryXR(val queryElement: IrExpression): RuntimeBindValueExpr
+class RuntimesExpr(val runtimes: List<Pair<BID, IrExpression>>) {
+  context(BuilderContext) fun lift(): IrExpression {
+    return with (makeLifter()) {
+      val bindsList = runtimes.map { pair ->
+        pair.lift(
+          {bid -> bid.lift()},
+          { it })
+      }
+      make<Runtimes>(bindsList.liftExpr<Pair<BID, IrExpression>>())
+    }
+  }
 }
 
-context (BuilderContext) fun RuntimeBindValueExpr.makeDynamicBindsIr(): IrExpression =
-  when (this) {
-    is RuntimeBindValueExpr.ExpressionXR ->
-      make<RuntimeBindValue.RuntimeExpression>(expressionElement)
-    is RuntimeBindValueExpr.QueryXR ->
-      make<RuntimeBindValue.RuntimeQuery>(queryElement)
-  }
-
+// create an IrExpression DynamicBind(listOf(Pair(BID, RuntimeBindValue), etc...))

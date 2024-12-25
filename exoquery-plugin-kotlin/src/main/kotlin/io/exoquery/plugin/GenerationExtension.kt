@@ -1,7 +1,6 @@
 package io.exoquery.plugin
 
 import io.exoquery.plugin.transform.ScopeSymbols
-import io.exoquery.plugin.transform.VisitPropagateVariables
 import io.exoquery.plugin.transform.VisitTransformExpressions
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -17,10 +16,6 @@ class GenerationExtension(
 ) : IrGenerationExtension {
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         moduleFragment
-            .transform(
-                VisitPropagateVariables(pluginContext, config, projectDir),
-                null
-            )
             .transform(
                 VisitTransformExpressions(pluginContext, config, projectDir),
                 ScopeSymbols(listOf())

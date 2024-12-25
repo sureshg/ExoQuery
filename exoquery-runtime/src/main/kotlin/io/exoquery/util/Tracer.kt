@@ -4,7 +4,13 @@ import io.exoquery.fansi.Attrs
 import io.exoquery.pprint.PPrinterConfig
 import io.exoquery.printing.PrintXR
 import io.exoquery.terpal.Interpolator
-import io.exoquery.xr.DebugDump
+
+data class DebugDump(val info: MutableList<DebugMsg> = mutableListOf()){
+  fun dump(str: String) = info.add(DebugMsg.Fragment(str))
+  companion object {
+    operator fun invoke(vararg msg: DebugMsg) = DebugDump(msg.toMutableList())
+  }
+}
 
 
 sealed interface DebugMsg {

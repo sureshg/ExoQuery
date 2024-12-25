@@ -51,22 +51,7 @@ class VisitTransformExpressions(
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
 
     val transformPrint = TransformPrintSource(builderContext)
-    val queryLambdaMethodTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.LambdaMethodProducingXR(), this)
-    val queryMethodTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.MethodProducingXR(), this)
-    val interpolationTransformer = TransformInterepolatorInvoke(builderContext, this)
 
-    // val queryMapTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryMap, "mapExpr", this)
-    // val queryFilterTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryFilter, "filterExpr", this)
-    // val queryFlatMapTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryFlatMap, "flatMapExpr", this)
-    // val queryTakeTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryTake, "takeExpr", this)
-    // val queryTakeSimpleTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryTakeSimple, "takeSimpleExpr", this)
-    // val queryDropTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryDrop , "dropExpr", this)
-    // val queryDropSimpleTransformer = TransformQueryMethod(builderContext, ExtractorsDomain.Call.QueryDropSimple , "dropSimpleExpr", this)
-
-    val selectTransformer = TransformSelect(builderContext, this)
-    val makeTableTransformer = TransformTableQuery(builderContext)
-    val joinOnTransformer = TransformJoinOn(builderContext, this)
-    val queryClauseUnitBindMethod = TransformSelectClauseUnitMethod(builderContext, ExtractorsDomain.Call.QueryClauseUnitBindMethod, this)
 
     // TODO Catch parser errors here, make a warning via the compileLogger (in the BuilderContext) & don't transform the expresison
 
@@ -86,13 +71,6 @@ class VisitTransformExpressions(
       transformPrint.matches(expression) -> transformPrint.transform(expression)
       // Want to run interpolator invoke before other things because the result of it is an SqlExpression that will
       // the be re-parsed in the parser if it is inside of a context(EnclosedContext) e.g. Query.map
-      interpolationTransformer.matches(expression) -> interpolationTransformer.transform(expression)
-      joinOnTransformer.matches(expression) -> joinOnTransformer.transform(expression)
-      queryClauseUnitBindMethod.matches(expression) -> queryClauseUnitBindMethod.transform(expression)
-      makeTableTransformer.matches(expression) -> makeTableTransformer.transform(expression)
-      selectTransformer.matches(expression) -> selectTransformer.transform(expression)
-      queryMethodTransformer.matches(expression) -> queryMethodTransformer.transform(expression)
-      queryLambdaMethodTransformer.matches(expression) -> queryLambdaMethodTransformer.transform(expression)
       else ->
         // No additional data (i.e. Scope-Symbols) to add since none of the transformers was activated
         super.visitCall(expression, data)

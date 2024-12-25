@@ -158,38 +158,6 @@ data class ReplacementMethodToCall(val methodToCall: String, val callerType: Cha
   }
 }
 
-fun IrCall.markedQueryClauseDirectMethod() =
-  this.symbol.owner.annotations.findAnnotation(QueryClauseDirectMethod::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
-
-fun IrCall.markedQueryClauseAliasedMethod() =
-  this.symbol.owner.annotations.findAnnotation(QueryClauseAliasedMethod::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
-
-fun IrCall.markedQueryClauseUnitBind() =
-  this.symbol.owner.annotations.findAnnotation(QueryClauseUnitBind::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
-
-fun IrCall.markedQueryClauseJoinMethod() =
-  this.symbol.owner.annotations.findAnnotation(QueryClauseJoinMethod::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
-
-fun IrCall.markedMethodProducingXR() =
-  this.symbol.owner.annotations.findAnnotation(MethodProducingXR::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
-
-fun IrCall.markedLambdaMethodProducingXR() =
-  this.symbol.owner.annotations.findAnnotation(LambdaMethodProducingXR::class.fqNameForce)?.let { ReplacementMethodToCall.from(it) }
-
-fun IrCall.markedTableConstructor() =
-  this.symbol.owner.annotations.findAnnotation(ExoTableConstructor::class.fqNameForce) != null
-
-fun IrCall.isExoMethodAnnotated(name: String) =
-  this.symbol.owner.annotations.findAnnotation(ExoMethodName::class.fqNameForce)
-    ?.let { it.getValueArgument(0) }
-    ?.let { it is IrConst<*> && it.kind == IrConstKind.String && it.value as kotlin.String == name }
-    ?: false
-
-fun IrCall.isNotExoMethodAnnotated() =
-  !this.symbol.owner.annotations.hasAnnotation(ExoMethodName::class.fqNameForce)
-
-fun IrValueParameter.isAnnotatedParseXR() =
-  this.annotations.hasAnnotation(ParseXR::class.fqNameForce)
 
 fun IrCall.caller() =
   this.extensionReceiver?.let {

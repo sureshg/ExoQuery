@@ -57,18 +57,18 @@ object TypeParser {
     on(expr).match<XRType>(
       // TODO why for Components1 it's (type) bot for Components2 it's (type, type)
       //     think this is a bug with DecoMat.
-      case(Ir.Type.SqlVariable[Is()]).then { realType ->
-        parse(realType)
-      },
+      //case(Ir.Type.SqlVariable[Is()]).then { realType ->
+      //  parse(realType)
+      //},
 
       // For now treat lists like value types, may way to change in future
       case(Ir.Type.KotlinList[Is()]).then { realType ->
         XRType.Value
       },
 
-      case(Ir.Type.Query[Is()]).then { realType ->
-        parse(realType)
-      },
+      //case(Ir.Type.Query[Is()]).then { realType ->
+      //  parse(realType)
+      //},
 
       case(Ir.Type.DataClass[Is(), Is()]).then { name, props ->
         val fieldTypeXRs = props.map { (fieldName, fieldType) -> fieldName to parse(fieldType) }
