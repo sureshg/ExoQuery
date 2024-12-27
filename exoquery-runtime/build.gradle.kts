@@ -56,7 +56,7 @@ dependencies {
     // Actually this is going to be 0.0.5 - using an unpublished one now
     ksp("io.exoquery:decomat-ksp:0.3.0")
     //implementation("io.exoquery:pprint-kotlin:2.0.2")
-    implementation("io.exoquery:pprint-kotlin-kmp:2.0.2")
+    api("io.exoquery:pprint-kotlin-kmp:2.0.2")
     // Actually this is going to be 0.0.5 - using an unpublished one now
     api("io.exoquery:decomat-core:0.3.0")
     implementation("com.facebook:ktfmt:0.43")

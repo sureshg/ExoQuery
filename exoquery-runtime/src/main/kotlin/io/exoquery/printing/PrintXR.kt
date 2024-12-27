@@ -16,6 +16,8 @@ object PrintXRType {
   val BlackWhite = PrintXR(XRType.serializer(), PrintXR.defaultConfig)
 }
 
+fun qprint(xr: XR) = PrintXR.Color.invoke(xr)
+
 class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = defaultConfig): PPrinter<T>(serializer, config) {
   fun treeifySuper(x: T) =
     super.treeify(x, escapeUnicode = config.defaultEscapeUnicode, showFieldNames = defaultConfig.defaultShowFieldNames)
@@ -52,6 +54,7 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
             val superNodes = tree.body.asSequence()
               .filterNot { (it is Tree.KeyValue && it.key == "loc") }
               .filterNot { (it is Tree.Apply && it.prefix == "Location") }
+              .filterNot { (it is Tree.Apply && it.prefix == "File") }
               .filterNot { (it is Tree.Literal && it.body.startsWith("<Location:")) }.toList()
             Tree.Apply(tree.prefix, superNodes.iterator())
           }
@@ -67,6 +70,10 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
         defaultShowFieldNames = false,
         colorLiteral = Attrs.Empty,
         colorApplyPrefix = Attrs.Empty
+      ))
+    val Color =
+      PrintXR(XR.serializer(), PPrinterConfig().copy(
+        defaultShowFieldNames = false
       ))
   }
 }

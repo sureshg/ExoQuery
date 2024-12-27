@@ -44,7 +44,8 @@ class CallMethod(private val callerRaw: Caller, private val replacementFun: Repl
       when (caller) {
         is Caller.Dispatch -> caller.reciver.type.findMethodOrFail(funName)
         is Caller.Extension -> caller.reciver.type.findExtensionMethodOrFail(funName)
-        is Caller.TopLevelMethod -> pluginCtx.referenceFunctions(CallableId(FqName(caller.packageName), Name.identifier(funName))).first()
+        is Caller.TopLevelMethod ->
+          pluginCtx.referenceFunctions(CallableId(FqName(caller.packageName), Name.identifier(funName))).firstOrNull() ?: throw IllegalArgumentException("Cannot find method `${funName}` in the package `${caller.packageName}`")
       }
 
     return with (builder) {
@@ -83,6 +84,12 @@ fun ReceiverCaller.callWithOutput(method: String, fullOutputType: IrType) = Call
 fun ReceiverCaller.callWithParams(method: String, typeParams: List<IrType>): CallMethod = CallMethod(this, ReplacementMethodToCall(method), typeParams, null)
 fun ReceiverCaller.callWithParamsAndOutput(method: String, typeParams: List<IrType>, fullOutputType: IrType): CallMethod = CallMethod(this, ReplacementMethodToCall(method), typeParams, fullOutputType)
 
+fun call(fullPathMethod: String): CallMethod {
+  val split = fullPathMethod.split('.')
+  val method = split.takeLast(1).firstOrNull() ?: throw IllegalArgumentException("No method to call inthe path: $fullPathMethod")
+  val pack = split.dropLast(1)
+  return call(pack.joinToString("."), method)
+}
 fun call(packageName: String, method: String) = CallMethod(Caller.TopLevelMethod(packageName), ReplacementMethodToCall(method), listOf(), null)
 fun callWithOutput(packageName: String, method: String, tpe: IrType) = CallMethod(Caller.TopLevelMethod(packageName), ReplacementMethodToCall(method), listOf(), tpe)
 

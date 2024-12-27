@@ -59,6 +59,27 @@ object ExtractorsDomain {
       }
   }
 
+  object CaseClassConstructorCall1 {
+
+    context (CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
+      customPattern2(x, y) { call: IrConstructorCall ->
+        when {
+          call.symbol.safeName == "<init>" && call.symbol.owner.simpleValueParams.size == 1 -> {
+            val className: String = call.type.classFqName?.asString() ?: call.type.dumpKotlinLike()
+            if (!call.symbol.owner.isPrimary)
+              parseError("Detected construction of the class ${className} using a non-primary constructor. This is not allowed.")
+
+            val params = call.symbol.owner.simpleValueParams.map { it.name.asString() }.toList()
+            val args = call.valueArguments.toList()
+            if (params.size != args.size)
+              parseError("Cannot parse constructor of ${className} its params ${params} do not have the same cardinality as its arguments ${args.map { it?.dumpKotlinLike() }}")
+            Components2(className, args.first())
+          }
+          else -> null
+        }
+      }
+  }
+
   object Call {
     data class OperatorCall(val x: IrExpression, val op: BinaryOperator, val y: IrExpression)
     data class UnaryOperatorCall(val x: IrExpression, val op: UnaryOperator)

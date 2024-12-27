@@ -33,10 +33,11 @@ data class Runtimes(val runtimes: List<Pair<BID, ContainerOfXR>>) {
 // TODO add lifts which will be BID -> ContainerOfEx
 // (also need a way to get them easily from the IrContainer)
 
-//data class SqlExpression<T>(override val xr: XR.Expression, override val runtimes: Runtimes): ContainerOfXR
+data class SqlExpression<T>(val xr: XR.Expression) {
+  val use: T by lazy { throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context") }
+}
 
 
-data class SqlExpression<T>(val stuff: String)
 
 
 //fun <T> SqlExpression<T>.convertToQuery(): Query<T> = QueryContainer<T>(io.exoquery.xr.XR.QueryOf(xr), binds)
