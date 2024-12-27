@@ -37,6 +37,20 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
       is XR.Ident -> Tree.Apply("Id", iteratorOf(Tree.Literal(x.name), PrintXR(XRType.serializer(), config).treeifyThis(x.type)))
       is XR.Location.File -> Tree.Literal("<Location:${x.path}:${x.row}:${x.col}>")
       is XR.Location.Synth -> Tree.Literal("<Location:Synthetic>")
+
+      is XR.Const.String -> Tree.Apply("String", iteratorOf(Tree.Literal(x.value)))
+      is XR.Const.Int -> Tree.Apply("Int", iteratorOf(Tree.Literal("${x.value}")))
+      is XR.Const.Double -> Tree.Apply("Double", iteratorOf(Tree.Literal("${x.value}")))
+      is XR.Const.Boolean -> Tree.Apply("Bool", iteratorOf(Tree.Literal("${x.value}")))
+      is XR.Const.Null -> Tree.Apply("Null", iteratorOf())
+      is XR.Const.Char -> Tree.Apply("Char", iteratorOf(Tree.Literal("${x.value}")))
+      is XR.Const.Byte -> Tree.Apply("Byte", iteratorOf(Tree.Literal("${x.value}")))
+      is XR.Const.Short -> Tree.Apply("Short", iteratorOf(Tree.Literal("${x.value}")))
+      is XR.Const.Long -> Tree.Apply("Long", iteratorOf(Tree.Literal("${x.value}")))
+      is XR.Const.Float -> Tree.Apply("Float", iteratorOf(Tree.Literal("${x.value}")))
+
+
+
       //is DistinctKind -> Tree.Literal(x::class.simpleName ?: "BinaryOp?")
       is Operator -> Tree.Literal(x.symbol)
       //is PC<*> -> Tree.Apply(x::class.simpleName ?: "PC?", run {
@@ -49,7 +63,7 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
       //  }
       //})
       is XR ->
-        when (val tree = super.treeify(x, escapeUnicode, showFieldNames)) {
+        when (val tree = treeifySuper(x)) {
           is Tree.Apply -> {
             val superNodes = tree.body.asSequence()
               .filterNot { (it is Tree.KeyValue && it.key == "loc") }

@@ -69,7 +69,20 @@ private class ParserCollector {
     // adding the type annotation <Ast> seems to improve the type inference performance
 
     // TODO was in the middle of working on pattern-matching for Unary functions
+
+
     on(expr).match<XR>(
+      // ExtractorsDomain.CaseClassConstructorCall1[Is(), Is()]
+      //
+      //case(Ir.Call.FunctionMem0[ExtractorsDomain.CaseClassConstructorCall1[Is(), Is()], Is("use")]).then { (sqlExprUprootable), _ ->
+      case(Ir.Call.FunctionMem0[SqlExpressionExpr.Uprootable[Is()], Is("use")]).then { (sqlExprUprootable), _ ->
+        sqlExprUprootable.xr
+      },
+
+      //case(Ir.Call.FunctionMem0[Is(), Is("use")]).then { v, _ ->
+      //  error("------------ Calling Use Function ---------\n${v.dumpKotlinLike()}")
+      //  XR.Const.String("foo")
+      //},
 
       // Binary Operators
       case(ExtractorsDomain.Call.`x op y`[Is()]).thenThis { opCall ->

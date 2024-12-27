@@ -41,7 +41,7 @@ class TransformCapturedExpression(override val ctx: BuilderContext, val superTra
   // parent symbols are collected in the parent context
   context(ParserContext, BuilderContext, CompileLogger)
   override fun transformBase(expression: IrCall): IrExpression {
-    val body =
+    val bodyRaw =
       on(expression).match(
         // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
         case(io.exoquery.plugin.trees.Ir.Call.FunctionUntethered1[io.exoquery.plugin.trees.Ir.FunctionExpression.withBlock[Is(), Is()]]).then { (_, body) ->
@@ -49,6 +49,8 @@ class TransformCapturedExpression(override val ctx: BuilderContext, val superTra
         }
       )
       ?: parseError("Parsing Failed\n================== The expresson was not a Global Function (with one argument-block): ==================\n" + expression.dumpKotlinLike() + "\n--------------------------\n" + expression.dumpSimple())
+
+    val body = superTransformer.visitBlockBody(bodyRaw, ScopeSymbols.empty) as IrBlockBody
 
     // TODO Needs to convey SourceLocation coordinates, think I did this in terpal-sql somehow
     val (xr, dynamics) = Parser.parseFunctionBlockBody(body)
@@ -67,11 +69,14 @@ class TransformCapturedExpression(override val ctx: BuilderContext, val superTra
 
 
     val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr))
-    val makeCasted = builder.irImplicitCast(make, expression.type)
+    //val makeCasted = builder.irImplicitCast(make, expression.type)
 
     //logger.warn("=============== Modified value to: ${capturedAnnot.valueArguments[0]?.dumpKotlinLike()}\n======= Whole Type is now:\n${makeCasted.type.dumpKotlinLike()}")
-    logger.warn("========== Output: ==========\n${makeCasted.dumpKotlinLike()}")
+    logger.warn("========== Output: ==========\n${make.dumpKotlinLike()}")
 
-    return makeCasted
+    // maybe get rid of @Capture by copying (i.e. splicing since it's presence might tell us where we don't want to splice?)
+    // alternatively would need to account for the annotation in the ExprModel?
+
+    return make
   }
 }

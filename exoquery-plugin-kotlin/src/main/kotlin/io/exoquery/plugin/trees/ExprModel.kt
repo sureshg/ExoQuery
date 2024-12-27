@@ -27,16 +27,15 @@ class RuntimesExpr(val runtimes: List<Pair<BID, IrExpression>>) {
 }
 
 object SqlExpressionExpr {
-  data class Uprootable(val xr: XR) {
+  data class Uprootable(val xr: XR.Expression) {
     companion object {
-      context (CompileLogger) operator fun <AP: Pattern<SqlExpressionExpr.Uprootable>> get(x: AP) =
-        customPattern1(x) { it: IrCall ->
+      context (CompileLogger) operator fun <AP: Pattern<Uprootable>> get(x: AP) =
+        customPattern1(x) { it: IrExpression ->
           it.match(
-            // SqlExpression(unpackExpr(str))
-            case(ExtractorsDomain.CaseClassConstructorCall1[Is("io.exoquery.SqlExpression"), Ir.Call.FunctionUntethered1[Is()]]).then { _, (ir) ->
-              val irConst = ir as? IrConst<String> ?: throw IllegalArgumentException("value passed to unpackExpr was not a constant-string in:\n${it.dumpKotlinLike()}")
-              val astString = irConst.value
-              val ast = ProtoBuf.decodeFromHexString<XR.Expression>(astString)
+            // Match on: SqlExpression(unpackExpr(irStr = str))
+            case(ExtractorsDomain.CaseClassConstructorCall1[Is("io.exoquery.SqlExpression"), Ir.Call.FunctionUntethered1[Is()]]).then { _, (irStr) ->
+              val irConst = irStr as? IrConst<String> ?: throw IllegalArgumentException("value passed to unpackExpr was not a constant-string in:\n${it.dumpKotlinLike()}")
+              val ast = ProtoBuf.decodeFromHexString<XR.Expression>(irConst.value)
               Components1(Uprootable(ast))
             }
           )

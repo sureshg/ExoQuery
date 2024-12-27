@@ -338,12 +338,24 @@ object Ir {
     }
 
     object FunctionMem0 {
-      // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
-      context (CompileLogger) operator fun <AP : Pattern<A>, A:ReceiverCaller> get(x: AP): Pattern1<AP, A, IrCall> =
-        customPattern1(x) { it: IrCall ->
-          val reciever = it.caller()
+      object Caller {
+        // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
+        context(CompileLogger) operator fun <AP : Pattern<A>, A : ReceiverCaller> get(x: AP): Pattern1<AP, A, IrCall> =
+          customPattern1(x) { it: IrCall ->
+            val reciever = it.caller()
+            if (reciever != null && it.simpleValueArgs.size == 0) {
+              Components1(reciever)
+            } else {
+              null
+            }
+          }
+      }
+
+      context(CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<String>> get(x: AP, y: BP): Pattern2<AP, BP, IrExpression, String, IrCall> =
+        customPattern2(x, y) { it: IrCall ->
+          val reciever = it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.size == 0) {
-            Components1(reciever)
+            Components2(reciever, it.symbol.safeName)
           } else {
             null
           }

@@ -5,7 +5,7 @@ import io.exoquery.printing.qprint
 import kotlin.reflect.typeOf
 
 fun main(args: Array<String>) {
-  val cap = capture { 123 }
+  val cap = capture { 123 + capture { 456 }.use }
   println(qprint(cap.xr))
 
   //println(readAnnotations(cap))
