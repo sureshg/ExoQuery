@@ -36,16 +36,11 @@ class TransformPrintSource(
   fun transform(expression: IrCall): IrExpression {
     val args =
       with(compileLogger) {
-        //error("=======================: ${expression.simpleValueArgs.size}")
-
         on(expression).match(
           // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
           case(Ir.Call.FunctionUntethered1[Ir.FunctionExpression.withBlockStatements[Is(), Is()]]).then { (_, args) ->
             args
           }
-//          case(Ir.Call.FunctionUntethered1[Is()]).then { args ->
-//            listOf(args)
-//          }
         )
       } ?: parseError("Parsing Failed\n================== The expresson was not a Global Function (with one argument-block): ==================\n" + expression.dumpKotlinLike() + "\n--------------------------\n" + expression.dumpSimple())
 

@@ -51,6 +51,9 @@ class VisitTransformExpressions(
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
 
     val transformPrint = TransformPrintSource(builderContext)
+    // TODO just for Expression capture or also for Query capture? Probably both
+    val transformCapture = TransformCapturedExpression(builderContext, this)
+    val showAnnotations = TransformShowAnnotations(builderContext, this)
 
 
     // TODO Catch parser errors here, make a warning via the compileLogger (in the BuilderContext) & don't transform the expresison
@@ -69,6 +72,11 @@ class VisitTransformExpressions(
       // 1st that that runs here because printed stuff should not be transformed
       // (and this does not recursively transform stuff inside)
       transformPrint.matches(expression) -> transformPrint.transform(expression)
+      // NOTE the .matches function should just be a cheap match on the expression, not a full extractionfalse
+      transformCapture.matches(expression) -> transformCapture.transform(expression)
+
+      showAnnotations.matches(expression) -> showAnnotations.transform(expression)
+
       // Want to run interpolator invoke before other things because the result of it is an SqlExpression that will
       // the be re-parsed in the parser if it is inside of a context(EnclosedContext) e.g. Query.map
       else ->

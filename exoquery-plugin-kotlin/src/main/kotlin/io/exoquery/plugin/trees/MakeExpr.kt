@@ -38,9 +38,12 @@ context(BuilderContext) inline fun <reified T> makeObject(): IrGetObjectValue {
 }
 
 
-context(BuilderContext) fun makeClassFromString(fullPath: String, args: List<IrExpression>, types: List<IrType> = listOf()) =
+context(BuilderContext) fun makeClassFromString(fullPath: String, args: List<IrExpression>, types: List<IrType> = listOf(), overrideType: IrType? = null) =
   pluginCtx.referenceConstructors(ClassId.topLevel(FqName("$fullPath"))).first()
-    .let { ctor -> builder.irCall(ctor) }
+
+    .let { ctor ->
+      overrideType?.let { builder.irCall(ctor, it) } ?: builder.irCall(ctor)
+    }
     .also { ctorCall ->
       args.withIndex().map { (i, arg) ->
         ctorCall.putValueArgument(i, arg)
