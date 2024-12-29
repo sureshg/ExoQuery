@@ -80,8 +80,10 @@ private class ParserCollector {
 
       // Direct capture-in-capture splice e.g:  `capture { capture { 1 }.use }`
       case(Ir.Call.FunctionMem0[SqlExpressionExpr.Uprootable[Is()], Is("use")]).then { (sqlExprUprootable), _ ->
-        // TODO Need to add params from here creating a kind of binds.addAllParams(params) that will
-        //      later compose the values
+        // E.g. when you've got something like `capture { 2 + capture { 1 + param(123) }.use }`
+        // It turs into something like `capture { 2 + SqlExpression(unpack(...), params=Param(123)) }`
+        // So we need to all all of the params coming from the inner SqlExpression instance
+        binds.addAllParams(compLeft)
         sqlExprUprootable.xr
       },
 

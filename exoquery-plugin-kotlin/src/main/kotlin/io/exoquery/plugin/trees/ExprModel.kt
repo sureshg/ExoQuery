@@ -7,10 +7,7 @@ import io.exoquery.Params
 import io.exoquery.Runtimes
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
-import io.exoquery.plugin.transform.BuilderContext
-import io.exoquery.plugin.transform.Caller
-import io.exoquery.plugin.transform.ReceiverCaller
-import io.exoquery.plugin.transform.call
+import io.exoquery.plugin.transform.*
 import io.exoquery.xr.XR
 import kotlinx.serialization.decodeFromHexString
 import kotlinx.serialization.protobuf.ProtoBuf
@@ -22,7 +19,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.util.dump
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
-class RuntimesExpr(val runtimes: List<Pair<BID, IrExpression>>) {
+class RuntimesExpr(val runtimes: List<Pair<BID, IrExpression>>, val runtimesToCompose: List<IrExpression>) {
   context(BuilderContext) fun lift(): IrExpression {
     return with (makeLifter()) {
       val bindsList = runtimes.map { pair ->
@@ -30,18 +27,30 @@ class RuntimesExpr(val runtimes: List<Pair<BID, IrExpression>>) {
           {bid -> bid.lift()},
           { it })
       }
-      make<Runtimes>(bindsList.liftExpr<Pair<BID, IrExpression>>())
+      val newRuntimes: IrExpression = make<Runtimes>(bindsList.liftExpr<Pair<BID, IrExpression>>())
+      runtimesToCompose
+        // First take the .runtimes property from each SqlExpression instance
+        .map { it.callDispatch("runtimesInternal")() }
+        // Then compose them them together with the new lifts
+        .fold(newRuntimes, { acc, nextRuntimes ->
+          newRuntimes.callDispatch("plus")(nextRuntimes)
+        })
     }
   }
 }
 
-class ParamsExpr(val paramBinds: List<Pair<BID, IrExpression>>) {
+class ParamsExpr(val paramBinds: List<Pair<BID, IrExpression>>, val paramsToCompose: List<IrExpression>) {
   context(BuilderContext) fun lift(): IrExpression {
     return with (makeLifter()) {
       val paramsList = paramBinds.map { (bid, value) ->
         make<Param<*>>(bid.lift(), value)
       }
-      make<Params>(paramsList.liftExpr<Param<*>>())
+      val newParams: IrExpression = make<Params>(paramsList.liftExpr<Param<*>>())
+      paramsToCompose
+        .map { it.callDispatch("paramsInternal")() }
+        .fold(newParams, { acc, nextParams ->
+          Caller.Dispatch(newParams).call("plus")(nextParams)
+        })
     }
   }
 }

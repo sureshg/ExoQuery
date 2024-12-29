@@ -7,15 +7,28 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 class DynamicsAccum {
   // instances of ContainerOfXR (maybe think about something more typed here, or check that the IrExpresssion is a ContainerOfXR when adding)
   private val runtimesCollect = mutableListOf<Pair<BID, IrExpression>>()
-  private val paramsCollect = mutableListOf<Pair<BID, IrExpression>>()
+  // Other instances of SqlExpression (i.e. from other uprootable SqlExpression instances that we need to compose)
+  private val allRuntimesCollect = mutableListOf<IrExpression>()
 
-  fun makeRuntimes() = RuntimesExpr(runtimesCollect)
-  fun makeParams() = ParamsExpr(paramsCollect)
+  // instances of Params (maybe think about something more typed here, or check that the IrExpresssion is a Params when adding)
+  private val paramsCollect = mutableListOf<Pair<BID, IrExpression>>()
+  // Other instances of SqlExpression (i.e. from other uprootable SqlExpression instances that we need to compose)
+  private val allParamsCollect = mutableListOf<IrExpression>()
+
+  fun makeRuntimes() = RuntimesExpr(runtimesCollect, allParamsCollect)
+  fun makeParams() = ParamsExpr(paramsCollect, allParamsCollect)
 
   // TODO have a similar technique for lifts
 
   fun addRuntime(bindId: BID, bind: IrExpression) {
     runtimesCollect.add(bindId to bind)
+  }
+  fun addAllRuntimes(sqlExpressionInstance: IrExpression) {
+    allRuntimesCollect.add(sqlExpressionInstance)
+  }
+
+  fun addAllParams(sqlExpressionInstance: IrExpression) {
+    allParamsCollect.add(sqlExpressionInstance)
   }
   fun addParam(bindId: BID, bind: IrExpression) {
     paramsCollect.add(bindId to bind)

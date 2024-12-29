@@ -15,6 +15,7 @@ data class Runtimes(val runtimes: List<Pair<BID, ContainerOfXR>>) {
     //      that way we can just check for this when in order to know if a tree can be statically translated or not
     val Empty = Runtimes(emptyList())
   }
+  operator fun plus(other: Runtimes): Runtimes = Runtimes(runtimes + other.runtimes)
 }
 // TODO similar class for lifts
 
@@ -41,7 +42,9 @@ data class Runtimes(val runtimes: List<Pair<BID, ContainerOfXR>>) {
 
 data class Param<T>(val id: BID, val value: T)
 
-data class Params(val lifts: List<Param<*>>)
+data class Params(val lifts: List<Param<*>>) {
+  operator fun plus(other: Params): Params = Params(lifts + other.lifts)
+}
 
 // TODO add lifts which will be BID -> ContainerOfEx
 // (also need a way to get them easily from the IrContainer)
@@ -49,6 +52,7 @@ data class Params(val lifts: List<Param<*>>)
 data class SqlExpression<T>(val xr: XR.Expression, val params: Params) {
   // For some reason calling `params` directly blow up. Need to look into why. Meanwhile use this.
   fun paramsInternal() = params
+  //fun runtimesInternal() = ...
   val use: T by lazy { throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context") }
 }
 

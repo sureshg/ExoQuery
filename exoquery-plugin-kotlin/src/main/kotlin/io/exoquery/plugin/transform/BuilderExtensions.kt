@@ -103,8 +103,6 @@ fun ReceiverCaller.callWithOutput(name: ReplacementMethodToCall, fullOutputType:
 fun ReceiverCaller.callWithParams(name: ReplacementMethodToCall, typeParams: List<IrType>): CallMethod = CallMethod(this, name, typeParams, null)
 fun ReceiverCaller.callWithParamsAndOutput(name: ReplacementMethodToCall, typeParams: List<IrType>, fullOutputType: IrType): CallMethod = CallMethod(this, name, typeParams, fullOutputType)
 
-
-
 fun ReceiverCaller.call(method: String) = CallMethod(this, ReplacementMethodToCall(method), listOf(), null)
 fun ReceiverCaller.callWithOutput(method: String, fullOutputType: IrType) = CallMethod(this, ReplacementMethodToCall(method), listOf(), fullOutputType)
 
