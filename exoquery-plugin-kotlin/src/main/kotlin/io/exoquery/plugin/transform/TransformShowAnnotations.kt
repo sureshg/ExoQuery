@@ -23,7 +23,7 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 
 
-class TransformShowAnnotations(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): Transformer() {
+class TransformShowAnnotations(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
 
 
   private val fqn: String = "io.exoquery.showAnnotations"

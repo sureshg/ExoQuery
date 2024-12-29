@@ -29,9 +29,7 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 
 
-class TransformCapturedExpression(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): Transformer() {
-
-
+class TransformCapturedExpression(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
   private val fqn: String = "io.exoquery.capture"
 
   context(BuilderContext, CompileLogger)
@@ -50,6 +48,13 @@ class TransformCapturedExpression(override val ctx: BuilderContext, val superTra
       )
       ?: parseError("Parsing Failed\n================== The expresson was not a Global Function (with one argument-block): ==================\n" + expression.dumpKotlinLike() + "\n--------------------------\n" + expression.dumpSimple())
 
+    // Transform the contents of `capture { ... }` this is important for several reasons,
+    // most notable any kind of variables used inside that need to be inlined e.g:
+    // val x = capture { 123 }
+    // val y = capture { x.use + 1 } // <- this is what we are transforming
+    // Then the `val y` needs to first be transformed into:
+    // val y = capture { SqlExpression(XR.Int(123), ...).use + 1 } which will be done by TransformProjectCapture
+    // which is called by the superTransformer.visitBlockBody
     val body = superTransformer.visitBlockBody(bodyRaw, ScopeSymbols.empty) as IrBlockBody
 
     // TODO Needs to convey SourceLocation coordinates, think I did this in terpal-sql somehow

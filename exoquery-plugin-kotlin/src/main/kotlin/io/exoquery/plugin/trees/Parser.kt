@@ -2,6 +2,7 @@ package io.exoquery.plugin.trees
 
 import io.decomat.Is
 import io.decomat.case
+import io.decomat.match
 import io.decomat.on
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
@@ -75,8 +76,32 @@ private class ParserCollector {
       // ExtractorsDomain.CaseClassConstructorCall1[Is(), Is()]
       //
       //case(Ir.Call.FunctionMem0[ExtractorsDomain.CaseClassConstructorCall1[Is(), Is()], Is("use")]).then { (sqlExprUprootable), _ ->
+
+      // Direct capture-in-capture splice e.g:  `capture { capture { 1 }.use }`
       case(Ir.Call.FunctionMem0[SqlExpressionExpr.Uprootable[Is()], Is("use")]).then { (sqlExprUprootable), _ ->
         sqlExprUprootable.xr
+      },
+
+      case(Ir.Call.FunctionMem0[Is(), Is("use")]).thenIf { calledFrom, _ -> calledFrom is IrCall && calledFrom.type.isClass<io.exoquery.SqlExpression<*>>() }.thenThis { calledFrom, _ ->
+        //sym.owner.match(
+        //  case(Ir.Variable[Is(), SqlExpressionExpr.Uprootable[Is()]]).thenThis { varName, (uprootable) ->
+        //    error("----------------- Got to Owner of ------------\n${uprootable.xr.show()}")
+        //    uprootable.xr
+        //  }
+        //)
+
+        error("""
+          |------------- Get of SqlExpression -------------
+          |${calledFrom.dumpKotlinLike()}
+          |------- with IR: --------
+          |${calledFrom.dumpSimple()}
+          |-----------------------------------------------
+          |with Owner :
+          |${(calledFrom as IrCall).symbol.owner.dumpKotlinLike()}
+          |------- with Owner IR: -------- 
+          |${(calledFrom as IrCall).symbol.owner.dumpSimple()}
+          """.trimMargin())
+        XR.Const.String("foo")
       },
 
       //case(Ir.Call.FunctionMem0[Is(), Is("use")]).then { v, _ ->

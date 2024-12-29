@@ -26,8 +26,17 @@ data class Runtimes(val runtimes: List<Pair<BID, ContainerOfXR>>) {
  * so:
  * // Capturing a generic expression returns a SqlExpression
  * fun <T> capture(block: () -> T): SqlExpression<T>
+ * for example:
+ * {{{
+ * val combo: SqlExpression<Int> = capture { foo + bar }
+ * }}}
+ *
  * // Capturing a SqlQuery returns a SqlQuery
  * fun <T> capture(block: () -> SqlQuery<T>): SqlQuery<T>
+ * for example:
+ * {{{
+ * val query: SqlQuery<Person> = capture { Table<Person>() }
+ * }}}
  */
 
 // TODO add lifts which will be BID -> ContainerOfEx
