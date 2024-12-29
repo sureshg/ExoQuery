@@ -39,10 +39,16 @@ data class Runtimes(val runtimes: List<Pair<BID, ContainerOfXR>>) {
  * }}}
  */
 
+data class Param<T>(val id: BID, val value: T)
+
+data class Params(val lifts: List<Param<*>>)
+
 // TODO add lifts which will be BID -> ContainerOfEx
 // (also need a way to get them easily from the IrContainer)
 
-data class SqlExpression<T>(val xr: XR.Expression) {
+data class SqlExpression<T>(val xr: XR.Expression, val params: Params) {
+  // For some reason calling `params` directly blow up. Need to look into why. Meanwhile use this.
+  fun paramsInternal() = params
   val use: T by lazy { throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context") }
 }
 

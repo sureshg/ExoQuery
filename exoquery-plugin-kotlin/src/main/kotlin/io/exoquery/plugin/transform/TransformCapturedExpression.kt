@@ -42,7 +42,7 @@ class TransformCapturedExpression(override val ctx: BuilderContext, val superTra
     val bodyRaw =
       on(expression).match(
         // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
-        case(io.exoquery.plugin.trees.Ir.Call.FunctionUntethered1[io.exoquery.plugin.trees.Ir.FunctionExpression.withBlock[Is(), Is()]]).then { (_, body) ->
+        case(io.exoquery.plugin.trees.Ir.Call.FunctionUntethered1.Arg[io.exoquery.plugin.trees.Ir.FunctionExpression.withBlock[Is(), Is()]]).then { (_, body) ->
           body
         }
       )
@@ -72,8 +72,10 @@ class TransformCapturedExpression(override val ctx: BuilderContext, val superTra
     // because obviously it doesn't have an annotation because it's an SqlExpression constructor but the `capture` expression output should have one because that's how the `capture` method is typed
     //val sqlExpressionType = expression.type
 
+    val paramsListExpr = dynamics.makeParams().lift()
 
-    val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr))
+
+    val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr, paramsListExpr))
     //val makeCasted = builder.irImplicitCast(make, expression.type)
 
     //logger.warn("=============== Modified value to: ${capturedAnnot.valueArguments[0]?.dumpKotlinLike()}\n======= Whole Type is now:\n${makeCasted.type.dumpKotlinLike()}")

@@ -60,11 +60,32 @@ object ExtractorsDomain {
   }
 
   object CaseClassConstructorCall1 {
-
     context (CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
       customPattern2(x, y) { call: IrConstructorCall ->
         when {
           call.symbol.safeName == "<init>" && call.symbol.owner.simpleValueParams.size == 1 -> {
+            val className: String = call.type.classFqName?.asString() ?: call.type.dumpKotlinLike()
+            if (!call.symbol.owner.isPrimary)
+              parseError("Detected construction of the class ${className} using a non-primary constructor. This is not allowed.")
+
+            val params = call.symbol.owner.simpleValueParams.map { it.name.asString() }.toList()
+            val args = call.valueArguments.toList()
+            if (params.size != args.size)
+              parseError("Cannot parse constructor of ${className} its params ${params} do not have the same cardinality as its arguments ${args.map { it?.dumpKotlinLike() }}")
+            Components2(className, args.first())
+          }
+          else -> null
+        }
+      }
+  }
+
+  // Match case classes that have at least one paramater. The match is on the case class name and the first parameter. This is useful
+  // since in many cases the primary deconstructin logic is on on that data
+  object CaseClassConstructorCall1Plus {
+    context (CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
+      customPattern2(x, y) { call: IrConstructorCall ->
+        when {
+          call.symbol.safeName == "<init>" && call.symbol.owner.simpleValueParams.size >= 1 -> {
             val className: String = call.type.classFqName?.asString() ?: call.type.dumpKotlinLike()
             if (!call.symbol.owner.isPrimary)
               parseError("Detected construction of the class ${className} using a non-primary constructor. This is not allowed.")
@@ -149,7 +170,7 @@ object ExtractorsDomain {
       context (CompileLogger) operator fun <AP: Pattern<UnaryOperatorCall>> get(x: AP) =
         customPattern1(x) { it: IrCall ->
           on(it).match(
-            case(Ir.Call.FunctionUntethered1[Is()]).thenThis { arg1 -> Pair(this.symbol.safeName, arg1) },
+            case(Ir.Call.FunctionUntethered1.Arg[Is()]).thenThis { arg1 -> Pair(this.symbol.safeName, arg1) },
             case(Ir.Call.FunctionRec0[Is()]).thenThis { arg1 -> Pair(this.symbol.safeName, arg1) }
           )?.let { result ->
             val (opName, arg1) = result
@@ -170,7 +191,7 @@ object ExtractorsDomain {
           if (matchesMethod(it)) {
             on(it).match(
               // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
-              case( /* .flatMap */ Ir.Call.FunctionUntethered1[Is()]).then { expression ->
+              case( /* .flatMap */ Ir.Call.FunctionUntethered1.Arg[Is()]).then { expression ->
                 on(expression).match(
                   case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
                     val funExpression = this

@@ -55,7 +55,7 @@ return """
 ================ Kotlin-Like: ================
 ${ir?.map { it.dumpKotlinLike() }?.joinToString("\n")}
 ================= IR: ========================
-${ir?.map { it.dumpSimple() }?.joinToString("\n")}
+${ir?.map { it.dump() }?.joinToString("\n")}
 ================= Output Type: ========================
 ${ir?.map { writeOutput(it) }?.joinToString("\n")}
 """.trimIndent()

@@ -19,6 +19,8 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
+import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classFqName
@@ -37,11 +39,31 @@ val KClass<*>.qualifiedNameForce get(): String =
 val KClass<*>.fqNameForce get() =
   FqName(this.qualifiedNameForce)
 
-fun IrType.findMethodOrFail(methodName: String) = run {
-  (this
-    .classOrNull ?: error("Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} type is not a class."))
-    .functions
-    .find { it.safeName == methodName } ?: error("Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} because the method does not exist.")
+sealed interface MethodType {
+  data class Getter(val sym: IrSimpleFunctionSymbol): MethodType
+  data class Method(val sym: IrSimpleFunctionSymbol): MethodType
+}
+
+fun IrType.findMethodOrFail(methodName: String): MethodType = run {
+  val cls =
+    (this.classOrNull ?: error("Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} type is not a class."))
+
+
+  // This causes asserition failures? Not sure why
+  //cls.getPropertyGetter(methodName)?.let { MethodType.Getter(it) }
+
+  cls.functions.find { it.safeName == methodName }?.let { MethodType.Method(it) }
+    ?: error(
+     """|
+        |Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} because the method does not exist.
+        |-------------- Available methods --------------
+        |${cls.functions.joinToString("\n") { it.safeName }}
+        |""".trimMargin())
+
+
+  // getPropertyGetter could potentially cause kotlin Assertion errors. Not sure why
+  //|-------------- Available properties --------------
+  //|${cls.dataClassProperties().map { cls.getPropertyGetter(it.first)?.safeName }.joinToString("\n")}
 }
 
 // WARNING assuming (for now) that the extension methods are in the same package as the Class they're being called from.
@@ -51,7 +73,7 @@ context(BuilderContext) fun IrType.findExtensionMethodOrFail(methodName: String)
   (this
     .classOrNull ?: error("Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} type is not a class."))
     .let { classSym ->
-      pluginCtx.referenceFunctions(CallableId(FqName(classSym.owner.packageFqName.toString()), Name.identifier(methodName))).firstOrNull()
+      pluginCtx.referenceFunctions(CallableId(FqName(classSym.owner.packageFqName.toString()), Name.identifier(methodName))).firstOrNull()?.let { MethodType.Method(it) }
         ?: error("Cannot locate the extension method ${classSym.owner.packageFqName.toString()}.${methodName} from the type: ${this.dumpKotlinLike()} because the method does not exist.")
     }
 }

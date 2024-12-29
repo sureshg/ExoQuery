@@ -82,6 +82,29 @@ private class ParserCollector {
         sqlExprUprootable.xr
       },
 
+      case(Ir.Call.FunctionMem0[Ir.GetValue[Is()], Is("use")]).thenIf { _, _ -> compLeft.type.isClass<io.exoquery.SqlExpression<*>>() }.thenThis { (sym), _ ->
+        //sym.owner.match(
+        //  case(Ir.Variable[Is(), SqlExpressionExpr.Uprootable[Is()]]).thenThis { varName, (uprootable) ->
+        //    error("----------------- Got to Owner of ------------\n${uprootable.xr.show()}")
+        //    uprootable.xr
+        //  }
+        //)
+
+        error("""
+          |------------- Get of SqlExpression -------------
+          |${expr.dumpKotlinLike()}
+          |------- with IR --------
+          |${expr.dumpSimple()}
+          |-----------------------------------------------
+          |with Owner :
+          |${sym.owner.dumpKotlinLike()}
+          |------- with Owner IR: 
+          |${sym.owner.dumpSimple()}
+          """.trimMargin())
+        XR.Const.String("foo")
+      },
+
+      /*
       case(Ir.Call.FunctionMem0[Is(), Is("use")]).thenIf { calledFrom, _ -> calledFrom is IrCall && calledFrom.type.isClass<io.exoquery.SqlExpression<*>>() }.thenThis { calledFrom, _ ->
         //sym.owner.match(
         //  case(Ir.Variable[Is(), SqlExpressionExpr.Uprootable[Is()]]).thenThis { varName, (uprootable) ->
@@ -98,11 +121,12 @@ private class ParserCollector {
           |-----------------------------------------------
           |with Owner :
           |${(calledFrom as IrCall).symbol.owner.dumpKotlinLike()}
-          |------- with Owner IR: -------- 
+          |------- with Owner IR: --------
           |${(calledFrom as IrCall).symbol.owner.dumpSimple()}
           """.trimMargin())
         XR.Const.String("foo")
       },
+       */
 
       //case(Ir.Call.FunctionMem0[Is(), Is("use")]).then { v, _ ->
       //  error("------------ Calling Use Function ---------\n${v.dumpKotlinLike()}")

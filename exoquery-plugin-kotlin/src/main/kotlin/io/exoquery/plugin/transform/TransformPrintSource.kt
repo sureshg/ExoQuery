@@ -38,7 +38,7 @@ class TransformPrintSource(
       with(compileLogger) {
         on(expression).match(
           // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
-          case(Ir.Call.FunctionUntethered1[Ir.FunctionExpression.withBlockStatements[Is(), Is()]]).then { (_, args) ->
+          case(Ir.Call.FunctionUntethered1.Arg[Ir.FunctionExpression.withBlockStatements[Is(), Is()]]).then { (_, args) ->
             args
           }
         )

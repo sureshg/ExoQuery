@@ -35,12 +35,20 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
           case(Ir.Variable[Is(), SqlExpressionExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
             // when propagating forward we don't actually need to deserialize the XR contents
             // of the uprootable, just pass it along into the new instance of SqlExpression(unpackExpr(...), ...)
-            uprootableExpr.replant()
+            uprootableExpr.replant(expression)
           }
-        )
+        ) ?: run {
+          error("""
+              ----------- Could not uproot the expression: -----------
+              ${symbol.owner.dumpKotlinLike()}
+              With the following IR:
+              ${symbol.owner.dumpSimple()}
+            """.trimIndent())
+          expression
+        }
       }
     ) ?: run {
-      warn("""
+      error("""
         ----------- Could not re-plant the expression: -----------
         ${expression.dumpKotlinLike()}
         With the following IR:

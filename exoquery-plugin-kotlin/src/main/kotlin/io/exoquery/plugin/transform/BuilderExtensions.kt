@@ -1,18 +1,14 @@
 package io.exoquery.plugin.transform
 
 import io.exoquery.annotation.ChangeReciever
-import io.exoquery.plugin.ReplacementMethodToCall
-import io.exoquery.plugin.findExtensionMethodOrFail
-import io.exoquery.plugin.findMethodOrFail
+import io.exoquery.plugin.*
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
+import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
-import org.jetbrains.kotlin.ir.builders.irBlockBody
-import org.jetbrains.kotlin.ir.builders.irCall
-import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -24,13 +20,14 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
 class CallMethod(private val callerRaw: Caller, private val replacementFun: ReplacementMethodToCall, private val types: List<IrType>, private val tpe: IrType?) {
-  context(BuilderContext) operator fun invoke(vararg args: IrExpression): IrCall {
+  context(BuilderContext) operator fun invoke(vararg args: IrExpression): IrExpression {
     val caller =
       when (replacementFun.callerType) {
         ChangeReciever.ToDispatch -> callerRaw.toDispatch()
@@ -40,28 +37,58 @@ class CallMethod(private val callerRaw: Caller, private val replacementFun: Repl
 
     val funName = replacementFun.methodToCall
 
-    val invoke =
+    val invokeMethod =
       when (caller) {
         is Caller.Dispatch -> caller.reciver.type.findMethodOrFail(funName)
-        is Caller.Extension -> caller.reciver.type.findExtensionMethodOrFail(funName)
+        is Caller.Extension ->  caller.reciver.type.findExtensionMethodOrFail(funName)
         is Caller.TopLevelMethod ->
-          pluginCtx.referenceFunctions(CallableId(FqName(caller.packageName), Name.identifier(funName))).firstOrNull() ?: throw IllegalArgumentException("Cannot find method `${funName}` in the package `${caller.packageName}`")
+          pluginCtx.referenceFunctions(CallableId(FqName(caller.packageName), Name.identifier(funName))).firstOrNull()?.let { MethodType.Method(it) }
+            ?: throw IllegalArgumentException("Cannot find method `${funName}` in the package `${caller.packageName}`")
       }
 
-    return with (builder) {
-      val invocation = if (tpe != null) irCall(invoke, tpe) else irCall(invoke)
-      invocation.apply {
-        when (caller) {
-          is Caller.Dispatch -> { dispatchReceiver = caller.reciver }
-          is Caller.Extension -> { extensionReceiver = caller.reciver }
-          is Caller.TopLevelMethod -> {}
-        }
 
-        for ((index, tpe) in types.withIndex()) {
-          putTypeArgument(index, tpe)
+
+    return when (invokeMethod) {
+      is MethodType.Getter -> {
+        if (args.isNotEmpty()) {
+          throw IllegalArgumentException("Cannot call a getter with arguments but tried to call `${invokeMethod.sym.safeName}` with arguments: ${args.joinToString(", ") { it.dumpKotlinLike() }}")
         }
-        for ((index, expr) in args.withIndex()) {
-          putValueArgument(index, expr)
+        with(builder) {
+          when (caller) {
+            is Caller.Dispatch -> {
+              irCall(invokeMethod.sym, invokeMethod.sym.owner.returnType).apply {
+                origin = IrStatementOrigin.GET_PROPERTY
+                dispatchReceiver = caller.reciver
+              }
+            }
+            else -> {
+              error("Cannot call a getter from a non-dispatch receiver")
+            }
+          }
+        }
+      }
+      is MethodType.Method -> {
+        val invoke = invokeMethod.sym
+        with(builder) {
+          val invocation = if (tpe != null) irCall(invoke, tpe) else irCall(invoke)
+          invocation.apply {
+            when (caller) {
+              is Caller.Dispatch -> {
+                dispatchReceiver = caller.reciver
+              }
+              is Caller.Extension -> {
+                extensionReceiver = caller.reciver
+              }
+              is Caller.TopLevelMethod -> {}
+            }
+
+            for ((index, tpe) in types.withIndex()) {
+              putTypeArgument(index, tpe)
+            }
+            for ((index, expr) in args.withIndex()) {
+              putValueArgument(index, expr)
+            }
+          }
         }
       }
     }

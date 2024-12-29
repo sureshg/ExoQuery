@@ -364,11 +364,33 @@ object Ir {
 
     // not a function on an object or class i.e. top-level
     object FunctionUntethered1 {
-      context (CompileLogger) operator fun <AP : Pattern<E>, E: IrExpression> get(x: AP): Pattern1<AP, E, IrCall> =
-        customPattern1(x) { it: IrCall ->
+      object Arg {
+        /*context (CompileLogger) operator fun <AP: Pattern<IrExpression>> get(x: AP) =
+          customPattern1(x) { it: IrCall ->
+            val reciever = it.extensionReceiver ?: it.dispatchReceiver
+            if (reciever == null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null }) {
+              Components1(it.simpleValueArgs.first())
+            } else {
+              null
+            }
+          }*/
+
+        context (CompileLogger) operator fun <AP : Pattern<E>, E: IrExpression> get(x: AP): Pattern1<AP, E, IrCall> =
+          customPattern1(x) { it: IrCall ->
+            val reciever = it.extensionReceiver ?: it.dispatchReceiver
+            if (reciever == null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null }) {
+              Components1(it.simpleValueArgs.first())
+            } else {
+              null
+            }
+          }
+      }
+
+      context (CompileLogger) operator fun <AP : Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP): Pattern2<AP, BP, String, IrExpression, IrCall> =
+        customPattern2(x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever == null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null }) {
-            Components1(it.simpleValueArgs.first())
+            Components2(it.symbol.safeName, it.simpleValueArgs.first() ?: error("Expected non-null value"))
           } else {
             null
           }
