@@ -7,10 +7,13 @@ import kotlin.reflect.typeOf
 data class Foo(val bar: String)
 
 fun case0() {
-  val cap0 = capture { 456 }
+  val cap0 = capture { 456 + param(456) }
+  println(cap0.params)
+
   val cap1 = cap0
   val cap = capture { 123 + cap1.use }
   println(qprint(cap.xr))
+  println(cap.params)
 
   /*
   java.lang.IllegalStateException: ------- Calling replant -------

@@ -4,6 +4,7 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.match
 import io.decomat.on
+import io.exoquery.BID
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.ScopeSymbols
@@ -79,7 +80,15 @@ private class ParserCollector {
 
       // Direct capture-in-capture splice e.g:  `capture { capture { 1 }.use }`
       case(Ir.Call.FunctionMem0[SqlExpressionExpr.Uprootable[Is()], Is("use")]).then { (sqlExprUprootable), _ ->
+        // TODO Need to add params from here creating a kind of binds.addAllParams(params) that will
+        //      later compose the values
         sqlExprUprootable.xr
+      },
+
+      case(Ir.Call.FunctionUntethered1[Is("param"), Is()]).thenThis { _, paramValue ->
+        val bid = BID.new()
+        binds.addParam(bid, paramValue)
+        XR.Const.String("UUID:${bid.value}")
       },
 
       case(Ir.Call.FunctionMem0[Ir.GetValue[Is()], Is("use")]).thenIf { _, _ -> compLeft.type.isClass<io.exoquery.SqlExpression<*>>() }.thenThis { (sym), _ ->
