@@ -255,6 +255,15 @@ object Ir {
 
   object Call {
 
+    context (CompileLogger) operator fun <AP : Pattern<IrCall>> get(x: AP): Pattern1<AP, IrCall, IrCall> =
+      customPattern1(x) { it: IrCall ->
+        if (it.simpleValueArgs.all { it != null }) {
+          Components1(it)
+        } else {
+          null
+        }
+      }
+
     // TODO get rid of this in favor of FunctionMem
     object FunctionRec {
       context (CompileLogger) operator fun <AP : Pattern<List<IrExpression>>> get(x: AP): Pattern1<AP, List<IrExpression>, IrCall> =
@@ -442,10 +451,21 @@ object Ir {
 
     // Single element returning block body
     object ReturnOnly {
+      operator fun <AP: Pattern<IrExpression>> get(statements: AP) =
+        customPattern1(statements) { it: IrBlockBody ->
+          on(it).match(
+            case(BlockBody[List1[Is<IrReturn>()]]).then { (irReturn) -> Components1(irReturn.value) }
+          )
+        }
+    }
+
+    object Return {
       operator fun <AP: Pattern<A>, A: IrExpression> get(statements: AP) =
         customPattern1(statements) { it: IrBlockBody ->
           on(it).match(
-            case(BlockBody[List1[Is<IrReturn>()]]).then { (irReturn) -> Components1(irReturn) }
+            case(BlockBody[Is()]).then { statements ->
+              statements.find { it is IrReturn }?.let { Components1((it as IrReturn).value) }
+            }
           )
         }
     }
@@ -490,11 +510,8 @@ object Ir {
         customPattern1(body) { it: IrFunctionExpression ->
           on(it).match(
             case(FunctionExpression[SimpleFunction.withReturnOnlyExpression[Is()]]).then { (expr) ->
-                on(expr).match(
-                  // output the return-body
-                  case(Return[Is()]).then { returnExpr -> Components1(returnExpr) }
-                )
-              }
+              Components1(expr)
+            }
           )
         }
     }
@@ -533,11 +550,22 @@ object Ir {
         }
       }
 
-    object withReturnOnlyExpression    {
+    object withReturnOnlyExpression {
       operator fun <AP: Pattern<A>, A: IrExpression> get(body: AP) =
         customPattern1(body) { it: IrSimpleFunction ->
           on(it).match(
             case(SimpleFunction[List0(), BlockBody.ReturnOnly[Is()]]).then { _, (b) ->
+              Components1(b)
+            }
+          )
+        }
+    }
+
+    object withReturnExpression {
+      operator fun <AP: Pattern<A>, A: IrExpression> get(body: AP) =
+        customPattern1(body) { it: IrSimpleFunction ->
+          on(it).match(
+            case(SimpleFunction[Is(), BlockBody.Return[Is()]]).then { _, (b) ->
               Components1(b)
             }
           )

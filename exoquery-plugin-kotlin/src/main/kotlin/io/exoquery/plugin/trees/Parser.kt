@@ -93,7 +93,7 @@ private class ParserCollector {
         XR.Const.String("UUID:${bid.value}")
       },
 
-      case(Ir.Call.FunctionMem0[Ir.GetValue[Is()], Is("use")]).thenIf { _, _ -> compLeft.type.isClass<io.exoquery.SqlExpression<*>>() }.thenThis { (sym), _ ->
+      case(Ir.Call.FunctionMem0[Ir.Call[Is()], Is("use")]).thenIf { _, _ -> compLeft.type.isClass<io.exoquery.SqlExpression<*>>() }.thenThis { (varCall), _ ->
         //sym.owner.match(
         //  case(Ir.Variable[Is(), SqlExpressionExpr.Uprootable[Is()]]).thenThis { varName, (uprootable) ->
         //    error("----------------- Got to Owner of ------------\n${uprootable.xr.show()}")
@@ -108,9 +108,9 @@ private class ParserCollector {
           |${expr.dumpSimple()}
           |-----------------------------------------------
           |with Owner :
-          |${sym.owner.dumpKotlinLike()}
+          |${varCall.symbol.owner.dumpKotlinLike()}
           |------- with Owner IR: 
-          |${sym.owner.dumpSimple()}
+          |${varCall.symbol.owner.dumpSimple()}
           """.trimMargin())
         XR.Const.String("foo")
       },
