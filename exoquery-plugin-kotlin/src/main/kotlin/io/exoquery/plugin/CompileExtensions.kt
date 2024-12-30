@@ -48,22 +48,17 @@ fun IrType.findMethodOrFail(methodName: String): MethodType = run {
   val cls =
     (this.classOrNull ?: error("Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} type is not a class."))
 
-
-  // This causes asserition failures? Not sure why
-  //cls.getPropertyGetter(methodName)?.let { MethodType.Getter(it) }
-
   cls.functions.find { it.safeName == methodName }?.let { MethodType.Method(it) }
+    ?: cls.getPropertyGetter(methodName)?.let { MethodType.Getter(it) }
     ?: error(
      """|
         |Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} because the method does not exist.
         |-------------- Available methods --------------
         |${cls.functions.joinToString("\n") { it.safeName }}
-        |""".trimMargin())
-
-
-  // getPropertyGetter could potentially cause kotlin Assertion errors. Not sure why
-  //|-------------- Available properties --------------
-  //|${cls.dataClassProperties().map { cls.getPropertyGetter(it.first)?.safeName }.joinToString("\n")}
+        |-------------- Available properties --------------
+        |${cls.dataClassProperties().mapNotNull { cls.getPropertyGetter(it.first)?.safeName }.joinToString("\n")}
+        |""".trimMargin()
+    )
 }
 
 // WARNING assuming (for now) that the extension methods are in the same package as the Class they're being called from.

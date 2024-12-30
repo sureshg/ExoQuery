@@ -30,7 +30,7 @@ class RuntimesExpr(val runtimes: List<Pair<BID, IrExpression>>, val runtimesToCo
       val newRuntimes: IrExpression = make<Runtimes>(bindsList.liftExpr<Pair<BID, IrExpression>>())
       runtimesToCompose
         // First take the .runtimes property from each SqlExpression instance
-        .map { it.callDispatch("runtimesInternal")() }
+        .map { it.callDispatch("runtimes")() }
         // Then compose them them together with the new lifts
         .fold(newRuntimes, { acc, nextRuntimes ->
           newRuntimes.callDispatch("plus")(nextRuntimes)
@@ -47,9 +47,9 @@ class ParamsExpr(val paramBinds: List<Pair<BID, IrExpression>>, val paramsToComp
       }
       val newParams: IrExpression = make<Params>(paramsList.liftExpr<Param<*>>())
       paramsToCompose
-        .map { it.callDispatch("paramsInternal")() }
+        .map { it.callDispatch("params")() }
         .fold(newParams, { acc, nextParams ->
-          Caller.Dispatch(newParams).call("plus")(nextParams)
+          newParams.callDispatch("plus")(nextParams)
         })
     }
   }
@@ -79,7 +79,7 @@ object SqlExpressionExpr {
       //     |${Caller.Dispatch(paramsFrom).call("params")().dump()}
       //""".trimMargin())
 
-      val callParams = Caller.Dispatch(paramsFrom).call("paramsInternal").invoke()
+      val callParams = paramsFrom.callDispatch("params").invoke()
 
       // Not sure why calling it like this makes it blow up
       //val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr, Caller.Dispatch(paramsFrom).call("params")()))

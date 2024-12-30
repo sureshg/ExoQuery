@@ -50,9 +50,6 @@ data class Params(val lifts: List<Param<*>>) {
 // (also need a way to get them easily from the IrContainer)
 
 data class SqlExpression<T>(val xr: XR.Expression, val params: Params) {
-  // For some reason calling `params` directly blow up. Need to look into why. Meanwhile use this.
-  fun paramsInternal() = params
-  //fun runtimesInternal() = ...
   val use: T by lazy { throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context") }
 }
 
