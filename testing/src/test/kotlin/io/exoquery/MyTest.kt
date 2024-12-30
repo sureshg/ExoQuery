@@ -37,27 +37,40 @@ data class Foo(val bar: String)
 //  println(cap.params)
 //}
 
-fun case2() {
-  fun cap0(input: Int) = capture { 123 + param(input) }
-  val cap = capture { 789 + cap0(456).use }
+//fun case2() {
+//  fun cap0(input: Int) = capture { 123 + param(input) }
+//  val cap = capture { 789 + cap0(456).use }
+//  println(qprint(cap.xr))
+//  println(cap.params)
+//}
+
+fun case4() {
+  //val cap = capture { 123 + capture { 456 }.use }
+  //println(qprint(cap.xr))
+
+  class Foo {
+    val cap0 = capture { 456 }
+  }
+  val f = Foo()
+  val cap = capture { 123 + f.cap0.use }
   println(qprint(cap.xr))
-  println(cap.params)
 }
 
-//fun case4() {
+//fun case5() {
 //  //val cap = capture { 123 + capture { 456 }.use }
 //  //println(qprint(cap.xr))
 //
 //  class Foo {
-//    val cap0 = capture { 456 }
+//    fun cap0() = capture { 456 }
 //  }
 //  val f = Foo()
-//  val cap = capture { 123 + f.cap0.use }
+//  val cap = capture { 123 + f.cap0().use }
 //  println(qprint(cap.xr))
 //}
 
 fun main() {
-  case2()
+  case4()
+  //case2()
   //case1()
 }
 

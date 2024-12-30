@@ -807,18 +807,18 @@ private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?, rend
 
 private fun renderClassWithRenderer(declaration: IrClass, renderer: RenderIrElementVisitorSimple?, verboseErrorTypes: Boolean) =
   declaration.runTrimEnd {
-    "CLASS ${renderOriginIfNonTrivial()}" +
+    "[IrClass] ${renderOriginIfNonTrivial()}" +
     "$kind name:$name modality:$modality visibility:$visibility " +
     renderClassFlags() +
     "superTypes:[${superTypes.joinToString(separator = "; ") { it.renderTypeWithRenderer(renderer, verboseErrorTypes) }}]"
   }
 
 private fun renderEnumEntry(declaration: IrEnumEntry) = declaration.runTrimEnd {
-  "ENUM_ENTRY ${renderOriginIfNonTrivial()}name:$name"
+  "[IrEnumEntry] ${renderOriginIfNonTrivial()}name:$name"
 }
 
 private fun renderField(declaration: IrField, renderer: RenderIrElementVisitorSimple?, verboseErrorTypes: Boolean) = declaration.runTrimEnd {
-  "FIELD ${renderOriginIfNonTrivial()}name:$name type:${
+  "[IrField] ${renderOriginIfNonTrivial()}name:$name type:${
     type.renderTypeWithRenderer(
       renderer,
       verboseErrorTypes
@@ -828,7 +828,7 @@ private fun renderField(declaration: IrField, renderer: RenderIrElementVisitorSi
 
 private fun renderTypeParameter(declaration: IrTypeParameter, renderer: RenderIrElementVisitorSimple?, verboseErrorTypes: Boolean) =
   declaration.runTrimEnd {
-    "TYPE_PARAMETER ${renderOriginIfNonTrivial()}" +
+    "[IrTypeParameter] ${renderOriginIfNonTrivial()}" +
     "name:$name index:$index variance:$variance " +
     "superTypes:[${
       superTypes.joinToString(separator = "; ") {

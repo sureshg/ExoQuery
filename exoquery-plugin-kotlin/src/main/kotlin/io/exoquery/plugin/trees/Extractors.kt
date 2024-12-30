@@ -169,9 +169,23 @@ object Ir {
       }
   }
 
+  object Field {
+    context (CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(name: AP, rhs: BP) =
+      customPattern2(name, rhs) { it: IrField ->
+        it.initializer?.let { initExprBody -> Components2(it.name.asString(), initExprBody.expression) }
+      }
+  }
+
   object GetValue {
     context (CompileLogger) operator fun get(value: Pattern0<IrSymbol>) =
       customPattern1(value) { it: IrGetValue ->
+        Components1(it.symbol)
+      }
+  }
+
+  object GetField {
+    context (CompileLogger) operator fun get(value: Pattern0<IrSymbol>) =
+      customPattern1(value) { it: IrGetField ->
         Components1(it.symbol)
       }
   }

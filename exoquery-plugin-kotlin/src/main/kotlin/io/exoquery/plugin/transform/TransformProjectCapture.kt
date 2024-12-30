@@ -11,11 +11,9 @@ import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.plugin.trees.SqlExpressionExpr
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrGetClass
-import org.jetbrains.kotlin.ir.expressions.IrGetValue
+import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
@@ -51,34 +49,71 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
           }
         )
       },
+      case(Ir.GetField[Is()]).thenIf { expression.type.isClass<SqlExpression<*>>() }.then { symbol ->
+        symbol.owner.match(
+          // E.g. a class field used in a lift
+          //   class Foo { val x = capture { 123 } } which should have become:
+          //   val foo = Foo()
+          //   capture { 2 + foo.x.use }
+          // Which will become:
+          //   SqlExpression(Int(2) + Int(123), lifts=foo.x.lifts)
+          case(Ir.Field[Is(), SqlExpressionExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
+            uprootableExpr.replant(expression)
+          }
+        )
+      },
       case(Ir.GetValue[Is()]).thenIf { expression.type.isClass<SqlExpression<*>>() }.then { symbol ->
         symbol.owner.match(
-          // E.g. `val x = capture { 123 }` which should have become:
-          // `val x = SqlExpression(XR.Int(123), ...)
-          // (actuall it will be serialized so: `val x = SqlExpression(unpackExpr("jksnfksjdnf"), ...)`)
-          // So it will be Uprootable(XR.Int(123))
+          // E.g. something like
+          //   val x = capture { 123 + lift(456) }` // i.e. SqlExpression(XR.Int(123), ...)  // (actually it will be serialized so: `val x = SqlExpression(unpackExpr("jksnfksjdnf"), ...)`)
+          //   capture { 2 + x.use }
+          // Which should become:
+          //   SqlExpression(..., lifts=x.lifts)
+          //   in more detail:
+          //   SqlExpression(Int(2) + Int(123) + ScalarTag(UUID), lifts=x.lifts) // Where x.lifts is ScalarLift(UUID, x) which lives behind the IrVariable("x")
+          // so effectively:
+          //   capture { 2 + x.use } ->                                                                   // can be thought of something like:
+          //     capture { 2 + capture { 123 + lift(x.lifts[UUID_A]) } } ->                               // which is actually:
+          //     capture { 2 + SqlExpression(Int(123) + ScalarTag(UUID_A), lifts=ScalarLift(UUID, x)) }   // which becomes:
+          //     SqlExpression(Int(2) + SqlExpression(Int(123) + ScalarTag(UUID_A), lifts=ScalarLift(x))) // which then becomes:
+          //     SqlExpression(Int(2) + Int(123) + ScalarTag(UUID_A), lifts=ScalarLift(x))
           case(Ir.Variable[Is(), SqlExpressionExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
             // when propagating forward we don't actually need to deserialize the XR contents
             // of the uprootable, just pass it along into the new instance of SqlExpression(unpackExpr(...), ...)
             uprootableExpr.replant(expression)
           }
-        ) ?: run {
-          error("""
-              ----------- Could not uproot the expression: -----------
-              ${symbol.owner.dumpKotlinLike()}
-              With the following IR:
-              ${symbol.owner.dumpSimple()}
-            """.trimIndent())
-          expression
-        }
+        )
       }
     ) ?: run {
-      error("""
-        ----------- Could not project SqlExpression for the expression: -----------
-        ${expression.dumpKotlinLike()}
-        With the following IR:
-        ${expression.dumpSimple()}
-      """.trimIndent())
+      // TODO this should be enabled if the user has specified to fail if an uprooting is not possible,
+      //      otherwise failure should not happen (e.g. it should be a warning or even info)
+      //      and the dynamic code-path should happen instead
+      val msg =
+        """|----------- Could not project SqlExpression for the expression: -----------
+           |${expression.dumpKotlinLike()}
+           |---- With the following IR: ---
+           |${expression.dumpSimple()}
+        """.trimMargin() + run {
+          if (expression is IrDeclarationReference)
+            """|---- Owner is: ---
+               |${expression.symbol.owner.dumpKotlinLike()}
+               |---- With the following IR: ---
+               |${expression.symbol.owner.dumpSimple()}""".trimMargin()
+          else
+            ""
+        }
+      error(msg)
       expression
     }
+
+  // Diagnostic error for debugging uproot failure of a particular clause
+  fun failOwnerUproot(sym: IrSymbol, output: IrExpression): IrExpression {
+    error(
+      """|----------- Could not uproot the expression: -----------
+         |${sym.owner.dumpKotlinLike()}
+         |--- With the following IR: ----
+         |${sym.owner.dumpSimple()}""".trimMargin()
+    )
+    return output
+  }
 }
