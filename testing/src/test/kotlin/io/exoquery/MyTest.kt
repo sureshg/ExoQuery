@@ -49,11 +49,12 @@ fun case4() {
   //println(qprint(cap.xr))
 
   class Foo {
-    val cap0 = capture { 456 }
+    val cap0 = capture { 456 + param(456) }
   }
   val f = Foo()
-  val cap = capture { 123 + f.cap0.use }
-  println(qprint(cap.xr))
+  val cap = capture { 789 + f.cap0.use }
+  //println(cap.show())
+  println(cap.show())
 }
 
 //fun case5() {

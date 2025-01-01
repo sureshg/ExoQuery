@@ -1,5 +1,6 @@
 package io.exoquery
 
+import io.exoquery.printing.PrintMisc
 import io.exoquery.xr.XR
 
 interface ContainerOfXR {
@@ -51,6 +52,7 @@ data class Params(val lifts: List<Param<*>>) {
 
 data class SqlExpression<T>(val xr: XR.Expression, val params: Params) {
   val use: T by lazy { throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context") }
+  fun show() = PrintMisc().invoke(this)
 }
 
 

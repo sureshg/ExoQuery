@@ -36,7 +36,7 @@ dependencies {
     // Actually this is going to be 0.0.5 - using an unpublished one now
     api("io.exoquery:decomat-core:0.3.0")
     implementation("com.tylerthrailkill.helpers:pretty-print:2.0.2")
-    implementation("io.exoquery:pprint-kotlin:2.0.1")
+    implementation("io.exoquery:pprint-kotlin:3.0.0.G")
     api(kotlin("reflect"))
 }
 
