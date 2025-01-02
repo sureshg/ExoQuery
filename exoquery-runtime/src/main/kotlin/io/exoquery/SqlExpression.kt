@@ -50,7 +50,7 @@ data class Params(val lifts: List<Param<*>>) {
 // TODO add lifts which will be BID -> ContainerOfEx
 // (also need a way to get them easily from the IrContainer)
 
-data class SqlExpression<T>(val xr: XR.Expression, val params: Params) {
+data class SqlExpression<T>(val xr: XR.Expression, val runtimes: Runtimes, val params: Params) {
   val use: T by lazy { throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context") }
   fun show() = PrintMisc().invoke(this)
 }

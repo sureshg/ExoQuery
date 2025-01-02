@@ -48,17 +48,25 @@ fun IrType.findMethodOrFail(methodName: String): MethodType = run {
   val cls =
     (this.classOrNull ?: error("Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} type is not a class."))
 
-  cls.functions.find { it.safeName == methodName }?.let { MethodType.Method(it) }
-    ?: cls.getPropertyGetter(methodName)?.let { MethodType.Getter(it) }
-    ?: error(
+  fun printError(addition: String = ""): Nothing =
+    error(
      """|
-        |Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} because the method does not exist.
+        |Cannot locate the method `${methodName}` from the type: `${this.dumpKotlinLike()}` because the method does not exist.${addition}
         |-------------- Available methods --------------
         |${cls.functions.joinToString("\n") { it.safeName }}
         |-------------- Available properties --------------
         |${cls.dataClassProperties().mapNotNull { cls.getPropertyGetter(it.first)?.safeName }.joinToString("\n")}
-        |""".trimMargin()
-    )
+        |""".trimMargin())
+
+  cls.functions.find { it.safeName == methodName }?.let { MethodType.Method(it) }
+    ?: run {
+      try {
+        cls.getPropertyGetter(methodName)?.let { MethodType.Getter(it) }
+      } catch (e: AssertionError) {
+        printError(" Also, attempting getPropertyGetter caused an assert-error.")
+      }
+    }
+    ?: printError()
 }
 
 // WARNING assuming (for now) that the extension methods are in the same package as the Class they're being called from.
