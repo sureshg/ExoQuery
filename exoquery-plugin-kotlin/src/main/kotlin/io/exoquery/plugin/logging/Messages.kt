@@ -29,9 +29,7 @@ ${ir?.dumpKotlinLike()}
 ${ir?.dumpSimple()}
 """.trimIndent()
 
-
-
-  fun PrintingMessageMulti(ir: List<IrElement>?): String {
+  fun PrintingMessageMulti(ir: List<IrElement>?, additionalHeading: String = ""): String {
     fun writeOutput(ir: IrElement?): String =
       when(ir) {
         is IrReturn -> {
@@ -50,14 +48,46 @@ ${ir?.dumpSimple()}
         else -> "No Type"
       }
 
+val additionalPrint = if (additionalHeading.isNotEmpty()) " ($additionalHeading)" else ""
 
 return """
-================ Kotlin-Like: ================
-${ir?.map { it.dumpKotlinLike() }?.joinToString("\n")}
+================ Kotlin-Like:${additionalPrint} ================
+${ir?.withIndex()?.map { (i, it) -> "($i) " + it.dumpKotlinLike() }?.joinToString("\n")}
 ================= IR: ========================
-${ir?.map { it.dump() }?.joinToString("\n")}
+${ir?.withIndex()?.map { (i, it) -> "($i) " +  it.dumpSimple() }?.joinToString("\n")}
 ================= Output Type: ========================
-${ir?.map { writeOutput(it) }?.joinToString("\n")}
+${ir?.withIndex()?.map { (i, it) -> "($i) " + writeOutput(it) }?.joinToString("\n")}
+""".trimIndent()
+}
+
+  fun PrintingMessageSingle(ir: IrElement, additionalHeading: String = ""): String {
+    fun writeOutput(ir: IrElement): String =
+      when(ir) {
+        is IrReturn -> {
+          val tpe = ir.value.type
+          val additionalData: String =
+            if (true) {
+              (tpe.classOrNull?.dataClassProperties() ?: listOf())
+                .map { (name, value) -> "$name: ${value.dumpKotlinLike()}" }
+                .joinToString(", ", "[", "]")
+            } else {
+              "$tpe is not a KClass"
+            }
+          "(Return Value): " + tpe.dumpKotlinLike() + " - " + additionalData
+        }
+        is IrExpression -> ir.type.dumpKotlinLike()
+        else -> "No Type"
+      }
+
+val additionalPrint = if (additionalHeading.isNotEmpty()) " ($additionalHeading)" else ""
+
+return """
+================ Kotlin-Like:${additionalPrint} ================
+${ir.dumpKotlinLike()}
+================= IR: ========================
+${ir.dumpSimple()}
+================= Output Type: ========================
+${writeOutput(ir)}
 """.trimIndent()
 }
 

@@ -6,9 +6,7 @@ import io.decomat.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.parseError
 import io.exoquery.plugin.*
-import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.ReceiverCaller
-import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.*
@@ -17,6 +15,7 @@ import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isTypeParameter
+import org.jetbrains.kotlin.ir.util.superTypes
 
 fun <T> List0() = Is(listOf<T>())
 
@@ -110,6 +109,19 @@ object Ir {
           }
           else null
         }
+    }
+
+    class ClassOf<R>(val className: String): Pattern0<IrExpression>(Typed<IrExpression>()) {
+      override fun matches(r: ProductClass<IrExpression>): Boolean =
+        Typed<IrExpression>().typecheck(r.productClassValueUntyped) &&
+          r.productClassValue.type.let { tpe ->
+            className == tpe.classFqName.toString() || tpe.superTypes().any { it.classFqName.toString() == className }
+          }
+
+      companion object {
+        inline operator fun <reified T> invoke() =
+          ClassOf<T>(T::class.qualifiedNameForce)
+      }
     }
 
     object Generic {
@@ -348,20 +360,60 @@ object Ir {
 
     // Member Function1
     object FunctionMem1 {
-      // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
-      context (CompileLogger) operator fun <AP : Pattern<A>, A:ReceiverCaller, BP : Pattern<B>, B:IrExpression> get(x: AP, y: BP): Pattern2<AP, BP, A, B, IrCall> =
+
+      context (CompileLogger) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<IrExpression>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, IrExpression, IrCall> =
         customPattern2(x, y) { it: IrCall ->
-          val reciever = it.caller()
-          if (reciever != null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null }) {
+          val reciever = it.extensionReceiver ?: it.dispatchReceiver
+          if (reciever != null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.safeName)) {
             Components2(reciever, it.simpleValueArgs.first())
           } else {
             null
           }
         }
+
+      object WithCaller {
+        /**
+         * This is an interesting pattern because we can match on a middle-component inside of the logic of the customPattern without actually needing to
+         * pass it deep into the Then2 sets of functions. We can match the pattern in the business logic below and then return the components.
+         * Since it is unlikely that we will want some kind of structure based decompositon of the name of the function (e.g. we won't want some
+         * kind of Pattern2 that decomposes the string into multiple pieces). Therefore we can treat the middle-parameter as a simple Pattern argument
+         * that has no effect on other side of the `case` expressions.
+         */
+        context (CompileLogger) operator fun <AP : Pattern<ReceiverCaller>, MP : Pattern<String>, BP : Pattern<IrExpression>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, ReceiverCaller, IrExpression, IrCall> =
+          customPattern2(x, y) { it: IrCall ->
+            val reciever = it.caller()
+            if (reciever != null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.safeName)) {
+              Components2(reciever, it.simpleValueArgs.first())
+            } else {
+              null
+            }
+          }
+
+        /**
+         * This is a similar pattern to the one above but there is one more insight. Namely that so long as you don't care about structurally decomposing the middle-parameter
+         * (i.e. since it's a string that  we assume we don't care about breaking down into component parts ...since it's just being treated as a function-name match)
+         * then we can not only match on the the middle paramter in the customPattern logic, but we can also return the string itself on the other side of the `case`  logic
+         * using the Pattern2M family of functions. This gives us both the ability to match on the middle parameter and return it as a component, so long as
+         * we don't care about passing it to further Pattern___ functions that would deconstruct them (because they would not turn into nested Component(T) instances
+         * on the other side of the `case` function.
+         */
+        object Named {
+          // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
+          context (CompileLogger) operator fun <AP : Pattern<ReceiverCaller>, MP : Pattern<String>, BP : Pattern<IrExpression>> get(x: AP, m: MP, y: BP): Pattern2M<AP, String, BP, ReceiverCaller, IrExpression, IrCall> =
+            customPattern2M(x, y) { it: IrCall ->
+              val reciever = it.caller()
+              if (reciever != null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.safeName)) {
+                Components2M(reciever, it.symbol.safeName, it.simpleValueArgs.first())
+              } else {
+                null
+              }
+            }
+        }
+      }
     }
 
     object FunctionMem0 {
-      object Caller {
+      object WithCaller {
         // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
         context(CompileLogger) operator fun <AP : Pattern<A>, A : ReceiverCaller> get(x: AP): Pattern1<AP, A, IrCall> =
           customPattern1(x) { it: IrCall ->
@@ -376,7 +428,7 @@ object Ir {
 
       context(CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<String>> get(x: AP, y: BP): Pattern2<AP, BP, IrExpression, String, IrCall> =
         customPattern2(x, y) { it: IrCall ->
-          val reciever = it.dispatchReceiver
+          val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.size == 0) {
             Components2(reciever, it.symbol.safeName)
           } else {

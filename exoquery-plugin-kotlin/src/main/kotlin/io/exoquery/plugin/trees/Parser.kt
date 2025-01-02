@@ -87,7 +87,7 @@ private class ParserCollector {
         sqlExprUprootable.xr
       },
 
-      case(Ir.Call.FunctionUntethered1[Is("param"), Is()]).thenThis { _, paramValue ->
+      case(Ir.Call.FunctionMem1.WithCaller[Is(), Is("param"), Is()]).thenThis { _, paramValue ->
         val bid = BID.new()
         binds.addParam(bid, paramValue)
         XR.Const.String("UUID:${bid.value}")

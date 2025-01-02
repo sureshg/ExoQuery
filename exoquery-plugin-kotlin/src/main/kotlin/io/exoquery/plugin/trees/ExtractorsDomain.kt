@@ -111,7 +111,7 @@ object ExtractorsDomain {
           if (matchesMethod(it)) {
             it.match(
               // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
-              case( /* .flatMap */ Ir.Call.FunctionMem1[Is(), Is()]).then { reciver, expression ->
+              case( /* .flatMap */ Ir.Call.FunctionMem1.WithCaller[Is(), Is(), Is()]).then { reciver, expression ->
                 expression.match(
                   case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
                     val funExpression = this
