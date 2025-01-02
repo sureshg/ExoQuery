@@ -19,12 +19,12 @@ import org.jetbrains.kotlin.ir.util.superTypes
 
 fun <T> List0() = Is(listOf<T>())
 
-val IrCall.simpleValueArgsCount get() = this.valueArgumentsCount - this.contextReceiversCount
-val IrCall.simpleValueArgs get() =
-  if (this.contextReceiversCount > 0)
-    this.valueArguments.drop(this.contextReceiversCount)
-  else
-    this.valueArguments
+val IrCall.simpleValueArgsCount get() = this.valueArgumentsCount  //- this.contextReceiversCount
+val IrCall.simpleValueArgs get() = this.valueArguments
+  //if (this.contextReceiversCount > 0)
+  //  this.valueArguments.drop(this.contextReceiversCount)
+  //else
+  //  this.valueArguments
 
 val IrFunction.simpleValueParamsCount get() = this.valueParameters.size - this.contextReceiverParametersCount
 val IrFunction.simpleValueParams get() =
@@ -124,6 +124,19 @@ object Ir {
       }
     }
 
+    class ClassOfType<R>(val className: String): Pattern0<IrType>(Typed<IrType>()) {
+      override fun matches(r: ProductClass<IrType>): Boolean =
+        Typed<IrType>().typecheck(r.productClassValueUntyped) &&
+          r.productClassValue.let { tpe ->
+            className == tpe.classFqName.toString() || tpe.superTypes().any { it.classFqName.toString() == className }
+          }
+
+      companion object {
+        inline operator fun <reified T> invoke() =
+          ClassOfType<T>(T::class.qualifiedNameForce)
+      }
+    }
+
     object Generic {
       context(CompileLogger) operator fun get(type: Pattern0<IrType>) =
         customPattern1(type) { it: IrType ->
@@ -212,7 +225,7 @@ object Ir {
 
   object ConstString {
     operator fun get(value: Pattern0<String>) =
-      customPattern1(value) { it: IrConst<*> ->
+      customPattern1(value) { it: IrConst ->
         if (it.kind == IrConstKind.String)
           Components1((Const.Value.fromIrConst(it) as Ir.Const.Value.String).value)
         else
@@ -242,7 +255,7 @@ object Ir {
       }
 
       companion object {
-        fun fromIrConst(it: IrConst<*>): Value =
+        fun fromIrConst(it: IrConst): Value =
           when (it.kind) {
             IrConstKind.Boolean -> Boolean(it.value as kotlin.Boolean)
             IrConstKind.Char -> Char(it.value as kotlin.Char)
@@ -259,7 +272,7 @@ object Ir {
     }
 
     operator fun get(value: Pattern0<Value>) =
-      customPattern1(value) { it: IrConst<*> ->
+      customPattern1(value) { it: IrConst ->
         Components1(Value.fromIrConst(it))
       }
   }

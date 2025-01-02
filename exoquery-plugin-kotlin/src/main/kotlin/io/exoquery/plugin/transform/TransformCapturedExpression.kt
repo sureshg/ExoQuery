@@ -74,7 +74,12 @@ class TransformCapturedExpression(override val ctx: BuilderContext, val superTra
     val paramsExprModel = dynamics.makeParams()
     //val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr, paramsListExpr))
     //val makeCasted = builder.irImplicitCast(make, expression.type)
-    val newSqlExpression = SqlExpressionExpr.Uprootable.plantNewUprootable(xrExpr, paramsExprModel)
+    val newSqlExpression =
+      if (dynamics.noRuntimes()) {
+        SqlExpressionExpr.Uprootable.plantNewUprootable(xrExpr, paramsExprModel)
+      } else {
+        SqlExpressionExpr.Uprootable.plantNewPluckable(xrExpr, dynamics.makeRuntimes(), paramsExprModel)
+      }
 
     //logger.warn("=============== Modified value to: ${capturedAnnot.valueArguments[0]?.dumpKotlinLike()}\n======= Whole Type is now:\n${makeCasted.type.dumpKotlinLike()}")
     logger.warn("========== Output: ==========\n${newSqlExpression.dumpKotlinLike()}")

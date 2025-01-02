@@ -165,7 +165,7 @@ data class ReplacementMethodToCall(val methodToCall: String, val callerType: Cha
   companion object {
     fun from(call: IrConstructorCall) =
       call.getValueArgument(0)?.let { firstArg ->
-        if (firstArg is IrConst<*> && firstArg.kind == IrConstKind.String) {
+        if (firstArg is IrConst && firstArg.kind == IrConstKind.String) {
           val secondArg: ChangeReciever =
             call.getValueArgument(1)?.let { secondArg ->
               secondArg.match(

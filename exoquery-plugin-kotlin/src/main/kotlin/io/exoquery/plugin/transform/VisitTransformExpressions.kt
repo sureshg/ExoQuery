@@ -1,6 +1,5 @@
 package io.exoquery.plugin.transform
 
-import com.tylerthrailkill.helpers.prettyprint.pp
 import io.exoquery.plugin.trees.ExtractorsDomain
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
@@ -49,7 +48,14 @@ class VisitTransformExpressions(
     val transformProjectCapture = TransformProjectCapture(builderContext, this)
 
     return when {
-      transformProjectCapture.matches(expression) -> transformProjectCapture.transform(expression)
+      transformProjectCapture.matches(expression) ->
+        transformProjectCapture.transform(expression) ?: run {
+          // In many situations where the capture cannot be projected e.g.
+          // val x = if(x) capture { 123 } else capture { 456 } we need to go further into the expression
+          // and transform the `capture { ... }` expressions inside into SqlExpession instances. Calling
+          // the super-transformer does that.
+          super.visitExpression(expression, data)
+        }
       else -> super.visitExpression(expression, data)
     }
   }
@@ -65,7 +71,7 @@ class VisitTransformExpressions(
     val transformerCtx = TransformerOrigin(context, config, this.currentFile, data)
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
 
-    val transformPrint = TransformPrintSource(builderContext)
+    val transformPrint = TransformPrintSource(builderContext, this)
     // TODO just for Expression capture or also for Query capture? Probably both
     val transformCapture = TransformCapturedExpression(builderContext, this)
 
@@ -123,13 +129,4 @@ fun IrFile.locationOf(irElement: IrElement?): CompilerMessageSourceLocation {
     columnEnd = sourceRangeInfo.endColumnNumber + 1,
     lineContent = null
   )!!
-}
-
-fun <T> T.pprint(
-  indent: Int = 2,
-  wrappedLineWidth: Int = 80
-): String {
-  val buff = StringBuffer()
-  pp(this, indent, buff, wrappedLineWidth)
-  return buff.toString()
 }

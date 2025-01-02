@@ -90,10 +90,11 @@ private class ParserCollector {
       case(Ir.Call.FunctionMem1.WithCaller[Is(), Is("param"), Is()]).thenThis { _, paramValue ->
         val bid = BID.new()
         binds.addParam(bid, paramValue)
-        XR.Const.String("UUID:${bid.value}")
+        XR.TagForParam(bid, TypeParser.of(paramValue), paramValue.loc)
       },
 
-      case(Ir.Call.FunctionMem0[Ir.Call[Is()], Is("use")]).thenIf { _, _ -> compLeft.type.isClass<io.exoquery.SqlExpression<*>>() }.thenThis { (varCall), _ ->
+      // At this point we know the expression is not Uprootable so we need to add the values to the runtime-lifts
+      case(Ir.Call.FunctionMem0[Is(), Is("use")]).thenIf { irExpr, _ -> irExpr.type.isClass<io.exoquery.SqlExpression<*>>() }.thenThis { irExpr, _ ->
         //sym.owner.match(
         //  case(Ir.Variable[Is(), SqlExpressionExpr.Uprootable[Is()]]).thenThis { varName, (uprootable) ->
         //    error("----------------- Got to Owner of ------------\n${uprootable.xr.show()}")
@@ -101,18 +102,23 @@ private class ParserCollector {
         //  }
         //)
 
-        error("""
-          |------------- Get of SqlExpression -------------
-          |${expr.dumpKotlinLike()}
-          |------- with IR --------
-          |${expr.dumpSimple()}
-          |-----------------------------------------------
-          |with Owner :
-          |${varCall.symbol.owner.dumpKotlinLike()}
-          |------- with Owner IR: 
-          |${varCall.symbol.owner.dumpSimple()}
-          """.trimMargin())
-        XR.Const.String("foo")
+        val bid = BID.new()
+        binds.addRuntime(bid, irExpr)
+
+// Was assuming irExpr was a IrCall
+//        error("""
+//          |------------- Get of SqlExpression -------------
+//          |${expr.dumpKotlinLike()}
+//          |------- with IR --------
+//          |${expr.dumpSimple()}
+//          |-----------------------------------------------
+//          |with Owner :
+//          |${varCall.symbol.owner.dumpKotlinLike()}
+//          |------- with Owner IR:
+//          |${varCall.symbol.owner.dumpSimple()}
+//          """.trimMargin())
+
+        XR.TagForSqlExpression(bid, TypeParser.of(irExpr), irExpr.loc)
       },
 
       /*
@@ -175,7 +181,7 @@ private class ParserCollector {
     )
   }
 
-  context (ParserContext, CompileLogger) fun parseConst(irConst: IrConst<*>): XR =
+  context (ParserContext, CompileLogger) fun parseConst(irConst: IrConst): XR =
     if (irConst.value == null) XR.Const.Null(irConst.loc)
     else when (irConst.kind) {
       IrConstKind.Null -> XR.Const.Null(irConst.loc)

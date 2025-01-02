@@ -121,8 +121,8 @@ object SqlExpressionExpr {
               }
               .then { _, (_, irStr) ->
                 // The 1st argument to SqlExpression in the unpackExpr ie. SqlExpression(unpackExpr(str), ...)
-                val constPackedXR = irStr as? IrConst<String> ?: throw IllegalArgumentException("value passed to unpackExpr was not a constant-string in:\n${it.dumpKotlinLike()}")
-                Components1(Uprootable(constPackedXR.value))
+                val constPackedXR = irStr as? IrConst ?: throw IllegalArgumentException("value passed to unpackExpr was not a constant-string in:\n${it.dumpKotlinLike()}")
+                Components1(Uprootable(constPackedXR.value.toString()))
               }
           )
         }
@@ -131,6 +131,13 @@ object SqlExpressionExpr {
         val packedXR = xr.encode()
         val strExpr = call("io.exoquery.unpackExpr").invoke(builder.irString(packedXR))
         val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr, RuntimeEmpty(), params.lift()))
+        return make
+      }
+
+      context(BuilderContext, CompileLogger) fun plantNewPluckable(xr: XR.Expression, runtimes: RuntimesExpr, params: ParamsExpr): IrExpression {
+        val packedXR = xr.encode()
+        val strExpr = call("io.exoquery.unpackExpr").invoke(builder.irString(packedXR))
+        val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr, runtimes.lift(), params.lift()))
         return make
       }
     }

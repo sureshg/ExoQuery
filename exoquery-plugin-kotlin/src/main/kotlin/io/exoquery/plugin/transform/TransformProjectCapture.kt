@@ -17,7 +17,7 @@ import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
-class TransformProjectCapture(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): Transformer<IrExpression>() {
+class TransformProjectCapture(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): FalliableTransformer<IrExpression>() {
   context(BuilderContext, CompileLogger)
 
   override fun matchesBase(expression: IrExpression): Boolean =
@@ -25,7 +25,7 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
       //&& expression is IrGetValue
 
   context(ParserContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrExpression): IrExpression =
+  override fun transformBase(expression: IrExpression): IrExpression? =
     expression.match(
       case(Ir.Call[Is()]).thenIf { call -> expression.type.isClass<SqlExpression<*>>() && call.symbol.owner is IrSimpleFunction /* do the cheaper check here */ }.then { call ->
         //error("--------------- GOT HERE --------------\n${call.symbol.owner.dumpSimple()}")
@@ -102,8 +102,9 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
           else
             ""
         }
-      error(msg)
-      expression
+
+      warn(msg)
+      null
     }
 
   // Diagnostic error for debugging uproot failure of a particular clause

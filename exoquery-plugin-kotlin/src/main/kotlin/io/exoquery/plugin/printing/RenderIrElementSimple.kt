@@ -11,7 +11,6 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.*
 import org.jetbrains.kotlin.ir.types.*
-import org.jetbrains.kotlin.ir.types.impl.originalKotlinType
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
@@ -30,6 +29,7 @@ import io.exoquery.fansi.Color.Blue
 import io.exoquery.fansi.Color.Cyan
 import io.exoquery.fansi.Color.Magenta
 import io.exoquery.fansi.Color.LightMagenta
+import io.exoquery.kmp.pprint
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 
@@ -291,7 +291,7 @@ class RenderIrElementVisitorSimple(normalizeNames: Boolean = false, private val 
   override fun visitExpression(expression: IrExpression, data: Nothing?): String =
     "[IrExpression] ${expression::class.java.simpleName} type=${expression.type.render()}"
 
-  override fun visitConst(expression: IrConst<*>, data: Nothing?): String =
+  override fun visitConst(expression: IrConst, data: Nothing?): String =
     "[IrConst] ${expression.value?.escapeIfRequired()}: ${expression.type.render()}"
 
   private fun Any.escapeIfRequired() =
@@ -325,6 +325,10 @@ class RenderIrElementVisitorSimple(normalizeNames: Boolean = false, private val 
         expression.extensionReceiver?.let { "extension=${it.type.classFqName?.asString()}" } ?: "<>"
 
     //return "[IrCall] ${expression.symbol.safeName} "
+    // This doesn't seem to fail, only the Fansi thing!
+    //println("============= HERE: " + pprint(expression))
+    println("============= HERE: " + io.exoquery.pprint.Tree.Literal("foo"))
+
     return "${Green("[IrCall]")} ${Red(expression.symbol.renderReference())} - ${reciever}"
   }
 
@@ -787,7 +791,7 @@ private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?, rend
   when (irElement) {
     null -> append("<null>")
     is IrConstructorCall -> renderAsAnnotation(irElement, renderer, verboseErrorTypes)
-    is IrConst<*> -> {
+    is IrConst -> {
       append('\'')
       append(irElement.value.toString())
       append('\'')

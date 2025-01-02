@@ -1,35 +1,111 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+
 plugins {
-    id("publish")
-    id("com.google.devtools.ksp") version "2.0.0-1.0.24"
-    id("io.exoquery.terpal-plugin") version "2.0.0-1.0.0.PL"
-    kotlin("jvm") version "2.0.0"
-    kotlin("plugin.serialization") version "2.0.0"
+    //id("publish")
+    //id("com.google.devtools.ksp") version "2.0.0-1.0.24"
+    //id("io.exoquery.terpal-plugin") version "2.0.0-1.0.0.PL"
+    //kotlin("jvm") version "2.0.0"
+    //kotlin("plugin.serialization") version "2.0.0"
+
+    kotlin("multiplatform") version "2.1.0"
+    //id("io.exoquery.terpal-plugin") version "2.1.0-2.0.0.PL"
+    //id("maven-publish")
+    id("conventions-multiplatform")
+    //id("publish")
+    //signing
+
+
+    id("com.google.devtools.ksp") version "2.1.0-1.0.29"
+    kotlin("plugin.serialization") version "2.1.0"
+}
+
+dependencies {
+    add("kspCommonMainMetadata", "io.exoquery:decomat-ksp:0.3.0")
+}
+
+dependencies {
+    add("kspCommonMainMetadata", "io.exoquery:decomat-ksp:0.3.0")
 }
 
 kotlin {
+    jvm()
+    // ---- kspCommonMainMetadata won't actually exist without this and no KSP extensions for XR will be generated!
+    linuxX64()
+
+    sourceSets {
+        val commonMain by getting {
+            kotlin.srcDir("$buildDir/generated/ksp/metadata/commonMain/kotlin")
+
+
+
+            dependencies {
+                // TODO probably the gradle plugin should add these?
+                api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
+                api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
+
+                api(kotlin("reflect"))
+                // Actually this is going to be 0.0.5 - using an unpublished one now
+                //ksp("io.exoquery:decomat-ksp:0.3.0")
+                api("io.exoquery:pprint-kotlin-kmp:3.0.0")
+                // Actually this is going to be 0.0.5 - using an unpublished one now
+                api("io.exoquery:decomat-core:0.3.0")
+                implementation("com.facebook:ktfmt:0.43")
+                //api("io.exoquery:terpal-runtime:2.1.0-2.0.0.PL")
+                api("com.github.vertical-blank:sql-formatter:2.0.4")
+            }
+        }
+
+        val commonTest by getting {
+            dependencies {
+                // Used to ad-hoc some examples but not needed.
+                //api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
+                //implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
+                implementation(kotlin("test"))
+                implementation(kotlin("test-common"))
+                implementation(kotlin("test-annotations-common"))
+                //jvm-only setup for kotest, need to find the KMP way
+                //implementation("io.kotest:kotest-runner-junit5:5.8.0")
+            }
+        }
+    }
+
     jvmToolchain(11)
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions{
-        freeCompilerArgs = listOf("-Xcontext-receivers")
-        // Otherwise will have: Could not resolve io.exoquery:pprint-kotlin:2.0.1.
-        // Incompatible because this component declares a component, compatible with Java 11 and the consumer needed a component, compatible with Java 8
-    }
-    kotlinOptions {
-        jvmTarget = "11"
+tasks.withType<KotlinCompilationTask<*>>().configureEach {
+    if (name != "kspCommonMainKotlinMetadata") {
+        dependsOn("kspCommonMainKotlinMetadata")
     }
 }
 
-kotlin.sourceSets.main {
-    kotlin.srcDirs(
-        file("$buildDir/generated/ksp/main/kotlin"),
-    )
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    compilerOptions {
+        // DOesn't work in KMP
+        //freeCompilerArgs.add("-Xcontext-receivers")
+        // Otherwise will have: Could not resolve io.exoquery:pprint-kotlin:2.0.1.
+        // Incompatible because this component declares a component, compatible with Java 11 and the consumer needed a component, compatible with Java 8
+        java {
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
+        }
+        // If I remove this I get:
+        //  'compileJava' task (current target is 11) and 'kaptGenerateStubsKotlin' task (current target is 1.8) jvm target compatibility should be set to the same Java version.
+        // Not sure why
+        jvmTarget.set(JvmTarget.JVM_11)
+    }
 }
+
+//kotlin.sourceSets.main {
+//    kotlin.srcDirs(
+//        file("$buildDir/generated/ksp/main/kotlin"),
+//    )
+//}
 
 repositories {
     mavenCentral()
     mavenLocal()
+    maven("https://s01.oss.sonatype.org/content/repositories/releases")
 }
 
 ksp {
@@ -40,31 +116,14 @@ ksp {
     arg("fromHereFunctionName", "cs")
     arg("fromFunctionName", "csf")
     arg("renderAdtFunctions", "true")
-    arg("renderFromHereFunction", "true")
+    arg("renderFromHereFunction", "false")
     java {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
 }
 
-dependencies {
-    api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
-    api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.6.2")
-
-    api(kotlin("reflect"))
-    testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
-    // Actually this is going to be 0.0.5 - using an unpublished one now
-    ksp("io.exoquery:decomat-ksp:0.3.0")
-    //implementation("io.exoquery:pprint-kotlin:2.0.2")
-    api("io.exoquery:pprint-kotlin-kmp:3.0.0.G")
-    // Actually this is going to be 0.0.5 - using an unpublished one now
-    api("io.exoquery:decomat-core:0.3.0")
-    implementation("com.facebook:ktfmt:0.43")
-    api("io.exoquery:terpal-runtime:1.0.6")
-    api("com.github.vertical-blank:sql-formatter:2.0.4")
-}
-
 // Needed for Kotest
-tasks.withType<Test>().configureEach {
-    useJUnitPlatform()
-}
+//tasks.withType<Test>().configureEach {
+//    useJUnitPlatform()
+//}

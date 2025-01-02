@@ -20,6 +20,8 @@ class DynamicsAccum {
 
   // TODO have a similar technique for lifts
 
+  fun noRuntimes():Boolean = runtimesCollect.isEmpty()
+
   fun addRuntime(bindId: BID, bind: IrExpression) {
     runtimesCollect.add(bindId to bind)
   }

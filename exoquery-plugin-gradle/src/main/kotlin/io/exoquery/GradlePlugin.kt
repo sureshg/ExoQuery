@@ -5,6 +5,7 @@ import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetContainer
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 
@@ -20,9 +21,34 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
     )
 
     override fun apply(target: Project) {
-        /* make sure we don't try to add dependency until it has been configured by kotlin plugin */
-        target.plugins.withId("org.jetbrains.kotlin.jvm") {
-            target.dependencies.add("implementation", "io.exoquery:exoquery-runtime:${BuildConfig.VERSION}")
+        // This adds dependency until it has been configured by kotlin plugin
+        // with the below code (starting with isMultiplatform) I don't think this is needed
+        //target.plugins.withId("org.jetbrains.kotlin.jvm") {
+        //    target.dependencies.add("implementation", "io.exoquery:exoquery-runtime:${BuildConfig.VERSION}")
+        //}
+
+        val isMultiplatform = target.plugins.hasPlugin("org.jetbrains.kotlin.multiplatform")
+        val sourceSetName = if (isMultiplatform) "commonMain" else "main"
+        val sourceSetApiConfigName =
+            target.extensions.getByType(KotlinSourceSetContainer::class.java).sourceSets.getByName(sourceSetName).apiConfigurationName
+        val runtimeDependencies = buildList {
+            add(target.dependencies.create("io.exoquery:exoquery-runtime:${BuildConfig.VERSION}"))
+        }
+        target.configurations.getByName(sourceSetApiConfigName).dependencies.addAll(runtimeDependencies)
+
+
+        // Needed for the plugin classpath
+        // Note that these do not bring in transitive dependencies so every transitive needs to be explicitly specified!
+        target.plugins.withId("org.jetbrains.kotlin.multiplatform") {
+            target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:pprint-kotlin-core-jvm:3.0.0")
+            // Fansi and core pprint ADT come from here
+            target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:pprint-kotlin:3.0.0")
+            // in some places the compiler needs to print things, so the compiled plugin needs pprint
+            target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:exoquery-runtime:${BuildConfig.VERSION}")
+            target.dependencies.add("kotlinNativeCompilerPluginClasspath", "org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
+            target.dependencies.add("kotlinNativeCompilerPluginClasspath", "org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
+            // Since this is compiler-plugin it works in the compiler which is written in Java so we use JVM dependencies
+            target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:decomat-core-jvm:${BuildConfig.DECOMAT_VERSION}")
         }
     }
 
@@ -30,6 +56,11 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
         kotlinCompilation: KotlinCompilation<*>
     ): Provider<List<SubpluginOption>> {
         val project = kotlinCompilation.target.project
+
+        // ALSO needed for the plugin classpath
+        kotlinCompilation.dependencies {
+            api("io.exoquery:exoquery-runtime:${BuildConfig.VERSION}")
+        }
 
         return project.provider {
             listOf(SubpluginOption(

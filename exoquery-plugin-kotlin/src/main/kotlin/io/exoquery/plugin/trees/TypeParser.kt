@@ -61,6 +61,11 @@ object TypeParser {
       //  parse(realType)
       //},
 
+      // If it's a SqlExpression then parse the need to get the value of the 1st generic param
+      case(Ir.Type.ClassOfType<io.exoquery.SqlExpression<*>>()).then { sqlExpressionType ->
+        parse(sqlExpressionType.simpleTypeArgs[0])
+      },
+
       // For now treat lists like value types, may way to change in future
       case(Ir.Type.KotlinList[Is()]).then { realType ->
         XRType.Value

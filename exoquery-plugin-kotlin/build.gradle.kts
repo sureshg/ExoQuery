@@ -1,16 +1,23 @@
-plugins {
-    id("publish")
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-    kotlin("kapt") version "2.0.0"
+plugins {
+    //id("publish")
+    //kotlin("kapt") version "2.1.0"
+    kotlin("jvm") version "2.1.0"
+    id("maven-publish")
+    id("conventions")
+    id("publish-jvm")
+    kotlin("plugin.serialization") version "2.1.0"
+    kotlin("kapt") version "2.1.0"
 }
 
 kotlin {
     jvmToolchain(11)
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions{
-        freeCompilerArgs = listOf("-Xcontext-receivers")
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
+    compilerOptions {
+        freeCompilerArgs.add("-Xcontext-receivers")
         // Otherwise will have: Could not resolve io.exoquery:pprint-kotlin:2.0.1.
         // Incompatible because this component declares a component, compatible with Java 11 and the consumer needed a component, compatible with Java 8
         java {
@@ -20,9 +27,11 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         // If I remove this I get:
         //  'compileJava' task (current target is 11) and 'kaptGenerateStubsKotlin' task (current target is 1.8) jvm target compatibility should be set to the same Java version.
         // Not sure why
-        jvmTarget = "11"
+        jvmTarget.set(JvmTarget.JVM_11)
     }
 }
+
+val thisVersion = version
 
 dependencies {
     api("io.exoquery:exoquery-runtime")
@@ -35,8 +44,12 @@ dependencies {
 
     // Actually this is going to be 0.0.5 - using an unpublished one now
     api("io.exoquery:decomat-core:0.3.0")
-    implementation("com.tylerthrailkill.helpers:pretty-print:2.0.2")
-    implementation("io.exoquery:pprint-kotlin:3.0.0.G")
+    api("io.exoquery:pprint-kotlin:3.0.0")
     api(kotlin("reflect"))
 }
 
+repositories {
+    mavenCentral()
+    mavenLocal()
+    maven("https://s01.oss.sonatype.org/content/repositories/releases")
+}
