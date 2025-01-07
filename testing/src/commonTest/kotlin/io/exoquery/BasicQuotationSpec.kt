@@ -1,16 +1,12 @@
 package io.exoquery
 
-import io.kotest.matchers.*
-import io.kotest.matchers.string.startWith
-import io.exoquery.capture
 import io.exoquery.xr.`+++`
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.equals.shouldBeEqual
-import kotlinx.serialization.KSerializer
 
-class BasicTest : FreeSpec({
+class BasicQuotationSpec : FreeSpec({
   "static cases" - {
     "c0={n0+lift}, c1=c0, c={n1+c1} -> {n1+(n0+lift)}" {
       val cap0 = capture { 123 + param(456) }
