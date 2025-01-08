@@ -25,8 +25,8 @@ object BooleanOperator {
 }
 
 object NumericOperator {
-  @Serializable data object minus : BinaryOperator, PrefixUnaryOperator { override val symbol = "-" }
   @Serializable data object plus : BinaryOperator { override val symbol = "+" }
+  @Serializable data object minus : BinaryOperator, PrefixUnaryOperator { override val symbol = "-" }
   @Serializable data object mult : BinaryOperator { override val symbol = "*" }
   @Serializable data object gt : BinaryOperator, YieldsBool { override val symbol = ">" }
   @Serializable data object gte: BinaryOperator, YieldsBool { override val symbol = ">=" }
