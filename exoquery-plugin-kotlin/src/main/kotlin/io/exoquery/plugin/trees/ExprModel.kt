@@ -62,22 +62,19 @@ class ParamsExpr(val paramBinds: List<Pair<BID, IrExpression>>, val paramsToComp
   }
 }
 
+context(BuilderContext, CompileLogger) private fun RuntimeEmpty() = run {
+  //val runtimesCompanionRef = builder.irGetObjectValue(pluginCtx.referenceClass(classIdOf<io.exoquery.Runtimes.Companion>())!!)
+  val cls = ClassId.topLevel(FqName("io.exoquery.Runtimes"))
+  val clsSym = pluginCtx.referenceClass(cls) ?: throw RuntimeException("Could not find the reference for the class $cls in the context")
+  val clsSymCompanion = clsSym.owner.companionObject() ?: throw RuntimeException("Could not find the companion object for the class $cls")
+  val runtimesCompanionRef = builder.irGetObject(clsSymCompanion.symbol)
+  runtimesCompanionRef.callDispatch("Empty")()
+}
+
 object SqlExpressionExpr {
-  context(BuilderContext, CompileLogger) private fun RuntimeEmpty() = run {
-    //val runtimesCompanionRef = builder.irGetObjectValue(pluginCtx.referenceClass(classIdOf<io.exoquery.Runtimes.Companion>())!!)
-    val cls = ClassId.topLevel(FqName("io.exoquery.Runtimes"))
-    val clsSym = pluginCtx.referenceClass(cls) ?: throw RuntimeException("Could not find the reference for the class $cls in the context")
-    val clsSymCompanion = clsSym.owner.companionObject() ?: throw RuntimeException("Could not find the companion object for the class $cls")
-    val runtimesCompanionRef = builder.irGetObject(clsSymCompanion.symbol)
-    runtimesCompanionRef.callDispatch("Empty")()
-  }
-
   data class Uprootable(val packedXR: String) {
-
     // This is an expensive operation so put it behind a lazy value that the user will invoke only if needed
     val xr by lazy { ProtoBuf.decodeFromHexString<XR.Expression>(packedXR) }
-
-    context(BuilderContext, CompileLogger)
 
     // re-create the SqlExpression instance. Note that we need a varaible from which to take params
     // So for example say we have something like:
@@ -88,6 +85,7 @@ object SqlExpressionExpr {
     // That is because as we propagate the SqlExpression instance we need to keep the params the same
     // but the varaibles referenced in the params might refer to local things that are no longer
     // avaiable as well keep inlining the SqlExpression instances
+    context(BuilderContext, CompileLogger)
     fun replant(paramsFrom: IrExpression): IrExpression {
       val strExpr = call("io.exoquery.unpackExpr").invoke(builder.irString(packedXR))
       // TODO we know at this point Runtimes is Runtimes.Empty so need to add that when we add that variable
@@ -110,13 +108,10 @@ object SqlExpressionExpr {
           it.match(
             // Match on: SqlExpression(unpackExpr(str))
             case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is("io.exoquery.SqlExpression"), Ir.Call.FunctionUntethered1[Is("unpackExpr"), Is()]])
-              // TODO thenIf need to check that Runtimes is Runtimes.Empty
               .thenIf { _, _ ->
                 // Check that the 2nd argument to SqlExpression is Runtimes.Empty i.e. SqlExpression(xr=unpackExpr(str), runtimes=Runtimes.Empty, ...)
                 comp.valueArguments[1].match(
-                  case(Ir.Call.FunctionMem0[Ir.Type.ClassOf<io.exoquery.Runtimes.Companion>(), Is("Empty")]).then { expr, _ ->
-                    true
-                  }
+                  case(Ir.Call.FunctionMem0[Ir.Type.ClassOf<io.exoquery.Runtimes.Companion>(), Is("Empty")]).then { expr, _ -> true }
                 ) ?: false
               }
               .then { _, (_, irStr) ->
@@ -144,4 +139,50 @@ object SqlExpressionExpr {
   }
 }
 
-// create an IrExpression DynamicBind(listOf(Pair(BID, RuntimeBindValue), etc...))
+// This is effectively a carbon-copy of the SqlExpressionExpr with some different names. We can abstract out many
+// common pieces of this code into a shared Base-class or shared functions but for only two ContainerOfXR types it is
+// not worth it. Need to keep an eye on this as we add more ContainerOfXR types
+object SqlQueryExpr {
+  data class Uprootable(val packedXR: String) {
+    val xr by lazy { ProtoBuf.decodeFromHexString<XR.Query>(packedXR) }
+    context(BuilderContext, CompileLogger)
+    fun replant(paramsFrom: IrExpression): IrExpression {
+      val strExpr = call("io.exoquery.unpackQuery").invoke(builder.irString(packedXR))
+      val callParams = paramsFrom.callDispatch("params").invoke()
+      val make = makeClassFromString("io.exoquery.SqlQuery", listOf(strExpr, RuntimeEmpty(), callParams))
+      return make
+    }
+
+    companion object {
+      context (CompileLogger) operator fun <AP: Pattern<Uprootable>> get(x: AP) =
+        customPattern1(x) { it: IrExpression ->
+          it.match(
+            case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is("io.exoquery.SqlQuery"), Ir.Call.FunctionUntethered1[Is("unpackQuery"), Is()]])
+              .thenIf { _, _ ->
+                comp.valueArguments[1].match(
+                  case(Ir.Call.FunctionMem0[Ir.Type.ClassOf<io.exoquery.Runtimes.Companion>(), Is("Empty")]).then { expr, _ -> true }
+                ) ?: false
+              }
+              .then { _, (_, irStr) ->
+                val constPackedXR = irStr as? IrConst ?: throw IllegalArgumentException("value passed to unpackQuery was not a constant-string in:\n${it.dumpKotlinLike()}")
+                Components1(Uprootable(constPackedXR.value.toString()))
+              }
+          )
+        }
+
+      context(BuilderContext, CompileLogger) fun plantNewUprootable(xr: XR.Query, params: ParamsExpr): IrExpression {
+        val packedXR = xr.encode()
+        val strExpr = call("io.exoquery.unpackQuery").invoke(builder.irString(packedXR))
+        val make = makeClassFromString("io.exoquery.SqlQuery", listOf(strExpr, RuntimeEmpty(), params.lift()))
+        return make
+      }
+
+      context(BuilderContext, CompileLogger) fun plantNewPluckable(xr: XR.Query, runtimes: RuntimesExpr, params: ParamsExpr): IrExpression {
+        val packedXR = xr.encode()
+        val strExpr = call("io.exoquery.unpackQuery").invoke(builder.irString(packedXR))
+        val make = makeClassFromString("io.exoquery.SqlQuery", listOf(strExpr, runtimes.lift(), params.lift()))
+        return make
+      }
+    }
+  }
+}

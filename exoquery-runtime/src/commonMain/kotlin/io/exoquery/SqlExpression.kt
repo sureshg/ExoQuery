@@ -4,7 +4,7 @@ import io.exoquery.printing.PrintMisc
 import io.exoquery.xr.XR
 import io.exoquery.xr.swapTags
 
-interface ContainerOfXR {
+sealed interface ContainerOfXR {
   val xr: XR
   // I.e. runtime containers that are used in the expression (if any)
   val runtimes: Runtimes
@@ -73,29 +73,43 @@ internal class DeterminizeDynamics() {
   private fun recContainer(expr: ContainerOfXR): ContainerOfXR =
     when (expr) {
       is SqlExpression<*> -> recExpr(expr)
-      else -> error("Unsupported")
+      is SqlQuery<*> -> recQuery(expr)
     }
 
-  private fun <T> recExpr(expr: SqlExpression<T>): SqlExpression<T> {
-    val newParams = expr.params.lifts.map { param ->
+  fun ContainerOfXR.walkParams() =
+    params.lifts.map { param ->
       val newBid = BID(nextId())
       val newParam = param.copy(id = newBid)
       Triple(param.id, newBid, newParam)
     }
 
-    val newRuntimes = expr.runtimes.runtimes.map { (bid, container) ->
+  fun ContainerOfXR.walkRuntimes() =
+    runtimes.runtimes.map { (bid, container) ->
       val newContainer = recContainer(container)
       val newBid = BID(nextId())
       Triple(bid, newBid, newContainer)
     }
 
+  private fun <T> recExpr(expr: SqlExpression<T>): SqlExpression<T> {
+    val newParams = expr.walkParams()
+    val newRuntimes = expr.walkRuntimes()
     val newXR = expr.xr.swapTags(
       (newParams.map { it.first to it.second } + newRuntimes.map { it.first to it.second }).toMap()
     )
     return SqlExpression(newXR, Runtimes(newRuntimes.map { it.second to it.third }), Params(newParams.map { it.third }))
   }
 
+  private fun <T> recQuery(query: SqlQuery<T>): SqlQuery<T> {
+    val newParams = query.walkParams()
+    val newRuntimes = query.walkRuntimes()
+    val newXR = query.xr.swapTags(
+      (newParams.map { it.first to it.second } + newRuntimes.map { it.first to it.second }).toMap()
+    )
+    return SqlQuery(newXR, Runtimes(newRuntimes.map { it.second to it.third }), Params(newParams.map { it.third }))
+  }
+
   fun <T> ofExpression(expr: SqlExpression<T>): SqlExpression<T> = recExpr(expr)
+  fun <T> ofQuery(query: SqlQuery<T>): SqlQuery<T> = recQuery(query)
 }
 
 
