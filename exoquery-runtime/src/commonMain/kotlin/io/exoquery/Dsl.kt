@@ -39,25 +39,26 @@ interface SelectClauseCapturedBlock: CapturedBlock {
   // TODO play around with this variant in the future
   // fun <T?> joinRight(onTable: SqlQuery<T>, condition: (T?) -> Boolean): T? = error("The `joinRight` expression of the Query was not inlined")
 
-  fun <T> where(condition: (T) -> Boolean): T = error("The `where` expression of the Query was not inlined")
-  fun <T> groupBy(grouping: (T) -> Any): T = error("The `groupBy` expression of the Query was not inlined")
-  fun <T> sortBy(sorting: (T) -> Any): T = error("The `sortBy` expression of the Query was not inlined")
+  fun where(condition: Boolean): Unit = error("The `where` expression of the Query was not inlined")
+  fun groupBy(grouping: Any): Unit = error("The `groupBy` expression of the Query was not inlined")
+  fun sortBy(sorting: Any): Unit = error("The `sortBy` expression of the Query was not inlined")
 }
 
 fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = error("The `select` expression of the Query was not inlined")
 
 // TODO Dsl functions for grouping
 
-// fun example() {
-//   data class Person(val id: String, val name: String, val age: Int)
-//   data class Address(val id: String, val personId: String, val street: String)
-//   select {
-//     val p = from(Table<Person>())
-//     val a = joinLeft(Table<Address>()) { it.personId == p.id } // note, when `it` is being used as a variable want to try to get it from the `val` part so it doesn't beta reduce to `it`
-//     where { p.age > 18 }
-//     p to a
-//   }
-// }
+//fun example() {
+//  data class Person(val id: String, val name: String, val age: Int)
+//  data class Address(val id: String, val personId: String, val street: String)
+//  val myQuery: SqlQuery<Pair<Person, Address?>> =
+//    select {
+//      val p = from(Table<Person>())
+//      val a = joinLeft(Table<Address>()) { it.personId == p.id } // note, when `it` is being used as a variable want to try to get it from the `val` part so it doesn't beta reduce to `it`
+//      where(p.age > 18) // maybe `where { p.age > 18 }` would be better? Also need to think about multiple groupBy clauses, maybe we need tupleOf(...), possibly even directly in the signature (with overlods for pair/triple as well)
+//      p to a
+//    }
+//}
 
 
 
