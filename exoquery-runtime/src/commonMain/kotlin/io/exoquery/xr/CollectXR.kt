@@ -62,38 +62,31 @@ package io.exoquery.xr
 //}
 
 
-class TransformXR(
+open class TransformXR(
   val transformExpression: (XR.Expression) -> XR.Expression? = { it },
-  //val transformQuery: (XR.Query) -> XR.Query? = { it },
-  //val transformBranch: (XR.Branch) -> XR.Branch? = { it },
-  //val transformVariable: (XR.Variable) -> XR.Variable? = { it }
+  val transformQuery: (XR.Query) -> XR.Query? = { it },
+  val transformBranch: (XR.Branch) -> XR.Branch? = { it },
+  val transformVariable: (XR.Variable) -> XR.Variable? = { it }
 ): StatelessTransformer {
 
-  override fun invoke(xr: XR.Expression): XR.Expression =
-    transformExpression(xr) ?: super.invoke(xr)
-  //override fun invoke(xr: XR.Query): XR.Query = transformQuery(xr) ?: super.invoke(xr)
-  //override fun invoke(xr: XR.Branch): XR.Branch = transformBranch(xr) ?: super.invoke(xr)
-  //override fun invoke(xr: XR.Variable): XR.Variable = transformVariable(xr) ?: super.invoke(xr)
+  // For each transform, if the transform-function actually "captures" the given XR use the result of that,
+  // otherwise go to the super-class to recurse down into respective nodes
+  override fun invoke(xr: XR.Expression): XR.Expression = transformExpression(xr) ?: super.invoke(xr)
+  override fun invoke(xr: XR.Query): XR.Query = transformQuery(xr) ?: super.invoke(xr)
+  override fun invoke(xr: XR.Branch): XR.Branch = transformBranch(xr) ?: super.invoke(xr)
+  override fun invoke(xr: XR.Variable): XR.Variable = transformVariable(xr) ?: super.invoke(xr)
 
   companion object {
-    fun invoke(xr: XR): XR =
-      when (xr) {
-        is XR.Expression -> TransformXR().invoke(xr)
-        //is XR.Query -> TransformXR().invoke(xr)
-        //is XR.Branch -> TransformXR().invoke(xr)
-        //is XR.Variable -> TransformXR().invoke(xr)
-      }
-
-//    fun Query(xr: XR.Query, transform: (XR.Query) -> XR.Query?): XR.Query =
-//      TransformXR(transformQuery = transform).invoke(xr) as XR.Query
+    fun Query(xr: XR.Query, transform: (XR.Query) -> XR.Query?): XR.Query =
+      TransformXR(transformQuery = transform).invoke(xr) as XR.Query
 
     fun Expression(xr: XR.Expression, transform: (XR.Expression) -> XR.Expression?): XR.Expression =
       TransformXR(transformExpression = transform).invoke(xr) as XR.Expression
 
-//    fun Branch(xr: XR.Branch, transform: (XR.Branch) -> XR.Branch?): XR.Branch =
-//      TransformXR(transformBranch = transform).invoke(xr) as XR.Branch
-//
-//    fun Variable(xr: XR.Variable, transform: (XR.Variable) -> XR.Variable?): XR.Variable =
-//      TransformXR(transformVariable = transform).invoke(xr) as XR.Variable
+    fun Branch(xr: XR.Branch, transform: (XR.Branch) -> XR.Branch?): XR.Branch =
+      TransformXR(transformBranch = transform).invoke(xr) as XR.Branch
+
+    fun Variable(xr: XR.Variable, transform: (XR.Variable) -> XR.Variable?): XR.Variable =
+      TransformXR(transformVariable = transform).invoke(xr) as XR.Variable
   }
 }

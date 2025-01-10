@@ -48,7 +48,6 @@ object StringOperator {
 }
 
 
-
 object SetOperator {
   @Serializable data object `contains`: BinaryOperator, YieldsBool { override val symbol = "contains" }
   @Serializable data object `nonEmpty`: PostfixUnaryOperator, YieldsBool { override val symbol = "nonEmpty" }
@@ -56,6 +55,7 @@ object SetOperator {
 }
 
 // TODO remove these and replace with XR.GlobalCall and custom aggregation methods in the DSL
+@Serializable
 sealed interface AggregationOperator: Operator {
   @Serializable data object `min` : AggregationOperator { override val symbol = "min" }
   @Serializable data object `max` : AggregationOperator { override val symbol = "max" }
