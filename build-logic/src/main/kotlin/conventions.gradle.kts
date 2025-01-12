@@ -14,7 +14,7 @@ group = "io.exoquery"
 version = "2.1.0-2.0.0.PL"
 
 object Versions {
-    val decomatVersion = "0.3.0"
+    val decomatVersion = "0.4.0"
 }
 
 check("$version".isNotBlank() && version != "unspecified")

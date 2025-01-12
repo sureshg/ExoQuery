@@ -1,15 +1,20 @@
 package io.exoquery.plugin.transform
 
 import io.decomat.Is
+import io.decomat.Then1
 import io.decomat.case
+import io.decomat.caseEarly
 import io.decomat.match
 import io.exoquery.SqlExpression
+import io.exoquery.SqlQuery
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
+import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.plugin.trees.SqlExpressionExpr
+import io.exoquery.plugin.trees.SqlQueryExpr
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
@@ -17,38 +22,61 @@ import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
-class TransformProjectCapture(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): FalliableTransformer<IrExpression>() {
-  context(BuilderContext, CompileLogger)
 
+
+class TransformProjectCapture(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): FalliableTransformer<IrExpression>() {
+
+  private fun IrExpression.isContainerOfXR(): Boolean =
+    this.type.isClass<SqlExpression<*>>() || this.type.isClass<SqlQuery<*>>()
+
+  sealed interface ExprType {
+    data object Expr: ExprType
+    data object Query: ExprType
+  }
+
+  private fun IrExpression.exprTypeOf(): ExprType =
+    when {
+      this.type.isClass<SqlExpression<*>>() -> ExprType.Expr
+      this.type.isClass<SqlQuery<*>>() -> ExprType.Query
+      // TODO what's the domain-specific exception?
+      else -> throw IllegalStateException("The expression is not a SqlExpression or SqlQuery")
+    }
+
+  context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrExpression): Boolean =
-    expression.type.isClass<SqlExpression<*>>()
-      //&& expression is IrGetValue
+    expression.isContainerOfXR()
 
   context(ParserContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrExpression): IrExpression? =
-    expression.match(
-      case(Ir.Call[Is()]).thenIf { call -> expression.type.isClass<SqlExpression<*>>() && call.symbol.owner is IrSimpleFunction /* do the cheaper check here */ }.then { call ->
-        //error("--------------- GOT HERE --------------\n${call.symbol.owner.dumpSimple()}")
+  override fun transformBase(expression: IrExpression): IrExpression? {
+    val exprType = expression.exprTypeOf()
+    return expression.match(
+      case(Ir.Call[Is()]).thenIf { call -> expression.isContainerOfXR() && call.symbol.owner is IrSimpleFunction /* do the cheaper check here */ }.then { call ->
+        // For example:
+        //   fun foo(x: Int) = capture { 1 + lift(x) } // i.e. SqlExpression(Int(1) + ScalarTag(UUID), lifts=ScalarLift(UUID,x))
+        //   capture { 2 + foo(123).use }
+        // We want to project SqlExpresion ontot he foo(123) so it becomes something like:
+        //   capture { 2 + capture { 1 + lift(x) } }    i.e:
+        //   SqlExpression(xr=Int(2) + SqlExpression(xr=Int(1) + ScalarTag(UUID), lifts=ScalarLift(x))    to simplify:
+        //   SqlExpression(..., SqlExpression(..., lifts=ScalarLift(x)))
+        // Now since `x` is a variable that only exists in `foo` we actually need to do this:
+        //   SqlExpression(..., SqlExpression(..., lifts=foo(123).lifts))
+        // Which oddly would look something like:
+        //   capture { 2 + capture { 1 + foo(123).lifts } }
+        // All of this works because in order to the output for `foo` to be uprootable in the first place, it's AST
+        // has to effectively be static. Anything known only at runtime could only be found in the lifts
+        // (also the value of runtimes needs to be `Empty` once they are implemented)
         call.symbol.owner.match(
-          // For example:
-          //   fun foo(x: Int) = capture { 1 + lift(x) } // i.e. SqlExpression(Int(1) + ScalarTag(UUID), lifts=ScalarLift(UUID,x))
-          //   capture { 2 + foo(123).use }
-          // We want to project SqlExpresion ontot he foo(123) so it becomes something like:
-          //   capture { 2 + capture { 1 + lift(x) } }    i.e:
-          //   SqlExpression(xr=Int(2) + SqlExpression(xr=Int(1) + ScalarTag(UUID), lifts=ScalarLift(x))    to simplify:
-          //   SqlExpression(..., SqlExpression(..., lifts=ScalarLift(x)))
-          // Now since `x` is a variable that only exists in `foo` we actually need to do this:
-          //   SqlExpression(..., SqlExpression(..., lifts=foo(123).lifts))
-          // Which oddly would look something like:
-          //   capture { 2 + capture { 1 + foo(123).lifts } }
-          // All of this works because in order to the output for `foo` to be uprootable in the first place, it's AST
-          // has to effectively be static. Anything known only at runtime could only be found in the lifts
-          // (also the value of runtimes needs to be `Empty` once they are implemented)
-          case(Ir.SimpleFunction.withReturnExpression[SqlExpressionExpr.Uprootable[Is()]]).then { (uprootableExpr) ->
+          caseEarly(exprType == ExprType.Expr)(Ir.SimpleFunction.withReturnExpression[SqlExpressionExpr.Uprootable[Is()]]).then { (uprootableExpr) ->
+            // when propagating forward we don't actually need to deserialize the XR contents
+            // of the uprootable, just pass it along into the new instance of SqlExpression(unpackExpr(...), ...)
+            uprootableExpr.replant(expression)
+          },
+          caseEarly(exprType == ExprType.Query)(Ir.SimpleFunction.withReturnExpression[SqlQueryExpr.Uprootable[Is()]]).then { (uprootableExpr) ->
             uprootableExpr.replant(expression)
           }
         )
       },
+      // TODO the other clauses
       case(Ir.GetField[Is()]).thenIf { expression.type.isClass<SqlExpression<*>>() }.then { symbol ->
         symbol.owner.match(
           // E.g. a class field used in a lift
@@ -57,7 +85,11 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
           //   capture { 2 + foo.x.use }
           // Which will become:
           //   SqlExpression(Int(2) + Int(123), lifts=foo.x.lifts)
-          case(Ir.Field[Is(), SqlExpressionExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
+
+          caseEarly(exprType == ExprType.Expr)(Ir.Field[Is(), SqlExpressionExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
+            uprootableExpr.replant(expression)
+          },
+          caseEarly(exprType == ExprType.Query)(Ir.Field[Is(), SqlQueryExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
             uprootableExpr.replant(expression)
           }
         )
@@ -77,9 +109,10 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
           //     capture { 2 + SqlExpression(Int(123) + ScalarTag(UUID_A), lifts=ScalarLift(UUID, x)) }   // which becomes:
           //     SqlExpression(Int(2) + SqlExpression(Int(123) + ScalarTag(UUID_A), lifts=ScalarLift(x))) // which then becomes:
           //     SqlExpression(Int(2) + Int(123) + ScalarTag(UUID_A), lifts=ScalarLift(x))
-          case(Ir.Variable[Is(), SqlExpressionExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
-            // when propagating forward we don't actually need to deserialize the XR contents
-            // of the uprootable, just pass it along into the new instance of SqlExpression(unpackExpr(...), ...)
+          caseEarly(exprType == ExprType.Expr)(Ir.Variable[Is(), SqlExpressionExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
+            uprootableExpr.replant(expression)
+          },
+          caseEarly(exprType == ExprType.Query)(Ir.Variable[Is(), SqlQueryExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
             uprootableExpr.replant(expression)
           }
         )
@@ -106,6 +139,7 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
       warn(msg)
       null
     }
+  }
 
   // Diagnostic error for debugging uproot failure of a particular clause
   fun failOwnerUproot(sym: IrSymbol, output: IrExpression): IrExpression {

@@ -21,11 +21,11 @@ plugins {
 }
 
 dependencies {
-    add("kspCommonMainMetadata", "io.exoquery:decomat-ksp:0.3.0")
+    add("kspCommonMainMetadata", "io.exoquery:decomat-ksp:0.4.0")
 }
 
 dependencies {
-    add("kspCommonMainMetadata", "io.exoquery:decomat-ksp:0.3.0")
+    add("kspCommonMainMetadata", "io.exoquery:decomat-ksp:0.4.0")
 }
 
 kotlin {
@@ -46,10 +46,10 @@ kotlin {
 
                 api(kotlin("reflect"))
                 // Actually this is going to be 0.0.5 - using an unpublished one now
-                //ksp("io.exoquery:decomat-ksp:0.3.0")
+                //ksp("io.exoquery:decomat-ksp:0.4.0")
                 api("io.exoquery:pprint-kotlin-kmp:3.0.0")
                 // Actually this is going to be 0.0.5 - using an unpublished one now
-                api("io.exoquery:decomat-core:0.3.0")
+                api("io.exoquery:decomat-core:0.4.0")
                 implementation("com.facebook:ktfmt:0.43")
                 //api("io.exoquery:terpal-runtime:2.1.0-2.0.0.PL")
                 api("com.github.vertical-blank:sql-formatter:2.0.4")

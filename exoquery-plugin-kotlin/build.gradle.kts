@@ -43,7 +43,7 @@ dependencies {
     implementation("com.facebook:ktfmt:0.43")
 
     // Actually this is going to be 0.0.5 - using an unpublished one now
-    api("io.exoquery:decomat-core:0.3.0")
+    api("io.exoquery:decomat-core:0.4.0")
     api("io.exoquery:pprint-kotlin:3.0.0")
     api(kotlin("reflect"))
 }

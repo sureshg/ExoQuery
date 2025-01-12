@@ -36,6 +36,8 @@ interface SelectClauseCapturedBlock: CapturedBlock {
   fun <T> join(query: SqlQuery<T>): T = error("The `join` expression of the Query was not inlined")
   fun <T> joinLeft(onTable: SqlQuery<T>, condition: (T) -> Boolean): T? = error("The `joinLeft` expression of the Query was not inlined")
 
+  // TODO JoinFull ?
+
   // TODO play around with this variant in the future
   // fun <T?> joinRight(onTable: SqlQuery<T>, condition: (T?) -> Boolean): T? = error("The `joinRight` expression of the Query was not inlined")
 
@@ -47,6 +49,21 @@ interface SelectClauseCapturedBlock: CapturedBlock {
 fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = error("The `select` expression of the Query was not inlined")
 
 // TODO Dsl functions for grouping
+
+// The select-clause sub-AST
+sealed interface SX {
+  data class From(val variable: XR.Ident, val xr: XR.Query): SX
+  sealed interface JoinClause: SX
+  data class Join(val variable: XR.Ident, val xr: XR.Query, val condition: XR.Expression): JoinClause
+  data class JoinLeft(val variable: XR.Ident, val xr: XR.Query, val condition: XR.Expression): JoinClause
+  // TODO JoinFull when the DSL part is added
+  data class Where(val condition: XR.Expression): SX
+  data class GroupBy(val grouping: XR.Expression): SX
+  data class SortBy(val sorting: XR.Expression): SX
+}
+
+// TODO play around with having multiple from-clauses
+data class SXClause(val from: SX.From, val joins: List<SX.JoinClause>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?)
 
 //fun example() {
 //  data class Person(val id: String, val name: String, val age: Int)

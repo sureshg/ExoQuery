@@ -95,13 +95,6 @@ private class ParserCollector {
 
       // At this point we know the expression is not Uprootable so we need to add the values to the runtime-lifts
       case(Ir.Call.FunctionMem0[Is(), Is("use")]).thenIf { irExpr, _ -> irExpr.type.isClass<io.exoquery.SqlExpression<*>>() }.thenThis { irExpr, _ ->
-        //sym.owner.match(
-        //  case(Ir.Variable[Is(), SqlExpressionExpr.Uprootable[Is()]]).thenThis { varName, (uprootable) ->
-        //    error("----------------- Got to Owner of ------------\n${uprootable.xr.show()}")
-        //    uprootable.xr
-        //  }
-        //)
-
         val bid = BID.new()
         binds.addRuntime(bid, irExpr)
 
