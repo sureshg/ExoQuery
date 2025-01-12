@@ -62,13 +62,13 @@ class ParamsExpr(val paramBinds: List<Pair<BID, IrExpression>>, val paramsToComp
   }
 }
 
-context(BuilderContext, CompileLogger) private fun RuntimeEmpty() = run {
+context(BuilderContext, CompileLogger) private fun RuntimeEmpty(): IrExpression {
   //val runtimesCompanionRef = builder.irGetObjectValue(pluginCtx.referenceClass(classIdOf<io.exoquery.Runtimes.Companion>())!!)
   val cls = ClassId.topLevel(FqName("io.exoquery.Runtimes"))
   val clsSym = pluginCtx.referenceClass(cls) ?: throw RuntimeException("Could not find the reference for the class $cls in the context")
   val clsSymCompanion = clsSym.owner.companionObject() ?: throw RuntimeException("Could not find the companion object for the class $cls")
   val runtimesCompanionRef = builder.irGetObject(clsSymCompanion.symbol)
-  runtimesCompanionRef.callDispatch("Empty")()
+  return runtimesCompanionRef.callDispatch("Empty")()
 }
 
 object SqlExpressionExpr {
@@ -104,7 +104,7 @@ object SqlExpressionExpr {
 
     companion object {
       context (CompileLogger) operator fun <AP: Pattern<Uprootable>> get(x: AP) =
-        customPattern1(x) { it: IrExpression ->
+        customPattern1("SqlExpressionExpr.Uprootable", x) { it: IrExpression ->
           it.match(
             // Match on: SqlExpression(unpackExpr(str))
             case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is("io.exoquery.SqlExpression"), Ir.Call.FunctionUntethered1[Is("unpackExpr"), Is()]])
@@ -155,7 +155,7 @@ object SqlQueryExpr {
 
     companion object {
       context (CompileLogger) operator fun <AP: Pattern<Uprootable>> get(x: AP) =
-        customPattern1(x) { it: IrExpression ->
+        customPattern1("SqlQueryExpr.Uprootable", x) { it: IrExpression ->
           it.match(
             case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is("io.exoquery.SqlQuery"), Ir.Call.FunctionUntethered1[Is("unpackQuery"), Is()]])
               .thenIf { _, _ ->

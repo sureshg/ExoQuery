@@ -12,7 +12,7 @@ sealed class ReceiverCaller(open val reciver: IrExpression): Caller, PC<Receiver
 
   companion object {
     operator fun <AP: Pattern<A>, A: IrExpression> get(value: AP) =
-      customPattern1(value) { it: ReceiverCaller ->
+      customPattern1("ReceiverCaller", value) { it: ReceiverCaller ->
         Components1(it.reciver)
       }
   }

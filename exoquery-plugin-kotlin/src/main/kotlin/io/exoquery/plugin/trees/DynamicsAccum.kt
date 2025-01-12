@@ -7,12 +7,12 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 class DynamicsAccum {
   // instances of ContainerOfXR (maybe think about something more typed here, or check that the IrExpresssion is a ContainerOfXR when adding)
   private val runtimesCollect = mutableListOf<Pair<BID, IrExpression>>()
-  // Other instances of SqlExpression (i.e. from other uprootable SqlExpression instances that we need to compose)
+  // Other instances of SqlExpression or SqlQuery (i.e. from other uprootable SqlExpression instances that we need to compose)
   private val allRuntimesCollect = mutableListOf<IrExpression>()
 
   // instances of Params (maybe think about something more typed here, or check that the IrExpresssion is a Params when adding)
   private val paramsCollect = mutableListOf<Pair<BID, IrExpression>>()
-  // Other instances of SqlExpression (i.e. from other uprootable SqlExpression instances that we need to compose)
+  // Other instances of SqlExpression or SqlQuery (i.e. from other uprootable SqlExpression instances that we need to compose)
   private val allParamsCollect = mutableListOf<IrExpression>()
 
   fun makeRuntimes() = RuntimesExpr(runtimesCollect, allParamsCollect)

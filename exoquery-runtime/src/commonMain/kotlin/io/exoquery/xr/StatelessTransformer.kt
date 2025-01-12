@@ -82,6 +82,7 @@ interface StatelessTransformer {
         is QueryOf -> QueryOf.csf(invoke(head))(this)
         // Infix can both be Expression and Query
         is Infix -> Infix.csf(parts, params.map { invoke(it) })(this)
+        is TagForSqlQuery -> this
       }
     }
 }

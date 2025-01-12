@@ -622,6 +622,16 @@ sealed interface XR {
 
   @Serializable
   @Mat
+  data class TagForSqlQuery(@Slot val id: BID, override val type: XRType, override val loc: Location = Location.Synth): XR.Query, PC<XR.TagForSqlQuery> {
+    @Transient override val productComponents = productOf(this, id)
+    override fun toString() = show()
+    @Transient private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is TagForSqlExpression && other.id() == cid
+  }
+
+  @Serializable
+  @Mat
   data class TagForParam(@Slot val id: BID, override val type: XRType, override val loc: Location = Location.Synth): XR.Expression, PC<XR.TagForParam> {
     @Transient override val productComponents = productOf(this, id)
     override fun toString() = show()

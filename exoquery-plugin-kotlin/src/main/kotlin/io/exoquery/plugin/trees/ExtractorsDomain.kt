@@ -40,7 +40,7 @@ object ExtractorsDomain {
     data class Field(val name: String, val value: IrExpression?)
 
     context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
-      customPattern1(x) { call: IrConstructorCall ->
+      customPattern1("CaseClassConstructorCall", x) { call: IrConstructorCall ->
         when {
           call.symbol.safeName == "<init>" -> {
             val className: String = call.type.classFqName?.asString() ?: call.type.dumpKotlinLike()
@@ -61,7 +61,7 @@ object ExtractorsDomain {
 
   object CaseClassConstructorCall1 {
     context (CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
-      customPattern2(x, y) { call: IrConstructorCall ->
+      customPattern2("CaseClassConstructorCall1", x, y) { call: IrConstructorCall ->
         when {
           call.symbol.safeName == "<init>" && call.symbol.owner.simpleValueParams.size == 1 -> {
             val className: String = call.type.classFqName?.asString() ?: call.type.dumpKotlinLike()
@@ -83,7 +83,7 @@ object ExtractorsDomain {
   // since in many cases the primary deconstructin logic is on on that data
   object CaseClassConstructorCall1Plus {
     context (CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
-      customPattern2(x, y) { call: IrConstructorCall ->
+      customPattern2("CaseClassConstructorCall1Plus", x, y) { call: IrConstructorCall ->
         when {
           call.symbol.safeName == "<init>" && call.symbol.owner.simpleValueParams.size >= 1 -> {
             val className: String = call.type.classFqName?.asString() ?: call.type.dumpKotlinLike()
@@ -107,7 +107,7 @@ object ExtractorsDomain {
 
     data class LambdaFunctionMethod(val matchesMethod: (IrCall) -> Boolean) {
       context (CompileLogger) operator fun <AP: Pattern<CallData.LambdaMember>> get(x: AP) =
-        customPattern1(x) { it: IrCall ->
+        customPattern1("Call.LambdaFunctionMethod", x) { it: IrCall ->
           if (matchesMethod(it)) {
             it.match(
               // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
@@ -131,7 +131,7 @@ object ExtractorsDomain {
 
     object `x op y` {
       context (CompileLogger) operator fun <AP: Pattern<OperatorCall>> get(x: AP) =
-        customPattern1(x) { it: IrCall ->
+        customPattern1("x op y", x) { it: IrCall ->
           it.match(
             case(Ir.Call.FunctionUntethered2[Is(), Is()])
               .thenIfThis { _, _ -> BinaryOperators.operators.get(symbol.safeName) != null }
@@ -153,7 +153,7 @@ object ExtractorsDomain {
 
     object `x to y` {
       context (CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
-        customPattern2(x, y) { it: IrCall ->
+        customPattern2("x to y", x, y) { it: IrCall ->
           // TODO see what other descriptors it has to make sure it's only a system-level a to b
           (it.symbol.safeName == "to").thenLet {
             it.extensionReceiver?.let { argA ->
@@ -168,7 +168,7 @@ object ExtractorsDomain {
 
     object `(op)x` {
       context (CompileLogger) operator fun <AP: Pattern<UnaryOperatorCall>> get(x: AP) =
-        customPattern1(x) { it: IrCall ->
+        customPattern1("(op)x", x) { it: IrCall ->
           on(it).match(
             case(Ir.Call.FunctionUntethered1.Arg[Is()]).thenThis { arg1 -> Pair(this.symbol.safeName, arg1) },
             case(Ir.Call.FunctionRec0[Is()]).thenThis { arg1 -> Pair(this.symbol.safeName, arg1) }
@@ -187,7 +187,7 @@ object ExtractorsDomain {
         it.dispatchReceiver == null && it.extensionReceiver == null && it.symbol.safeName == "select" && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
 
       context (CompileLogger) operator fun <AP: Pattern<CallData.LambdaTopLevel>> get(x: AP) =
-        customPattern1(x) { it: IrCall ->
+        customPattern1("select(fun)", x) { it: IrCall ->
           if (matchesMethod(it)) {
             on(it).match(
               // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
