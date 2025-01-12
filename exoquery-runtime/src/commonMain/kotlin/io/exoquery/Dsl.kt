@@ -2,7 +2,6 @@ package io.exoquery
 
 import io.exoquery.annotation.Captured
 import io.exoquery.xr.XR
-import io.exoquery.xr.XR.Query
 import kotlinx.serialization.decodeFromHexString
 import kotlinx.serialization.protobuf.ProtoBuf
 
@@ -22,29 +21,11 @@ fun unpackQuery(query: String): XR.Query =
 // }
 
 // TODO When context recivers are finally implemented in KMP, make this have a context-reciver that allows `use` to be used, otherwise don't allow it
-fun <T> capture(block: CapturedBlock.() -> T): @Captured("initial-value") SqlExpression<T> = error("Compile time plugin did not transform the tree")
+fun <T> captureValue(block: CapturedBlock.() -> T): @Captured("initial-value") SqlExpression<T> = error("Compile time plugin did not transform the tree")
+fun <T> capture(block: CapturedBlock.() -> SqlQuery<T>): @Captured("initial-value") SqlQuery<T> = error("Compile time plugin did not transform the tree")
 
 
-//fun <T> capture(block: CapturedBlock.() -> SqlQuery<T>): @Captured("initial-value") SqlQuery<T> = error("Compile time plugin did not transform the tree")
 
-
-//data class Wrap<T>(val value: T)
-//
-//fun <T> foo(input: T) = input
-//fun <T> foo(input: SqlQuery<T>) = input
-//
-//fun stuff() {
-//  val o = foo(123)
-//  val p = foo(Wrap(123))
-//}
-//
-//fun <T> bar(input: () -> T) = input
-//fun <T> bar(input: () -> SqlQuery<T>) = input
-//
-//fun stuff2() {
-//  val o = bar { 123 }
-//  val p = bar { Table<Person>() }
-//}
 
 interface CapturedBlock {
   fun <T> param(value: T): T = error("Compile time plugin did not transform the tree")

@@ -9,6 +9,7 @@ import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.printing.dumpSimple
+import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.ParserContext
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
@@ -45,7 +46,7 @@ class TransformPrintSource(
     data class Single(val ir: IrExpression): MatchedType
   }
 
-  context(ParserContext, BuilderContext, CompileLogger)
+  context(LocationContext, BuilderContext, CompileLogger)
   override fun transformBase(expression: IrCall): IrExpression {
     val argsRaw =
       with(compileLogger) {

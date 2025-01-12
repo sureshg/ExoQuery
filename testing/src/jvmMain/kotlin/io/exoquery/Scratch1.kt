@@ -1,8 +1,6 @@
 package io.exoquery
 
-import io.exoquery.printing.PrintXR
 import io.exoquery.printing.qprint
-import kotlin.reflect.typeOf
 
 fun main() {
   // test test test test test
@@ -12,11 +10,11 @@ fun main() {
 data class Foo(val bar: String)
 
 fun case0() {
-  val cap0 = capture { 123 + param(456) }
+  val cap0 = captureValue { 123 + param(456) }
   println(cap0.params)
 
   val cap1 = cap0
-  val cap = capture { 789 + cap1.use }
+  val cap = captureValue { 789 + cap1.use }
   println(qprint(cap.xr))
   println(cap.params)
 

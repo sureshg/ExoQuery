@@ -33,7 +33,7 @@ class TransformShowAnnotations(override val ctx: BuilderContext, val superTransf
     expression.symbol.owner.kotlinFqName.asString().let { it == fqn }
 
   // parent symbols are collected in the parent context
-  context(ParserContext, BuilderContext, CompileLogger)
+  context(LocationContext, BuilderContext, CompileLogger)
   override fun transformBase(expression: IrCall): IrExpression {
     val newExpression = superTransformer.visitExpression(expression, ScopeSymbols.empty)
 

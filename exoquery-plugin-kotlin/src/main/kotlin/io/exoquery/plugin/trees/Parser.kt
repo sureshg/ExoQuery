@@ -2,7 +2,6 @@ package io.exoquery.plugin.trees
 
 import io.decomat.Is
 import io.decomat.case
-import io.decomat.caseEarly
 import io.decomat.match
 import io.decomat.on
 import io.exoquery.BID
@@ -13,6 +12,7 @@ import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.ScopeSymbols
 import io.exoquery.parseError
 import io.exoquery.plugin.*
+import io.exoquery.plugin.trees.Parser.parseFunctionBlockBody
 import io.exoquery.xr.*
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
@@ -20,27 +20,36 @@ import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
-data class ParserContext(val internalVars: ScopeSymbols, val currentFile: IrFile)
+
+data class LocationContext(val internalVars: ScopeSymbols, val currentFile: IrFile)
+
+data class ParserContext(val internalVars: ScopeSymbols, val currentFile: IrFile, val binds: DynamicsAccum = DynamicsAccum.newEmpty())
 
 
 
 object Parser {
-  context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR, DynamicsAccum> =
-    ParserCollector().let { par -> Pair(par.parseFunctionBlockBody(blockBody), par.binds) }
+  context(LocationContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR, DynamicsAccum> =
+    with (ParserContext(internalVars, this@LocationContext.currentFile)) {
+      ExpressionParser.parseFunctionBlockBody(blockBody) to binds
+    }
 
   // TODO rename to invoke? or just parse
-  context(ParserContext, CompileLogger) fun parseExpression(expr: IrExpression): Pair<XR, DynamicsAccum> =
-    ParserCollector().let { par -> Pair(par.parse(expr), par.binds) }
+  context(LocationContext, CompileLogger) fun parseExpression(expr: IrExpression): Pair<XR.Expression, DynamicsAccum> =
+    with (ParserContext(internalVars, this@LocationContext.currentFile)) {
+      ExpressionParser.parse(expr) to binds
+    }
 }
+
+//object QueryParser {
+//
+//}
 
 /**
  * Parses the tree and collets dynamic binds as it goes. The parser should be exposed
  * as stateless to client functions so everything should go through the `Parser` object instead of this.
  */
-private class ParserCollector {
+object ExpressionParser {
   context(ParserContext) private val IrElement.loc get() = this.locationXR()
-
-  val binds = DynamicsAccum.newEmpty()
 
   // TODO need to parse interpolations
 
@@ -85,16 +94,8 @@ private class ParserCollector {
         }
     ) ?: parseError("Could not parse IrBlockBody:\n${blockBody.dumpKotlinLike()}")
 
-  context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR =
-    // adding the type annotation <Ast> seems to improve the type inference performance
-
-    // TODO was in the middle of working on pattern-matching for Unary functions
-
-
-    on(expr).match<XR>(
-      // ExtractorsDomain.CaseClassConstructorCall1[Is(), Is()]
-
-
+  context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Expression =
+    on(expr).match<XR.Expression>(
       case(ExtractorsDomain.CaseClassConstructorCall[Is()]).then { data ->
         XR.Product(data.className, data.fields.map { (name, valueOpt) -> name to (valueOpt?.let { parseExpr(it) } ?: XR.Const.Null(expr.loc)) }, expr.loc)
       },
@@ -298,7 +299,7 @@ private class ParserCollector {
     )
   }
 
-  context (ParserContext, CompileLogger) fun parseConst(irConst: IrConst): XR =
+  context (ParserContext, CompileLogger) fun parseConst(irConst: IrConst): XR.Expression =
     if (irConst.value == null) XR.Const.Null(irConst.loc)
     else when (irConst.kind) {
       IrConstKind.Null -> XR.Const.Null(irConst.loc)

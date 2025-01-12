@@ -12,6 +12,7 @@ import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.trees.Ir
+import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.plugin.trees.SqlExpressionExpr
 import io.exoquery.plugin.trees.SqlQueryExpr
@@ -46,7 +47,7 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
   override fun matchesBase(expression: IrExpression): Boolean =
     expression.isContainerOfXR()
 
-  context(ParserContext, BuilderContext, CompileLogger)
+  context(LocationContext, BuilderContext, CompileLogger)
   override fun transformBase(expression: IrExpression): IrExpression? {
     val exprType = expression.exprTypeOf()
     return expression.match(

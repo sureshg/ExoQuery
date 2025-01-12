@@ -31,14 +31,14 @@ import org.jetbrains.kotlin.name.FqName
 
 
 class TransformCapturedExpression(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
-  private val fqn: String = "io.exoquery.capture"
+  private val fqn: String = "io.exoquery.captureValue"
 
   context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
     expression.symbol.owner.kotlinFqName.asString().let { it == fqn }
 
   // parent symbols are collected in the parent context
-  context(ParserContext, BuilderContext, CompileLogger)
+  context(LocationContext, BuilderContext, CompileLogger)
   override fun transformBase(expression: IrCall): IrExpression {
     val bodyRaw =
       on(expression).match(
