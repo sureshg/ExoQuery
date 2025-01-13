@@ -18,9 +18,13 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
   fun drop(f: Int): SqlQuery<T> = error("The drop expression of the Query was not inlined")
   fun size(): SqlQuery<Int> = error("The size expression of the Query was not inlined")
 
+  // TODO once Kotlin has property context-recivers, it would be interesting to try adding a Capture context
+  //     to each of these. That way the user would legitimately need a `captured` block to invoke them.
 
   //fun <R> groupBy(f: (T) -> R): GroupedQuery<T> =  error("The groupBy expression of the Query was not inlined")
 
+  // Used in groupBy and various other places to convert query to an expression
+  fun value(): SqlExpression<T> = error("The `value` expression of the Query was not inlined")
 
 
   fun determinizeDynamics(): SqlQuery<T> = DeterminizeDynamics().ofQuery(this)

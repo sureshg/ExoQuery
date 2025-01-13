@@ -716,9 +716,10 @@ sealed interface XR {
     override fun equals(other: Any?) = other is Product && other.id() == cid
   }
 
+  @Serializable
   sealed interface Visibility {
-    object Hidden: Visibility { override fun toString() = "Hidden" }
-    object Visible: Visibility { override fun toString() = "Visible" }
+    @Serializable object Hidden: Visibility { override fun toString() = "Hidden" }
+    @Serializable object Visible: Visibility { override fun toString() = "Visible" }
   }
 
   // NOTE: No renameable because in ExoQuery properties will be renamed when created on the parent object i.e.

@@ -66,6 +66,11 @@ object TypeParser {
         parse(sqlExpressionType.simpleTypeArgs[0])
       },
 
+      // If it's a SqlQuery, same idea
+      case(Ir.Type.ClassOfType<io.exoquery.SqlQuery<*>>()).then { sqlQueryType ->
+        parse(sqlQueryType.simpleTypeArgs[0])
+      },
+
       // For now treat lists like value types, may way to change in future
       case(Ir.Type.KotlinList[Is()]).then { realType ->
         XRType.Value
@@ -75,9 +80,10 @@ object TypeParser {
       //  parse(realType)
       //},
 
+      // TODO need to check if there there is a @Serializeable annotation and if that has renamed type-name and/or field-values to use for the XRType
       case(Ir.Type.DataClass[Is(), Is()]).then { name, props ->
         val fieldTypeXRs = props.map { (fieldName, fieldType) -> fieldName to parse(fieldType) }
-        warn("------------- Parsed Class props of: ${name}: ${fieldTypeXRs.map { (a, b) -> "$a -> $b" }} -------------------")
+        //warn("------------- Parsed Class props of: ${name}: ${fieldTypeXRs.map { (a, b) -> "$a -> $b" }} -------------------")
         XRType.Product(name, fieldTypeXRs)
       },
 

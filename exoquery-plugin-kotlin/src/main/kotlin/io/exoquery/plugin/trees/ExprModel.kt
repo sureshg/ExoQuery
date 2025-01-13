@@ -107,7 +107,7 @@ object SqlExpressionExpr {
         customPattern1("SqlExpressionExpr.Uprootable", x) { it: IrExpression ->
           it.match(
             // Match on: SqlExpression(unpackExpr(str))
-            case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is("io.exoquery.SqlExpression"), Ir.Call.FunctionUntethered1[Is("unpackExpr"), Is()]])
+            case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is("io.exoquery.SqlExpression"), Ir.Call.FunctionUntethered1[Is("io.exoquery.unpackExpr"), Is()]])
               .thenIf { _, _ ->
                 // Check that the 2nd argument to SqlExpression is Runtimes.Empty i.e. SqlExpression(xr=unpackExpr(str), runtimes=Runtimes.Empty, ...)
                 comp.valueArguments[1].match(
@@ -157,7 +157,7 @@ object SqlQueryExpr {
       context (CompileLogger) operator fun <AP: Pattern<Uprootable>> get(x: AP) =
         customPattern1("SqlQueryExpr.Uprootable", x) { it: IrExpression ->
           it.match(
-            case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is("io.exoquery.SqlQuery"), Ir.Call.FunctionUntethered1[Is("unpackQuery"), Is()]])
+            case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is("io.exoquery.SqlQuery"), Ir.Call.FunctionUntethered1[Is("io.exoquery.unpackQuery"), Is()]])
               .thenIf { _, _ ->
                 comp.valueArguments[1].match(
                   case(Ir.Call.FunctionMem0[Ir.Type.ClassOf<io.exoquery.Runtimes.Companion>(), Is("Empty")]).then { expr, _ -> true }

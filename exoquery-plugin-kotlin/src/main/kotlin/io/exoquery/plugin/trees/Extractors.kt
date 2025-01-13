@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isTypeParameter
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.superTypes
 
 fun <T> List0() = Is(listOf<T>())
@@ -453,6 +454,18 @@ object Ir {
         }
     }
 
+    object FunctionUntethered0 {
+      context (CompileLogger) operator fun <AP: Pattern<String>> get(x: AP) =
+        customPattern1("Ir.Call.FunctionUntethered0", x) { it: IrCall ->
+          val reciever = it.extensionReceiver ?: it.dispatchReceiver
+          if (reciever == null && it.simpleValueArgs.size == 0) {
+            Components1(it.symbol.fullName)
+          } else {
+            null
+          }
+        }
+    }
+
     // not a function on an object or class i.e. top-level
     object FunctionUntethered1 {
       object Arg {
@@ -481,7 +494,7 @@ object Ir {
         customPattern2("Ir.Call.FunctionUntethered1", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever == null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null }) {
-            Components2(it.symbol.safeName, it.simpleValueArgs.first() ?: error("Expected non-null value"))
+            Components2(it.symbol.fullName, it.simpleValueArgs.first() ?: error("Expected non-null value"))
           } else {
             null
           }
@@ -540,6 +553,17 @@ object Ir {
           on(it).match(
             case(BlockBody[List1[Is<IrReturn>()]]).then { (irReturn) -> Components1(irReturn.value) }
           )
+        }
+    }
+
+    object StatementsWithReturn {
+      operator fun <AP: Pattern<List<IrStatement>>, BP: Pattern<IrExpression>> get(statements: AP, ret: BP) =
+        customPattern2("BlockBody.StatementsWithReturn", statements, ret) { it: IrBlockBody ->
+          if (it.statements.size > 0 && it.statements.last() is IrReturn) {
+            Components2(it.statements.dropLast(1), (it.statements.last() as IrReturn).value)
+          } else {
+            null
+          }
         }
     }
 

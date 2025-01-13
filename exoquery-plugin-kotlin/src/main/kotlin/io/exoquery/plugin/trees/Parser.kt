@@ -7,30 +7,39 @@ import io.decomat.on
 import io.exoquery.BID
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
-import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.ScopeSymbols
 import io.exoquery.parseError
 import io.exoquery.plugin.*
+import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.trees.Parser.parseFunctionBlockBody
+import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.xr.*
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import kotlin.comparisons.then
 
 
 data class LocationContext(val internalVars: ScopeSymbols, val currentFile: IrFile)
 
 data class ParserContext(val internalVars: ScopeSymbols, val currentFile: IrFile, val binds: DynamicsAccum = DynamicsAccum.newEmpty())
 
-
+context(ParserContext) private val IrElement.loc get() = this.locationXR()
 
 object Parser {
   context(LocationContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR, DynamicsAccum> =
     with (ParserContext(internalVars, this@LocationContext.currentFile)) {
       ExpressionParser.parseFunctionBlockBody(blockBody) to binds
+    }
+
+  context(LocationContext, CompileLogger) fun parseQuery(expr: IrExpression): Pair<XR.Query, DynamicsAccum> =
+    with (ParserContext(internalVars, this@LocationContext.currentFile)) {
+      QueryParser.parse(expr) to binds
     }
 
   // TODO rename to invoke? or just parse
@@ -40,17 +49,56 @@ object Parser {
     }
 }
 
-//object QueryParser {
-//
-//}
+object QueryParser {
+  context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Query =
+    on(expr).match<XR.Query>(
+      case(SqlQueryExpr.Uprootable[Is()]).thenThis { uprootable ->
+        val sqlQueryIr = this
+        // Add all binds from the found SqlQuery instance, this will be truned into something like `currLifts + SqlQuery.lifts` late
+        binds.addAllParams(sqlQueryIr)
+        // Then unpack and return the XR
+        uprootable.xr // TODO catch errors here?
+      },
+      case(Ir.Call.FunctionMem1[Ir.Type.ClassOf<SqlQuery<*>>(), Is("map"), Is()]).then { head, lambda ->
+        lambda.match(
+          case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { _, blockBody ->
+            val headXR = parse(head)
+            val firstParam = firstParam().makeIdent()
+            val tailExpr = ExpressionParser.parseFunctionBlockBody(blockBody)
+            XR.Map(headXR, firstParam, tailExpr, expr.locationXR())
+          }
+        ) ?: parseError("Could not parse XR.Map from: ${expr.dumpSimple()}", expr)
+      },
+      case(Ir.Call.FunctionUntethered0[Is("io.exoquery.Table")]).thenThis { _ ->
+        val tpe = TypeParser.ofTypeAt(this.typeArguments[0] ?: parseError("Type arguemnt of Table() call was not found>"), this.location())
+        val tpeProd = tpe as? XRType.Product ?: parseError("Table<???>() call argument type must be a data-class, but was: ${tpe}", expr)
+        XR.Entity(tpeProd.name, tpeProd, expr.locationXR())
+      },
+      // If we couldn't parse the expression treat (and it is indeed a SqlQuery<*> treat it as dynamic i.e. non-uprootable
+      // Since there's no splice-operator for SqlQuery like there is .use for SqlExpression (i.e. the variable/function-call is used directly)
+      // if nothing else matches the expression, we need to look at it in a couple of different ways and then find out if it is a dynamic query
+      // TODO When QueryMethodCall and QueryGlobalCall are introduced need to revisit this to see what happens if there is a dynamic call on a query
+      //      and how to differentitate it from something that we want to capture. Perhaps we would need some kind of "query-method whitelist"
+      case(ExtractorsDomain.DynamicQueryCall[Is()]).then { _ ->
+        val bid = BID.new()
+        binds.addRuntime(bid, expr)
+        XR.TagForSqlQuery(bid, TypeParser.of(expr), expr.loc)
+      },
+    ) ?: parseError("Could not parse map from: ${expr.dumpSimple()}", expr)
+}
+
+context(ParserContext, CompileLogger)
+fun IrValueParameter.makeIdent() =
+  XR.Ident(this.name.asString(), TypeParser.of(this), this.locationXR())
+
+fun IrFunctionExpression.firstParam() =
+  this.function.simpleValueParams[0]
 
 /**
  * Parses the tree and collets dynamic binds as it goes. The parser should be exposed
  * as stateless to client functions so everything should go through the `Parser` object instead of this.
  */
 object ExpressionParser {
-  context(ParserContext) private val IrElement.loc get() = this.locationXR()
-
   // TODO need to parse interpolations
 
   context(ParserContext, CompileLogger) inline fun <reified T> parseAs(expr: IrExpression): T {
@@ -63,41 +111,37 @@ object ExpressionParser {
     )
   }
 
-  context(ParserContext, CompileLogger) fun parseExpr(expr: IrExpression): XR.Expression =
-    parseAs<XR.Expression>(expr)
-
-  context(ParserContext, CompileLogger) fun parseXR(expr: IrExpression): XR =
-    parseAs<XR>(expr)
-
   context(ParserContext, CompileLogger) fun parseBlockStatement(expr: IrStatement): XR.Variable =
     on(expr).match(
       case(Ir.Variable[Is(), Is()]).thenThis { name, rhs ->
         val irType = TypeParser.of(this)
-        XR.Variable(XR.Ident(name, irType, rhs.locationXR()), parseExpr(rhs), expr.loc)
+        XR.Variable(XR.Ident(name, irType, rhs.locationXR()), parse(rhs), expr.loc)
       }
     ) ?: parseError("Could not parse Ir Variable statement from:\n${expr.dumpSimple()}")
 
   context(ParserContext, CompileLogger) fun parseBranch(expr: IrBranch): XR.Branch =
     on(expr).match(
       case(Ir.Branch[Is(), Is()]).then { cond, then ->
-        XR.Branch(parseExpr(cond), parseExpr(then), expr.loc)
+        XR.Branch(parse(cond), parse(then), expr.loc)
       }
     ) ?: parseError("Could not parse Branch from: ${expr.dumpSimple()}")
 
-  context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): XR =
-    on(blockBody).match<XR>(
-      // TODO use Ir.BlockBody.ReturnOnly
-      case(Ir.BlockBody[List1[Ir.Return[Is()]]])
-        .then { (irReturn) ->
-          val returnExpression = irReturn.value
-          parse(returnExpression)
+  context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): XR.Expression =
+    blockBody.match(
+      case(Ir.BlockBody.ReturnOnly[Is()]).then { irReturnValue ->
+        parse(irReturnValue)
+      },
+      case(Ir.BlockBody.StatementsWithReturn[Is(), Is()]).then { stmts, ret ->
+          val vars = stmts.map { parseBlockStatement(it) }
+          val retExpr = parse(ret)
+          XR.Block(vars, retExpr, blockBody.locationXR())
         }
     ) ?: parseError("Could not parse IrBlockBody:\n${blockBody.dumpKotlinLike()}")
 
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Expression =
     on(expr).match<XR.Expression>(
       case(ExtractorsDomain.CaseClassConstructorCall[Is()]).then { data ->
-        XR.Product(data.className, data.fields.map { (name, valueOpt) -> name to (valueOpt?.let { parseExpr(it) } ?: XR.Const.Null(expr.loc)) }, expr.loc)
+        XR.Product(data.className, data.fields.map { (name, valueOpt) -> name to (valueOpt?.let { parse(it) } ?: XR.Const.Null(expr.loc)) }, expr.loc)
       },
 
       case(Ir.Call.FunctionMem1.WithCaller[Is(), Is("param"), Is()]).thenThis { _, paramValue ->
@@ -106,23 +150,8 @@ object ExpressionParser {
         XR.TagForParam(bid, TypeParser.of(paramValue), paramValue.loc)
       },
 
-      // TODO need to test this case i.e. where this is propagated
-
-      // TODO ExtractorsDomain should probably have something like SqlQuery_use to represent `SqlQuery.use`
-      case(Ir.Call.FunctionMem0[Is(), Is("use")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlQuery<*>>() }.then { sqlQueryIr, _ ->
-        sqlQueryIr.match(
-          case(SqlQueryExpr.Uprootable[Is()]).then { uprootable ->
-            // Add all binds from the found SqlQuery instance, this will be truned into something like `currLifts + SqlQuery.lifts` late
-            binds.addAllParams(sqlQueryIr)
-            // Then unpack and return the XR
-            val uprooted = uprootable.xr // TODO catch errors here?
-            XR.ValueOf(uprooted, sqlQueryIr.loc)  // TODO more detailed error message
-          },
-        ) ?: run {
-          val bid = BID.new()
-          binds.addRuntime(bid, sqlQueryIr)
-          XR.ValueOf(XR.TagForSqlQuery(bid, TypeParser.of(sqlQueryIr), sqlQueryIr.loc))
-        }
+      case(Ir.Call.FunctionMem0[Is(), Is("value")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlQuery<*>>() }.then { sqlQueryIr, _ ->
+        XR.ValueOf(QueryParser.parse(sqlQueryIr), sqlQueryIr.loc)
       },
       // Now the same for SqlExpression
       case(Ir.Call.FunctionMem0[Is(), Is("use")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlExpression<*>>() }.then { sqlExprIr, _ ->
@@ -183,7 +212,7 @@ object ExpressionParser {
       },
 
       case(ExtractorsDomain.Call.`x to y`[Is(), Is()]).thenThis { x, y ->
-        XR.Product.Tuple(parseExpr(x), parseExpr(y), expr.loc)
+        XR.Product.Tuple(parse(x), parse(y), expr.loc)
       },
 
       // Other situations where you might have an identifier which is not an SqlVar e.g. with variable bindings in a Block (inside an expression)
@@ -203,7 +232,7 @@ object ExpressionParser {
         parseConst(this)
       },
       case(Ir.Call.Property[Is(), Is()]).then { expr, name ->
-        XR.Property(parseExpr(expr), name, XR.Visibility.Visible, expr.loc)
+        XR.Property(parse(expr), name, XR.Visibility.Visible, expr.loc)
       },
 
       // case(Ir.Call.Function[Is()]).thenIf { (list) -> list.size == 2 }.thenThis { list ->
@@ -214,7 +243,7 @@ object ExpressionParser {
       // }
       // ,
       case(Ir.Block[Is(), Is()]).then { stmts, ret ->
-        XR.Block(stmts.map { parseBlockStatement(it) }, parseExpr(ret), expr.loc)
+        XR.Block(stmts.map { parseBlockStatement(it) }, parse(ret), expr.loc)
       },
       case(Ir.When[Is()]).thenThis { cases ->
         val elseBranch = cases.find { it is IrElseBranch }?.let { parseBranch(it) }
@@ -264,16 +293,16 @@ object ExpressionParser {
 //            is IrVararg -> {
 //              expr.elements.toList().map { elem ->
 //                when (elem) {
-//                  is IrExpression -> parseExpr(elem)
+//                  is IrExpression -> parse(elem)
 //                  else -> throwParseErrorMsg(elem, "Invalid Variadic Element")
 //                }
 //              }
 //            }
-//            else -> listOf(parseExpr(expr))
+//            else -> listOf(parse(expr))
 //          }
 //
 //        XR.MethodCall(
-//          parseExpr(caller.reciver), methodCallName, args.flatMap { arg -> arg?.let { parseArg(it) } ?: listOf(XR.Const.Null(locationXR())) },
+//          parse(caller.reciver), methodCallName, args.flatMap { arg -> arg?.let { parseArg(it) } ?: listOf(XR.Const.Null(locationXR())) },
 //          TypeParser.of(symbol.owner), locationXR()
 //        )
 //      },

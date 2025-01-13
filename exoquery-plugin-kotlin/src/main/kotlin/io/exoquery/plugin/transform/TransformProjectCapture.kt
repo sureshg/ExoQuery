@@ -51,7 +51,7 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
   override fun transformBase(expression: IrExpression): IrExpression? {
     val exprType = expression.exprTypeOf()
     return expression.match(
-      case(Ir.Call[Is()]).thenIf { call -> expression.isContainerOfXR() && call.symbol.owner is IrSimpleFunction /* do the cheaper check here */ }.then { call ->
+      case(Ir.Call[Is()]).thenIf { call -> expression.isContainerOfXR() && call.symbol.owner is IrSimpleFunction }.then { call ->
         // For example:
         //   fun foo(x: Int) = capture { 1 + lift(x) } // i.e. SqlExpression(Int(1) + ScalarTag(UUID), lifts=ScalarLift(UUID,x))
         //   capture { 2 + foo(123).use }
@@ -78,7 +78,7 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
         )
       },
       // TODO the other clauses
-      case(Ir.GetField[Is()]).thenIf { expression.type.isClass<SqlExpression<*>>() }.then { symbol ->
+      case(Ir.GetField[Is()]).thenIf { expression.isContainerOfXR() }.then { symbol ->
         symbol.owner.match(
           // E.g. a class field used in a lift
           //   class Foo { val x = capture { 123 } } which should have become:
@@ -95,7 +95,7 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
           }
         )
       },
-      case(Ir.GetValue[Is()]).thenIf { expression.type.isClass<SqlExpression<*>>() }.then { symbol ->
+      case(Ir.GetValue[Is()]).thenIf { expression.isContainerOfXR() }.then { symbol ->
         symbol.owner.match(
           // E.g. something like
           //   val x = capture { 123 + lift(456) }` // i.e. SqlExpression(XR.Int(123), ...)  // (actually it will be serialized so: `val x = SqlExpression(unpackExpr("jksnfksjdnf"), ...)`)
@@ -122,22 +122,21 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
       // TODO this should be enabled if the user has specified to fail if an uprooting is not possible,
       //      otherwise failure should not happen (e.g. it should be a warning or even info)
       //      and the dynamic code-path should happen instead
-      val msg =
-        """|----------- Could not project SqlExpression for the expression: -----------
-           |${expression.dumpKotlinLike()}
-           |---- With the following IR: ---
-           |${expression.dumpSimple()}
-        """.trimMargin() + run {
-          if (expression is IrDeclarationReference)
-            """|---- Owner is: ---
-               |${expression.symbol.owner.dumpKotlinLike()}
-               |---- With the following IR: ---
-               |${expression.symbol.owner.dumpSimple()}""".trimMargin()
-          else
-            ""
-        }
-
-      warn(msg)
+      //val msg =
+      //  """|----------- Could not project SqlExpression for the expression: -----------
+      //     |${expression.dumpKotlinLike()}
+      //     |---- With the following IR: ---
+      //     |${expression.dumpSimple()}
+      //  """.trimMargin() + run {
+      //    if (expression is IrDeclarationReference)
+      //      """|---- Owner is: ---
+      //         |${expression.symbol.owner.dumpKotlinLike()}
+      //         |---- With the following IR: ---
+      //         |${expression.symbol.owner.dumpSimple()}""".trimMargin()
+      //    else
+      //      ""
+      //  }
+      //warn(msg)
       null
     }
   }

@@ -74,6 +74,7 @@ class VisitTransformExpressions(
     val transformPrint = TransformPrintSource(builderContext, this)
     // TODO just for Expression capture or also for Query capture? Probably both
     val transformCapture = TransformCapturedExpression(builderContext, this)
+    val transformCaptureQuery = TransformCapturedQuery(builderContext, this)
 
 
 
@@ -99,6 +100,7 @@ class VisitTransformExpressions(
       transformPrint.matches(expression) -> transformPrint.transform(expression)
       // NOTE the .matches function should just be a cheap match on the expression, not a full extractionfalse
       transformCapture.matches(expression) -> transformCapture.transform(expression)
+      transformCaptureQuery.matches(expression) -> transformCaptureQuery.transform(expression)
 
       //showAnnotations.matches(expression) -> showAnnotations.transform(expression)
 

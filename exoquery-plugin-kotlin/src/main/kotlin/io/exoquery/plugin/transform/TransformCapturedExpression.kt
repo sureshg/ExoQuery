@@ -63,14 +63,6 @@ class TransformCapturedExpression(override val ctx: BuilderContext, val superTra
 
     val xrExpr = xr as? XR.Expression ?: parseError("Could not parse to expression:\n${xr}") // TODO better print
 
-
-    //val strExpr = call("io.exoquery.unpackExpr").invoke(builder.irString(xrExpr.encode()))
-    //val classId = ClassId.topLevel(FqName("io.exoquery.SqlExpression"))
-    //val sqlExpressionCtor = pluginCtx.referenceConstructors(classId).firstOrNull() ?: throw IllegalStateException("Cannot find a constructor for: ${classId} for SqlExpression")
-    //val sqlExpressionType = sqlExpressionCtor.owner.returnType // don't see the type annotation on the type the io.exoquery.SqlExpression function-return
-    // because obviously it doesn't have an annotation because it's an SqlExpression constructor but the `capture` expression output should have one because that's how the `capture` method is typed
-    //val sqlExpressionType = expression.type
-
     val paramsExprModel = dynamics.makeParams()
     //val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr, paramsListExpr))
     //val makeCasted = builder.irImplicitCast(make, expression.type)
@@ -82,7 +74,7 @@ class TransformCapturedExpression(override val ctx: BuilderContext, val superTra
       }
 
     //logger.warn("=============== Modified value to: ${capturedAnnot.valueArguments[0]?.dumpKotlinLike()}\n======= Whole Type is now:\n${makeCasted.type.dumpKotlinLike()}")
-    logger.warn("========== Output: ==========\n${newSqlExpression.dumpKotlinLike()}")
+    //logger.warn("========== Output: ==========\n${newSqlExpression.dumpKotlinLike()}")
 
     // maybe get rid of @Capture by copying (i.e. splicing since it's presence might tell us where we don't want to splice?)
     // alternatively would need to account for the annotation in the ExprModel?

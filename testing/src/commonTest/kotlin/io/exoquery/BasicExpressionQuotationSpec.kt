@@ -6,7 +6,7 @@ import io.exoquery.xr.XRType
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.equals.shouldBeEqual
 
-class BasicQuotationSpec : FreeSpec({
+class BasicExpressionQuotationSpec : FreeSpec({
   "static cases" - {
     "c0={n0+lift}, c1=c0, c={n1+c1} -> {n1+(n0+lift)}" {
       val cap0 = captureValue { 123 + param(456) }

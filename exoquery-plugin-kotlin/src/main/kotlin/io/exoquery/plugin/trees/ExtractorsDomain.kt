@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import io.exoquery.plugin.trees.CallData.MultiArgMember.ArgType
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.classFqName
 
 // TODO Need to change all instances of FunctionMem... to return Caller as the reciver type
@@ -29,6 +30,26 @@ import org.jetbrains.kotlin.ir.types.classFqName
 //      so it will be necessary to define ReciverCaller.transformWith as well
 
 object ExtractorsDomain {
+
+  object DynamicQueryCall {
+    private fun IrExpression.isSqlQuery() =
+      this.type.isClass<SqlQuery<*>>()
+
+    context (CompileLogger) operator fun <AP: Pattern<IrExpression>> get(x: AP) =
+      customPattern1("DynamicQueryCall", x) { expr: IrExpression ->
+        val matches = expr.match(
+          // TODO are we sure we want to accept arbitrary calls and treat them as dynamic queries?
+          //      perhaps there should be strictier criteria?
+          case(Ir.Call[Is()]).thenIf { call -> expr.isSqlQuery() && call.symbol.owner is IrSimpleFunction }.then { _ -> true },
+          case(Ir.GetField[Is()]).thenIf { expr.isSqlQuery() }.then { _ -> true },
+          case(Ir.GetValue[Is()]).thenIf { expr.isSqlQuery() }.then { _ -> true }
+        ) ?: false
+        if (matches)
+          Components1(expr)
+        else
+          null
+      }
+  }
 
   sealed interface QueryDslFunction {
     context (CompileLogger) fun matchesMethod(it: IrCall): Boolean
