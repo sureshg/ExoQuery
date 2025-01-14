@@ -1,6 +1,7 @@
 package io.exoquery.norm
 
 import io.exoquery.xr.XR.*
+import io.exoquery.xr.XR.Map
 import io.exoquery.xr.*
 import io.exoquery.xr.copy.*
 import io.decomat.*

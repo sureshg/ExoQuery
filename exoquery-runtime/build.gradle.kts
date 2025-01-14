@@ -9,7 +9,7 @@ plugins {
     //kotlin("plugin.serialization") version "2.0.0"
 
     kotlin("multiplatform") version "2.1.0"
-    //id("io.exoquery.terpal-plugin") version "2.1.0-2.0.0.PL"
+    id("io.exoquery.terpal-plugin") version "2.1.0-2.0.0.PL"
     //id("maven-publish")
     id("conventions-multiplatform")
     //id("publish")
@@ -51,7 +51,7 @@ kotlin {
                 // Actually this is going to be 0.0.5 - using an unpublished one now
                 api("io.exoquery:decomat-core:0.4.0")
                 implementation("com.facebook:ktfmt:0.43")
-                //api("io.exoquery:terpal-runtime:2.1.0-2.0.0.PL")
+                api("io.exoquery:terpal-runtime:2.1.0-2.0.0.PL")
                 api("com.github.vertical-blank:sql-formatter:2.0.4")
             }
         }
