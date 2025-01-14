@@ -1,65 +1,65 @@
 package io.exoquery.xr
 
-//class CollectXR<T>(private val collect: (XR) -> T?): StatefulTransformerSingleRoot<MutableList<T>> {
-//
-//  override val state = mutableListOf<T>()
-//
-//  override fun <X : XR> root(xr: X): Pair<X, StatefulTransformerSingleRoot<MutableList<T>>> {
-//    val found = collect(xr)
-//    if (found != null) {
-//      state.add(found)
-//    }
-//    return Pair(xr, this)
-//  }
-//
-//  companion object {
-//    inline fun <reified T> byType(xr: XR): List<T> where T: XR =
-//      CollectXR<T> {
-//        when {
-//          // looks like we need the `as T?` here which looks like a bug
-//          it is T -> it as T?
-//          else -> null as T?
-//        }
-//      }.root(xr).second.state
-//
-//    operator fun <T> invoke(xr: XR, collect: (XR) -> T?): List<T> where T: XR =
-//      CollectXR<T>(collect).root(xr).second.state
-//  }
-//}
-//
-//
-//
-//class ContainsXR(private val predicate: (XR) -> Boolean): StatefulTransformer<Boolean> {
-//
-//  var isFound = false
-//  override val state get() = isFound
-//
-//  override fun invoke(xr: XR.Expression): Pair<XR.Expression, StatefulTransformer<Boolean>> =
-//    if (isFound) xr to this
-//    else { isFound = predicate(xr); xr to this }
-//
-//  override fun invoke(xr: XR.Query): Pair<XR.Query, StatefulTransformer<Boolean>> =
-//    if (isFound) xr to this
-//    else { isFound = predicate(xr); xr to this }
-//
-//  override fun invoke(xr: XR.Branch): Pair<XR.Branch, StatefulTransformer<Boolean>> =
-//    if (isFound) xr to this
-//    else { isFound = predicate(xr); xr to this }
-//
-//  override fun invoke(xr: XR.Variable): Pair<XR.Variable, StatefulTransformer<Boolean>> =
-//    if (isFound) xr to this
-//    else { isFound = predicate(xr); xr to this }
-//
-//  override fun invoke(xr: XR): Pair<XR, StatefulTransformer<Boolean>> =
-//    if (isFound) xr to this
-//    else { isFound = predicate(xr); xr to this }
-//
-//
-//  companion object {
-//    operator fun <T> invoke(xr: XR, collect: (XR) -> T?): List<T> where T: XR =
-//      CollectXR<T>(collect).root(xr).second.state
-//  }
-//}
+class CollectXR<T>(private val collect: (XR) -> T?): StatefulTransformerSingleRoot<MutableList<T>> {
+
+  override val state = mutableListOf<T>()
+
+  override fun <X : XR> root(xr: X): Pair<X, StatefulTransformerSingleRoot<MutableList<T>>> {
+    val found = collect(xr)
+    if (found != null) {
+      state.add(found)
+    }
+    return Pair(xr, this)
+  }
+
+  companion object {
+    inline fun <reified T> byType(xr: XR): List<T> where T: XR =
+      CollectXR<T> {
+        when {
+          // looks like we need the `as T?` here which looks like a bug
+          it is T -> it as T?
+          else -> null as T?
+        }
+      }.root(xr).second.state
+
+    operator fun <T> invoke(xr: XR, collect: (XR) -> T?): List<T> where T: XR =
+      CollectXR<T>(collect).root(xr).second.state
+  }
+}
+
+
+
+class ContainsXR(private val predicate: (XR) -> Boolean): StatefulTransformer<Boolean> {
+
+  var isFound = false
+  override val state get() = isFound
+
+  override fun invoke(xr: XR.Expression): Pair<XR.Expression, StatefulTransformer<Boolean>> =
+    if (isFound) xr to this
+    else { isFound = predicate(xr); xr to this }
+
+  override fun invoke(xr: XR.Query): Pair<XR.Query, StatefulTransformer<Boolean>> =
+    if (isFound) xr to this
+    else { isFound = predicate(xr); xr to this }
+
+  override fun invoke(xr: XR.Branch): Pair<XR.Branch, StatefulTransformer<Boolean>> =
+    if (isFound) xr to this
+    else { isFound = predicate(xr); xr to this }
+
+  override fun invoke(xr: XR.Variable): Pair<XR.Variable, StatefulTransformer<Boolean>> =
+    if (isFound) xr to this
+    else { isFound = predicate(xr); xr to this }
+
+  override fun invoke(xr: XR): Pair<XR, StatefulTransformer<Boolean>> =
+    if (isFound) xr to this
+    else { isFound = predicate(xr); xr to this }
+
+
+  companion object {
+    operator fun <T> invoke(xr: XR, collect: (XR) -> T?): List<T> where T: XR =
+      CollectXR<T>(collect).root(xr).second.state
+  }
+}
 
 
 open class TransformXR(
