@@ -664,7 +664,7 @@ object Ir {
       operator fun <AP: Pattern<A>, A: IrExpression> get(body: AP) =
         customPattern1("Ir.SimpleFunction.withReturnOnlyExpression", body) { it: IrSimpleFunction ->
           on(it).match(
-            case(SimpleFunction[List0(), BlockBody.ReturnOnly[Is()]]).then { _, (b) ->
+            case(SimpleFunction[Is(), BlockBody.ReturnOnly[Is()]]).then { _, (b) ->
               Components1(b)
             }
           )

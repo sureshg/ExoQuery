@@ -28,5 +28,13 @@ internal class SwapTagsTransformer(tagMap: Map<BID, BID>): TransformXR(
         else -> null
       }
     }
+  },
+  transformQuery = {
+    with(it) {
+      when (this) {
+        is XR.TagForSqlQuery -> tagMap.get(id)?.let { XR.TagForSqlQuery.csf(it)(this) }
+        else -> null
+      }
+    }
   }
 )

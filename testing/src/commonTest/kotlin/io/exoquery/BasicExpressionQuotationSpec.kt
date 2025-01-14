@@ -7,7 +7,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.equals.shouldBeEqual
 
 class BasicExpressionQuotationSpec : FreeSpec({
-  "static cases" - {
+  "static quotation mechanics" - {
     "c0={n0+lift}, c1=c0, c={n1+c1} -> {n1+(n0+lift)}" {
       val cap0 = captureValue { 123 + param(456) }
       cap0.determinizeDynamics() shouldBeEqual SqlExpression(
@@ -70,7 +70,7 @@ class BasicExpressionQuotationSpec : FreeSpec({
       )
     }
   }
-  "dynamic cases" - {
+  "dynamic quotation mechanics" - {
     "c0D=dyn{nA}, c={nB+c0D} -> {nB+T(B0),R={B0,nA}}" {
       val x = true
       fun cap0() =

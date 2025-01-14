@@ -50,7 +50,21 @@ object Parser {
 }
 
 object QueryParser {
+
+  context(ParserContext, CompileLogger)
+  private fun processQueryLambda(head: IrExpression, lambda: IrExpression) =
+    lambda.match(
+      case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { _, blockBody ->
+        val headXR = parse(head)
+        val firstParam = firstParam().makeIdent()
+        val tailExpr = ExpressionParser.parseFunctionBlockBody(blockBody)
+        Triple(headXR, firstParam, tailExpr)
+      }
+    )
+
+
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Query =
+    // Note, every single instance being parsed here shuold be of SqlQuery<*>, should check for that as an entry sanity-check
     on(expr).match<XR.Query>(
       case(SqlQueryExpr.Uprootable[Is()]).thenThis { uprootable ->
         val sqlQueryIr = this
@@ -59,15 +73,30 @@ object QueryParser {
         // Then unpack and return the XR
         uprootable.xr // TODO catch errors here?
       },
-      case(Ir.Call.FunctionMem1[Ir.Type.ClassOf<SqlQuery<*>>(), Is("map"), Is()]).then { head, lambda ->
-        lambda.match(
-          case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { _, blockBody ->
-            val headXR = parse(head)
-            val firstParam = firstParam().makeIdent()
-            val tailExpr = ExpressionParser.parseFunctionBlockBody(blockBody)
-            XR.Map(headXR, firstParam, tailExpr, expr.locationXR())
-          }
-        ) ?: parseError("Could not parse XR.Map from: ${expr.dumpSimple()}", expr)
+      case(Ir.Call.FunctionMem1[Ir.Type.ClassOf<SqlQuery<*>>(), Is { it == "map" || it == "concatMap" || it == "filter" }, Is()]).thenThis { head, lambda ->
+        val (head, id, body) = processQueryLambda(head, lambda) ?: parseError("Could not parse XR.Map/ConcatMap/Filter from: ${expr.dumpSimple()}", expr)
+        when (this.symbol.safeName) {
+          "map" -> XR.Map(head, id, body, expr.loc)
+          "concatMap" -> XR.ConcatMap(head, id, body, expr.loc)
+          "filter" -> XR.Filter(head, id, body, expr.loc)
+          else -> parseError("Unknown SqlQuery method call: ${this.symbol.safeName} in: ${expr.dumpKotlinLike()}", expr)
+        }
+      },
+      case(Ir.Call.FunctionMem1[Ir.Type.ClassOf<SqlQuery<*>>(), Is("flatMap"), Is()]).thenThis { head, lambda ->
+          lambda.match(
+            case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { tail ->
+              XR.FlatMap(parse(head), firstParam().makeIdent(), parse(tail), expr.loc)
+            }
+            // TODO for this error message need to have a advanced "mode" that will print out the RAW IR
+          ) ?: parseError("SqlQuery.flatMap(...) lambdas can only be single-statement expressions, they cannot be block-lambdas like:\n${lambda.dumpKotlinLike()}\n-----------------------------------\n${lambda.dumpSimple()}", lambda)
+      },
+      case(Ir.Call.FunctionMem1[Ir.Type.ClassOf<SqlQuery<*>>(), Is { it == "union" || it == "unionAll" }, Is()]).thenThis { head, tail ->
+        val tailXR = parse(tail)
+        when (this.symbol.safeName) {
+          "union" -> XR.Union(parse(head), tailXR, expr.loc)
+          "unionAll" -> XR.UnionAll(parse(head), tailXR, expr.loc)
+          else -> parseError("Unknown SqlQuery method call: ${this.symbol.safeName} in: ${expr.dumpKotlinLike()}", expr)
+        }
       },
       case(Ir.Call.FunctionUntethered0[Is("io.exoquery.Table")]).thenThis { _ ->
         val tpe = TypeParser.ofTypeAt(this.typeArguments[0] ?: parseError("Type arguemnt of Table() call was not found>"), this.location())

@@ -14,8 +14,8 @@ sealed interface ContainerOfXR {
 // Create a wrapper class for runtimes for easy lifting/unlifting
 data class Runtimes(val runtimes: List<Pair<BID, ContainerOfXR>>) {
   companion object {
-    // TODO when splicing into the Container use this if the runtimes variable is actually empty
-    //      that way we can just check for this when in order to know if a tree can be statically translated or not
+    // When this container is spliced, the ExprModel will look for this actual value in the Ir to tell if there are
+    // runtime XR Containers (hence the dynamic-path needs to be followed).
     val Empty = Runtimes(emptyList())
     fun of(vararg runtimes: Pair<BID, ContainerOfXR>) = Runtimes(runtimes.toList())
   }
@@ -51,6 +51,9 @@ data class Params(val lifts: List<Param<*>>) {
 
   companion object {
     fun of(vararg lifts: Param<*>) = Params(lifts.toList())
+    // Added this here to be consistent with Runtimes.Empty but unlike Runtimes.Empty it has no
+    // special usage (i.e. the parser does not look for this value directly in the IR)
+    val Empty = Params(emptyList())
   }
 }
 

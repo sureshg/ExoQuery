@@ -627,7 +627,7 @@ sealed interface XR {
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
-    override fun equals(other: Any?): Boolean = other is TagForSqlExpression && other.id() == cid
+    override fun equals(other: Any?): Boolean = other is TagForSqlQuery && other.id() == cid
   }
 
   @Serializable
