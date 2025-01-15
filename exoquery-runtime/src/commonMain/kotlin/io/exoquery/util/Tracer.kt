@@ -2,7 +2,8 @@ package io.exoquery.util
 
 import io.exoquery.fansi.Attrs
 import io.exoquery.pprint.PPrinterConfig
-import io.exoquery.printing.PrintXR
+import io.exoquery.pprint.Tree
+import io.exoquery.printing.PrintMisc
 import io.exoquery.terpal.Interpolator
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
@@ -19,6 +20,11 @@ sealed interface DebugMsg {
   data class Fragment(val str: String): DebugMsg
   data class Composite(val frags: List<DebugMsg>): DebugMsg
   object Empty: DebugMsg
+}
+
+
+interface ShowTree {
+  fun showTree(config: PPrinterConfig = PPrinterConfig()): Tree
 }
 
 
@@ -80,25 +86,14 @@ class Traceable(
 
   private val elementPrefix = "|  "
 
-  val printXR =
+  val printCommand =
     if (color)
-      PrintXR(XR.serializer(), PPrinterConfig(defaultShowFieldNames = false, defaultWidth = 300))
+      PrintMisc(PPrinterConfig(defaultShowFieldNames = false, defaultWidth = 300))
     else
-      PrintXR(XR.serializer(), PPrinterConfig(defaultShowFieldNames = false, colorLiteral = Attrs.Empty, colorApplyPrefix = Attrs.Empty, defaultWidth = 300))
-
-  val printXRType =
-    if (color)
-      PrintXR(XRType.serializer(), PPrinterConfig(defaultShowFieldNames = false, defaultWidth = 300))
-    else
-      PrintXR(XRType.serializer(), PPrinterConfig(defaultShowFieldNames = false, colorLiteral = Attrs.Empty, colorApplyPrefix = Attrs.Empty, defaultWidth = 300))
+      PrintMisc(PPrinterConfig(defaultShowFieldNames = false, colorLiteral = Attrs.Empty, colorApplyPrefix = Attrs.Empty, defaultWidth = 300))
 
   fun generateStringForCommand(value: Any, indent: Int): String {
-    val objectString =
-      when (value) {
-        is XR -> printXR(value).toString()
-        is XRType -> printXRType(value).toString()
-        else -> value.toString()
-      }
+    val objectString = printCommand.invoke(value).toString()
     val oneLine      = objectString.toString().fitsOnOneLine
     return when(oneLine) {
       true -> "${indent.prefix}> ${objectString}"
@@ -123,9 +118,7 @@ class Traceable(
     val elements = params.map {
       when (it) {
         is String -> Splice.Simple(it)
-        is XR -> Splice.Show(printXR(it).toString())
-        is XRType -> Splice.Show(printXRType(it).toString())
-        else -> Splice.Show(it.toString())
+        else -> Splice.Show(printCommand(it).toString())
       }
     }
 

@@ -10,6 +10,7 @@ plugins {
 
     kotlin("multiplatform") version "2.1.0"
     id("io.exoquery.terpal-plugin") version "2.1.0-2.0.0.PL"
+    id("io.kotest.multiplatform") version "6.0.0.M1"
     //id("maven-publish")
     id("conventions-multiplatform")
     //id("publish")
@@ -43,6 +44,8 @@ kotlin {
                 // TODO probably the gradle plugin should add these?
                 api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
                 api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
+                implementation("io.kotest:kotest-framework-engine:6.0.0.M1")
+                implementation("io.kotest:kotest-assertions-core:6.0.0.M1")
 
                 api(kotlin("reflect"))
                 // Actually this is going to be 0.0.5 - using an unpublished one now
@@ -66,6 +69,12 @@ kotlin {
                 implementation(kotlin("test-annotations-common"))
                 //jvm-only setup for kotest, need to find the KMP way
                 //implementation("io.kotest:kotest-runner-junit5:5.8.0")
+            }
+        }
+
+        val jvmTest by getting {
+            dependencies {
+                implementation("io.kotest:kotest-runner-junit5:6.0.0.M1")
             }
         }
     }
@@ -123,7 +132,18 @@ ksp {
     }
 }
 
-// Needed for Kotest
-//tasks.withType<Test>().configureEach {
-//    useJUnitPlatform()
-//}
+tasks.named<Test>("jvmTest") {
+    useJUnitPlatform()
+    filter {
+        isFailOnNoMatchingTests = false
+    }
+    testLogging {
+        showExceptions = true
+        showStandardStreams = true
+        events = setOf(
+            org.gradle.api.tasks.testing.logging.TestLogEvent.FAILED,
+            org.gradle.api.tasks.testing.logging.TestLogEvent.PASSED
+        )
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}

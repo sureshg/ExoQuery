@@ -3,7 +3,6 @@ package io.exoquery.sql
 import io.exoquery.util.*
 import io.exoquery.xr.*
 import io.exoquery.xr.EqualityOperator.*
-import io.exoquery.xr.BooleanOperator.not
 import io.exoquery.xr.BooleanOperator.and
 import io.exoquery.xr.BooleanOperator.or
 import io.exoquery.xr.XR.BinaryOp
@@ -13,7 +12,6 @@ import io.exoquery.xr.XR.JoinType.*
 import io.exoquery.xr.XR.Ident
 import io.exoquery.xr.XR.Const.Null
 import io.exoquery.xrError
-import io.exoquery.sql.UnnestProperty
 import io.exoquery.xr.XR.Location.Synth
 
 abstract class SqlIdiom {
@@ -27,7 +25,7 @@ abstract class SqlIdiom {
 
   val trace: Tracer by lazy { Tracer(TraceType.SqlNormalizations, traceConfig, 1) }
 
-  fun normalizeQuery(xr: XR.Query) =
+  protected fun normalizeQuery(xr: XR.Query) =
     SqlNormalize(traceConf = traceConfig, disableApplyMap = false)(xr)
 
   fun prepareQuery(xr: XR.Query): SqlQuery {
@@ -41,7 +39,10 @@ abstract class SqlIdiom {
     return aliasesRemoved
   }
 
-  fun translate(xr: XR): Token {
+  fun translate(xr: XR.Query) =
+    prepareQuery(xr).token.toString()
+
+  private fun translateBasic(xr: XR): Token {
     // TODO caching
     return when {
       xr is XR.Query -> {
@@ -56,7 +57,7 @@ abstract class SqlIdiom {
   }
 
   fun show(xr: XR, pretty: Boolean = false): String {
-    val sqlString = translate(xr).token.toString()
+    val sqlString = translateBasic(xr).token.toString()
     // TODO KMP-out an the vertical-blank sql formatter for JVM via `expect`
     val formatted = sqlString
     return formatted

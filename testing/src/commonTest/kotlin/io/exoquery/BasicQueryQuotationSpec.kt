@@ -1,5 +1,7 @@
 package io.exoquery
 
+import io.exoquery.sql.SqlIdiom
+import io.exoquery.sql.SqlNormalize
 import io.exoquery.xr.`+++`
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.EqualityOperator
@@ -18,6 +20,15 @@ class BasicQueryQuotationSpec : FreeSpec({
   val robotEnt = XR.Entity("Robot", robotTpe)
   val pIdent = XR.Ident("p", personTpe)
   val rIdent = XR.Ident("r", robotTpe)
+
+  "map compile" {
+    val cap0 = capture { Table<Person>() }
+    val cap = capture { cap0.map { p -> p.name } }
+
+    val dialect = PostgresDialect()
+    println("---------------- Sql ----------------\n"+dialect.translate(cap.xr))
+  }
+
 
   // Testing of the query DSL note that the quotation mechanics are mostly testing in BasicExpressionQuotationSpec,
   // here we are largely testing the DSL mechanics

@@ -9,6 +9,7 @@ import io.exoquery.kmp.pprint.PPrinter
 import io.exoquery.kmp.pprint.PPrinterManual
 import io.exoquery.pprint.PPrinterConfig
 import io.exoquery.pprint.Tree
+import io.exoquery.util.ShowTree
 import io.exoquery.xr.*
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.serializer
@@ -32,6 +33,7 @@ class PrintMisc(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Any?>
       is SqlQuery<*> -> Tree.Apply("SqlQuery", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
       is Params -> Tree.Apply("Params", x.lifts.map { l -> Tree.KeyValue(l.id.value, Tree.Literal(l.value.toString())) }.iterator())
       is Runtimes -> Tree.Apply("Runtimes", x.runtimes.map { (id, xr) -> Tree.KeyValue(id.value, treeifyThis(xr, null)) }.iterator())
+      is ShowTree -> x.showTree(config)
       else -> super.treeify(x, elementName, escapeUnicode, showFieldNames)
     }
 }
