@@ -75,11 +75,9 @@ class VisitTransformExpressions(
     // TODO just for Expression capture or also for Query capture? Probably both
     val transformCapture = TransformCapturedExpression(builderContext, this)
     val transformCaptureQuery = TransformCapturedQuery(builderContext, this)
-
-
-
-    //val showAnnotations = TransformShowAnnotations(builderContext, this)
-
+    // I.e. tranforms the SqlQuery.build call (i.e. the SqlQuery should have already been transformed into an Uprootable before recursing "out" to the .build call
+    // or the .build call should have recursed down into it (because it calls the superTransformer on the reciever of the .build call)
+    val transformCompileQuery = TransformCompileQuery(builderContext, this)
 
     // TODO Catch parser errors here, make a warning via the compileLogger (in the BuilderContext) & don't transform the expresison
 
@@ -101,6 +99,8 @@ class VisitTransformExpressions(
       // NOTE the .matches function should just be a cheap match on the expression, not a full extractionfalse
       transformCapture.matches(expression) -> transformCapture.transform(expression)
       transformCaptureQuery.matches(expression) -> transformCaptureQuery.transform(expression)
+      // Is this an sqlQuery.build(PostgresDialect) call? if yes see if the it is a compile-time query and transform it
+      transformCompileQuery.matches(expression) -> transformCompileQuery.transform(expression)
 
       //showAnnotations.matches(expression) -> showAnnotations.transform(expression)
 

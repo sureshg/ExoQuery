@@ -6,6 +6,7 @@ import io.exoquery.annotation.*
 import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.trees.Ir
+import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
@@ -127,6 +128,7 @@ fun IrElement.location(fileEntry: IrFileEntry): CompilerMessageSourceLocation {
 fun CompilerMessageSourceLocation.show() =
   "${path}:${line}:${column}"
 
+// TODO change to LocationContainingContext
 context(ParserContext) fun IrElement.location(): CompilerMessageSourceLocation =
   this.location(currentFile.fileEntry)
 

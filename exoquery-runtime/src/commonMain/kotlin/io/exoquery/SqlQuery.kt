@@ -1,7 +1,14 @@
 package io.exoquery
 
 import io.exoquery.printing.PrintMisc
+import io.exoquery.sql.SqlIdiom
 import io.exoquery.xr.XR
+
+// TODO value needs to be Token and we need to write a lifter for Token
+//      This probably needs to be something like SqlCompiledQuery<T> which has constructors
+//      SqlCompiledQuery.compileTime<T>(String|Token,Params,serialier<T>=some-default-value) and SqlCompiledQuery.runtime(query:SqlQuery,serialier<T>=some-default-value)
+//      (actually come to think of it, we can probably implement the dynamic path directly and have the staic path replace the build() method if it's possible)
+data class SqlCompiledQuery<T>(val value: String)
 
 data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtimes, override val params: Params): ContainerOfXR {
   fun <R> map(f: (T) -> R): SqlQuery<R> = error("The map expression of the Query was not inlined")
@@ -30,4 +37,8 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
   fun determinizeDynamics(): SqlQuery<T> = DeterminizeDynamics().ofQuery(this)
 
   fun show() = PrintMisc().invoke(this)
+  // TODO We can build the dynamic path here directly!... and have the static path replace the logic here
+  // TODO this needs to take a Dialect argument that is summoned on the compiler via Class.forName (also do the dynamic path if Class.forName was null and warn the user about that)
+  //      (note there there should also be some kind of global setting (or file-annotation) that makes failures happen in the case of the dynamic path)
+  fun build(dialect: SqlIdiom): SqlCompiledQuery<T> = TODO()
 }

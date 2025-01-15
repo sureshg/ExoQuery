@@ -40,7 +40,9 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
         // Needed for the plugin classpath
         // Note that these do not bring in transitive dependencies so every transitive needs to be explicitly specified!
         target.plugins.withId("org.jetbrains.kotlin.multiplatform") {
+            target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:terpal-runtime:2.1.0-2.0.0.PL")
             target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:pprint-kotlin-core-jvm:3.0.0")
+            target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:pprint-kotlin-kmp-jvm:3.0.0")
             // Fansi and core pprint ADT come from here
             target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:pprint-kotlin:3.0.0")
             // in some places the compiler needs to print things, so the compiled plugin needs pprint

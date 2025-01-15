@@ -1,6 +1,8 @@
 package io.exoquery.plugin.logging
 
 import io.exoquery.plugin.location
+import io.exoquery.plugin.trees.LocationContext
+import io.exoquery.plugin.trees.ParserContext
 import org.jetbrains.kotlin.cli.common.CLIConfigurationKeys
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -17,11 +19,22 @@ data class CompileLogger(val messageCollector: MessageCollector, val currentFile
   fun warn(msg: String) =
     messageCollector.report(CompilerMessageSeverity.WARNING, msg, macroInvokeSite.location(currentFile))
 
+  fun warn(msg: String, loc: Location) =
+    messageCollector.report(CompilerMessageSeverity.WARNING, msg, loc)
+
+  // TODO need a "lesser thing" here than parser context, just need to know the current file so need to make a context with that
+  context(ParserContext) fun warn(msg: String, elem: IrElement) =
+    messageCollector.report(CompilerMessageSeverity.WARNING, msg, elem.location())
+
   fun error(msg: String) =
     messageCollector.report(CompilerMessageSeverity.ERROR, msg, macroInvokeSite.location(currentFile))
 
   fun error(msg: String, loc: Location) {
     messageCollector.report(CompilerMessageSeverity.ERROR, msg, loc)
+  }
+
+  context(ParserContext) fun error(msg: String, elem: IrElement) {
+    messageCollector.report(CompilerMessageSeverity.ERROR, msg, elem.location())
   }
 
   fun currentLocation() = macroInvokeSite.location(currentFile)

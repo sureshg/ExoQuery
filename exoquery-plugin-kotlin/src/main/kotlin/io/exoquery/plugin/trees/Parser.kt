@@ -24,6 +24,10 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import kotlin.comparisons.then
 
+// TODO make ParserContext a subtype of LocationContext so can use it
+//interface LocationContainingContext {
+//
+//}
 
 data class LocationContext(val internalVars: ScopeSymbols, val currentFile: IrFile)
 
