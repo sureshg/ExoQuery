@@ -33,6 +33,11 @@ kotlin {
     jvm()
     // ---- kspCommonMainMetadata won't actually exist without this and no KSP extensions for XR will be generated!
     linuxX64()
+    //@OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    //wasmJs {
+    //    nodejs()
+    //}
+    //iosX64()
 
     sourceSets {
         val commonMain by getting {
@@ -53,7 +58,6 @@ kotlin {
                 api("io.exoquery:pprint-kotlin-kmp:3.0.0")
                 // Actually this is going to be 0.0.5 - using an unpublished one now
                 api("io.exoquery:decomat-core:0.4.0")
-                implementation("com.facebook:ktfmt:0.43")
                 api("io.exoquery:terpal-runtime:2.1.0-2.0.0.PL")
                 api("com.github.vertical-blank:sql-formatter:2.0.4")
             }

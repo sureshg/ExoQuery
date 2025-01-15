@@ -12,6 +12,11 @@ plugins {
 kotlin {
     jvm()
     linuxX64()
+    //@OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    //wasmJs {
+    //    nodejs()
+    //}
+    //iosX64()
 
     sourceSets {
         val commonMain by getting {
