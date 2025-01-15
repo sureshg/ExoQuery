@@ -10,8 +10,8 @@ class BasicQuerySanitySpec : FreeSpec({
   data class Person(val name: String, val age: Int)
 
   "basic query" {
-    val cap0 = capture { Table<Person>() }
-    val cap = capture { cap0.filter { p -> p.name == "Joe" }.map { p -> p.name } }
-    cap.build(PostgresDialect())
+    val people = capture { Table<Person>() }
+    val joes = capture { people.filter { p -> p.name == "Joe" } }
+    joes.build(PostgresDialect())
   }
 })

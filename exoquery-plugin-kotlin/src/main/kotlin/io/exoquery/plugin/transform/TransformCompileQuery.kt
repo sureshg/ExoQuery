@@ -42,7 +42,7 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
               dialect.translate(xr) // TODO catch any potential errors coming from the query compiler
             }
             // TODO can include the sql-formatting library here since the compiler is always on the JVM!
-            warn("Compiled query in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr.location(ctx.currentFile.fileEntry))
+            warn("[ExoQuery]\nCompiled query in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr.location(ctx.currentFile.fileEntry))
 
             val lifter = Lifter(ctx)
             // Gete the type T of the SqlQuery<T> that .build is called on
@@ -51,7 +51,10 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
               makeWithTypes<SqlCompiledQuery<*>>(listOf(queryOutputType), listOf(queryString.lift()))
             }
           }
-        )
+        ) ?: run {
+          warn("The query could not be transformed at compile-time", expr.location(ctx.currentFile.fileEntry))
+          expr
+        }
       }
     ) ?: run {
       expr
