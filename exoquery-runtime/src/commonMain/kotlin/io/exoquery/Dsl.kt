@@ -62,10 +62,14 @@ sealed interface SX {
   data class Where(val condition: XR.Expression): SX
   data class GroupBy(val grouping: XR.Expression): SX
   data class SortBy(val sorting: XR.Expression): SX
+
+  // The structure should be:
+  // val from: SX.From, val joins: List<SX.JoinClause>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?
+  data class Select(val from: SX.From, val joins: List<SX.JoinClause>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?)
 }
 
 // TODO play around with having multiple from-clauses
-data class SXClause(val from: SX.From, val joins: List<SX.JoinClause>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?)
+
 
 //fun example() {
 //  data class Person(val id: String, val name: String, val age: Int)

@@ -201,29 +201,6 @@ object ExtractorsDomain {
           }
         }
     }
-
-    object `select(fun)` {
-      context (CompileLogger) fun matchesMethod(it: IrCall): Boolean =
-        // E.g. is Query."map"
-        it.dispatchReceiver == null && it.extensionReceiver == null && it.symbol.safeName == "select" && it.simpleValueArgsCount == 1 && it.valueArguments.first() != null
-
-      context (CompileLogger) operator fun <AP: Pattern<CallData.LambdaTopLevel>> get(x: AP) =
-        customPattern1("select(fun)", x) { it: IrCall ->
-          if (matchesMethod(it)) {
-            on(it).match(
-              // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
-              case( /* .flatMap */ Ir.Call.FunctionUntethered1.Arg[Is()]).then { expression ->
-                on(expression).match(
-                  case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
-                    val funExpression = this
-                    Components1(CallData.LambdaTopLevel(funExpression, params, blockBody))
-                  }
-                )
-              }
-            )
-          } else null
-        }
-    }
   }
 
 

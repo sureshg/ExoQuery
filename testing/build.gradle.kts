@@ -51,6 +51,10 @@ kotlin {
     }
 }
 
+//tasks.withType<GenerateProjectFileTask> {
+//    gradleArgs = "--info"
+//}
+
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions{
         freeCompilerArgs = listOf(

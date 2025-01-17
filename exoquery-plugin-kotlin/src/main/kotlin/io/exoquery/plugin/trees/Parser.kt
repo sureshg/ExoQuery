@@ -1,10 +1,13 @@
 package io.exoquery.plugin.trees
 
 import io.decomat.Is
+import io.decomat.IsAny
 import io.decomat.case
 import io.decomat.match
 import io.decomat.on
 import io.exoquery.BID
+import io.exoquery.SX
+import io.exoquery.SelectClauseCapturedBlock
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.plugin.printing.dumpSimple
@@ -20,6 +23,7 @@ import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import kotlin.comparisons.then
@@ -127,22 +131,36 @@ fun IrValueParameter.makeIdent() =
 fun IrFunctionExpression.firstParam() =
   this.function.simpleValueParams[0]
 
+
+object SelectClauseParser {
+  context(ParserContext, CompileLogger) fun parse(expr: IrStatement): SX =
+    on(expr).match<SX>(
+      // What about nested select clauses? need to have this parser be recursive due to that
+      case(Ir.Call.FunctionUntethered1[Is("io.exoquery.select"), Is()]).thenThis { _, lambda ->
+        lambda.match(
+          case(Ir.FunctionExpression.withBlockStatements[Is(), Is()]).thenThis { _, statements ->
+            val statementsToParsed = statements.map { it to parse(it) }
+
+            // ValidateAndOrganize(statementsToParsed) should return XR.Select
+            TODO()
+          }
+        ) ?: parseError("Could not parse Select Clause from: ${expr.dumpSimple()}")
+      },
+      case(Ir.Variable[Is(), Ir.Call.FunctionMem1[Ir.Type.ClassOf<SelectClauseCapturedBlock>(), Is("from"), Is()]]).thenThis { name, (ctx, table) ->
+        val id = XR.Ident(name, TypeParser.of(this), this.loc)
+        SX.From(id, QueryParser.parse(table))
+
+        TODO()
+      }
+    ) ?: parseError("Could not parse Select Clause from: ${expr.dumpSimple()}")
+}
+
 /**
  * Parses the tree and collets dynamic binds as it goes. The parser should be exposed
  * as stateless to client functions so everything should go through the `Parser` object instead of this.
  */
 object ExpressionParser {
   // TODO need to parse interpolations
-
-  context(ParserContext, CompileLogger) inline fun <reified T> parseAs(expr: IrExpression): T {
-    val parsedExpr = parse(expr)
-    return if (parsedExpr is T) parsedExpr
-    else parseError(
-      """|Could not parse the type expected type ${T::class.qualifiedName} (actual was ${parsedExpr::class.qualifiedName}) 
-         |${expr.dumpKotlinLike()}
-      """.trimMargin()
-    )
-  }
 
   context(ParserContext, CompileLogger) fun parseBlockStatement(expr: IrStatement): XR.Variable =
     on(expr).match(
@@ -236,12 +254,12 @@ object ExpressionParser {
       // Binary Operators
       case(ExtractorsDomain.Call.`x op y`[Is()]).thenThis { opCall ->
         val (x, op, y) = opCall
-        XR.BinaryOp(parseAs<XR.Expression>(x), op, parseAs<XR.Expression>(y), expr.loc)
+        XR.BinaryOp(parse(x), op, parse(y), expr.loc)
       },
       // Unary Operators
       case(ExtractorsDomain.Call.`(op)x`[Is()]).thenThis { opCall ->
         val (x, op) = opCall
-        XR.UnaryOp(op, parseAs<XR.Expression>(x), expr.loc)
+        XR.UnaryOp(op, parse(x), expr.loc)
       },
 
       case(ExtractorsDomain.Call.`x to y`[Is(), Is()]).thenThis { x, y ->

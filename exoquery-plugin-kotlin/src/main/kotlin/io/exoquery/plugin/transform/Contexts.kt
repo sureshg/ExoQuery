@@ -18,7 +18,7 @@ data class BuilderContext(
   val currentExpr: IrElement,
   val parentScopeSymbols: ScopeSymbols
 ) {
-  val logger = CompileLogger(compilerConfig, currentFile.fileEntry, currentExpr)
+  val logger = CompileLogger(compilerConfig, currentFile, currentExpr)
   val builder = DeclarationIrBuilder(pluginCtx, scopeOwner, currentExpr.startOffset, currentExpr.endOffset)
   fun makeLifter() = Lifter(this)
 }
