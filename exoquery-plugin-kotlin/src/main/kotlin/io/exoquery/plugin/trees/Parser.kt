@@ -1,13 +1,13 @@
 package io.exoquery.plugin.trees
 
 import io.decomat.Is
-import io.decomat.IsAny
 import io.decomat.case
 import io.decomat.match
 import io.decomat.on
 import io.exoquery.BID
 import io.exoquery.SX
 import io.exoquery.SelectClauseCapturedBlock
+import io.exoquery.SelectForSX
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.plugin.printing.dumpSimple
@@ -15,18 +15,14 @@ import io.exoquery.plugin.transform.ScopeSymbols
 import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.trees.Parser.parseFunctionBlockBody
-import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.xr.*
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import kotlin.comparisons.then
 
 // TODO make ParserContext a subtype of LocationContext so can use it
 //interface LocationContainingContext {
@@ -48,6 +44,11 @@ object Parser {
   context(LocationContext, CompileLogger) fun parseQuery(expr: IrExpression): Pair<XR.Query, DynamicsAccum> =
     with (ParserContext(internalVars, this@LocationContext.currentFile)) {
       QueryParser.parse(expr) to binds
+    }
+
+  context(LocationContext, CompileLogger) fun parseSelectClauseLambda(expr: IrExpression): Pair<SelectForSX, DynamicsAccum> =
+    with (ParserContext(internalVars, this@LocationContext.currentFile)) {
+      SelectClauseParser.parseSelectLambda(expr) to binds
     }
 
   // TODO rename to invoke? or just parse
@@ -133,25 +134,30 @@ fun IrFunctionExpression.firstParam() =
 
 
 object SelectClauseParser {
-  context(ParserContext, CompileLogger) fun parse(expr: IrStatement): SX =
-    on(expr).match<SX>(
-      // What about nested select clauses? need to have this parser be recursive due to that
-      case(Ir.Call.FunctionUntethered1[Is("io.exoquery.select"), Is()]).thenThis { _, lambda ->
-        lambda.match(
-          case(Ir.FunctionExpression.withBlockStatements[Is(), Is()]).thenThis { _, statements ->
-            val statementsToParsed = statements.map { it to parse(it) }
+  context(ParserContext, CompileLogger) fun parseSelectLambda(lambda: IrStatement): SelectForSX =
+    lambda.match(
+      case(Ir.FunctionExpression.withBlockStatements[Is(), Is()]).thenThis { _, statementsFromRet ->
+        if (statementsFromRet.isEmpty()) error("A select-clause usually should have two statements, a from(query) and an output. This one has neither", lambda) // TODO provide example in the error
+        val ret = statementsFromRet.last()
+        val retXR = ExpressionParser.parse((ret as IrReturn).value)
+        if (ret !is IrReturn) error("The last statement in a select-clause must be a return statement", lambda) // TODO provide example in the error
+        val statementsFrom = statementsFromRet.dropLast(1)
+        if (statementsFrom.isEmpty()) SelectForSX.justSelect(retXR)
 
-            // ValidateAndOrganize(statementsToParsed) should return XR.Select
-            TODO()
-          }
-        ) ?: parseError("Could not parse Select Clause from: ${expr.dumpSimple()}")
-      },
+        val statementsToParsed = statementsFrom.map { parseSubClause(it) to it }
+        ValidateAndOrganize(statementsToParsed, retXR)
+      }
+    ) ?: parseError("Could not parse Select Clause from: ${lambda.dumpSimple()}")
+
+  // need to test case of `select { from(x.map(select { ... })) }` to see how nested recursion works
+  // also test case of `select { from(select { ... } }` to see how nested recursion works
+  context(ParserContext, CompileLogger) fun parseSubClause(expr: IrStatement): SX =
+    on(expr).match<SX>(
       case(Ir.Variable[Is(), Ir.Call.FunctionMem1[Ir.Type.ClassOf<SelectClauseCapturedBlock>(), Is("from"), Is()]]).thenThis { name, (ctx, table) ->
         val id = XR.Ident(name, TypeParser.of(this), this.loc)
         SX.From(id, QueryParser.parse(table))
-
-        TODO()
       }
+      // TODO Joins etc...
     ) ?: parseError("Could not parse Select Clause from: ${expr.dumpSimple()}")
 }
 

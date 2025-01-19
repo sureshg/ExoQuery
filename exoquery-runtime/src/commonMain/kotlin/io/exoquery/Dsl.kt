@@ -52,20 +52,23 @@ fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = error("T
 
 // TODO Dsl functions for grouping
 
-// The select-clause sub-AST
+// Unline XR, SX is not a recursive AST, is merely a prefix AST that has a common-base class
 sealed interface SX {
   data class From(val variable: XR.Ident, val xr: XR.Query): SX
   sealed interface JoinClause: SX
-  data class Join(val variable: XR.Ident, val xr: XR.Query, val condition: XR.Expression): JoinClause
-  data class JoinLeft(val variable: XR.Ident, val xr: XR.Query, val condition: XR.Expression): JoinClause
+  data class Join(val joinType: XR.JoinType, val variable: XR.Ident, val xr: XR.Query, val condition: XR.Expression): JoinClause
   // TODO JoinFull when the DSL part is added
   data class Where(val condition: XR.Expression): SX
   data class GroupBy(val grouping: XR.Expression): SX
   data class SortBy(val sorting: XR.Expression): SX
+}
 
-  // The structure should be:
-  // val from: SX.From, val joins: List<SX.JoinClause>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?
-  data class Select(val from: SX.From, val joins: List<SX.JoinClause>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?)
+// The structure should be:
+// val from: SX.From, val joins: List<SX.JoinClause>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?
+data class SelectForSX(val from: List<SX.From>, val joins: List<SX.JoinClause>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?, val select: XR.Expression) {
+  companion object {
+    fun justSelect(select: XR.Expression): SelectForSX = SelectForSX(emptyList(), emptyList(), null, null, null, select)
+  }
 }
 
 // TODO play around with having multiple from-clauses
