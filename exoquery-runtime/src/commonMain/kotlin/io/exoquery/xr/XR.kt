@@ -591,6 +591,8 @@ sealed interface XR {
 
     @Transient override val productComponents = productOf(this, name)
     companion object {
+      val Unused = XR.Ident("unused", XRType.Unknown, XR.Location.Synth)
+
       // Can't use context recievers in phases since query-compiler needs to be
       // implemented in all platforms, not only java
       //context(Ident) fun fromThis(name: String) = copy(name = name)

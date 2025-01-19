@@ -54,13 +54,13 @@ fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = error("T
 
 // Unline XR, SX is not a recursive AST, is merely a prefix AST that has a common-base class
 sealed interface SX {
-  data class From(val variable: XR.Ident, val xr: XR.Query): SX
+  data class From(val variable: XR.Ident, val xr: XR.Query, val loc: XR.Location): SX
   sealed interface JoinClause: SX
-  data class Join(val joinType: XR.JoinType, val variable: XR.Ident, val xr: XR.Query, val condition: XR.Expression): JoinClause
+  data class Join(val joinType: XR.JoinType, val variable: XR.Ident, val onQuery: XR.Query, val conditionVariable: XR.Ident, val condition: XR.Expression, val loc: XR.Location): JoinClause
   // TODO JoinFull when the DSL part is added
-  data class Where(val condition: XR.Expression): SX
-  data class GroupBy(val grouping: XR.Expression): SX
-  data class SortBy(val sorting: XR.Expression): SX
+  data class Where(val condition: XR.Expression, val loc: XR.Location): SX
+  data class GroupBy(val grouping: XR.Expression, val loc: XR.Location): SX
+  data class SortBy(val sorting: XR.Expression, val ordering: XR.Ordering, val loc: XR.Location): SX
 }
 
 // The structure should be:

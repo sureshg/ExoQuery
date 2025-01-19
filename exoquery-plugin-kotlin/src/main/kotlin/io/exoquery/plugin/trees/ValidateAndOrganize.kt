@@ -1,6 +1,7 @@
 package io.exoquery.plugin.trees
 
 import io.exoquery.SX
+import io.exoquery.SelectForSX
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.IrElement
@@ -9,6 +10,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 
 object ValidateAndOrganize {
   private interface Phase {
+    data object BEGIN: Phase
     data object FROM: Phase
     data object JOIN: Phase
     data object MODIFIER: Phase // I.e. for group/sort/take/drop
@@ -16,7 +18,7 @@ object ValidateAndOrganize {
 
   // The "pure functiona' way to do this would be to have a State object that is copied with new values but since
   // everything here is completely private and the only way to interact with it is through the invoke function, we it should be fine for now.
-  private class State(var phase: Phase = Phase.FROM, val froms: MutableList<SX.From> = mutableListOf(), val joins: MutableList<SX.Join> = mutableListOf(), var where: SX.Where? = null, var groupBy: SX.GroupBy? = null, var sortBy: SX.SortBy? = null) {
+  private class State(var phase: Phase = Phase.BEGIN, val froms: MutableList<SX.From> = mutableListOf(), val joins: MutableList<SX.Join> = mutableListOf(), var where: SX.Where? = null, var groupBy: SX.GroupBy? = null, var sortBy: SX.SortBy? = null) {
     fun validPhases(vararg phases: Phase) = { errorMsg: String ->
       if (phases.contains(phase)) error(errorMsg)
     }
@@ -26,13 +28,13 @@ object ValidateAndOrganize {
 
     context(ParserContext, CompileLogger)
     fun addFrom(from: SX.From, expr: IrElement) {
-      validPhases(Phase.FROM)("Cannot add a Fom clause after a Join clause or any other clause")
+      validPhases(Phase.BEGIN, Phase.FROM)("Cannot add a FROM clause after a JOIN clause or any other kind of clause")
       setPhase(Phase.FROM)
       froms += from
     }
     context(ParserContext, CompileLogger)
     fun addJoin(join: SX.Join, expr: IrElement) {
-      validPhases(Phase.JOIN, Phase.FROM)("Cannot only add JOIN clauses after From and before any Where/Group/Sort clauses. ")
+      validPhases(Phase.JOIN, Phase.FROM)("At least one FROM-clause is needed and can only add JOIN clauses after FROM and before any WHERE/GROUP/SORT clauses.")
       setPhase(Phase.JOIN)
       joins += join
     }
@@ -68,10 +70,9 @@ object ValidateAndOrganize {
         is SX.Where -> state.addWhere(sx, stmt)
         is SX.GroupBy -> state.addGroupBy(sx, stmt)
         is SX.SortBy -> state.addSortBy(sx, stmt)
-        is SX.Select -> error("Cannot have a SELECT clause in this context", stmt)
       }
     }
-    return SX.Select(state.froms, state.joins, state.where, state.groupBy, state.sortBy, ret)
+    return SelectForSX(state.froms, state.joins, state.where, state.groupBy, state.sortBy, ret)
   }
 
 }
