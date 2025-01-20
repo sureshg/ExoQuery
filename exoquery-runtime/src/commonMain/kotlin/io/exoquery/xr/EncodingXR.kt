@@ -1,27 +1,39 @@
 package io.exoquery.xr
 
+import io.exoquery.SelectClause
+import io.exoquery.xr.EncodingXR.protoBuf
 import kotlinx.serialization.decodeFromHexString
 import kotlinx.serialization.encodeToHexString
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.protobuf.ProtoBuf
-import kotlinx.serialization.protobuf.ProtoBuf.Default.serializersModule
 import kotlinx.serialization.serializer
 
+object EncodingXR {
+  val module = SerializersModule {
+    polymorphic(XR.CustomQuery::class) {
+      subclass(SelectClause::class, SelectClause.serializer())
+    }
+  }
+  val protoBuf = ProtoBuf { serializersModule = module }
+}
+
 fun XR.encode(): String {
-  return ProtoBuf.encodeToHexString(serializersModule.serializer<XR>(), this)
+  return protoBuf.encodeToHexString(EncodingXR.module.serializer<XR>(), this)
 }
 
 fun String.decodeXR(): XR {
-  return ProtoBuf.decodeFromHexString(serializersModule.serializer<XR>(), this)
+  return protoBuf.decodeFromHexString(EncodingXR.module.serializer<XR>(), this)
 }
 
 fun String.decodeXRExpr(): XR.Expression {
-  return ProtoBuf.decodeFromHexString(serializersModule.serializer<XR.Expression>(), this)
+  return protoBuf.decodeFromHexString(EncodingXR.module.serializer<XR.Expression>(), this)
 }
 
 fun XRType.encode(): String {
-  return ProtoBuf.encodeToHexString(serializersModule.serializer<XRType>(), this)
+  return protoBuf.encodeToHexString(EncodingXR.module.serializer<XRType>(), this)
 }
 
 fun String.decodeXRType(): XRType {
-  return ProtoBuf.decodeFromHexString(serializersModule.serializer<XRType>(), this)
+  return protoBuf.decodeFromHexString(EncodingXR.module.serializer<XRType>(), this)
 }

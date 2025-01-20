@@ -1,15 +1,25 @@
 package io.exoquery
 
 import io.exoquery.annotation.Captured
+import io.exoquery.kmp.pprint.PPrinter
+import io.exoquery.pprint.PPrinterConfig
+import io.exoquery.pprint.Tree
+import io.exoquery.printing.PrintSkipLoc
+import io.exoquery.xr.EncodingXR
+import io.exoquery.xr.SelectClauseToXR
+import io.exoquery.xr.StatefulTransformer
+import io.exoquery.xr.StatelessTransformer
 import io.exoquery.xr.XR
+import io.exoquery.xr.XRType
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromHexString
 import kotlinx.serialization.protobuf.ProtoBuf
 
 fun unpackExpr(expr: String): XR.Expression =
-  ProtoBuf.decodeFromHexString<XR.Expression>(expr)
+  EncodingXR.protoBuf.decodeFromHexString<XR.Expression>(expr)
 
 fun unpackQuery(query: String): XR.Query =
-  ProtoBuf.decodeFromHexString<XR.Query>(query)
+  EncodingXR.protoBuf.decodeFromHexString<XR.Query>(query)
 
 
 
@@ -53,21 +63,44 @@ fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = error("T
 // TODO Dsl functions for grouping
 
 // Unline XR, SX is not a recursive AST, is merely a prefix AST that has a common-base class
+@Serializable
 sealed interface SX {
-  data class From(val variable: XR.Ident, val xr: XR.Query, val loc: XR.Location): SX
-  sealed interface JoinClause: SX
-  data class Join(val joinType: XR.JoinType, val variable: XR.Ident, val onQuery: XR.Query, val conditionVariable: XR.Ident, val condition: XR.Expression, val loc: XR.Location): JoinClause
-  // TODO JoinFull when the DSL part is added
-  data class Where(val condition: XR.Expression, val loc: XR.Location): SX
-  data class GroupBy(val grouping: XR.Expression, val loc: XR.Location): SX
-  data class SortBy(val sorting: XR.Expression, val ordering: XR.Ordering, val loc: XR.Location): SX
+  @Serializable
+  data class From(val variable: XR.Ident, val xr: XR.Query, val loc: XR.Location = XR.Location.Synth): SX
+  @Serializable
+  data class Join(val joinType: XR.JoinType, val variable: XR.Ident, val onQuery: XR.Query, val conditionVariable: XR.Ident, val condition: XR.Expression, val loc: XR.Location = XR.Location.Synth): SX
+  @Serializable
+  data class Where(val condition: XR.Expression, val loc: XR.Location = XR.Location.Synth): SX
+  @Serializable
+  data class GroupBy(val grouping: XR.Expression, val loc: XR.Location = XR.Location.Synth): SX
+  @Serializable
+  data class SortBy(val sorting: XR.Expression, val ordering: XR.Ordering, val loc: XR.Location = XR.Location.Synth): SX
 }
 
 // The structure should be:
 // val from: SX.From, val joins: List<SX.JoinClause>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?
-data class SelectForSX(val from: List<SX.From>, val joins: List<SX.JoinClause>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?, val select: XR.Expression) {
+@Serializable
+data class SelectClause(
+  val from: List<SX.From>,
+  val joins: List<SX.Join>,
+  val where: SX.Where?,
+  val groupBy: SX.GroupBy?,
+  val sortBy: SX.SortBy?,
+  val select: XR.Expression,
+  override val type: XRType,
+  override val loc: XR.Location = XR.Location.Synth
+): XR.CustomQuery.Convertable {
+  override fun toQueryXR(): XR.Query = SelectClauseToXR(this)
+
+  // Do nothing for now, in the cuture recurse in queries and expressions inside the SX clauses
+  override fun handleStatelessTransform(transformer: StatelessTransformer): XR.CustomQuery = this
+
+  // Do nothing for now, in the cuture recurse in queries and expressions inside the SX clauses
+  override fun <S> handleStatefulTransformer(transformer: StatefulTransformer<S>): Pair<XR.CustomQuery, StatefulTransformer<S>> = this to transformer
+  override fun showTree(config: PPrinterConfig): Tree = PrintSkipLoc<SelectClause>(SelectClause.serializer(), config).treeify(this, null, false, false)
+
   companion object {
-    fun justSelect(select: XR.Expression): SelectForSX = SelectForSX(emptyList(), emptyList(), null, null, null, select)
+    fun justSelect(select: XR.Expression, loc: XR.Location): SelectClause = SelectClause(emptyList(), emptyList(), null, null, null, select, select.type, loc)
   }
 }
 

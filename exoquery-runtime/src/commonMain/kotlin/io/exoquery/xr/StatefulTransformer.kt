@@ -2,6 +2,7 @@ package io.exoquery.xr
 
 //import io.exoquery.util.DebugMsg
 import io.exoquery.xr.XR.*
+import io.exoquery.xr.XR.Map // Make sure to explicitly have this import or Scala will use Map the collection
 import io.exoquery.xr.copy.*
 
 /**
@@ -148,7 +149,7 @@ interface StatefulTransformer<T> {
           val (bA, stateB) = stateA.invoke(body)
           FlatMap.cs(aA, id, bA) to stateB
         }
-        is XR.Map -> {
+        is Map -> {
           val (aA, stateA) = invoke(head)
           val (bA, stateB) = stateA.invoke(body)
           Map.cs(aA, id, bA) to stateB
@@ -235,6 +236,10 @@ interface StatefulTransformer<T> {
           QueryOf.cs(headA) to stateA
         }
         is TagForSqlQuery -> this to this@StatefulTransformer
+        is CustomQueryRef -> {
+          val (cust, state) = customQuery.handleStatefulTransformer(this@StatefulTransformer)
+          CustomQueryRef.cs(cust) to state
+        }
       }
     }
 

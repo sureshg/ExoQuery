@@ -3,6 +3,8 @@ package io.exoquery.xr
 import io.exoquery.xr.id
 import io.exoquery.BID
 import io.exoquery.printing.PrintXR
+import io.exoquery.sql.Token
+import io.exoquery.util.ShowTree
 import io.exoquery.util.dropLastSegment
 import io.exoquery.util.takeLastSegment
 import kotlinx.serialization.Serializable
@@ -722,6 +724,37 @@ sealed interface XR {
   sealed interface Visibility {
     @Serializable object Hidden: Visibility { override fun toString() = "Hidden" }
     @Serializable object Visible: Visibility { override fun toString() = "Visible" }
+  }
+
+  // Every single custom extension to the XR.Query needs to provide for the capability to either
+  // A. Convert to a regular XR before the query compilation transformations start (this will be invoked in the NormalizeCustomQueries phase
+  // B. Provide a tokenizer function which will allow it to be propagated throughout the phases all the way to the tokenization phase where this will be invoked
+  // NOTE that either way, the custom extnesions need to be registered need to be serializeable by Kotlin and registered in the
+  // EncodingXR.module
+  // (Note extending ShowTree also ensures that the implementor must implement a way to show the CustomQuery tree via the printer)
+  sealed interface CustomQuery: ShowTree {
+    val type: XRType
+    val loc: XR.Location
+
+    fun handleStatelessTransform(transformer: StatelessTransformer): CustomQuery
+    fun <S> handleStatefulTransformer(transformer: StatefulTransformer<S>): Pair<CustomQuery, StatefulTransformer<S>>
+
+    interface Convertable: CustomQuery {
+      fun toQueryXR(): XR.Query
+    }
+    interface Tokenizeable: CustomQuery {
+      fun tokenize(): Token
+    }
+  }
+
+  @Serializable
+  @Mat
+  data class CustomQueryRef(@Slot val customQuery: XR.CustomQuery): XR.Query, PC<CustomQueryRef> {
+    @Transient override val productComponents = productOf(this, customQuery)
+    companion object {}
+    override fun toString() = show()
+    override val type get() = customQuery.type
+    override val loc: Location = customQuery.loc
   }
 
   // NOTE: No renameable because in ExoQuery properties will be renamed when created on the parent object i.e.

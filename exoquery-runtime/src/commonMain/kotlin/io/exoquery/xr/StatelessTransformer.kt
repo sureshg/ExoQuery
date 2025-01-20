@@ -1,6 +1,7 @@
 package io.exoquery.xr
 
 import io.exoquery.xr.XR.*
+import io.exoquery.xr.XR.Map // Make sure to explicitly have this import or Scala will use Map the collection
 
 interface StatelessTransformerSingleRoot: StatelessTransformer {
   fun <X> root(xr: X): X where X: XR
@@ -62,7 +63,7 @@ interface StatelessTransformer {
     with(xr) {
       when (this) {
         is FlatMap -> FlatMap.csf(invoke(head), invokeIdent(id), invoke(body))(this)
-        is XR.Map -> XR.Map.csf(invoke(head), invokeIdent(id), invoke(body))(this)
+        is Map -> Map.csf(invoke(head), invokeIdent(id), invoke(body))(this)
         is Entity -> this
         is Filter -> Filter.csf(invoke(head), invokeIdent(id), invoke(body))(this)
         is Union -> Union.csf(invoke(a), invoke(b))(this)
@@ -83,6 +84,7 @@ interface StatelessTransformer {
         // Infix can both be Expression and Query
         is Infix -> Infix.csf(parts, params.map { invoke(it) })(this)
         is TagForSqlQuery -> this
+        is CustomQueryRef -> CustomQueryRef.csf(customQuery.handleStatelessTransform(this@StatelessTransformer))(this)
       }
     }
 }

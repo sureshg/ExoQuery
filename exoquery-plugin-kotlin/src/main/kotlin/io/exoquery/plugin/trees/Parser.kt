@@ -7,7 +7,7 @@ import io.decomat.on
 import io.exoquery.BID
 import io.exoquery.SX
 import io.exoquery.SelectClauseCapturedBlock
-import io.exoquery.SelectForSX
+import io.exoquery.SelectClause
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.plugin.printing.dumpSimple
@@ -46,7 +46,7 @@ object Parser {
       QueryParser.parse(expr) to binds
     }
 
-  context(LocationContext, CompileLogger) fun parseSelectClauseLambda(expr: IrExpression): Pair<SelectForSX, DynamicsAccum> =
+  context(LocationContext, CompileLogger) fun parseSelectClauseLambda(expr: IrExpression): Pair<SelectClause, DynamicsAccum> =
     with (ParserContext(internalVars, this@LocationContext.currentFile)) {
       SelectClauseParser.parseSelectLambda(expr) to binds
     }
@@ -134,7 +134,7 @@ fun IrFunctionExpression.firstParam() =
 
 
 object SelectClauseParser {
-  context(ParserContext, CompileLogger) fun parseSelectLambda(lambda: IrStatement): SelectForSX =
+  context(ParserContext, CompileLogger) fun parseSelectLambda(lambda: IrStatement): SelectClause =
     lambda.match(
       case(Ir.FunctionExpression.withBlockStatements[Is(), Is()]).thenThis { _, statementsFromRet ->
         if (statementsFromRet.isEmpty()) error("A select-clause usually should have two statements, a from(query) and an output. This one has neither", lambda) // TODO provide example in the error
@@ -142,7 +142,7 @@ object SelectClauseParser {
         val retXR = ExpressionParser.parse((ret as IrReturn).value)
         if (ret !is IrReturn) error("The last statement in a select-clause must be a return statement", lambda) // TODO provide example in the error
         val statementsFrom = statementsFromRet.dropLast(1)
-        if (statementsFrom.isEmpty()) SelectForSX.justSelect(retXR)
+        if (statementsFrom.isEmpty()) SelectClause.justSelect(retXR, lambda.loc)
 
         val statementsToParsed = statementsFrom.map { parseSubClause(it) to it }
         ValidateAndOrganize(statementsToParsed, retXR)

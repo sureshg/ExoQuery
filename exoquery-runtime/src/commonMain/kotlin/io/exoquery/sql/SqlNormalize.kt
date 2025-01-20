@@ -1,6 +1,7 @@
 package io.exoquery.sql
 
 import io.exoquery.norm.Normalize
+import io.exoquery.norm.NormalizeCustomQueries
 import io.exoquery.norm.RepropagateTypes
 import io.exoquery.printing.HasPhasePrinting
 import io.exoquery.util.TraceConfig
@@ -21,10 +22,14 @@ class SqlNormalize(
 
   val NormalizePhase = Normalize(traceConf, disableApplyMap)
   val RepropagateTypesPhase = RepropagateTypes(traceConf)
+  val NormalizeCustomQueriesPhase = NormalizeCustomQueries()
 
   private val root = { it: Query -> it }
   private val normalize =
     root
+      .andThen("NormalizeCustomQueries") {
+        NormalizeCustomQueriesPhase(it)
+      }
       .andThen("RepropagateTypes") {
         RepropagateTypesPhase(it)
       }

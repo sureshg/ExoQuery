@@ -1,12 +1,8 @@
-package io.exoquery
+package io.exoquery.xr
 
-import io.exoquery.xr.`+==+`
-import io.exoquery.xr.AggregationOperator
-import io.exoquery.xr.NumericOperator
-import io.exoquery.xr.XR
-import io.exoquery.xr.XRType
-import io.exoquery.xr.decodeXR
-import io.exoquery.xr.encode
+import io.exoquery.BID
+import io.exoquery.SX
+import io.exoquery.SelectClause
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.be
 import io.kotest.matchers.should
@@ -68,11 +64,11 @@ class EncodingSpecXR: FreeSpec({
       XR.UnaryOp(NumericOperator.minus, one).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
     }
     "TagForParam" {
-      val xr = XR.TagForParam(BID.new(), XRType.Value)
+      val xr = XR.TagForParam(BID.Companion.new(), XRType.Value)
       xr.encode().decodeXR() shouldBeXR xr
     }
     "TagForSqlExpression" {
-      val xr = XR.TagForSqlExpression(BID.new(), XRType.Value)
+      val xr = XR.TagForSqlExpression(BID.Companion.new(), XRType.Value)
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Aggregation" {
@@ -98,8 +94,12 @@ class EncodingSpecXR: FreeSpec({
     val people = XR.Entity("People", peopleType)
     val specialPeople = XR.Entity("SpecialPeople", peopleType)
     val peopleVar = XR.Ident("p", peopleType)
-    val greenPeople = XR.Property(peopleVar, "name") `+==+` XR.Const.String("Green")
+    val peopleAreGreen = XR.Property(peopleVar, "name") `+==+` XR.Const.String("Green")
     val peopleToName = XR.Map(people, peopleVar, XR.Property(XR.Ident("p", peopleType), "name"))
+    val addressType = XRType.Product("foo.bar.Product", listOf("street" to XRType.Value, "city" to XRType.Value))
+    val addresses = XR.Entity("Addresses", addressType)
+    val addressesVar = XR.Ident("a", addressType)
+    val addressesJoinCond = XR.Property(peopleVar, "name") `+==+` XR.Property(addressesVar, "street")
 
     "FlatMap" {
       val xr = XR.FlatMap(people, XR.Ident("bar", XRType.Value), peopleToName)
@@ -112,7 +112,7 @@ class EncodingSpecXR: FreeSpec({
       people.encode().decodeXR() shouldBeXR people
     }
     "Filter" {
-      val xr = XR.Filter(people, peopleVar, greenPeople)
+      val xr = XR.Filter(people, peopleVar, peopleAreGreen)
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Union" {
@@ -132,7 +132,7 @@ class EncodingSpecXR: FreeSpec({
       xr.encode().decodeXR() shouldBeXR xr
     }
     "FlatFilter" {
-      val xr = XR.FlatFilter(greenPeople)
+      val xr = XR.FlatFilter(peopleAreGreen)
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Distinct" {
@@ -145,6 +145,20 @@ class EncodingSpecXR: FreeSpec({
     }
     "Nested" {
       val xr = XR.Nested(people)
+      xr.encode().decodeXR() shouldBeXR xr
+    }
+    "CustomQueryRef" {
+      val clause =
+        SelectClause(
+          listOf(SX.From(peopleVar, people)),
+          listOf(SX.Join(XR.JoinType.Inner, addressesVar, addresses, addressesVar, addressesJoinCond)),
+          SX.Where(peopleAreGreen),
+          SX.GroupBy(peopleVar),
+          SX.SortBy(peopleVar, XR.Ordering.Asc),
+          peopleVar,
+          peopleType
+        )
+      val xr = XR.CustomQueryRef(clause)
       xr.encode().decodeXR() shouldBeXR xr
     }
   }

@@ -44,6 +44,7 @@ import io.exoquery.xr.XR.Property
 import io.exoquery.xr.XR.Block
 import io.exoquery.xr.XR.When
 import io.exoquery.xr.XR.Branch
+import io.exoquery.xr.XR.CustomQueryRef
 import io.exoquery.xr.XR.Variable
 
 val Entity.Entity get() = this
@@ -165,3 +166,6 @@ fun Branch.cs(cond: XR.Expression, then: XR.Expression) = io.exoquery.xr.XR.Bran
 
 val Variable.Variable get() = this
 fun Variable.cs(name: XR.Ident, rhs: XR.Expression) = io.exoquery.xr.XR.Variable.csf(name, rhs)(this)
+
+val CustomQueryRef.CustomQueryRef get() = this
+fun CustomQueryRef.cs(customQuery: XR.CustomQuery) = io.exoquery.xr.XR.CustomQueryRef.csf(customQuery)(this)

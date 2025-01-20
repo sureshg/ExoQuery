@@ -4,6 +4,7 @@ import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
 import io.exoquery.util.Tracer
 import io.exoquery.xr.XR.*
+import io.exoquery.xr.XR.Map // Make sure to explicitly have this import or Scala will use Map the collection
 import io.exoquery.xr.XR
 import io.exoquery.xr.*
 import io.exoquery.xr.copy.*
@@ -43,7 +44,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //      case Map(a, b, c) =>
 //        dealias(a, b, c)(Map)
 
-        is XR.Map -> {
+        is Map -> {
           val (a, b, c, t) = dealias(head, id, body)
           Map.cs(a, b, c) to t
         }
@@ -154,6 +155,11 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 
         is Entity, is Distinct, is Nested, is FlatFilter, is FlatSortBy, is FlatGroupBy, is Infix, is QueryOf, is TagForSqlQuery -> {
           this to Dealias(null, traceConfig)
+        }
+
+        is CustomQueryRef -> {
+          val (customQuery, state) = customQuery.handleStatefulTransformer(this@Dealias)
+          CustomQueryRef.cs(customQuery) to state
         }
       }
   }

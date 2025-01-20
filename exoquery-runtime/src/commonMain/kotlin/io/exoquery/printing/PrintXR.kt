@@ -38,6 +38,24 @@ class PrintMisc(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Any?>
     }
 }
 
+// Simple printer for things like SelectClause that skip the loc/file fields. In the future may want to make skippable fields configurable in the constructor
+class PrintSkipLoc<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = PrintXR.defaultConfig): PPrinter<T>(serializer, config) {
+  override fun <E> treeifyComposite(elem: Treeifyable.Elem<E>, elementName: String?, showFieldNames: Boolean): Tree =
+    when (val x = elem.value) {
+      is XR -> PrintXR(XR.serializer(), config).treeifyThis(x, elementName)
+      else ->
+        when (val tree = super.treeifyComposite(elem, elementName, showFieldNames)) {
+          is Tree.Apply -> {
+            val superNodes = tree.body.asSequence()
+              .filterNot { it.elementName == "loc" }
+              .filterNot { it.elementName == "file" }
+            Tree.Apply(tree.prefix, superNodes.iterator(), elementName)
+          }
+          else -> tree
+        }
+    }
+}
+
 class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = defaultConfig): PPrinter<T>(serializer, config) {
 
   fun treeifyThis(x: T, elementName: String?) =
@@ -64,6 +82,7 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
           }
           else -> tree
         }
+      is ShowTree -> x.showTree(config)
       else -> super.treeifyComposite(elem, elementName, showFieldNames)
     }
 
