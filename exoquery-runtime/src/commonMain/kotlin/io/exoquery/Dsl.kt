@@ -45,7 +45,7 @@ fun <T> Table(): SqlQuery<T> = error("The `Table<T>` constructor function was no
 
 interface SelectClauseCapturedBlock: CapturedBlock {
   fun <T> from(query: SqlQuery<T>): T = error("The `from` expression of the Query was not inlined")
-  fun <T> join(query: SqlQuery<T>, condition: (T) -> Boolean): T = error("The `join` expression of the Query was not inlined")
+  fun <T> join(onTable: SqlQuery<T>, condition: (T) -> Boolean): T = error("The `join` expression of the Query was not inlined")
   fun <T> joinLeft(onTable: SqlQuery<T>, condition: (T) -> Boolean): T? = error("The `joinLeft` expression of the Query was not inlined")
 
   // TODO JoinFull ?

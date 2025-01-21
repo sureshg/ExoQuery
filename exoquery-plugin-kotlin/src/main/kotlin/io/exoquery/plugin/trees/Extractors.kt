@@ -82,6 +82,27 @@ object Ir {
 
   object Type {
 
+//    object Nullable {
+//      context(CompileLogger) operator fun <AP: Pattern<IrType>> get(realType: AP) =
+//        customPattern1("Type.Nullable", realType) { it: IrType ->
+//
+//          if (cls != null && simpleTypeArgs.size == 1 && it.isClass<List<*>>()) {
+//            Components1(simpleTypeArgs.first())
+//          }
+//          else null
+//        }
+//    }
+
+    object NullableOf {
+      context(CompileLogger) operator fun <AP: Pattern<IrType>> get(realType: AP) =
+        customPattern1("Type.NullableOf", realType) { it: IrType ->
+          if (it.isNullable()) {
+            Components1(it.makeNotNull())
+          }
+          else null
+        }
+    }
+
     object KotlinList {
       context(CompileLogger) operator fun <AP: Pattern<IrType>> get(realType: AP) =
         customPattern1("Type.KotlinList", realType) { it: IrType ->

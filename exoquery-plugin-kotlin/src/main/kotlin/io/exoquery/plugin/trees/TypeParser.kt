@@ -47,7 +47,7 @@ object TypeParser {
     } catch (e: ParseError) {
       val loc = expr.location()
       parseError(
-        """|(${loc.show()}) ERROR Could not parse type: ${type.dumpKotlinLike()} 
+        """|(${loc.show()}) ERROR Could not parse type: ${type.dumpKotlinLike()} (${type.toString()}) 
            |====== from the statement ======
            |${expr.dumpKotlinLike()}
            |""".trimMargin())
@@ -60,6 +60,10 @@ object TypeParser {
       //case(Ir.Type.SqlVariable[Is()]).then { realType ->
       //  parse(realType)
       //},
+
+      case(Ir.Type.NullableOf[Is()]).then { realType ->
+        parse(realType)
+      },
 
       // If it's a SqlExpression then parse the need to get the value of the 1st generic param
       case(Ir.Type.ClassOfType<io.exoquery.SqlExpression<*>>()).then { sqlExpressionType ->
