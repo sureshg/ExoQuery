@@ -6,15 +6,15 @@ import io.exoquery.util.tail
 import io.exoquery.xr.XR
 
 object SelectClauseToXR {
-  operator fun invoke(selectClause: SelectClause): XR.Query {
+  operator fun invoke(selectClause: SelectClause): XR.Query = run {
     // TODO cover case where there is no from-clause
-
     // COMPLEX! Need to walk throught the select-clause and recurisvley use `nest` function to nest things in each-other
-    val initial = selectClause.from.first()
-    val otherFroms = selectClause.from.drop(1)
-    val output = nest(initial.xr, initial.variable, otherFroms)
-    // TODO the other clauses
-    return output
+    val components = selectClause.allComponents()
+    if (components.isEmpty()) {
+      XR.QueryOf(selectClause.select)
+    } else {
+      nest(selectClause.from.first().xr, selectClause.from.first().variable, components.tail(), selectClause.select)
+    }
   }
 
 
@@ -48,37 +48,40 @@ object SelectClauseToXR {
   which is:
     FlatMap(foo, x, bar(x))
   */
-  fun nest(prev: XR.Query, prevVar: XR.Ident, remaining: List<SX>): XR.Query = run {
-    if (remaining.isEmpty())
-      prev
-    else
-    // TODO need to work through this and verify
-      when (val curr = remaining.first()) {
-        // This is not the 1st FROM clause (which will always be in a head-position
-        is SX.From ->
-          XR.FlatMap(prev, prevVar, nest(curr.xr, curr.variable, remaining.tail))
-        is SX.Join ->
-          XR.FlatMap(
-            prev, prevVar,
-            nest(XR.FlatJoin(curr.joinType, curr.onQuery, curr.conditionVariable, curr.condition, curr.loc), curr.variable, remaining.tail)
-          )
-        is SX.Where ->
-          XR.FlatMap(
-            prev, prevVar,
-            // Since there is no 'new' variable to bind to use use Ident.Unused
-            nest(XR.FlatFilter(curr.condition, curr.loc), XR.Ident.Unused, remaining.tail)
-          )
-        is SX.GroupBy ->
-          XR.FlatMap(
-            prev, prevVar,
-            nest(XR.FlatGroupBy(curr.grouping, curr.loc), XR.Ident.Unused, remaining.tail)
-          )
-        is SX.SortBy ->
-          XR.FlatMap(
-            prev, prevVar,
-            nest(XR.FlatSortBy(curr.sorting, curr.ordering, curr.loc), XR.Ident.Unused, remaining.tail)
-          )
-      }
+
+  fun nest(prev: XR.Query, prevVar: XR.Ident, remaining: List<SX>, output: XR.Expression): XR.Query {
+    fun nestRecurse(prev: XR.Query, prevVar: XR.Ident, remaining: List<SX>): XR.Query =
+      if (remaining.isEmpty())
+        XR.Map(prev, prevVar, output)
+      else
+      // TODO need to work through this and verify
+        when (val curr = remaining.first()) {
+          // This is not the 1st FROM clause (which will always be in a head-position
+          is SX.From ->
+            XR.FlatMap(prev, prevVar, nestRecurse(curr.xr, curr.variable, remaining.tail))
+          is SX.Join ->
+            XR.FlatMap(
+              prev, prevVar,
+              nestRecurse(XR.FlatJoin(curr.joinType, curr.onQuery, curr.conditionVariable, curr.condition, curr.loc), curr.variable, remaining.tail)
+            )
+          is SX.Where ->
+            XR.FlatMap(
+              prev, prevVar,
+              // Since there is no 'new' variable to bind to use use Ident.Unused
+              nestRecurse(XR.FlatFilter(curr.condition, curr.loc), XR.Ident.Unused, remaining.tail)
+            )
+          is SX.GroupBy ->
+            XR.FlatMap(
+              prev, prevVar,
+              nestRecurse(XR.FlatGroupBy(curr.grouping, curr.loc), XR.Ident.Unused, remaining.tail)
+            )
+          is SX.SortBy ->
+            XR.FlatMap(
+              prev, prevVar,
+              nestRecurse(XR.FlatSortBy(curr.sorting, curr.ordering, curr.loc), XR.Ident.Unused, remaining.tail)
+            )
+        }
+    return nestRecurse(prev, prevVar, remaining)
   }
 
 

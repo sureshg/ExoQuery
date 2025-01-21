@@ -9,6 +9,7 @@ import io.exoquery.plugin.classIdOf
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.*
+import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
 import io.exoquery.xr.encode
 import kotlinx.serialization.decodeFromHexString
@@ -74,7 +75,7 @@ context(BuilderContext, CompileLogger) private fun RuntimeEmpty(): IrExpression 
 object SqlExpressionExpr {
   data class Uprootable(val packedXR: String) {
     // This is an expensive operation so put it behind a lazy value that the user will invoke only if needed
-    val xr by lazy { ProtoBuf.decodeFromHexString<XR.Expression>(packedXR) }
+    val xr by lazy { EncodingXR.protoBuf.decodeFromHexString<XR.Expression>(packedXR) }
 
     // re-create the SqlExpression instance. Note that we need a varaible from which to take params
     // So for example say we have something like:
@@ -144,7 +145,7 @@ object SqlExpressionExpr {
 // not worth it. Need to keep an eye on this as we add more ContainerOfXR types
 object SqlQueryExpr {
   data class Uprootable(val packedXR: String) {
-    val xr by lazy { ProtoBuf.decodeFromHexString<XR.Query>(packedXR) }
+    val xr by lazy { EncodingXR.protoBuf.decodeFromHexString<XR.Query>(packedXR) }
     context(BuilderContext, CompileLogger)
     fun replant(paramsFrom: IrExpression): IrExpression {
       val strExpr = call("io.exoquery.unpackQuery").invoke(builder.irString(packedXR))

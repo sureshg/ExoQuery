@@ -14,14 +14,26 @@ class BasicSelectClauseQuotationSpec : FreeSpec({
   val pIdent = XR.Ident("p", personTpe)
   val rIdent = XR.Ident("r", robotTpe)
 
+  // TODO first test features of the Select clause, then need to test features of the transformer to XR.Query
+  // hello
   "parsing features spec" - {
     "from" {
+      val joes = capture {
+        Table<Person>().filter { p -> p.name == "Joe" }
+      }
       val people =
         select {
-          val p = from(Table<Person>())
+          val p = from(joes)
+          val a = join(Table<Robot>()) { a -> p.id == a.ownerId }
           p.name
         }
-      println(people.show())
+
+//      val xrs = people.xr.show()
+//      println("--------------- Select XR ---------------\n$xrs")
+//      val xr = ((people.xr as XR.CustomQueryRef).customQuery as SelectClause).toQueryXR().show()
+//      println("--------------- Query XR ---------------\n$xr")
+
+      println("Comppiled Query:\n${people.build(PostgresDialect())}")
     }
   }
 })

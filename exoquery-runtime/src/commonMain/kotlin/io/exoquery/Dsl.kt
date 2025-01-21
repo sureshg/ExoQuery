@@ -45,7 +45,7 @@ fun <T> Table(): SqlQuery<T> = error("The `Table<T>` constructor function was no
 
 interface SelectClauseCapturedBlock: CapturedBlock {
   fun <T> from(query: SqlQuery<T>): T = error("The `from` expression of the Query was not inlined")
-  fun <T> join(query: SqlQuery<T>): T = error("The `join` expression of the Query was not inlined")
+  fun <T> join(query: SqlQuery<T>, condition: (T) -> Boolean): T = error("The `join` expression of the Query was not inlined")
   fun <T> joinLeft(onTable: SqlQuery<T>, condition: (T) -> Boolean): T? = error("The `joinLeft` expression of the Query was not inlined")
 
   // TODO JoinFull ?
@@ -91,6 +91,7 @@ data class SelectClause(
   override val loc: XR.Location = XR.Location.Synth
 ): XR.CustomQuery.Convertable {
   override fun toQueryXR(): XR.Query = SelectClauseToXR(this)
+  fun allComponents(): List<SX> = from + joins + listOfNotNull(where, groupBy, sortBy)
 
   // Do nothing for now, in the cuture recurse in queries and expressions inside the SX clauses
   override fun handleStatelessTransform(transformer: StatelessTransformer): XR.CustomQuery = this

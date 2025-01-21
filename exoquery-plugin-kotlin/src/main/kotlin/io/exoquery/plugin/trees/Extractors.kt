@@ -6,7 +6,6 @@ import io.decomat.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.parseError
 import io.exoquery.plugin.*
-import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.ReceiverCaller
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
@@ -16,7 +15,6 @@ import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isTypeParameter
-import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.superTypes
 
 fun <T> List0() = Is(listOf<T>())
@@ -190,7 +188,7 @@ object Ir {
   }
 
   object Variable {
-    context (CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(name: AP, rhs: BP) =
+    context (CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<B>, B: IrExpression> get(name: AP, rhs: BP) =
       customPattern2("Ir.Variable", name, rhs) { it: IrVariable ->
         it.initializer?.let { init -> Components2(it.name.asString(), init) }
       }
@@ -349,13 +347,37 @@ object Ir {
     }
 
     // Would like to have a list on the generic L here but that seems to slow down kotlin pattern match to a crawl
-    object FunctionMem {
-      // Interesting here how we can have just AP/BP and not need the additional parameters A and B
-      context (CompileLogger) operator fun <AP: Pattern<ReceiverCaller>, BP : Pattern<List<IrExpression>>> get(x: AP, y: BP): Pattern2<AP, BP, ReceiverCaller, List<IrExpression>, IrCall> =
-        customPattern2("Ir.Call.FunctionMem", x, y) { it: IrCall ->
-          val reciever = it.caller()
-          if (reciever != null && it.simpleValueArgs.all { it != null }) {
-            Components2(reciever, it.simpleValueArgs.requireNoNulls())
+    object FunctionMemN {
+      object Caller {
+        // Interesting here how we can have just AP/BP and not need the additional parameters A and B
+        context (CompileLogger) operator fun <AP : Pattern<ReceiverCaller>, BP : Pattern<List<IrExpression>>> get(x: AP, y: BP): Pattern2<AP, BP, ReceiverCaller, List<IrExpression>, IrCall> =
+          customPattern2("Ir.Call.FunctionMem", x, y) { it: IrCall ->
+            val reciever = it.caller()
+            if (reciever != null && it.simpleValueArgs.all { it != null }) {
+              Components2(reciever, it.simpleValueArgs.requireNoNulls())
+            } else {
+              null
+            }
+          }
+      }
+
+      context (CompileLogger) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<List<IrExpression>>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, List<IrExpression>, IrCall> =
+        customPattern2("Ir.Call.FunctionMemN", x, y) { it: IrCall ->
+          val reciever = it.extensionReceiver ?: it.dispatchReceiver
+          if (reciever != null && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.safeName)) {
+            Components2(reciever, it.simpleValueArgs)
+          } else {
+            null
+          }
+        }
+    }
+
+    object FunctionMem2 {
+      context (CompileLogger) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<Pair<IrExpression, IrExpression>>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, Pair<IrExpression, IrExpression>, IrCall> =
+        customPattern2("Ir.Call.FunctionMemN", x, y) { it: IrCall ->
+          val reciever = it.extensionReceiver ?: it.dispatchReceiver
+          if (reciever != null && it.simpleValueArgs.size == 2 && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.safeName)) {
+            Components2(reciever, it.simpleValueArgs[0]!! to it.simpleValueArgs[1]!!)
           } else {
             null
           }
@@ -642,6 +664,19 @@ object Ir {
           on(it).match(
             case(FunctionExpression[SimpleFunction.withBlockStatements[Is(), Is()]])
               .then { (params, statements) -> Components2(params, statements) }
+          )
+        }
+    }
+
+    object withBlockStatementsAndReturn {
+      data class Output(val statements: List<IrStatement>, val ret: IrExpression)
+
+      operator fun <AP: Pattern<List<IrValueParameter>>, BP: Pattern<Output>> get(params: AP, body: BP) =
+        customPattern2("FunctionExpression.withBlockStatementsAndReturn", params, body) { it: IrFunctionExpression ->
+          on(it).match(
+            case(FunctionExpression[SimpleFunction.withBlockStatements[Is(), Is()]])
+              .thenIf { (params, statements) -> statements.lastOrNull() is IrReturn }
+              .then { (params, statements) -> Components2(params, Output(statements.dropLast(1), (statements.last() as IrReturn).value)) }
           )
         }
     }

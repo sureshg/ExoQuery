@@ -137,28 +137,49 @@ object SelectClauseParser {
   context(ParserContext, CompileLogger) fun parseSelectLambda(lambda: IrStatement): SelectClause =
     lambda.match(
       case(Ir.FunctionExpression.withBlockStatements[Is(), Is()]).thenThis { _, statementsFromRet ->
-        if (statementsFromRet.isEmpty()) error("A select-clause usually should have two statements, a from(query) and an output. This one has neither", lambda) // TODO provide example in the error
+        if (statementsFromRet.isEmpty()) parseError("A select-clause usually should have two statements, a from(query) and an output. This one has neither", lambda) // TODO provide example in the error
+        if (statementsFromRet.last() !is IrReturn) parseError("A select-clause must return a plain (i.e. not SqlQuery) value.", lambda)
         val ret = statementsFromRet.last()
         val retXR = ExpressionParser.parse((ret as IrReturn).value)
-        if (ret !is IrReturn) error("The last statement in a select-clause must be a return statement", lambda) // TODO provide example in the error
+        if (ret !is IrReturn) parseError("The last statement in a select-clause must be a return statement", ret) // TODO provide example in the error
         val statementsFrom = statementsFromRet.dropLast(1)
         if (statementsFrom.isEmpty()) SelectClause.justSelect(retXR, lambda.loc)
 
         val statementsToParsed = statementsFrom.map { parseSubClause(it) to it }
         ValidateAndOrganize(statementsToParsed, retXR)
       }
-    ) ?: parseError("Could not parse Select Clause from: ${lambda.dumpSimple()}")
+    ) ?: parseError("Could not parse Select Clause from: ${lambda.dumpSimple()}", lambda)
 
   // need to test case of `select { from(x.map(select { ... })) }` to see how nested recursion works
   // also test case of `select { from(select { ... } }` to see how nested recursion works
   context(ParserContext, CompileLogger) fun parseSubClause(expr: IrStatement): SX =
     on(expr).match<SX>(
-      case(Ir.Variable[Is(), Ir.Call.FunctionMem1[Ir.Type.ClassOf<SelectClauseCapturedBlock>(), Is("from"), Is()]]).thenThis { name, (ctx, table) ->
-        val id = XR.Ident(name, TypeParser.of(this), this.loc)
+      case(Ir.Variable[Is(), Ir.Call.FunctionMem1[Ir.Type.ClassOf<SelectClauseCapturedBlock>(), Is("from"), Is()]]).thenThis { varName, (_, table) ->
+        val id = XR.Ident(varName, TypeParser.of(this), this.loc)
         SX.From(id, QueryParser.parse(table))
+      },
+      case(Ir.Variable[Is(), Ir.Call.FunctionMem2[Ir.Type.ClassOf<SelectClauseCapturedBlock>(), Is.invoke { it == "join" || it == "joinLeft" }, Is()]]).then { varName, (_, args) ->
+        val joinFunc = compRight
+        val (onTable, joinCondLambda) = args
+        val varNameIdent = XR.Ident(varName, TypeParser.of(this.comp), this.comp.loc)
+        val joinType =
+          when(joinFunc.symbol.safeName) {
+            "join" -> XR.JoinType.Inner
+            "joinLeft" -> XR.JoinType.Left
+            else -> parseError("Unknown Join Type: ${joinFunc.symbol.safeName}", expr)
+          }
+        joinCondLambda.match(
+          case(Ir.FunctionExpression.withBlock[Is(), Is()]).then { lambdaVarExprs, stmtsAndReturn ->
+            val lambdaVarExpr = lambdaVarExprs.first()
+            val lambdaVarName = lambdaVarExpr.name.asString() /* join lambda should have only one element e.g. join(Table<Addresses>()){addressesLambdaVar ->addressesLambdaVar == 123} */
+            val lambdaVarIdent = XR.Ident(lambdaVarName, TypeParser.of(lambdaVarExpr), lambdaVarExpr.loc)
+            val joinCond = ExpressionParser.parseFunctionBlockBody(stmtsAndReturn)
+            SX.Join(joinType, varNameIdent, QueryParser.parse(onTable), lambdaVarIdent, joinCond, joinFunc.loc)
+
+          }
+        ) ?: parseError("Could not parse Join Lambda from: ${joinCondLambda.dumpSimple()}", joinCondLambda)
       }
-      // TODO Joins etc...
-    ) ?: parseError("Could not parse Select Clause from: ${expr.dumpSimple()}")
+    ) ?: parseError("Could not parse Select Clause from: ${expr.dumpSimple()}", expr)
 }
 
 /**

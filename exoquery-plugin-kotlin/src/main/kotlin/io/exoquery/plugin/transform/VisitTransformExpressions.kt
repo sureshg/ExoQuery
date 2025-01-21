@@ -1,5 +1,7 @@
 package io.exoquery.plugin.transform
 
+import io.exoquery.ParseError
+import io.exoquery.plugin.location
 import io.exoquery.plugin.trees.ExtractorsDomain
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
@@ -91,27 +93,35 @@ class VisitTransformExpressions(
 
 
     //compileLogger.warn("---------- Call Checking:\n" + expression.dumpKotlinLike())
+    fun parseExpression() =
+      when {
 
-    val out = when {
+        // 1st that that runs here because printed stuff should not be transformed
+        // (and this does not recursively transform stuff inside)
+        transformPrint.matches(expression) -> transformPrint.transform(expression)
+        // NOTE the .matches function should just be a cheap match on the expression, not a full extractionfalse
+        transformCapture.matches(expression) -> transformCapture.transform(expression)
+        transformCaptureQuery.matches(expression) -> transformCaptureQuery.transform(expression)
+        transformSelectClause.matches(expression) -> transformSelectClause.transform(expression)
+        // Is this an sqlQuery.build(PostgresDialect) call? if yes see if the it is a compile-time query and transform it
+        transformCompileQuery.matches(expression) -> transformCompileQuery.transform(expression)
 
-      // 1st that that runs here because printed stuff should not be transformed
-      // (and this does not recursively transform stuff inside)
-      transformPrint.matches(expression) -> transformPrint.transform(expression)
-      // NOTE the .matches function should just be a cheap match on the expression, not a full extractionfalse
-      transformCapture.matches(expression) -> transformCapture.transform(expression)
-      transformCaptureQuery.matches(expression) -> transformCaptureQuery.transform(expression)
-      transformSelectClause.matches(expression) -> transformSelectClause.transform(expression)
-      // Is this an sqlQuery.build(PostgresDialect) call? if yes see if the it is a compile-time query and transform it
-      transformCompileQuery.matches(expression) -> transformCompileQuery.transform(expression)
+        //showAnnotations.matches(expression) -> showAnnotations.transform(expression)
 
-      //showAnnotations.matches(expression) -> showAnnotations.transform(expression)
+        // Want to run interpolator invoke before other things because the result of it is an SqlExpression that will
+        // the be re-parsed in the parser if it is inside of a context(EnclosedContext) e.g. Query.map
+        else ->
+          // No additional data (i.e. Scope-Symbols) to add since none of the transformers was activated
+          super.visitCall(expression, data)
+      }
 
-      // Want to run interpolator invoke before other things because the result of it is an SqlExpression that will
-      // the be re-parsed in the parser if it is inside of a context(EnclosedContext) e.g. Query.map
-      else ->
-        // No additional data (i.e. Scope-Symbols) to add since none of the transformers was activated
-        super.visitCall(expression, data)
+    val out = try {
+      parseExpression()
+    } catch (e: ParseError) {
+      builderContext.logger.error(e.msg, e.location ?: expression.location(currentFile.fileEntry))
+      expression
     }
+
     return out
   }
 }
