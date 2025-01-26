@@ -33,7 +33,7 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
     // recurse down into the expression in order to make it into an Uprootable if needed
     return expr.match(
       case(Ir.Call.FunctionMem1[Is(), Is("build"), Is(/*TODO this is the dialect*/)]).then { sqlQueryExprRaw, dialect ->
-        val sqlQueryExpr = superTransformer.visitExpression(sqlQueryExprRaw, ScopeSymbols.empty)
+        val sqlQueryExpr = superTransformer.visitExpression(sqlQueryExprRaw)
         sqlQueryExpr.match(
           case(SqlQueryExpr.Uprootable[Is()]).then { uprootable ->
             val xr = uprootable.xr // deserialize the XR, TODO need to handle deserialization failures here

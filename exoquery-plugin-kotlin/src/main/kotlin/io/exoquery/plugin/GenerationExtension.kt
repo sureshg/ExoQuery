@@ -1,6 +1,6 @@
 package io.exoquery.plugin
 
-import io.exoquery.plugin.transform.ScopeSymbols
+import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.plugin.transform.VisitTransformExpressions
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext

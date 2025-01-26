@@ -7,8 +7,11 @@ import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+
+interface ScopeContext {
+  val transformerScope: TransformerScope
+}
 
 data class BuilderContext(
   val pluginCtx: IrPluginContext,
@@ -16,8 +19,8 @@ data class BuilderContext(
   val scopeOwner: IrSymbol,
   val currentFile: IrFile,
   val currentExpr: IrElement,
-  val parentScopeSymbols: ScopeSymbols
-) {
+  override val transformerScope: TransformerScope
+): ScopeContext {
   val logger = CompileLogger(compilerConfig, currentFile, currentExpr)
   val builder = DeclarationIrBuilder(pluginCtx, scopeOwner, currentExpr.startOffset, currentExpr.endOffset)
   fun makeLifter() = Lifter(this)
@@ -29,7 +32,7 @@ data class TransformerOrigin(
   val pluginCtx: IrPluginContext,
   val config: CompilerConfiguration,
   val currentFile: IrFile,
-  val parentScopeSymbols: ScopeSymbols
+  val parentScopeSymbols: TransformerScope
 ) {
   fun makeBuilderContext(expr: IrElement, scopeOwner: IrSymbol) =
     BuilderContext(pluginCtx, config, scopeOwner, currentFile, expr, parentScopeSymbols)

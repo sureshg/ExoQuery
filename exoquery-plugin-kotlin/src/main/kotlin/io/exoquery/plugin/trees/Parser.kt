@@ -11,7 +11,7 @@ import io.exoquery.SelectClause
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.plugin.printing.dumpSimple
-import io.exoquery.plugin.transform.ScopeSymbols
+import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
@@ -29,9 +29,9 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 //
 //}
 
-data class LocationContext(val internalVars: ScopeSymbols, val currentFile: IrFile)
+data class LocationContext(val internalVars: TransformerScope, val currentFile: IrFile)
 
-data class ParserContext(val internalVars: ScopeSymbols, val currentFile: IrFile, val binds: DynamicsAccum = DynamicsAccum.newEmpty())
+data class ParserContext(val internalVars: TransformerScope, val currentFile: IrFile, val binds: DynamicsAccum = DynamicsAccum.newEmpty())
 
 context(ParserContext) private val IrElement.loc get() = this.locationXR()
 

@@ -17,7 +17,9 @@ abstract class Transformer<Expr: IrExpression> {
   abstract protected fun transformBase(expression: Expr): IrExpression
 
   open fun makeLocationContext(expression: Expr): LocationContext {
-    val decls = ScopeSymbols(CollectDecls.from(expression)) + ctx.parentScopeSymbols
+    // Take the scope-symbols from the current context and add them to the scope
+    // when walking into the transformer inside the sub-expression
+    val decls = ctx.transformerScope.withSymbols(CollectDecls.from(expression))
     return LocationContext(decls, ctx.currentFile)
   }
 
@@ -46,7 +48,7 @@ abstract class FalliableTransformer<Expr: IrExpression> {
   abstract protected fun transformBase(expression: Expr): IrExpression?
 
   open fun makeLocationContext(expression: Expr): LocationContext {
-    val decls = ScopeSymbols(CollectDecls.from(expression)) + ctx.parentScopeSymbols
+    val decls = ctx.transformerScope.withSymbols(CollectDecls.from(expression))
     return LocationContext(decls, ctx.currentFile)
   }
 

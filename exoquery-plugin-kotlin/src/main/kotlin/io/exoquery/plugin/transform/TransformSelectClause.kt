@@ -28,7 +28,7 @@ class TransformSelectClause(override val ctx: BuilderContext, val superTransform
     val selectLambda =
       selectExpressionRaw.match(
         case(Ir.Call.FunctionUntethered1[Is("io.exoquery.select"), Is()]).then { name, selectLambdaRaw ->
-          superTransformer.visitExpression(selectLambdaRaw, ScopeSymbols.empty)
+          superTransformer.visitExpression(selectLambdaRaw)
         }
         // TODO use Messages.kt, use better example
       ) ?: parseError("Parsing Failed\n================== The Select-expresson was not a Global Function (with one argument-block): ==================\n" + selectExpressionRaw.dumpKotlinLike() + "\n--------------------------\n" + selectExpressionRaw.dumpSimple())

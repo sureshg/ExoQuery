@@ -2,7 +2,6 @@ package io.exoquery.plugin.transform
 
 import io.exoquery.ParseError
 import io.exoquery.plugin.location
-import io.exoquery.plugin.trees.ExtractorsDomain
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -15,12 +14,11 @@ import org.jetbrains.kotlin.ir.types.IrType
 import java.nio.file.Path
 import org.jetbrains.kotlin.ir.util.*
 
-
 class VisitTransformExpressions(
   private val context: IrPluginContext,
   private val config: CompilerConfiguration,
   private val projectDir: Path
-) : IrElementTransformerWithContext<ScopeSymbols>() {
+) : IrElementTransformerWithContext<TransformerScope>() {
 
   // currentFile is not initialized here yet or something???
   //val sourceFinder: FindSource = FindSource(this.currentFile, projectDir)
@@ -40,10 +38,13 @@ class VisitTransformExpressions(
 //    return super.visitExpression(expression)
 //  }
 
+  override fun visitFileNew(declaration: IrFile, data: TransformerScope): IrFile {
+    return super.visitFileNew(declaration, data)
+  }
 
 
   // TODO move this to visitGetValue? That would be more efficient but what other things might we wnat to transform?
-  override fun visitExpression(expression: IrExpression, data: ScopeSymbols): IrExpression {
+  override fun visitExpression(expression: IrExpression, data: TransformerScope): IrExpression {
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
     val transformerCtx = TransformerOrigin(context, config, this.currentFile, data)
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
@@ -62,7 +63,7 @@ class VisitTransformExpressions(
     }
   }
 
-  override fun visitCall(expression: IrCall, data: ScopeSymbols): IrElement {
+  override fun visitCall(expression: IrCall, data: TransformerScope): IrElement {
 
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
 

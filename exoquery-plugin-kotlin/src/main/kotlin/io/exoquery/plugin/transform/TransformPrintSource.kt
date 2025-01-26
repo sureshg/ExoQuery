@@ -70,9 +70,9 @@ class TransformPrintSource(
 
     val args = when(argsRaw) {
       is MatchedType.Single ->
-        argsRaw.copy(superTransformer.visitExpression(argsRaw.ir, ScopeSymbols.empty))
+        argsRaw.copy(superTransformer.visitExpression(argsRaw.ir))
       is MatchedType.Multi ->
-        argsRaw.copy(superTransformer.visitBlockBody(argsRaw.irs, ScopeSymbols.empty) as IrBlockBody)
+        argsRaw.copy(superTransformer.visitBlockBody(argsRaw.irs) as IrBlockBody)
     }
 
     val printSourceExpr = ctx.pluginCtx
