@@ -8,6 +8,7 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetContainer
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
+import java.io.File
 
 class GradlePlugin : KotlinCompilerPluginSupportPlugin {
     override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean = true
@@ -54,9 +55,7 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
         }
     }
 
-    override fun applyToCompilation(
-        kotlinCompilation: KotlinCompilation<*>
-    ): Provider<List<SubpluginOption>> {
+    override fun applyToCompilation(kotlinCompilation: KotlinCompilation<*>): Provider<List<SubpluginOption>> {
         val project = kotlinCompilation.target.project
 
         // ALSO needed for the plugin classpath
@@ -64,11 +63,29 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
             api("io.exoquery:exoquery-runtime:${BuildConfig.VERSION}")
         }
 
+        val target = kotlinCompilation.target.name
+        val sourceSetName = kotlinCompilation.defaultSourceSet.name
+
         return project.provider {
-            listOf(SubpluginOption(
-                "projectDir",
-                project.projectDir.path
-            ))
+            listOf(
+                SubpluginOption("projectDir", project.projectDir.path),
+                SubpluginOption("projectBaseDir", project.project.projectDir.canonicalPath),
+                SubpluginOption("kotlinOutputDir", getKspKotlinOutputDir(project, sourceSetName, target).path),
+                SubpluginOption("resourceOutputDir", getKspResourceOutputDir(project, sourceSetName, target).path)
+            )
         }
+    }
+    companion object {
+        @JvmStatic
+        fun getKspKotlinOutputDir(project: Project, sourceSetName: String, target: String) =
+            File(getExoOutputDir(project, sourceSetName, target), "kotlin")
+
+        @JvmStatic
+        fun getKspResourceOutputDir(project: Project, sourceSetName: String, target: String) =
+            File(getExoOutputDir(project, sourceSetName, target), "resources")
+
+        @JvmStatic
+        fun getExoOutputDir(project: Project, sourceSetName: String, target: String) =
+            project.layout.buildDirectory.file("generated/exo/$target/$sourceSetName").get().asFile
     }
 }

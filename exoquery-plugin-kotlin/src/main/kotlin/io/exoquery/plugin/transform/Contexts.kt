@@ -9,18 +9,14 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 
-interface ScopeContext {
-  val transformerScope: TransformerScope
-}
-
 data class BuilderContext(
   val pluginCtx: IrPluginContext,
   val compilerConfig: CompilerConfiguration,
   val scopeOwner: IrSymbol,
   val currentFile: IrFile,
   val currentExpr: IrElement,
-  override val transformerScope: TransformerScope
-): ScopeContext {
+  val transformerScope: TransformerScope
+) {
   val logger = CompileLogger(compilerConfig, currentFile, currentExpr)
   val builder = DeclarationIrBuilder(pluginCtx, scopeOwner, currentExpr.startOffset, currentExpr.endOffset)
   fun makeLifter() = Lifter(this)

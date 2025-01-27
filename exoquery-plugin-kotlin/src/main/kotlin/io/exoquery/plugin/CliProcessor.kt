@@ -1,8 +1,13 @@
 package io.exoquery.plugin
 
 import com.google.auto.service.AutoService
+import io.exoquery.plugin.settings.EXO_OPTIONS
+import io.exoquery.plugin.settings.ExoCliOption
+import io.exoquery.plugin.settings.ExoCompileOptions
+import io.exoquery.plugin.settings.processOption
 import org.jetbrains.kotlin.compiler.plugin.AbstractCliOption
 import org.jetbrains.kotlin.compiler.plugin.CliOption
+import org.jetbrains.kotlin.compiler.plugin.CliOptionProcessingException
 import org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
@@ -12,27 +17,13 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 class CliProcessor: CommandLineProcessor {
     override val pluginId: String = "io.exoquery.exoquery-plugin"
 
-    override val pluginOptions: Collection<CliOption> = listOf(
-        CliOption(
-            optionName = "projectDir",
-            valueDescription = "path",
-            description = "root project path",
-            required = false,
-        )
-    )
+    override val pluginOptions: Collection<AbstractCliOption> = ExoCliOption.entries
 
-    override fun processOption(
-        option: AbstractCliOption,
-        value: String,
-        configuration: CompilerConfiguration
-    ) {
-        return when (option.optionName) {
-            "projectDir" -> configuration.put(io.exoquery.plugin.PROJECT_DIR_KEY, value)
-            else -> throw IllegalArgumentException("Unexpected config option ${option.optionName}")
+    override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
+        if (option !is ExoCliOption) {
+            throw CliOptionProcessingException("Unknown option: ${option.optionName}")
         }
+        val exoOptions = configuration[EXO_OPTIONS] ?: ExoCompileOptions.Builder().also { configuration.put(EXO_OPTIONS, it) }
+        exoOptions.processOption(option, value)
     }
-}
-
-fun main() {
-    println("hello")
 }

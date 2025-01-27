@@ -2,6 +2,9 @@ package io.exoquery.plugin.transform
 
 import io.exoquery.ParseError
 import io.exoquery.plugin.location
+import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.logging.CompileLogger.Companion.invoke
+import io.exoquery.plugin.settings.ExoCompileOptions
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -13,15 +16,23 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import java.nio.file.Path
 import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.konan.file.file
+import java.nio.file.FileSystems
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.StandardOpenOption
+import kotlin.io.path.exists
+import kotlin.io.path.nameWithoutExtension
 
 class VisitTransformExpressions(
   private val context: IrPluginContext,
   private val config: CompilerConfiguration,
-  private val projectDir: Path
+  private val exoOptions: ExoCompileOptions
 ) : IrElementTransformerWithContext<TransformerScope>() {
 
+
   // currentFile is not initialized here yet or something???
-  //val sourceFinder: FindSource = FindSource(this.currentFile, projectDir)
+  //val sourceFinder: FindSource = FindSource(this.currentFile, exoOptions.projectDir)
 
   private fun typeIsFqn(type: IrType, fqn: String): Boolean {
     if (type !is IrSimpleType) return false
@@ -38,8 +49,32 @@ class VisitTransformExpressions(
 //    return super.visitExpression(expression)
 //  }
 
-  override fun visitFileNew(declaration: IrFile, data: TransformerScope): IrFile {
-    return super.visitFileNew(declaration, data)
+  override fun visitFileNew(file: IrFile, data: TransformerScope): IrFile {
+    // Not sure if we should transfer any symbols from the previous and where they can be. Genrally transfer of symbols
+    // should only be cumulative in a captured context for example something like:
+    // capture {
+    //   people.flatMap { p ->
+    //     val foo = "Blah"
+    //     addresses.map { a ->
+    //       val bar = "Blah"
+    //       p.name == foo && a.street == bar
+    //     }
+    //   }
+    // }
+    // (which would represent some kind of odd implicit join)
+    // It is only in this kind of case that we actually care about propagating identifiers
+    // from one nested scope into another in order to know that we don't have a to lift them.
+    // It is important to note also that the entire reason we decided to introduce List<IrSymbol> into the scope
+    // was in order to be able to do implicit lifting (or at least detect where lifts are needed during the parsing
+    // phase where it is easy to make an error and analyze adjacent expressions, the FreeSymbols check at the end
+    // of the compilation phases).
+    val fileScope = TransformerScope(data.symbols, FileQueryAccum.RealFile(file))
+    val ret = super.visitFileNew(file, fileScope)
+    if (fileScope.fileQueryAccum.nonEmpty()) {
+      BuildQueryFile(file, fileScope, config, exoOptions, currentFile)
+    }
+
+    return ret
   }
 
 

@@ -1,5 +1,7 @@
 package io.exoquery.plugin
 
+import io.exoquery.plugin.settings.ExoCompileOptions
+import io.exoquery.plugin.transform.FileQueryAccum
 import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.plugin.transform.VisitTransformExpressions
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -12,13 +14,13 @@ import java.nio.file.Path
 class GenerationExtension(
     private val config: CompilerConfiguration,
     private val messages: MessageCollector,
-    private val projectDir: Path,
+    private val exoOptions: ExoCompileOptions
 ) : IrGenerationExtension {
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         moduleFragment
             .transform(
-                VisitTransformExpressions(pluginContext, config, projectDir),
-                ScopeSymbols(listOf())
+                VisitTransformExpressions(pluginContext, config, exoOptions),
+                TransformerScope(listOf(), FileQueryAccum.Empty)
             )
     }
 }

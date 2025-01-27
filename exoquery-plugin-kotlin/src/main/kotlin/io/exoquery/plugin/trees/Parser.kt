@@ -24,36 +24,35 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
-// TODO make ParserContext a subtype of LocationContext so can use it
-//interface LocationContainingContext {
-//
-//}
+data class LocationContext(val internalVars: TransformerScope, val currentFile: IrFile) {
+  fun newParserCtx() = ParserContext(this)
+}
 
-data class LocationContext(val internalVars: TransformerScope, val currentFile: IrFile)
-
-data class ParserContext(val internalVars: TransformerScope, val currentFile: IrFile, val binds: DynamicsAccum = DynamicsAccum.newEmpty())
+data class ParserContext(val location: LocationContext, val binds: DynamicsAccum = DynamicsAccum.newEmpty()) {
+  val internalVars get() = location.internalVars
+  val currentFile get() = location.currentFile
+}
 
 context(ParserContext) private val IrElement.loc get() = this.locationXR()
 
 object Parser {
   context(LocationContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR, DynamicsAccum> =
-    with (ParserContext(internalVars, this@LocationContext.currentFile)) {
+    with (newParserCtx()) {
       ExpressionParser.parseFunctionBlockBody(blockBody) to binds
     }
 
   context(LocationContext, CompileLogger) fun parseQuery(expr: IrExpression): Pair<XR.Query, DynamicsAccum> =
-    with (ParserContext(internalVars, this@LocationContext.currentFile)) {
+    with (newParserCtx()) {
       QueryParser.parse(expr) to binds
     }
 
   context(LocationContext, CompileLogger) fun parseSelectClauseLambda(expr: IrExpression): Pair<SelectClause, DynamicsAccum> =
-    with (ParserContext(internalVars, this@LocationContext.currentFile)) {
+    with (newParserCtx()) {
       SelectClauseParser.parseSelectLambda(expr) to binds
     }
 
-  // TODO rename to invoke? or just parse
   context(LocationContext, CompileLogger) fun parseExpression(expr: IrExpression): Pair<XR.Expression, DynamicsAccum> =
-    with (ParserContext(internalVars, this@LocationContext.currentFile)) {
+    with (newParserCtx()) {
       ExpressionParser.parse(expr) to binds
     }
 }

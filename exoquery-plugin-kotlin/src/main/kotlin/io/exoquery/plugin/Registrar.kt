@@ -1,6 +1,7 @@
 package io.exoquery.plugin
 
 import com.google.auto.service.AutoService
+import io.exoquery.plugin.settings.EXO_OPTIONS
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
@@ -25,10 +26,12 @@ class Registrar: CompilerPluginRegistrar() {
     override val supportsK2: Boolean get() = true
 
     override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
+        val exoOptions = configuration[EXO_OPTIONS] ?: error("Exo options not found")
+
         IrGenerationExtension.registerExtension(GenerationExtension(
             configuration,
             configuration.getNotNull(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY),
-            Path(configuration.getNotNull(PROJECT_DIR_KEY))
+            exoOptions.build()
         ))
     }
 }
