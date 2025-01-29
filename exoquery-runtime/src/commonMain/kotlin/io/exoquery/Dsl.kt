@@ -31,8 +31,8 @@ fun unpackQuery(query: String): XR.Query =
 // }
 
 // TODO When context recivers are finally implemented in KMP, make this have a context-reciver that allows `use` to be used, otherwise don't allow it
-fun <T> captureValue(block: CapturedBlock.() -> T): @Captured("initial-value") SqlExpression<T> = error("Compile time plugin did not transform the tree")
-fun <T> capture(block: CapturedBlock.() -> SqlQuery<T>): @Captured("initial-value") SqlQuery<T> = error("Compile time plugin did not transform the tree")
+fun <T> captureValue(block: CapturedBlock.() -> T): @Captured SqlExpression<T> = error("Compile time plugin did not transform the tree")
+fun <T> capture(block: CapturedBlock.() -> SqlQuery<T>): @Captured SqlQuery<T> = error("Compile time plugin did not transform the tree")
 
 
 

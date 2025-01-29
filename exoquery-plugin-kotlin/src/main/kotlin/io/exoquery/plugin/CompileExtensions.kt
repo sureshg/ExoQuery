@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.IrFileEntry
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
@@ -131,6 +132,12 @@ fun CompilerMessageSourceLocation.show() =
 
 // TODO change to LocationContainingContext
 context(ParserContext) fun IrElement.location(): CompilerMessageSourceLocation =
+  this.location(currentFile.fileEntry)
+
+fun IrFile.location(): CompilerMessageSourceLocation =
+  this.location(this.fileEntry)
+
+context(LocationContext) fun IrElement.locationLite(): CompilerMessageSourceLocation =
   this.location(currentFile.fileEntry)
 
 context(ParserContext) fun IrElement.locationXR(): XR.Location =

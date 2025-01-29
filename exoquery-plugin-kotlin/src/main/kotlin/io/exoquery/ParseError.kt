@@ -1,6 +1,8 @@
 package io.exoquery
 
 import io.exoquery.plugin.location
+import io.exoquery.plugin.locationLite
+import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.ParserContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
@@ -10,3 +12,6 @@ class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) 
 
 fun parseError(msg: String, location: CompilerMessageSourceLocation? = null): Nothing = throw ParseError(msg, location)
 context(ParserContext) fun parseError(msg: String, expr: IrElement): Nothing = throw ParseError(msg, expr.location())
+
+context(LocationContext) fun parseErrorLite(msg: String, expr: IrElement): Nothing = throw ParseError(msg, expr.locationLite())
+

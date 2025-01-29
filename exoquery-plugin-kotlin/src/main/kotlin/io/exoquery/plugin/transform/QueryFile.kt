@@ -11,16 +11,16 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import kotlin.io.path.nameWithoutExtension
 
-class BuildQueryFile(
+
+class QueryFile(
+  // I.e. the actual file encountered by the Ir transformer
   val codeFile: IrFile,
   val codeFileScope: TransformerScope,
   val compilerConfig: CompilerConfiguration,
-  val config: ExoCompileOptions,
-  val currentTransformedFile: IrFile // Technically should be the same as `file` but we are not sure about all the edge-cases
+  val config: ExoCompileOptions
 ) {
-  val fs = FileSystems.getDefault()
-  val logger = CompileLogger(compilerConfig, currentTransformedFile, currentTransformedFile)
-  val queries: String by lazy { codeFileScope.fileQueryAccum.makeFileDump() }
+  private val fs by lazy { FileSystems.getDefault() }
+  private val logger by lazy { CompileLogger(compilerConfig, codeFile, codeFile) }
 
   fun buildRegular() {
     // e.g: /home/me/project/src/commonMain/com/someplace/Code.kt -> /home/me/project/src/commonMain/kotlin/com/someplace/
@@ -54,10 +54,13 @@ class BuildQueryFile(
 
     val srcFile = Path.of(dirOfFile.toString(), srcFileName)
 
-    writeToFile(srcFile)
+    val collectedQueries = codeFileScope.currentQueries()
+    val dumpedQueryText = QueryFileTextMaker(collectedQueries, FileQueryAccum.PathBehavior.IncludePaths, FileQueryAccum.LabelBehavior.IncludeAll)
+
+    writeToFile(dumpedQueryText, srcFile)
   }
 
-  fun buildForResources() {
+  fun buildForGoldenFile(overrwriteExisting: Boolean) {
     // e.g: /home/me/project/src/commonMain/com/someplace/Code.kt -> /home/me/project/src/commonMain/com/someplace/
     val codeFileParent = Path.of(codeFile.fileEntry.name).parent
     // projectDir: /home/me/project/
@@ -95,7 +98,32 @@ class BuildQueryFile(
     if (!dirOfFile.dirExistsOrCouldMake()) return // failing the build, return without creating the file
 
     val srcFile = Path.of(dirOfFile.toString(), srcFileName)
-    writeToFile(srcFile)
+
+    val currentQueries = codeFileScope.currentQueries().filter { it.label != null }
+
+    // Since we can only golden tests that are actually labelled, need to make sure the queries have labels
+    if (currentQueries.isEmpty()) {
+      logger.warn("No queries found in file: ${codeFile.fileEntry.name}. Not writing queries to it.")
+      return
+    }
+
+    val dumpedQueries = QueryFileTextMaker(
+      currentQueries,
+      FileQueryAccum.PathBehavior.NoIncludePaths,
+      FileQueryAccum.LabelBehavior.IncludeOnlyLabeled
+    )
+    val fileExists = Files.exists(srcFile)
+
+    when {
+      !fileExists ->
+        writeToFile(dumpedQueries, srcFile)
+      fileExists && overrwriteExisting -> {
+        logger.warn("Overriding the golden file: ${srcFile} (to disable override, set to ExoGoldenTest)")
+        writeToFile(dumpedQueries, srcFile)
+      }
+      else ->
+        logger.warn("File already exists, not overriding it: ${srcFile} (to override set the annotation to ExoGoldenOverride).")
+    }
   }
 
   private fun File.dirExistsOrCouldMake() =
@@ -106,9 +134,9 @@ class BuildQueryFile(
       true
     }
 
-  fun writeToFile(srcFile: Path) {
+  private fun writeToFile(queries: String, srcFile: Path) {
     try {
-      logger.warn("----------------- Writing Queries to file: ${srcFile.toAbsolutePath()}")
+      //logger.warn("----------------- Writing Queries to file: ${srcFile.toAbsolutePath()}")
       Files.write(srcFile, queries.toByteArray(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
     } catch (e: Exception) {
 

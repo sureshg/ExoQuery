@@ -1,8 +1,6 @@
 package io.exoquery.plugin.transform
 
 import io.exoquery.ParseError
-import io.exoquery.annotation.ExoGoldenTest
-import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.CompileLogger.Companion.invoke
@@ -16,15 +14,7 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
-import java.nio.file.Path
 import org.jetbrains.kotlin.ir.util.*
-import org.jetbrains.kotlin.konan.file.file
-import java.nio.file.FileSystems
-import java.nio.file.Files
-import java.nio.file.LinkOption
-import java.nio.file.StandardOpenOption
-import kotlin.io.path.exists
-import kotlin.io.path.nameWithoutExtension
 
 class VisitTransformExpressions(
   private val context: IrPluginContext,
@@ -72,11 +62,18 @@ class VisitTransformExpressions(
     // of the compilation phases).
     //if (file.hasAnnotation<ExoGoldenTest>())
 
+    val sanityCheck = currentFile.path == file.path
+    if (!sanityCheck) {
+      CompileLogger(config, file, file).warn("Current file is not the same as the file being visited: ${currentFile.path} != ${file.path}. Will not write this file.")
+    }
+
     val fileScope = TransformerScope(data.symbols, FileQueryAccum.RealFile(file))
     val ret = super.visitFileNew(file, fileScope)
-    if (fileScope.fileQueryAccum.nonEmpty()) {
+
+    if (sanityCheck && fileScope.hasQueries()) {
       //BuildQueryFile(file, fileScope, config, exoOptions, currentFile).buildRegular()
-      BuildQueryFile(file, fileScope, config, exoOptions, currentFile).buildForResources()
+      val queryFile = QueryFile(file, fileScope, config, exoOptions)
+      QueryFileBuilder.invoke(queryFile)
     }
 
     return ret

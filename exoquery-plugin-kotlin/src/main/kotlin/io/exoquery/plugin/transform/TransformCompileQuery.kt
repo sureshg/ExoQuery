@@ -5,6 +5,8 @@ import io.exoquery.PostgresDialect
 import io.exoquery.SqlCompiledQuery
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
+import io.exoquery.parseError
+import io.exoquery.parseErrorLite
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
@@ -18,6 +20,8 @@ import io.exoquery.plugin.trees.simpleTypeArgs
 import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import java.awt.print.Printable
 import kotlin.time.measureTime
 import kotlin.time.measureTimedValue
 
@@ -32,7 +36,17 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
   override fun transformBase(expr: IrCall): IrExpression {
     // recurse down into the expression in order to make it into an Uprootable if needed
     return expr.match(
-      case(Ir.Call.FunctionMem1[Is(), Is("build"), Is(/*TODO this is the dialect*/)]).then { sqlQueryExprRaw, dialect ->
+      case(Ir.Call.FunctionMemN[Is(), Is("build"), Is(/*TODO this is the dialect*/)]).then { sqlQueryExprRaw, args ->
+        val dialect = args[0]
+
+        val label =
+          if (args.size > 1) {
+            (args[1] as? IrConst)?.let { constVal -> constVal.value.toString() }
+              ?: parseErrorLite("A query-label must be a constant compile-time string but found: ${args[1].dumpKotlinLike()}", args[1])
+          } else {
+            null
+          }
+
         val sqlQueryExpr = superTransformer.visitExpression(sqlQueryExprRaw)
         sqlQueryExpr.match(
           case(SqlQueryExpr.Uprootable[Is()]).then { uprootable ->
@@ -41,7 +55,7 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
             val (queryString, compileTime) = measureTimedValue {
               dialect.translate(xr) // TODO catch any potential errors coming from the query compiler
             }
-            ctx.transformerScope.addQuery(queryString, expr.location(ctx.currentFile.fileEntry))
+            ctx.transformerScope.addQuery(PrintableQuery(queryString, expr.location(ctx.currentFile.fileEntry), label))
 
             // TODO can include the sql-formatting library here since the compiler is always on the JVM!
             report("Compiled query in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)

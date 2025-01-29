@@ -1,5 +1,7 @@
+@file:ExoGoldenTest
 package io.exoquery
 
+import io.exoquery.annotation.ExoGoldenTest
 import io.exoquery.xr.`+++`
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
@@ -12,6 +14,6 @@ class BasicQuerySanitySpec : FreeSpec({
   "basic query" {
     val people = capture { Table<Person>() }
     val joes = capture { people.filter { p -> p.name == "Joe" } }
-    joes.build(PostgresDialect())
+    joes.build(PostgresDialect(), "basic query")
   }
 })
