@@ -68,10 +68,12 @@ class VisitTransformExpressions(
     // was in order to be able to do implicit lifting (or at least detect where lifts are needed during the parsing
     // phase where it is easy to make an error and analyze adjacent expressions, the FreeSymbols check at the end
     // of the compilation phases).
+    file.annotations
+
     val fileScope = TransformerScope(data.symbols, FileQueryAccum.RealFile(file))
     val ret = super.visitFileNew(file, fileScope)
     if (fileScope.fileQueryAccum.nonEmpty()) {
-      BuildQueryFile(file, fileScope, config, exoOptions, currentFile)
+      BuildQueryFile(file, fileScope, config, exoOptions, currentFile).buildRegular()
     }
 
     return ret

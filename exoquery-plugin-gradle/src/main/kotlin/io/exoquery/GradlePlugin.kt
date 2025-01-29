@@ -64,10 +64,16 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
         }
 
         val target = kotlinCompilation.target.name
+        // This will always be the platform name e.g. jvm/linuxX64 etc... even if the files are in commonMain
+        // because the builds don't actually build commonMain as a compile-target, only the actual platforms
         val sourceSetName = kotlinCompilation.defaultSourceSet.name
 
         return project.provider {
             listOf(
+                SubpluginOption("generationDir", project.layout.buildDirectory.file("generated/exo/").get().asFile.absolutePath),
+                SubpluginOption("projectSrcDir", project.projectDir.toPath().resolve("src").toAbsolutePath().toString()),
+                SubpluginOption("sourceSetName", sourceSetName),
+                SubpluginOption("targetName", target),
                 SubpluginOption("projectDir", project.projectDir.path),
                 SubpluginOption("projectBaseDir", project.project.projectDir.canonicalPath),
                 SubpluginOption("kotlinOutputDir", getKspKotlinOutputDir(project, sourceSetName, target).path),

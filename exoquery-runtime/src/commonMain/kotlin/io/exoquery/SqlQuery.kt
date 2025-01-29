@@ -40,5 +40,23 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
   // TODO We can build the dynamic path here directly!... and have the static path replace the logic here
   // TODO this needs to take a Dialect argument that is summoned on the compiler via Class.forName (also do the dynamic path if Class.forName was null and warn the user about that)
   //      (note there there should also be some kind of global setting (or file-annotation) that makes failures happen in the case of the dynamic path)
+
+  /*
+  Argument taking the name of a query: (also make buildPretty) to pretty-print it
+  query.build(PostgresDialect(), "GetStuffFromStuff")
+  ------< GetStuffFromStuff >-----
+  select ...
+
+  (fail if there are duplicate names in a file)
+
+  Annotation on the top of a file to put into different location:
+  @file:ExoLocation("src/main/resources/queries")
+  // Or
+  @file:ExoGoldenTest which like like "src/main/resources/queries/{packageName}" but ignores file if exists
+  // Then build(PostgresDialect(), "...").shouldBeGolden() will test to the labelled query in the corresponding file
+  // Then
+  @file:ExoGoldenMake which overwrites the file if exists
+  // Then you can overwrite the golden file when stuff changed and compare to previous in git
+   */
   fun build(dialect: SqlIdiom): SqlCompiledQuery<T> = TODO()
 }

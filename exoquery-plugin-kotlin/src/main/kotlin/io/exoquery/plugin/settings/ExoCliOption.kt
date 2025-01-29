@@ -9,6 +9,34 @@ enum class ExoCliOption(
   override val required: Boolean = false,
   override val allowMultipleOccurrences: Boolean = false
 ) : AbstractCliOption {
+  GENERATION_DIR_OPTION(
+    "generationDir",
+    "<generationDir>",
+    "Dir of generated sources",
+    false
+  ),
+
+  PROJECT_SRC_DIR_OPTION(
+    "projectSrcDir",
+    "<projectSrcDir>",
+    "Dir of project sources",
+    false
+  ),
+
+  SOURCE_SET_NAME_OPTION(
+    "sourceSetName",
+    "<sourceSetName>",
+    "Name of the source set",
+    false
+  ),
+
+  TARGET_NAME_OPTION(
+    "targetName",
+    "<targetName>",
+    "Name of the target",
+    false
+  ),
+
   KOTLIN_OUTPUT_DIR_OPTION(
     "kotlinOutputDir",
     "<kotlinOutputDir>",
