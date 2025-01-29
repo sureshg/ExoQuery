@@ -73,7 +73,8 @@ class VisitTransformExpressions(
     val fileScope = TransformerScope(data.symbols, FileQueryAccum.RealFile(file))
     val ret = super.visitFileNew(file, fileScope)
     if (fileScope.fileQueryAccum.nonEmpty()) {
-      BuildQueryFile(file, fileScope, config, exoOptions, currentFile).buildRegular()
+      //BuildQueryFile(file, fileScope, config, exoOptions, currentFile).buildRegular()
+      BuildQueryFile(file, fileScope, config, exoOptions, currentFile).buildForResources()
     }
 
     return ret
