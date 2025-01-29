@@ -4,6 +4,7 @@ import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.settings.ExoCompileOptions
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import java.io.File
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
@@ -19,6 +20,7 @@ class BuildQueryFile(
 ) {
   val fs = FileSystems.getDefault()
   val logger = CompileLogger(compilerConfig, currentTransformedFile, currentTransformedFile)
+  val queries: String by lazy { codeFileScope.fileQueryAccum.makeFileDump() }
 
   fun buildRegular() {
     // e.g: /home/me/project/src/commonMain/com/someplace/Code.kt -> /home/me/project/src/commonMain/kotlin/com/someplace/
@@ -48,26 +50,11 @@ class BuildQueryFile(
 
     val srcFileName = Path.of(codeFile.fileEntry.name).nameWithoutExtension + ".queries.sql"
 
-    if (!dirOfFile.exists() && !dirOfFile.mkdirs()) {
-      throw IllegalStateException("failed to make parent directories.")
-    }
+    if (!dirOfFile.dirExistsOrCouldMake()) return // failing the build, return without creating the file
+
     val srcFile = Path.of(dirOfFile.toString(), srcFileName)
-    val queries: String = codeFileScope.fileQueryAccum.makeFileDump()
 
-    try {
-      val addition = if (regularProcess) "" else " (Could not regular file path, needed to use default-source set)"
-      logger.warn("----------------- Writing Queries to file${addition}: ${srcFile.toAbsolutePath()}")
-      Files.write(srcFile, queries.toByteArray(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-    } catch (e: Exception) {
-
-      logger.error(
-        """|Could not write Queries to file: ${srcFile.toAbsolutePath()}
-           |================= Error: =================
-           |${e.stackTraceToString()}
-           |================= Queries
-           |${queries}
-           """.trimMargin())
-    }
+    writeToFile(srcFile)
   }
 
   fun buildForResources() {
@@ -105,13 +92,21 @@ class BuildQueryFile(
 
     val srcFileName = Path.of(codeFile.fileEntry.name).nameWithoutExtension + ".queries.sql"
 
-    if (!dirOfFile.exists() && !dirOfFile.mkdirs()) {
-      throw IllegalStateException("failed to make parent directories.")
-    }
+    if (!dirOfFile.dirExistsOrCouldMake()) return // failing the build, return without creating the file
+
     val srcFile = Path.of(dirOfFile.toString(), srcFileName)
-    val queries: String = codeFileScope.fileQueryAccum.makeFileDump()
+    writeToFile(srcFile)
+  }
 
+  private fun File.dirExistsOrCouldMake() =
+    if (!this.exists() && !this.mkdirs()) {
+      logger.error("Failed to create the parent directory: ${this.absolutePath}")
+      false
+    } else {
+      true
+    }
 
+  fun writeToFile(srcFile: Path) {
     try {
       logger.warn("----------------- Writing Queries to file: ${srcFile.toAbsolutePath()}")
       Files.write(srcFile, queries.toByteArray(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)

@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrFileEntry
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
+import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -155,7 +156,16 @@ inline fun <reified T> classIdOf(): ClassId {
   return ClassId.topLevel(FqName(className))
 }
 
+inline fun <reified T> fqNameOf(): FqName {
+  val className = T::class.qualifiedNameForce
+  return FqName(className)
+}
+
+inline fun <reified T> IrAnnotationContainer.hasAnnotation() =
+  this.annotations.any { it.type.classFqName == fqNameOf<T>() }
+
 inline fun <reified T> IrType.isClass(): Boolean {
+  // NOTE memoize these things for performance?
   val className = T::class.qualifiedNameForce
   return className == this.classFqName.toString() || this.superTypes().any { it.classFqName.toString() == className }
 }

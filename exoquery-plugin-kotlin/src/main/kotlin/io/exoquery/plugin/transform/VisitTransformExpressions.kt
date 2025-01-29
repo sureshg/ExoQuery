@@ -1,6 +1,8 @@
 package io.exoquery.plugin.transform
 
 import io.exoquery.ParseError
+import io.exoquery.annotation.ExoGoldenTest
+import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.CompileLogger.Companion.invoke
@@ -68,7 +70,7 @@ class VisitTransformExpressions(
     // was in order to be able to do implicit lifting (or at least detect where lifts are needed during the parsing
     // phase where it is easy to make an error and analyze adjacent expressions, the FreeSymbols check at the end
     // of the compilation phases).
-    file.annotations
+    //if (file.hasAnnotation<ExoGoldenTest>())
 
     val fileScope = TransformerScope(data.symbols, FileQueryAccum.RealFile(file))
     val ret = super.visitFileNew(file, fileScope)
