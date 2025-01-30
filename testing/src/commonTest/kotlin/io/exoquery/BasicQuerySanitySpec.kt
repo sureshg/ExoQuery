@@ -2,18 +2,26 @@
 package io.exoquery
 
 import io.exoquery.annotation.ExoGoldenTest
-import io.exoquery.xr.`+++`
-import io.exoquery.xr.XR
-import io.exoquery.xr.XRType
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.equals.shouldBeEqual
 
-class BasicQuerySanitySpec : FreeSpec({
-  data class Person(val name: String, val age: Int)
+// Note that the 1st time you overwrite the golden file it will still fail because the compile is using teh old version
+
+// build the file BasicQuerySanitySpecGolden.kt, is that as the constructor arg
+class BasicQuerySanitySpec : GoldenSpec(BasicQuerySanitySpecGolden, {
+  data class Person(val id: Int, val name: String, val age: Int)
+  data class Address(val ownerId: Int, val street: String, val city: String)
 
   "basic query" {
     val people = capture { Table<Person>() }
     val joes = capture { people.filter { p -> p.name == "Joe" } }
-    joes.build(PostgresDialect(), "basic query")
+    joes.build(PostgresDialect(), "basic query").shouldBeGolden("basic query")
+  }
+  "query with join" {
+    val query = select {
+      val p = from(Table<Person>())
+      val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+      p to a
+    }
+    query.build(PostgresDialect(), "query with join").shouldBeGolden("query with join")
   }
 })

@@ -6,6 +6,37 @@ import io.exoquery.plugin.transform.FileQueryAccum.PathBehavior
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 
+object QueryFileKotlinMaker {
+  operator fun invoke(queries: List<PrintableQuery>, fileName: String, filePackage: String): String {
+    val fileBody =
+      queries
+        .filter { query ->
+          query.label != null
+        }
+        .mapNotNull { query ->
+          val label = query.label!!
+          // create every line of the GoldeQueryFile
+          val key = """    "${label}" to"""
+          val value = """      "${query.query}","""
+          val row =
+            """|$key
+               |$value
+            """.trimMargin()
+          row
+        }.joinToString("\n")
+
+    return (
+      """|package $filePackage
+         |
+         |object ${fileName}Golden: GoldenQueryFile {
+         |  override val queries = mapOf(
+         |$fileBody
+         |  )
+         |}""".trimMargin()
+      )
+  }
+}
+
 object QueryFileTextMaker {
   val LabelPrefix: String = "-- ===========< "
   val LabelSuffix: String = " >========== --"

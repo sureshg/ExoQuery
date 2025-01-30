@@ -62,38 +62,37 @@ class QueryFile(
 
   fun buildForGoldenFile(overrwriteExisting: Boolean) {
     // e.g: /home/me/project/src/commonMain/com/someplace/Code.kt -> /home/me/project/src/commonMain/com/someplace/
-    val codeFileParent = Path.of(codeFile.fileEntry.name).parent
-    // projectDir: /home/me/project/
-    val projectDirPath = Path.of(config.projectDir)
-    if (!codeFileParent.startsWith(projectDirPath)) {
-      logger.warn("In order to be able to generate queries in the resources directory, the file must be in the project source directory: ${projectDirPath} but it was in: ${codeFileParent}")
-      return
-    }
-
-    val trimmedPath =
-      projectDirPath.relativize(codeFileParent) // this should be: src/commonMain/kotlin/com/someplace/
-        // we expect it to start with src so remove that
-        .let { if (it.startsWith("src")) Path.of("src").relativize(it) else it } // now should be: commonMain/kotlin/com/someplace/
+    val codeFilePath = Path.of(codeFile.fileEntry.name)
+    val codeFileParent = codeFilePath.parent
+    //// projectDir: /home/me/project/
+    //val projectDirPath = Path.of(config.projectDir)
+    //if (!codeFileParent.startsWith(projectDirPath)) {
+    //  logger.warn("In order to be able to generate queries in the resources directory, the file must be in the project source directory: ${projectDirPath} but it was in: ${codeFileParent}")
+    //  return
+    //}
+    //val trimmedPath =
+    //  projectDirPath.relativize(codeFileParent) // this should be: src/commonMain/kotlin/com/someplace/
+    //    // we expect it to start with src so remove that
+    //    .let { if (it.startsWith("src")) Path.of("src").relativize(it) else it } // now should be: commonMain/kotlin/com/someplace/
     // TODO should probably stop here if src could not be found since we'll expect an exact directory structure for it when we loaded it via the resource path
-
-    val segments = trimmedPath.iterator().asSequence().toList()
-    // i.e. commonMain
-    val platformSourceDir = segments[0]
-    // i.e. kotlin
-    val sourceDir = segments[1]
-    // todo if it is not "kotlin" probably need to make an assertion-error at this point
-
+    //val segments = trimmedPath.iterator().asSequence().toList()
+    //// i.e. commonMain
+    //val platformSourceDir = segments[0]
+    //// i.e. kotlin
+    //val sourceDir = segments[1]
+    //// todo if it is not "kotlin" probably need to make an assertion-error at this point
     // fileGenerationPath: /home/me/project/ + src/ + resources/ + commonMain/ + com/someplace/
-    val fileGenerationPath =
-      Path.of(config.projectDir)
-        .resolve("src")
-        .resolve(platformSourceDir)
-        .resolve("resources")
-        .resolve(segments.drop(2).joinToString(fs.separator)) // com/ + someplace/ -> com/someplace/
+    //val fileGenerationPath =
+    //  Path.of(config.projectDir)
+    //    .resolve("src")
+    //    .resolve(platformSourceDir)
+    //    .resolve("resources")
+    //    .resolve(segments.drop(2).joinToString(fs.separator)) // com/ + someplace/ -> com/someplace/
 
-    val dirOfFile = fileGenerationPath.toFile()
+    // dirOfFile: /home/me/project/src/commonMain/com/someplace/
+    val dirOfFile = codeFileParent.toFile()
 
-    val srcFileName = Path.of(codeFile.fileEntry.name).nameWithoutExtension + ".queries.sql"
+    val srcFileName = Path.of(codeFile.fileEntry.name).nameWithoutExtension + "Golden.kt"
 
     if (!dirOfFile.dirExistsOrCouldMake()) return // failing the build, return without creating the file
 
@@ -107,10 +106,8 @@ class QueryFile(
       return
     }
 
-    val dumpedQueries = QueryFileTextMaker(
-      currentQueries,
-      FileQueryAccum.PathBehavior.NoIncludePaths,
-      FileQueryAccum.LabelBehavior.IncludeOnlyLabeled
+    val dumpedQueries = QueryFileKotlinMaker.invoke(
+      currentQueries, codeFilePath.nameWithoutExtension, codeFile.packageFqName.asString()
     )
     val fileExists = Files.exists(srcFile)
 
