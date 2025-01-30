@@ -61,10 +61,11 @@ class VisitTransformExpressions(
     // phase where it is easy to make an error and analyze adjacent expressions, the FreeSymbols check at the end
     // of the compilation phases).
     //if (file.hasAnnotation<ExoGoldenTest>())
+    val loggerCtx = LoggableContext.makeLite(config, file, file)
 
     val sanityCheck = currentFile.path == file.path
     if (!sanityCheck) {
-      CompileLogger(config, file, file).warn("Current file is not the same as the file being visited: ${currentFile.path} != ${file.path}. Will not write this file.")
+      loggerCtx.logger.warn("Current file is not the same as the file being visited: ${currentFile.path} != ${file.path}. Will not write this file.")
     }
 
     val fileScope = TransformerScope(data.symbols, FileQueryAccum.RealFile(file))
@@ -73,7 +74,7 @@ class VisitTransformExpressions(
     if (sanityCheck && fileScope.hasQueries()) {
       //BuildQueryFile(file, fileScope, config, exoOptions, currentFile).buildRegular()
       val queryFile = QueryFile(file, fileScope, config, exoOptions)
-      QueryFileBuilder.invoke(queryFile)
+      with(loggerCtx) { QueryFileBuilder.invoke(queryFile) }
     }
 
     return ret

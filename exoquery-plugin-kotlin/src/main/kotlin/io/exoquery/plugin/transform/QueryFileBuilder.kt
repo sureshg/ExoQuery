@@ -17,8 +17,15 @@ object QueryFileBuilder {
     object GoldenNoOverwrite : OutputMode
   }
 
-  operator fun invoke(queryFile: QueryFile) {
+  context(LoggableContext) operator fun invoke(queryFile: QueryFile) {
     if (!queryFile.codeFileScope.hasQueries()) return
+
+    // check queries for duplicate labels
+    val labelDups = queryFile.codeFileScope.currentQueries().groupBy { it.label }.filter { it.value.size > 1 }
+    if (labelDups.isNotEmpty()) {
+      logger.error("Duplicate labels found in queries: ${labelDups.keys.joinToString(", ")}")
+      return
+    }
 
     val resourcesWrite =
       if (queryFile.codeFile.hasAnnotation<ExoGoldenOverride>())
