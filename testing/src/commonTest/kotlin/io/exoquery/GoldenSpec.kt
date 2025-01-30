@@ -16,7 +16,7 @@ abstract class GoldenSpec(val goldenQueries: GoldenQueryFile, body: GoldenSpec.(
   // TODO modify compiler add something to golden file so intellij will identify it as such perhaps Sql(...) prefix or something like that,
   //      see how I did this in terpal-sql (and the issue they resolved). Maybe I can just add '.sql' after the query
   // TODO add support for multiline queries, they should print out as """... bunch of lines...""" and should be compared as such
-  fun SqlCompiledQuery<*>.shouldBeGolden(label: String) =
+  fun SqlCompiledQuery<*>.shouldBeGolden() =
     goldenQueries.queries[label]?.let {
       assertEquals(
         it.trimIndent().trim(), this.value.trimIndent().trim(),

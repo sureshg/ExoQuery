@@ -58,7 +58,8 @@ object QueryFileKotlinMaker {
          |  override val queries = mapOf(
          |$fileBody
          |  )
-         |}""".trimMargin()
+         |}
+         |""".trimMargin()
       )
   }
 }

@@ -7,14 +7,14 @@ import io.kotest.core.spec.style.FreeSpec
 // Also note that it won't actually override the BasicQuerySanitySpecGolden file unless you change this one
 
 // build the file BasicQuerySanitySpecGolden.kt, is that as the constructor arg
-class BasicQuerySanitySpec : GoldenSpec(BasicQuerySanitySpecGolden, { //hello
+class BasicQuerySanitySpec : GoldenSpec(BasicQuerySanitySpecGolden, {
   data class Person(val id: Int, val name: String, val age: Int)
   data class Address(val ownerId: Int, val street: String, val city: String)
 
   "basic query" {
     val people = capture { Table<Person>() }
     val joes = capture { people.filter { p -> p.name == "Joe" } }
-    joes.build(PostgresDialect(), "basic query").shouldBeGolden("basic query")
+    joes.build(PostgresDialect(), "basic query").shouldBeGolden()
   }
   "query with join" {
     val query = select {
@@ -22,6 +22,6 @@ class BasicQuerySanitySpec : GoldenSpec(BasicQuerySanitySpecGolden, { //hello
       val a = join(Table<Address>()) { a -> a.ownerId == p.id }
       p to a
     }
-    query.buildPretty(PostgresDialect(), "query with join").shouldBeGolden("query with join") //hello
+    query.buildPretty(PostgresDialect(), "query with join").shouldBeGolden()
   }
 })
