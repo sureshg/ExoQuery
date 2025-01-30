@@ -45,6 +45,7 @@ dependencies {
     // Actually this is going to be 0.0.5 - using an unpublished one now
     api("io.exoquery:decomat-core:0.4.0")
     api("io.exoquery:pprint-kotlin:3.0.0")
+    api("com.github.vertical-blank:sql-formatter:2.0.4")
     api(kotlin("reflect"))
 }
 

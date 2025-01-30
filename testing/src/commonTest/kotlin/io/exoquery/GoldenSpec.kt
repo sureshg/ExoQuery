@@ -4,6 +4,7 @@ import io.kotest.core.spec.DslDrivenSpec
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.core.spec.style.scopes.FreeSpecRootScope
 import io.kotest.matchers.equals.shouldBeEqual
+import kotlin.test.assertEquals
 
 // This mimics FreeSpec but adds a shouldBeGolden function that compares the compiled query to a golden query
 // whenever I try to extend FreeSpec I get the following error:
@@ -16,7 +17,12 @@ abstract class GoldenSpec(val goldenQueries: GoldenQueryFile, body: GoldenSpec.(
   //      see how I did this in terpal-sql (and the issue they resolved). Maybe I can just add '.sql' after the query
   // TODO add support for multiline queries, they should print out as """... bunch of lines...""" and should be compared as such
   fun SqlCompiledQuery<*>.shouldBeGolden(label: String) =
-    goldenQueries.queries[label]?.let { it shouldBeEqual this.value} ?: error("""No golden query found for label: "$label"""")
+    goldenQueries.queries[label]?.let {
+      assertEquals(
+        it.trimIndent().trim(), this.value.trimIndent().trim(),
+        "Golden query for label: \"$label\" did not match"
+      )
+    } ?: error("""No golden query found for label: "$label"""")
 
   init {
     body()

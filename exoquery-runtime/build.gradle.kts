@@ -59,7 +59,10 @@ kotlin {
                 // Actually this is going to be 0.0.5 - using an unpublished one now
                 api("io.exoquery:decomat-core:0.4.0")
                 api("io.exoquery:terpal-runtime:2.1.0-2.0.0.PL")
+                // This is a java-only library, I have no idea who it can even be here.
+                // maybe if I actually attempt to use it in KMP mode in a non-java target it will actually fail
                 api("com.github.vertical-blank:sql-formatter:2.0.4")
+                implementation("com.sschr15.annotations:jb-annotations-kmp:24.1.0+apple")
             }
         }
 

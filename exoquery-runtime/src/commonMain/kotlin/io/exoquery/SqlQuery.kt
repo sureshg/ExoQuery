@@ -8,7 +8,7 @@ import io.exoquery.xr.XR
 //      This probably needs to be something like SqlCompiledQuery<T> which has constructors
 //      SqlCompiledQuery.compileTime<T>(String|Token,Params,serialier<T>=some-default-value) and SqlCompiledQuery.runtime(query:SqlQuery,serialier<T>=some-default-value)
 //      (actually come to think of it, we can probably implement the dynamic path directly and have the staic path replace the build() method if it's possible)
-data class SqlCompiledQuery<T>(val value: String)
+data class SqlCompiledQuery<T>(val value: String, val label: String?)
 
 data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtimes, override val params: Params): ContainerOfXR {
   fun <R> map(f: (T) -> R): SqlQuery<R> = error("The map expression of the Query was not inlined")
@@ -53,6 +53,8 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
   @file:ExoLocation("src/main/resources/queries")
    */
   fun build(dialect: SqlIdiom): SqlCompiledQuery<T> = TODO()
-
   fun build(dialect: SqlIdiom, label: String): SqlCompiledQuery<T> = TODO()
+
+  fun buildPretty(dialect: SqlIdiom): SqlCompiledQuery<T> = TODO()
+  fun buildPretty(dialect: SqlIdiom, label: String): SqlCompiledQuery<T> = TODO()
 }
