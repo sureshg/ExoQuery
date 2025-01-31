@@ -22,6 +22,6 @@ class BasicQuerySanitySpec : GoldenSpec(BasicQuerySanitySpecGolden, {
       val a = join(Table<Address>()) { a -> a.ownerId == p.id }
       p to a
     }
-    query.buildPretty(PostgresDialect(), "query with join").shouldBeGolden()
+    query.buildPretty(PostgresDialect(), "query with join").shouldBeGolden() //hello
   }
 })

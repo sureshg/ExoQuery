@@ -43,6 +43,13 @@ kotlin {
             }
         }
 
+        val jvmMain by getting {
+            dependencies {
+                // Want to have the full pprint in the JVM to do reflective deep-object diffs
+                implementation("io.exoquery:pprint-kotlin:3.0.0")
+            }
+        }
+
         val jvmTest by getting {
             dependencies {
                 implementation("io.kotest:kotest-runner-junit5:6.0.0.M1")
