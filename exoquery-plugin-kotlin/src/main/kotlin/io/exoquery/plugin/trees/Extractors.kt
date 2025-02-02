@@ -509,6 +509,24 @@ object Ir {
         }
     }
 
+    object FunctionMemVararg {
+      context (CompileLogger) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<List<IrExpression>>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, List<IrExpression>, IrCall> =
+        customPattern2("Ir.Call.FunctionMemVararg", x, y) { it: IrCall ->
+          val reciever = it.extensionReceiver ?: it.dispatchReceiver
+          if (reciever != null
+            && it.simpleValueArgs.size == 1
+            && it.simpleValueArgs.first() != null
+            && it.simpleValueArgs.first() is IrVararg
+            && (it.simpleValueArgs.first() as IrVararg).elements.all { it is IrExpression }
+            && m.matchesAny(it.symbol.safeName))
+          {
+            Components2(reciever, (it.simpleValueArgs.first() as IrVararg).elements.map { it as IrExpression }.toList())
+          } else {
+            null
+          }
+        }
+    }
+
     // not a function on an object or class i.e. top-level
     object FunctionUntethered1 {
       object Arg {

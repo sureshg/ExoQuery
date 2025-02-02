@@ -5,6 +5,7 @@ import io.decomat.case
 import io.decomat.match
 import io.decomat.on
 import io.exoquery.BID
+import io.exoquery.Ord
 import io.exoquery.xr.SX
 import io.exoquery.SelectClauseCapturedBlock
 import io.exoquery.xr.SelectClause
@@ -15,6 +16,8 @@ import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.trees.ExtractorsDomain.Call.`(op)x`
+import io.exoquery.plugin.trees.ExtractorsDomain.Call.`x to y`
 import io.exoquery.plugin.trees.ExtractorsDomain.IsSelectFunction
 import io.exoquery.xr.*
 import org.jetbrains.kotlin.ir.IrElement
@@ -192,7 +195,38 @@ object SelectClauseParser {
       case(Ir.Call.FunctionMem1[IsSelectFunction(), Is("groupBy"), Is()]).thenThis { _, argValue ->
         SX.GroupBy(ExpressionParser.parse(argValue), this.loc)
       },
+      case(Ir.Call.FunctionMemVararg[IsSelectFunction(), Is("sortBy"), Is()]).thenThis { _, argValues ->
+        val clausesRaw = argValues.map { OrderParser.parseOrdTuple(it) }
+        if (clausesRaw.size == 1) {
+          val (expr, ord) = clausesRaw.first()
+          SX.SortBy(expr, ord, this.loc)
+        }
+        else {
+          val (exprs, clauses) = clausesRaw.unzip()
+          SX.SortBy(XR.Product.TupleSmartN(exprs, this.loc), XR.Ordering.TupleOrdering(clauses), this.loc)
+        }
+      },
     ) ?: parseError("Could not parse Select Clause from: ${expr.dumpSimple()}", expr)
+}
+
+object OrderParser {
+  // Can either be `x to Ord` or Pair(x, Ord)
+  context(ParserContext, CompileLogger) fun parseOrdTuple(expr: IrExpression): Pair<XR.Expression, XR.Ordering> =
+    expr.match(
+      case(`x to y`[Is(), Is()]).thenThis { property, ord ->
+        ExpressionParser.parse(property) to parseOrd(ord)
+      }
+    ) ?: parseError("Could not parse a proper ordering from the expression: ${expr.dumpSimple()}. Orderings must always come in the form `property to Ord` for example `person.name to Desc`.", expr)
+
+  context(ParserContext, CompileLogger) fun parseOrd(expr: IrExpression): XR.Ordering =
+    expr.match(
+      case(Ir.Type.ClassOf<Ord.Asc>()).then { XR.Ordering.Asc },
+      case(Ir.Type.ClassOf<Ord.Desc>()).then { XR.Ordering.Desc },
+      case(Ir.Type.ClassOf<Ord.AscNullsFirst>()).then { XR.Ordering.AscNullsFirst },
+      case(Ir.Type.ClassOf<Ord.DescNullsFirst>()).then { XR.Ordering.DescNullsFirst },
+      case(Ir.Type.ClassOf<Ord.AscNullsLast>()).then { XR.Ordering.AscNullsLast },
+      case(Ir.Type.ClassOf<Ord.DescNullsLast>()).then { XR.Ordering.DescNullsLast },
+    ) ?: parseError("Could not parse an ordering from the expression: ${expr.dumpSimple()}. Orderings must be specified as one of the following compile-time constant values: Asc, Desc, AscNullsFirst, DescNullsFirst, AscNullsLast, DescNullsLast", expr)
 }
 
 /**
@@ -297,12 +331,12 @@ object ExpressionParser {
         XR.BinaryOp(parse(x), op, parse(y), expr.loc)
       },
       // Unary Operators
-      case(ExtractorsDomain.Call.`(op)x`[Is()]).thenThis { opCall ->
+      case(`(op)x`[Is()]).thenThis { opCall ->
         val (x, op) = opCall
         XR.UnaryOp(op, parse(x), expr.loc)
       },
 
-      case(ExtractorsDomain.Call.`x to y`[Is(), Is()]).thenThis { x, y ->
+      case(`x to y`[Is(), Is()]).thenThis { x, y ->
         XR.Product.Tuple(parse(x), parse(y), expr.loc)
       },
 

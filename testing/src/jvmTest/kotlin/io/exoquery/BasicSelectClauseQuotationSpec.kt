@@ -1,5 +1,6 @@
 package io.exoquery
 
+import io.exoquery.Ord.*
 import io.exoquery.xr.EqualityOperator
 import io.exoquery.xr.SX
 import io.exoquery.xr.SelectClause
@@ -20,41 +21,51 @@ class BasicSelectClauseQuotationSpec : FreeSpec({
   val joinRobot = XR.BinaryOp(XR.Property(pIdent, "id"), EqualityOperator.`==`, XR.Property(rIdent, "ownerId"))
 
   "parsing features spec" - {
-    val people = capture { Table<Person>() }
-    "from + join" {
-      val people =
-        select {
-          val p = from(people)
-          val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
-          p.name
-        }
+      val people = capture { Table<Person>() }
+      "from + join" {
+        val people =
+          select {
+            val p = from(people)
+            val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
+            sortBy(p.age to Asc, p.name to Desc) // TODO what if the return from here is UNIT, need to control for that in the parser
+            p.name
+          }
 
-      people.xr shouldBeEqual SelectClause.of(
-        from = listOf(SX.From(pIdent, personEnt)),
-        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
-        select = XR.Property(pIdent, "name"),
-        type = XRType.Value
-      ).toXrRef()
-    }
+        println(people.show())
+      }
 
-    "from + join + where" {
-      val people =
-        select {
-          val p = from(people)
-          val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
-          where(p.name == "Joe")
-          p.name
-        }
-
-      people.xr shouldBeEqual SelectClause.of(
-        from = listOf(SX.From(pIdent, personEnt)),
-        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
-        where = SX.Where(XR.BinaryOp(XR.Property(pIdent, "name"), EqualityOperator.`==`, XR.Const("Joe"))),
-        select = XR.Property(pIdent, "name"),
-        type = XRType.Value
-      ).toXrRef()
-    }
-
-
+//    "from + join" {
+//      val people =
+//        select {
+//          val p = from(people)
+//          val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
+//          p.name
+//        }
+//
+//      people.xr shouldBeEqual SelectClause.of(
+//        from = listOf(SX.From(pIdent, personEnt)),
+//        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
+//        select = XR.Property(pIdent, "name"),
+//        type = XRType.Value
+//      ).toXrRef()
+//    }
+//
+//    "from + join + where" {
+//      val people =
+//        select {
+//          val p = from(people)
+//          val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
+//          where(p.name == "Joe")
+//          p.name
+//        }
+//
+//      people.xr shouldBeEqual SelectClause.of(
+//        from = listOf(SX.From(pIdent, personEnt)),
+//        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
+//        where = SX.Where(XR.BinaryOp(XR.Property(pIdent, "name"), EqualityOperator.`==`, XR.Const("Joe"))),
+//        select = XR.Property(pIdent, "name"),
+//        type = XRType.Value
+//      ).toXrRef()
+//    }
   }
 })

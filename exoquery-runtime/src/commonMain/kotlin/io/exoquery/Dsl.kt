@@ -33,6 +33,15 @@ interface CapturedBlock {
 
 fun <T> Table(): SqlQuery<T> = error("The `Table<T>` constructor function was not inlined")
 
+sealed interface Ord {
+  object Asc: Ord
+  object Desc: Ord
+  object AscNullsFirst: Ord
+  object DescNullsFirst: Ord
+  object AscNullsLast: Ord
+  object DescNullsLast: Ord
+}
+
 interface SelectClauseCapturedBlock: CapturedBlock {
   fun <T> from(query: SqlQuery<T>): T = error("The `from` expression of the Query was not inlined")
   fun <T> join(onTable: SqlQuery<T>, condition: (T) -> Boolean): T = error("The `join` expression of the Query was not inlined")
@@ -46,7 +55,7 @@ interface SelectClauseCapturedBlock: CapturedBlock {
   fun where(condition: Boolean): Unit = error("The `where` expression of the Query was not inlined")
   fun where(condition: () -> Boolean): Unit = error("The `where` expression of the Query was not inlined")
   fun groupBy(grouping: Any): Unit = error("The `groupBy` expression of the Query was not inlined")
-  fun sortBy(sorting: Any): Unit = error("The `sortBy` expression of the Query was not inlined")
+  fun sortBy(vararg orderings: Pair<*, Ord>): Unit = error("The `sortBy` expression of the Query was not inlined")
 }
 
 fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = error("The `select` expression of the Query was not inlined")

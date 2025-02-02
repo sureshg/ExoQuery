@@ -4,6 +4,7 @@ import io.exoquery.xr.id
 import io.exoquery.BID
 import io.exoquery.printing.PrintXR
 import io.exoquery.sql.Token
+import io.exoquery.util.NumbersToWords
 import io.exoquery.util.ShowTree
 import io.exoquery.util.dropLastSegment
 import io.exoquery.util.takeLastSegment
@@ -701,6 +702,16 @@ sealed interface XR {
 
       fun Triple(first: XR.Expression, second: XR.Expression, third: XR.Expression, loc: Location = Location.Synth) =
         XR.Product("Tuple", loc, "first" to first, "second" to second, "third" to third)
+
+      fun TupleSmartN(values: List<XR.Expression>, loc: Location = Location.Synth) =
+        if (values.size >= 20)
+          TupleNumeric(values.toList(), loc)
+        else
+          TupleAlphabetic(values, loc = loc)
+
+
+      fun TupleAlphabetic(values: List<XR.Expression>, loc: Location = Location.Synth) =
+        Product("TupleA${values.size}", values.withIndex().map { (idx, v) -> NumbersToWords(idx + 1) to v }, loc)
 
       // WARNING: Use these only when you don't care about the property-values because kotlin doesn't
       // actually have _X tuples.
