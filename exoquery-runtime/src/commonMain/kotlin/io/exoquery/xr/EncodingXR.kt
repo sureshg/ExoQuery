@@ -1,6 +1,5 @@
 package io.exoquery.xr
 
-import io.exoquery.SelectClause
 import io.exoquery.xr.EncodingXR.protoBuf
 import kotlinx.serialization.decodeFromHexString
 import kotlinx.serialization.encodeToHexString

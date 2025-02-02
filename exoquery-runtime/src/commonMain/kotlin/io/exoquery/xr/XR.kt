@@ -659,6 +659,17 @@ sealed interface XR {
 
   @Serializable
   sealed interface Const: Expression {
+    companion object {
+      operator fun invoke(value: kotlin.Boolean, loc: Location = Location.Synth) = Boolean(value, loc)
+      operator fun invoke(value: kotlin.Char, loc: Location = Location.Synth) = Char(value, loc)
+      operator fun invoke(value: kotlin.Short, loc: Location = Location.Synth) = Short(value, loc)
+      operator fun invoke(value: kotlin.Int, loc: Location = Location.Synth) = Int(value, loc)
+      operator fun invoke(value: kotlin.Long, loc: Location = Location.Synth) = Long(value, loc)
+      operator fun invoke(value: kotlin.String, loc: Location = Location.Synth) = String(value, loc)
+      operator fun invoke(value: kotlin.Float, loc: Location = Location.Synth) = Float(value, loc)
+      operator fun invoke(value: kotlin.Double, loc: Location = Location.Synth) = Double(value, loc)
+    }
+
     @Serializable data class Boolean(override val value: kotlin.Boolean, override val loc: Location = Location.Synth) : ConstType<kotlin.Boolean>(), Const { override fun equals(other: Any?) = other is Const.Boolean && other.value == value }
     @Serializable data class Char(override val value: kotlin.Char, override val loc: Location = Location.Synth) : ConstType<kotlin.Char>(), Const { override fun equals(other: Any?) = other is Const.Char && other.value == value }
     @Serializable data class Byte(override val value: kotlin.Int, override val loc: Location = Location.Synth) : ConstType<kotlin.Int>(), Const { override fun equals(other: Any?) = other is Const.Byte && other.value == value }

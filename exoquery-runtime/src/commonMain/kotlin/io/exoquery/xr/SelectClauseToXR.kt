@@ -1,9 +1,6 @@
 package io.exoquery.xr
 
-import io.exoquery.SX
-import io.exoquery.SelectClause
 import io.exoquery.util.tail
-import io.exoquery.xr.XR
 
 object SelectClauseToXR {
   operator fun invoke(selectClause: SelectClause): XR.Query = run {

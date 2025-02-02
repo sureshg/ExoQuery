@@ -1,8 +1,6 @@
 package io.exoquery.xr
 
 import io.exoquery.BID
-import io.exoquery.SX
-import io.exoquery.SelectClause
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.be
 import io.kotest.matchers.should

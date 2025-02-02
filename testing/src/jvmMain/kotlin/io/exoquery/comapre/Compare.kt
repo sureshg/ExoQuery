@@ -1,7 +1,6 @@
 package io.exoquery.comapre
 
-import io.exoquery.SX
-import io.exoquery.pprint.dataClassProperties
+import io.exoquery.xr.SX
 import io.exoquery.util.toLinkedMap
 import io.exoquery.xr.XR
 import kotlin.reflect.KClass

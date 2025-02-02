@@ -703,6 +703,25 @@ object Ir {
     }
   }
 
+  object FunctionExpression1 {
+    operator fun <AP: Pattern<A>, A: IrSimpleFunction> get(body: AP)  /*: Pattern1<AP, A, IrFunctionExpression>*/ =
+      // Note, each one of these in here needs to be it:IrExression, not it:IrFunctionExpression or they will never match arbitrary IrExpression instances
+      customPattern1("FunctionExpression", body) { it: IrFunctionExpression ->
+        Components1(it.function)
+      }
+
+    object withBlock {
+      operator fun <AP: Pattern<IrValueParameter>, BP: Pattern<IrBlockBody>> get(params: AP, body: BP) =
+        customPattern2("FunctionExpression.withBlock", params, body) { it: IrFunctionExpression ->
+          on(it).match(
+            case(FunctionExpression1[SimpleFunction.withBlock[Is(), Is()]])
+              .thenIf { (params, _) -> params.size == 1 }
+              .then { (params, body) -> Components2(params.first(), body) }
+          )
+        }
+    }
+  }
+
   object SimpleFunction {
     operator fun <AP: Pattern<A>, BP: Pattern<B>, A: List<IrValueParameter>, B: IrBlockBody> get(args: AP, body: BP): Pattern2<AP, BP, A, B, IrSimpleFunction> =
       customPattern2("Ir.SimpleFunction", args, body) { it: IrSimpleFunction ->

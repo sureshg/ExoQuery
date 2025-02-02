@@ -1,14 +1,12 @@
 package io.exoquery
 
-import io.exoquery.comapre.Compare
-import io.exoquery.comapre.show
 import io.exoquery.xr.EqualityOperator
+import io.exoquery.xr.SX
+import io.exoquery.xr.SelectClause
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.equals.shouldBeEqual
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class BasicSelectClauseQuotationSpec : FreeSpec({
   data class Person(val id: Int, val name: String, val age: Int)
@@ -31,15 +29,32 @@ class BasicSelectClauseQuotationSpec : FreeSpec({
           p.name
         }
 
-      assertTrue(
-        people.xr == SelectClause.of(
-          from = listOf(SX.From(pIdent, personEnt)),
-          joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
-          select = XR.Property(pIdent, "name"),
-          type = XRType.Value
-        ).toXrRef()
-      )
+      people.xr shouldBeEqual SelectClause.of(
+        from = listOf(SX.From(pIdent, personEnt)),
+        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
+        select = XR.Property(pIdent, "name"),
+        type = XRType.Value
+      ).toXrRef()
     }
+
+    "from + join + where" {
+      val people =
+        select {
+          val p = from(people)
+          val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
+          where(p.name == "Joe")
+          p.name
+        }
+
+      people.xr shouldBeEqual SelectClause.of(
+        from = listOf(SX.From(pIdent, personEnt)),
+        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
+        where = SX.Where(XR.BinaryOp(XR.Property(pIdent, "name"), EqualityOperator.`==`, XR.Const("Joe"))),
+        select = XR.Property(pIdent, "name"),
+        type = XRType.Value
+      ).toXrRef()
+    }
+
 
   }
 })

@@ -5,9 +5,9 @@ import io.decomat.case
 import io.decomat.match
 import io.decomat.on
 import io.exoquery.BID
-import io.exoquery.SX
+import io.exoquery.xr.SX
 import io.exoquery.SelectClauseCapturedBlock
-import io.exoquery.SelectClause
+import io.exoquery.xr.SelectClause
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.plugin.printing.dumpSimple
@@ -15,6 +15,7 @@ import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.trees.ExtractorsDomain.IsSelectFunction
 import io.exoquery.xr.*
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
@@ -157,7 +158,7 @@ object SelectClauseParser {
         val id = XR.Ident(varName, TypeParser.of(this), this.loc)
         SX.From(id, QueryParser.parse(table))
       },
-      case(Ir.Variable[Is(), Ir.Call.FunctionMem2[Ir.Type.ClassOf<SelectClauseCapturedBlock>(), Is.invoke { it == "join" || it == "joinLeft" }, Is()]]).then { varName, (_, args) ->
+      case(Ir.Variable[Is(), Ir.Call.FunctionMem2[IsSelectFunction(), Is.invoke { it == "join" || it == "joinLeft" }, Is()]]).then { varName, (_, args) ->
         val joinFunc = compRight
         val (onTable, joinCondLambda) = args
         val varNameIdent = XR.Ident(varName, TypeParser.of(this.comp), this.comp.loc)
@@ -168,16 +169,29 @@ object SelectClauseParser {
             else -> parseError("Unknown Join Type: ${joinFunc.symbol.safeName}", expr)
           }
         joinCondLambda.match(
-          case(Ir.FunctionExpression.withBlock[Is(), Is()]).then { lambdaVarExprs, stmtsAndReturn ->
-            val lambdaVarExpr = lambdaVarExprs.first()
-            val lambdaVarName = lambdaVarExpr.name.asString() /* join lambda should have only one element e.g. join(Table<Addresses>()){addressesLambdaVar ->addressesLambdaVar == 123} */
-            val lambdaVarIdent = XR.Ident(lambdaVarName, TypeParser.of(lambdaVarExpr), lambdaVarExpr.loc)
+          case(Ir.FunctionExpression.withBlock[Is(), Is()]).then { lambdaParams, stmtsAndReturn ->
+            val lambdaParam = lambdaParams.first()
+            val lambdaVarName = lambdaParam.name.asString() /* join lambda should have only one element e.g. join(Table<Addresses>()){addressesLambdaVar ->addressesLambdaVar == 123} */
+            val lambdaVarIdent = XR.Ident(lambdaVarName, TypeParser.of(lambdaParam), lambdaParam.loc)
             val joinCond = ExpressionParser.parseFunctionBlockBody(stmtsAndReturn)
             SX.Join(joinType, varNameIdent, QueryParser.parse(onTable), lambdaVarIdent, joinCond, joinFunc.loc)
 
           }
         ) ?: parseError("Could not parse Join Lambda from: ${joinCondLambda.dumpSimple()}", joinCondLambda)
-      }
+      },
+      // where(() -> Boolean)
+      case(Ir.Call.FunctionMem1[IsSelectFunction(), Is("where"), Ir.FunctionExpression.withBlock[Is(), Is()]]).thenThis { _, (_, body) ->
+        val whereCond = ExpressionParser.parseFunctionBlockBody(body)
+        SX.Where(whereCond, this.loc)
+      },
+      // where(Boolean)
+      case(Ir.Call.FunctionMem1[IsSelectFunction(), Is("where"), Ir.Type.ClassOf<Boolean>()]).thenThis { _, argValue ->
+        SX.Where(ExpressionParser.parse(argValue), this.loc)
+      },
+      // groupBy(Any)
+      case(Ir.Call.FunctionMem1[IsSelectFunction(), Is("groupBy"), Is()]).thenThis { _, argValue ->
+        SX.GroupBy(ExpressionParser.parse(argValue), this.loc)
+      },
     ) ?: parseError("Could not parse Select Clause from: ${expr.dumpSimple()}", expr)
 }
 

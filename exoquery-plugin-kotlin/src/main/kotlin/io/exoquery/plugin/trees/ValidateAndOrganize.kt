@@ -1,7 +1,7 @@
 package io.exoquery.plugin.trees
 
-import io.exoquery.SX
-import io.exoquery.SelectClause
+import io.exoquery.xr.SX
+import io.exoquery.xr.SelectClause
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.IrElement

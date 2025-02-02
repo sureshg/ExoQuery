@@ -31,6 +31,8 @@ import org.jetbrains.kotlin.ir.types.classFqName
 
 object ExtractorsDomain {
 
+  fun IsSelectFunction() = Ir.Type.ClassOf<SelectClauseCapturedBlock>()
+
   object DynamicQueryCall {
     private fun IrExpression.isSqlQuery() =
       this.type.isClass<SqlQuery<*>>()
