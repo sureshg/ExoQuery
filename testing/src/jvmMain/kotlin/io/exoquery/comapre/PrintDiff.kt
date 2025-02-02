@@ -257,6 +257,15 @@ class PrintDiff(val defaultWidth: Int = 150): PPrinter(
   private fun RightKV(value: Tree): KeyValue = KeyValue(Bold.On(FansiColor.Red("RIGHT")).toString(), value)
 
   override fun treeify(x: Any?, elementName: String?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree = when(x) {
+    is Compare.Diff.Match ->
+      Apply(
+        "Match",
+        listOf(
+          LeftKV(Tree.Literal(x.leftValue.toString() ?: "<Null>")),
+          RightKV(Tree.Literal(x.rightValue.toString() ?: "<Null>"))
+        ).iterator()
+      )
+
     is Compare.Diff.Leaf -> {
       val leftRaw  = treeify(x.a, null, escapeUnicode, showFieldNames)
       val rightRaw = treeify(x.b, null, escapeUnicode, showFieldNames)

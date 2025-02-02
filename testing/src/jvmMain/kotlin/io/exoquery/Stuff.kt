@@ -26,7 +26,7 @@ fun main() {
   val joe = Person(Name("Joe", "Smith"), 30)
   val jane = Person(null, 25)
 
-  val diff = Compare(joe, jane)
+  val diff = Compare(showSuccess = true)(joe, jane)
   println(diff.show())
 
 

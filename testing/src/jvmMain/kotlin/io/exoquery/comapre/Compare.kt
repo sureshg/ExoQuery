@@ -17,12 +17,7 @@ fun Compare.Diff?.show(defaultIdent: Int = 150) =
   else
     PrintDiff(defaultIdent).invoke(this)
 
-class Compare(val skipFields: List<String> = listOf()) {
-  companion object {
-    operator fun invoke(a: Any?, b: Any?, skipFields: List<String> = listOf()): Diff? =
-      Compare(skipFields).invoke(a, b)
-  }
-
+class Compare(val showSuccess: Boolean = false, val skipFields: List<String> = listOf()) {
   operator fun invoke(a: Any?, b: Any?): Diff? =
     generic(a, b)
 
@@ -47,6 +42,8 @@ class Compare(val skipFields: List<String> = listOf()) {
 
     // TODO maybe in some situations where an actual key is missing from a product
     //      we might want to have a special case for that i.e. MissingKey should look into it
+
+    data class Match(val leftValue: Any?, val rightValue: Any?) : Diff
 
     data class MissingRight(val leftValue: Any) : Diff
     data class MissingLeft(val rightValue: Any) : Diff
@@ -85,11 +82,20 @@ class Compare(val skipFields: List<String> = listOf()) {
 //      case (a: AnyRef, b: AnyRef)           => Diff.Leaf.ofClass(a.getClass, b.getClass)(a, b)
 //    }
 
-  fun generic(aValue: Any?, bValue: Any?): Diff? =
-    when {
-      aValue == bValue -> null
+  fun matchSuccess(aValue: Any?, bValue: Any?): Diff? =
+    if (showSuccess) {
+      Diff.Match(aValue, bValue)
+    } else {
+      null
+    }
+
+  fun generic(aValue: Any?, bValue: Any?): Diff? = run {
+    val out = when {
+      // Go back to this
+      //aValue == bValue -> null
+      aValue == bValue -> matchSuccess(aValue, bValue)
       // technically covered by 1st case but just want to state it explicitly
-      aValue == null && bValue == null -> null
+      aValue == null && bValue == null -> matchSuccess(aValue, bValue)
       aValue != null && bValue == null -> Diff.MissingRight(aValue)
       aValue == null && bValue != null -> Diff.MissingLeft(bValue)
       aValue is KSet<*> && bValue is KSet<*> -> set(aValue, bValue)
@@ -107,6 +113,9 @@ class Compare(val skipFields: List<String> = listOf()) {
       else ->
         Diff.Leaf2(aValue!!::class.simpleName ?: aValue::class.qualifiedName ?: "Value", bValue!!::class.simpleName ?: bValue::class.qualifiedName ?: "Value", aValue, bValue)
     }
+    //println("------ Compare: $aValue, $bValue -> isNull: ${out == null}")
+    out
+  }
 
 //
 //  private def set(ai: Set[_], bi: Set[_]): Option[Diff] = {
@@ -185,7 +194,7 @@ class Compare(val skipFields: List<String> = listOf()) {
             a is Opt.Some<*> && b is Opt.Some<*> -> generic(a.value, b.value)?.withField(index.toString())
             a is Opt.None && b is Opt.Some<*> -> Diff.MissingLeft(b.value).withField(index.toString())
             a is Opt.Some<*> && b is Opt.None -> Diff.MissingRight(a.value).withField(index.toString())
-            else -> null
+            else -> null // Neither collection has an element
           }
         }
         .filterNotNull()
@@ -205,7 +214,7 @@ class Compare(val skipFields: List<String> = listOf()) {
     }
 
   private fun productNullable(a: Any?, b: Any?): Diff? =
-    if (a == null && b == null) null
+    if (a == null && b == null) matchSuccess(a, b)
     else if (a == null && b != null) Diff.MissingLeft(b)
     else if (a != null && b == null) Diff.MissingRight(a)
     // We've covered all null cases so we can safely use !! here
@@ -252,7 +261,8 @@ class Compare(val skipFields: List<String> = listOf()) {
         val bMap = bFields.toMap()
         names
           .map { name ->
-            generic(aMap[name], bMap[name])?.withField(name)
+            val out = generic(aMap[name], bMap[name])?.withField(name)
+            out
           }.filterNotNull()
           .let {
             if (it.isEmpty()) null
@@ -308,10 +318,11 @@ fun <T1, T2> Iterable<T1>.zipAll(other: Iterable<T2>, emptyValue: T1, otherEmpty
   val i2 = other.iterator()
   val output = mutableListOf<Pair<T1, T2>>()
   while (i1.hasNext() || i2.hasNext()) {
-    Pair(
-      if (i1.hasNext()) i1.next() else emptyValue,
-      if (i2.hasNext()) i2.next() else otherEmptyValue
-    )
+    output +=
+      Pair(
+        if (i1.hasNext()) i1.next() else emptyValue,
+        if (i2.hasNext()) i2.next() else otherEmptyValue
+      )
   }
   return output
 }

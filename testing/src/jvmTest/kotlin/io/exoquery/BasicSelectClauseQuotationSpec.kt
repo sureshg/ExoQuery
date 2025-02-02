@@ -27,19 +27,9 @@ class BasicSelectClauseQuotationSpec : FreeSpec({
       val people =
         select {
           val p = from(people)
-          val a = join(Table<Robot>()) { a -> p.id == a.ownerId }
+          val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
           p.name
         }
-
-      println(Compare().invoke(
-        people.xr,
-        SelectClause.of(
-          from = listOf(SX.From(pIdent, personEnt)),
-          joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
-          select = XR.Property(pIdent, "name"),
-          type = XRType.Value
-        ).toXrRef()
-      ).show())
 
       assertTrue(
         people.xr == SelectClause.of(
