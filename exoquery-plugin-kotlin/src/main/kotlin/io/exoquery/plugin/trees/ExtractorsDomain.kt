@@ -4,21 +4,15 @@ import io.decomat.*
 import io.exoquery.*
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.BinaryOperators
-import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.plugin.transform.UnaryOperators
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.UnaryOperator
-import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import io.exoquery.plugin.trees.CallData.MultiArgMember.ArgType
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.classFqName
 
@@ -31,7 +25,7 @@ import org.jetbrains.kotlin.ir.types.classFqName
 
 object ExtractorsDomain {
 
-  fun IsSelectFunction() = Ir.Type.ClassOf<SelectClauseCapturedBlock>()
+  fun IsSelectFunction() = Ir.Expr.ClassOf<SelectClauseCapturedBlock>()
 
   object DynamicQueryCall {
     private fun IrExpression.isSqlQuery() =

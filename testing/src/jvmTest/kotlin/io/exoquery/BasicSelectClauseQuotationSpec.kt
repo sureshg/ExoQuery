@@ -1,3 +1,5 @@
+@file:io.exoquery.annotation.ExoGoldenTest
+
 package io.exoquery
 
 import io.exoquery.Ord.*
@@ -5,67 +7,178 @@ import io.exoquery.xr.EqualityOperator
 import io.exoquery.xr.SX
 import io.exoquery.xr.SelectClause
 import io.exoquery.xr.XR
+import io.exoquery.xr.XR.Ordering.TupleOrdering
+import io.exoquery.xr.XR.Product.Companion.TupleSmartN
+import io.exoquery.xr.XR.Expression
 import io.exoquery.xr.XRType
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.equals.shouldBeEqual
 
-class BasicSelectClauseQuotationSpec : FreeSpec({
+class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpecGolden, {
   data class Person(val id: Int, val name: String, val age: Int)
   data class Robot(val ownerId: Int, val model: String)
+  data class Address(val ownerId: Int, val street: String, val zip: Int)
   val personTpe = XRType.Product("Person", listOf("id" to XRType.Value, "name" to XRType.Value, "age" to XRType.Value))
   val robotTpe = XRType.Product("Robot", listOf("ownerId" to XRType.Value, "model" to XRType.Value))
+  val addressTpe = XRType.Product("Address", listOf("ownerId" to XRType.Value, "street" to XRType.Value, "zip" to XRType.Value))
   val personEnt = XR.Entity("Person", personTpe)
   val robotEnt = XR.Entity("Robot", robotTpe)
+  val addressEnt = XR.Entity("Address", addressTpe)
   val pIdent = XR.Ident("p", personTpe)
   val rIdent = XR.Ident("r", robotTpe)
+  val aIdent = XR.Ident("a", addressTpe)
   val joinRobot = XR.BinaryOp(XR.Property(pIdent, "id"), EqualityOperator.`==`, XR.Property(rIdent, "ownerId"))
+  val joinAddress = XR.BinaryOp(XR.Property(pIdent, "id"), EqualityOperator.`==`, XR.Property(aIdent, "ownerId"))
+
+  infix fun Expression.prop(propName: String): Expression = XR.Property(this, propName)
 
   "parsing features spec" - {
-      val people = capture { Table<Person>() }
-      "from + join" {
-        val people =
-          select {
-            val p = from(people)
-            val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
-            sortBy(p.age to Asc, p.name to Desc) // TODO what if the return from here is UNIT, need to control for that in the parser
-            p.name
-          }
+    val people = capture { Table<Person>() }
+    data class Custom(val person: Person, val robot: Robot?)
 
-        println(people.show())
+    "from + join -> (p, r)" {
+      val people =
+        select {
+          val p = from(people)
+          val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
+          p to r
+        }
+
+      people.xr shouldBeEqual SelectClause.of(
+        from = listOf(SX.From(pIdent, personEnt)),
+        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
+        select = XR.Product.TupleSmartN(XR.Ident("p", personTpe), XR.Ident("r", robotTpe)),
+        type = XRType.Value
+      ).toXrRef()
+
+      people.buildPretty(PostgresDialect(), "from + join -> (p, r)").shouldBeGolden()
+    }
+
+    "from + join + leftJoin -> Custom(p, r)" {
+      val people =
+        select {
+          val p = from(people)
+          val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
+          val a = joinLeft(Table<Address>()) { a -> p.id == a.ownerId }
+          Custom(p, r)
+        }
+
+      people.xr shouldBeEqual SelectClause.of(
+        from = listOf(SX.From(pIdent, personEnt)),
+        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot), SX.Join(XR.JoinType.Left, aIdent, addressEnt, aIdent, joinAddress)),
+        select = XR.Product("Custom", "person" to XR.Ident("p", personTpe), "robot" to XR.Ident("r", robotTpe)),
+        type = XRType.Value
+      ).toXrRef()
+
+      people.buildPretty(PostgresDialect(), "from + join + leftJoin -> Custom(p, r)").shouldBeGolden()
+    }
+
+    "from + leftJoin -> Custom(p, r)" {
+      val people =
+        select {
+          val p = from(people)
+          val r = joinLeft(Table<Robot>()) { r -> p.id == r.ownerId }
+          Custom(p, r)
+        }
+
+      people.xr shouldBeEqual SelectClause.of(
+        from = listOf(SX.From(pIdent, personEnt)),
+        joins = listOf(SX.Join(XR.JoinType.Left, rIdent, robotEnt, rIdent, joinRobot)),
+        select = XR.Product("Custom", "person" to XR.Ident("p", personTpe), "robot" to XR.Ident("r", robotTpe)),
+        type = XRType.Value
+      ).toXrRef()
+
+      people.buildPretty(PostgresDialect(), "from + leftJoin -> Custom(p, r)").shouldBeGolden()
+    }
+
+    "from + join + where" {
+      val people =
+        select {
+          val p = from(people)
+          val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
+          where(p.name == "Joe")
+          p.name
+        }
+
+      people.xr shouldBeEqual SelectClause.of(
+        from = listOf(SX.From(pIdent, personEnt)),
+        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
+        where = SX.Where(XR.BinaryOp(XR.Property(pIdent, "name"), EqualityOperator.`==`, XR.Const("Joe"))),
+        select = XR.Property(pIdent, "name"),
+        type = XRType.Value
+      ).toXrRef()
+
+      people.buildPretty(PostgresDialect(), "from + join + where").shouldBeGolden()
+    }
+    "from + sort(Asc,Desc)" {
+      val people =
+        select {
+          val p = from(people)
+          sortBy(p.age to Asc, p.name to Desc) // TODO what if the return from here is UNIT, need to control for that in the parser
+          p.name
+        }
+
+      people.xr shouldBeEqual SelectClause.of(
+        from = listOf(SX.From(pIdent, personEnt)),
+        sortBy = SX.SortBy(TupleSmartN(pIdent.prop("age"), pIdent.prop("name")), TupleOrdering.of(XR.Ordering.Asc, XR.Ordering.Desc)),
+        select = XR.Property(pIdent, "name"),
+        type = XRType.Value
+      ).toXrRef()
+
+      people.buildPretty(PostgresDialect(), "from + sort(Asc,Desc)").shouldBeGolden()
+    }
+    "from + sort(Asc)" {
+      val people =
+        select {
+          val p = from(people)
+          sortBy(p.age to Asc)
+          p.name
+        }
+
+      people.xr shouldBeEqual SelectClause.of(
+        from = listOf(SX.From(pIdent, personEnt)),
+        sortBy = SX.SortBy(pIdent.prop("age"), XR.Ordering.Asc),
+        select = XR.Property(pIdent, "name"),
+        type = XRType.Value
+      ).toXrRef()
+
+      people.buildPretty(PostgresDialect(), "from + sort(Asc)").shouldBeGolden()
+    }
+
+    "from + groupBy(a)" {
+      val people =
+        select {
+          val p = from(people)
+          groupBy(p.age)
+          p.age
+        }
+
+      people.xr shouldBeEqual SelectClause.of(
+        from = listOf(SX.From(pIdent, personEnt)),
+        groupBy = SX.GroupBy(pIdent.prop("age")),
+        select = XR.Property(pIdent, "age"),
+        type = XRType.Value
+      ).toXrRef()
+
+      people.buildPretty(PostgresDialect(), "from + groupBy").shouldBeGolden()
+    }
+  }
+
+  "from + groupBy(a, b)" {
+    val people =
+      select {
+        val p = from(capture { Table<Person>() })
+        groupBy(p.age, p.name)
+        p.age
       }
 
-//    "from + join" {
-//      val people =
-//        select {
-//          val p = from(people)
-//          val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
-//          p.name
-//        }
-//
-//      people.xr shouldBeEqual SelectClause.of(
-//        from = listOf(SX.From(pIdent, personEnt)),
-//        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
-//        select = XR.Property(pIdent, "name"),
-//        type = XRType.Value
-//      ).toXrRef()
-//    }
-//
-//    "from + join + where" {
-//      val people =
-//        select {
-//          val p = from(people)
-//          val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
-//          where(p.name == "Joe")
-//          p.name
-//        }
-//
-//      people.xr shouldBeEqual SelectClause.of(
-//        from = listOf(SX.From(pIdent, personEnt)),
-//        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
-//        where = SX.Where(XR.BinaryOp(XR.Property(pIdent, "name"), EqualityOperator.`==`, XR.Const("Joe"))),
-//        select = XR.Property(pIdent, "name"),
-//        type = XRType.Value
-//      ).toXrRef()
-//    }
+    people.xr shouldBeEqual SelectClause.of(
+      from = listOf(SX.From(pIdent, personEnt)),
+      groupBy = SX.GroupBy(TupleSmartN(pIdent.prop("age"), pIdent.prop("name"))),
+      select = XR.Property(pIdent, "age"),
+      type = XRType.Value
+    ).toXrRef()
+
+    people.buildPretty(PostgresDialect(), "from + groupBy(a, b)").shouldBeGolden()
   }
 })

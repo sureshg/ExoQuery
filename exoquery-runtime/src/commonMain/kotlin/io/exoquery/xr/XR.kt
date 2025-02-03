@@ -200,7 +200,11 @@ sealed interface XR {
   @Serializable
   sealed interface Ordering {
     @Serializable
-    data class TupleOrdering(val elems: List<Ordering>): Ordering
+    data class TupleOrdering(val elems: List<Ordering>): Ordering {
+      companion object {
+        fun of(vararg elems: Ordering): TupleOrdering = TupleOrdering(elems.toList())
+      }
+    }
 
     @Serializable
     sealed interface PropertyOrdering: Ordering
@@ -695,14 +699,19 @@ sealed interface XR {
     @Transient override val productComponents = productOf(this, fields)
     override val type by lazy { XRType.Product(name, fields.map { it.first to it.second.type }) }
     companion object {
-      operator fun invoke(name: String, loc: Location = Location.Synth, vararg fields: Pair<String, Expression>) = Product(name, fields.toList(), loc)
+      // helper function for creation during testing
+      operator fun invoke(name: String, vararg fields: Pair<String, Expression>) = Product(name, fields.toList(), Location.Synth)
 
+      // helper function for creation during testing
       fun Tuple(first: XR.Expression, second: XR.Expression, loc: Location = Location.Synth) =
-        XR.Product("Tuple", loc, "first" to first, "second" to second)
+        XR.Product("Tuple", "first" to first, "second" to second).copy(loc = loc)
 
+      // helper function for creation during testing
       fun Triple(first: XR.Expression, second: XR.Expression, third: XR.Expression, loc: Location = Location.Synth) =
-        XR.Product("Tuple", loc, "first" to first, "second" to second, "third" to third)
+        XR.Product("Tuple", "first" to first, "second" to second, "third" to third).copy(loc = loc)
 
+      fun TupleSmartN(vararg values: XR.Expression, loc: Location = Location.Synth) =
+        TupleSmartN(values.toList(), loc)
       fun TupleSmartN(values: List<XR.Expression>, loc: Location = Location.Synth) =
         if (values.size >= 20)
           TupleNumeric(values.toList(), loc)

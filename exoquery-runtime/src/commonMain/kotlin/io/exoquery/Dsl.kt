@@ -54,7 +54,7 @@ interface SelectClauseCapturedBlock: CapturedBlock {
 
   fun where(condition: Boolean): Unit = error("The `where` expression of the Query was not inlined")
   fun where(condition: () -> Boolean): Unit = error("The `where` expression of the Query was not inlined")
-  fun groupBy(grouping: Any): Unit = error("The `groupBy` expression of the Query was not inlined")
+  fun groupBy(vararg groupings: Any): Unit = error("The `groupBy` expression of the Query was not inlined")
   fun sortBy(vararg orderings: Pair<*, Ord>): Unit = error("The `sortBy` expression of the Query was not inlined")
 }
 

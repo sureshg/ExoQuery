@@ -80,6 +80,21 @@ object Ir {
       }
   }
 
+  object Expr {
+    class ClassOf<R>(val className: String): Pattern0<IrExpression>(Typed<IrExpression>()) {
+      override fun matches(r: ProductClass<IrExpression>): Boolean =
+        Typed<IrExpression>().typecheck(r.productClassValueUntyped) &&
+          r.productClassValue.type.let { tpe ->
+            className == tpe.classFqName.toString() || tpe.superTypes().any { it.classFqName.toString() == className }
+          }
+
+      companion object {
+        inline operator fun <reified T> invoke() =
+          ClassOf<T>(T::class.qualifiedNameForce)
+      }
+    }
+  }
+
   object Type {
 
 //    object Nullable {
@@ -130,19 +145,6 @@ object Ir {
           }
           else null
         }
-    }
-
-    class ClassOf<R>(val className: String): Pattern0<IrExpression>(Typed<IrExpression>()) {
-      override fun matches(r: ProductClass<IrExpression>): Boolean =
-        Typed<IrExpression>().typecheck(r.productClassValueUntyped) &&
-          r.productClassValue.type.let { tpe ->
-            className == tpe.classFqName.toString() || tpe.superTypes().any { it.classFqName.toString() == className }
-          }
-
-      companion object {
-        inline operator fun <reified T> invoke() =
-          ClassOf<T>(T::class.qualifiedNameForce)
-      }
     }
 
     class ClassOfType<R>(val className: String): Pattern0<IrType>(Typed<IrType>()) {
@@ -510,17 +512,17 @@ object Ir {
     }
 
     object FunctionMemVararg {
-      context (CompileLogger) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<List<IrExpression>>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, List<IrExpression>, IrCall> =
+      context (CompileLogger) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, TP: Pattern<IrType>, BP : Pattern<List<IrExpression>>> get(x: AP, m: MP, yTpe: TP, y: BP): Pattern2<AP, BP, IrExpression, List<IrExpression>, IrCall> =
         customPattern2("Ir.Call.FunctionMemVararg", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null
             && it.simpleValueArgs.size == 1
             && it.simpleValueArgs.first() != null
-            && it.simpleValueArgs.first() is IrVararg
-            && (it.simpleValueArgs.first() as IrVararg).elements.all { it is IrExpression }
+            && (it.simpleValueArgs.first() as? IrVararg)?.let { varg -> varg.elements.all { it is IrExpression } && yTpe.matchesAny(varg.varargElementType) } ?: false
             && m.matchesAny(it.symbol.safeName))
           {
-            Components2(reciever, (it.simpleValueArgs.first() as IrVararg).elements.map { it as IrExpression }.toList())
+            val varargElem = it.simpleValueArgs.first() as IrVararg
+            Components2(reciever, varargElem.elements.map { it as IrExpression }.toList())
           } else {
             null
           }

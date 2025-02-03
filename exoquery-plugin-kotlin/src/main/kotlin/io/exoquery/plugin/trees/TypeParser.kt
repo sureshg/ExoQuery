@@ -7,10 +7,8 @@ import io.exoquery.ParseError
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.parseError
 import io.exoquery.plugin.location
-import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.Location
 import io.exoquery.plugin.show
-import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -71,7 +69,8 @@ object TypeParser {
       },
 
       // If it's a SqlQuery, same idea
-      case(Ir.Type.ClassOfType<io.exoquery.SqlQuery<*>>()).then { sqlQueryType ->
+      case(Ir.Type
+        .ClassOfType<io.exoquery.SqlQuery<*>>()).then { sqlQueryType ->
         parse(sqlQueryType.simpleTypeArgs[0])
       },
 

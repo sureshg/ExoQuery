@@ -85,7 +85,7 @@ object QueryParser {
         // Then unpack and return the XR
         uprootable.xr // TODO catch errors here?
       },
-      case(Ir.Call.FunctionMem1[Ir.Type.ClassOf<SqlQuery<*>>(), Is { it == "map" || it == "concatMap" || it == "filter" }, Is()]).thenThis { head, lambda ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is { it == "map" || it == "concatMap" || it == "filter" }, Is()]).thenThis { head, lambda ->
         val (head, id, body) = processQueryLambda(head, lambda) ?: parseError("Could not parse XR.Map/ConcatMap/Filter from: ${expr.dumpSimple()}", expr)
         when (this.symbol.safeName) {
           "map" -> XR.Map(head, id, body, expr.loc)
@@ -94,7 +94,7 @@ object QueryParser {
           else -> parseError("Unknown SqlQuery method call: ${this.symbol.safeName} in: ${expr.dumpKotlinLike()}", expr)
         }
       },
-      case(Ir.Call.FunctionMem1[Ir.Type.ClassOf<SqlQuery<*>>(), Is("flatMap"), Is()]).thenThis { head, lambda ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is("flatMap"), Is()]).thenThis { head, lambda ->
           lambda.match(
             case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { tail ->
               XR.FlatMap(parse(head), firstParam().makeIdent(), parse(tail), expr.loc)
@@ -102,7 +102,7 @@ object QueryParser {
             // TODO for this error message need to have a advanced "mode" that will print out the RAW IR
           ) ?: parseError("SqlQuery.flatMap(...) lambdas can only be single-statement expressions, they cannot be block-lambdas like:\n${lambda.dumpKotlinLike()}\n-----------------------------------\n${lambda.dumpSimple()}", lambda)
       },
-      case(Ir.Call.FunctionMem1[Ir.Type.ClassOf<SqlQuery<*>>(), Is { it == "union" || it == "unionAll" }, Is()]).thenThis { head, tail ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is { it == "union" || it == "unionAll" }, Is()]).thenThis { head, tail ->
         val tailXR = parse(tail)
         when (this.symbol.safeName) {
           "union" -> XR.Union(parse(head), tailXR, expr.loc)
@@ -157,7 +157,7 @@ object SelectClauseParser {
   // also test case of `select { from(select { ... } }` to see how nested recursion works
   context(ParserContext, CompileLogger) fun parseSubClause(expr: IrStatement): SX =
     on(expr).match<SX>(
-      case(Ir.Variable[Is(), Ir.Call.FunctionMem1[Ir.Type.ClassOf<SelectClauseCapturedBlock>(), Is("from"), Is()]]).thenThis { varName, (_, table) ->
+      case(Ir.Variable[Is(), Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SelectClauseCapturedBlock>(), Is("from"), Is()]]).thenThis { varName, (_, table) ->
         val id = XR.Ident(varName, TypeParser.of(this), this.loc)
         SX.From(id, QueryParser.parse(table))
       },
@@ -188,14 +188,21 @@ object SelectClauseParser {
         SX.Where(whereCond, this.loc)
       },
       // where(Boolean)
-      case(Ir.Call.FunctionMem1[IsSelectFunction(), Is("where"), Ir.Type.ClassOf<Boolean>()]).thenThis { _, argValue ->
+      case(Ir.Call.FunctionMem1[IsSelectFunction(), Is("where"), Ir.Expr.ClassOf<Boolean>()]).thenThis { _, argValue ->
         SX.Where(ExpressionParser.parse(argValue), this.loc)
       },
-      // groupBy(Any)
-      case(Ir.Call.FunctionMem1[IsSelectFunction(), Is("groupBy"), Is()]).thenThis { _, argValue ->
-        SX.GroupBy(ExpressionParser.parse(argValue), this.loc)
+      // groupBy(...Any)
+      case(Ir.Call.FunctionMemVararg[IsSelectFunction(), Is("groupBy"), Is(), Is()]).thenThis { _, argValues ->
+        val groupings = argValues.map { ExpressionParser.parse(it) }
+        if (groupings.size == 1) {
+          SX.GroupBy(groupings.first(), this.loc)
+        }
+        else {
+          SX.GroupBy(XR.Product.TupleSmartN(groupings, this.loc), this.loc)
+        }
       },
-      case(Ir.Call.FunctionMemVararg[IsSelectFunction(), Is("sortBy"), Is()]).thenThis { _, argValues ->
+      // sortBy(...Pair<*, Ord>)
+      case(Ir.Call.FunctionMemVararg[IsSelectFunction(), Is("sortBy"), Ir.Type.ClassOfType<Pair<*, *>>(), Is()]).thenThis { _, argValues ->
         val clausesRaw = argValues.map { OrderParser.parseOrdTuple(it) }
         if (clausesRaw.size == 1) {
           val (expr, ord) = clausesRaw.first()
@@ -220,12 +227,12 @@ object OrderParser {
 
   context(ParserContext, CompileLogger) fun parseOrd(expr: IrExpression): XR.Ordering =
     expr.match(
-      case(Ir.Type.ClassOf<Ord.Asc>()).then { XR.Ordering.Asc },
-      case(Ir.Type.ClassOf<Ord.Desc>()).then { XR.Ordering.Desc },
-      case(Ir.Type.ClassOf<Ord.AscNullsFirst>()).then { XR.Ordering.AscNullsFirst },
-      case(Ir.Type.ClassOf<Ord.DescNullsFirst>()).then { XR.Ordering.DescNullsFirst },
-      case(Ir.Type.ClassOf<Ord.AscNullsLast>()).then { XR.Ordering.AscNullsLast },
-      case(Ir.Type.ClassOf<Ord.DescNullsLast>()).then { XR.Ordering.DescNullsLast },
+      case(Ir.Expr.ClassOf<Ord.Asc>()).then { XR.Ordering.Asc },
+      case(Ir.Expr.ClassOf<Ord.Desc>()).then { XR.Ordering.Desc },
+      case(Ir.Expr.ClassOf<Ord.AscNullsFirst>()).then { XR.Ordering.AscNullsFirst },
+      case(Ir.Expr.ClassOf<Ord.DescNullsFirst>()).then { XR.Ordering.DescNullsFirst },
+      case(Ir.Expr.ClassOf<Ord.AscNullsLast>()).then { XR.Ordering.AscNullsLast },
+      case(Ir.Expr.ClassOf<Ord.DescNullsLast>()).then { XR.Ordering.DescNullsLast },
     ) ?: parseError("Could not parse an ordering from the expression: ${expr.dumpSimple()}. Orderings must be specified as one of the following compile-time constant values: Asc, Desc, AscNullsFirst, DescNullsFirst, AscNullsLast, DescNullsLast", expr)
 }
 

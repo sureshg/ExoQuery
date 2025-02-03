@@ -5,24 +5,17 @@ import io.exoquery.BID
 import io.exoquery.Param
 import io.exoquery.Params
 import io.exoquery.Runtimes
-import io.exoquery.plugin.classIdOf
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.*
 import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
 import io.exoquery.xr.encode
 import kotlinx.serialization.decodeFromHexString
-import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.irGetObject
-import org.jetbrains.kotlin.ir.builders.irGetObjectValue
 import org.jetbrains.kotlin.ir.builders.irString
-import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.getConstructorTypeArgument
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -112,7 +105,7 @@ object SqlExpressionExpr {
               .thenIf { _, _ ->
                 // Check that the 2nd argument to SqlExpression is Runtimes.Empty i.e. SqlExpression(xr=unpackExpr(str), runtimes=Runtimes.Empty, ...)
                 comp.valueArguments[1].match(
-                  case(Ir.Call.FunctionMem0[Ir.Type.ClassOf<io.exoquery.Runtimes.Companion>(), Is("Empty")]).then { expr, _ -> true }
+                  case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<io.exoquery.Runtimes.Companion>(), Is("Empty")]).then { expr, _ -> true }
                 ) ?: false
               }
               .then { _, (_, irStr) ->
@@ -161,7 +154,7 @@ object SqlQueryExpr {
             case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is("io.exoquery.SqlQuery"), Ir.Call.FunctionUntethered1[Is("io.exoquery.unpackQuery"), Is()]])
               .thenIf { _, _ ->
                 comp.valueArguments[1].match(
-                  case(Ir.Call.FunctionMem0[Ir.Type.ClassOf<io.exoquery.Runtimes.Companion>(), Is("Empty")]).then { expr, _ -> true }
+                  case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<io.exoquery.Runtimes.Companion>(), Is("Empty")]).then { expr, _ -> true }
                 ) ?: false
               }
               .then { _, (_, irStr) ->
