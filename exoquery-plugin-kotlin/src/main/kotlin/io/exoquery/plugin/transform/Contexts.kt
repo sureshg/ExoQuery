@@ -9,15 +9,6 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 
-interface LoggableContext {
-  val logger: CompileLogger
-  companion object {
-    fun makeLite(config: CompilerConfiguration, file: IrFile, expr: IrElement) = object: LoggableContext {
-      override val logger = CompileLogger(config, file, expr)
-    }
-  }
-}
-
 data class BuilderContext(
   val pluginCtx: IrPluginContext,
   val compilerConfig: CompilerConfiguration,

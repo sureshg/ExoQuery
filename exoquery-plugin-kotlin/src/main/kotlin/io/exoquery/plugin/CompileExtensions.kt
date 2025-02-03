@@ -5,12 +5,16 @@ import io.decomat.fail.fail
 import io.exoquery.annotation.*
 import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.transform.Caller
+import io.exoquery.plugin.transform.LocateableContext
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.xr.XR
+import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.com.intellij.openapi.util.TextRange
+import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrFileEntry
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -18,6 +22,7 @@ import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrSymbolOwner
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
 import org.jetbrains.kotlin.ir.expressions.*
@@ -131,14 +136,11 @@ fun CompilerMessageSourceLocation.show() =
   "${path}:${line}:${column}"
 
 // TODO change to LocationContainingContext
-context(ParserContext) fun IrElement.location(): CompilerMessageSourceLocation =
+context(LocateableContext) fun IrElement.location(): CompilerMessageSourceLocation =
   this.location(currentFile.fileEntry)
 
 fun IrFile.location(): CompilerMessageSourceLocation =
   this.location(this.fileEntry)
-
-context(LocationContext) fun IrElement.locationLite(): CompilerMessageSourceLocation =
-  this.location(currentFile.fileEntry)
 
 context(ParserContext) fun IrElement.locationXR(): XR.Location =
   this.location(currentFile.fileEntry).toLocationXR()
@@ -167,6 +169,14 @@ inline fun <reified T> fqNameOf(): FqName {
   val className = T::class.qualifiedNameForce
   return FqName(className)
 }
+
+// IrFile is both a IrSymbolOwner and a IrAnnotationContainer so
+// have a override specifically for. Otherwise would need to use a @this for it
+inline fun <reified T> IrFile.hasAnnotation() =
+  (this as? IrAnnotationContainer)?.hasAnnotation<T>() ?: false
+
+inline fun <reified T> IrSymbolOwner.hasAnnotation() =
+  (this as? IrAnnotationContainer)?.hasAnnotation<T>() ?: false
 
 inline fun <reified T> IrAnnotationContainer.hasAnnotation() =
   this.annotations.any { it.type.classFqName == fqNameOf<T>() }
@@ -213,3 +223,26 @@ fun IrCall.caller() =
   this.dispatchReceiver?.let {
     Caller.Dispatch(it)
   }
+
+// Best-effort to get the source of the file
+context(LocateableContext) fun IrElement.source(): String? = run {
+  val range = TextRange(this.startOffset, this.endOffset)
+
+  fun getFromFirSource() =
+    (currentFile.metadata as? FirMetadataSource.File)
+      ?.fir
+      ?.source
+      ?.getElementTextInContextForDebug()
+      ?.let { range.substring(it) }
+
+  fun getFromKtFile() =
+    currentFile.getKtFile()?.let { ktFile ->
+      ktFile.textRange.cutOut(range).let { cutOut ->
+        ktFile.text.let { textValue ->
+          cutOut.substring(textValue)
+        }
+      }
+    }
+
+  getFromFirSource() ?: getFromKtFile()
+}

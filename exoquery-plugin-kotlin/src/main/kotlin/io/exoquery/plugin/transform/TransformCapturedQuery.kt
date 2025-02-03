@@ -42,6 +42,7 @@ class TransformCapturedQuery(override val ctx: BuilderContext, val superTransfor
 
     // TODO Needs to convey SourceLocation coordinates, think I did this in terpal-sql somehow
     val (xr, dynamics) = Parser.parseQuery(body)
+
     val paramsExprModel = dynamics.makeParams()
     val newSqlQuery =
       if (dynamics.noRuntimes()) {
@@ -52,6 +53,8 @@ class TransformCapturedQuery(override val ctx: BuilderContext, val superTransfor
 
     //logger.warn("=============== Modified value to: ${capturedAnnot.valueArguments[0]?.dumpKotlinLike()}\n======= Whole Type is now:\n${makeCasted.type.dumpKotlinLike()}")
     //logger.warn("========== Query Output: ==========\n${newSqlQuery.dumpKotlinLike()}")
+
+    //error("------------ Transformed:\n${xr.showRaw()}\n-----------------\n${newSqlQuery.dumpKotlinLike()}")
 
     return newSqlQuery
   }

@@ -7,7 +7,6 @@ import io.exoquery.SqlCompiledQuery
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.parseError
-import io.exoquery.parseErrorLite
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
@@ -47,7 +46,7 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
         val label =
           if (args.size > 1) {
             (args[1] as? IrConst)?.let { constVal -> constVal.value.toString() }
-              ?: parseErrorLite("A query-label must be a constant compile-time string but found: ${args[1].dumpKotlinLike()}", args[1])
+              ?: parseError("A query-label must be a constant compile-time string but found: ${args[1].dumpKotlinLike()}", args[1])
           } else {
             null
           }

@@ -11,11 +11,14 @@ import io.exoquery.SelectClauseCapturedBlock
 import io.exoquery.xr.SelectClause
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
+import io.exoquery.annotation.Captured
+import io.exoquery.annotation.CapturedReturn
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.transform.LocateableContext
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`(op)x`
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`x to y`
 import io.exoquery.plugin.trees.ExtractorsDomain.IsSelectFunction
@@ -28,13 +31,13 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
-data class LocationContext(val internalVars: TransformerScope, val currentFile: IrFile) {
+data class LocationContext(val internalVars: TransformerScope, override val currentFile: IrFile): LocateableContext {
   fun newParserCtx() = ParserContext(this)
 }
 
-data class ParserContext(val location: LocationContext, val binds: DynamicsAccum = DynamicsAccum.newEmpty()) {
+data class ParserContext(val location: LocationContext, val binds: DynamicsAccum = DynamicsAccum.newEmpty()): LocateableContext {
   val internalVars get() = location.internalVars
-  val currentFile get() = location.currentFile
+  override val currentFile get() = location.currentFile
 }
 
 context(ParserContext) private val IrElement.loc get() = this.locationXR()
@@ -120,12 +123,24 @@ object QueryParser {
       // if nothing else matches the expression, we need to look at it in a couple of different ways and then find out if it is a dynamic query
       // TODO When QueryMethodCall and QueryGlobalCall are introduced need to revisit this to see what happens if there is a dynamic call on a query
       //      and how to differentitate it from something that we want to capture. Perhaps we would need some kind of "query-method whitelist"
-      case(ExtractorsDomain.DynamicQueryCall[Is()]).then { _ ->
-        val bid = BID.new()
-        binds.addRuntime(bid, expr)
-        XR.TagForSqlQuery(bid, TypeParser.of(expr), expr.loc)
+      // TODO require a @CapturedDynamic annotation
+      case(ExtractorsDomain.DynamicQueryCall[Is()])
+        .thenIf {
+          // We don't want arbitrary functions returning SqlQuery to be treated as dynamic (e.g. right now I am working on parsing for .nested
+          // and since it doesn't exist yet this case is being hit). Make the user either annotate the type or the function with @CapturedReturn
+          // in order to know we shuold actually be doing this. Should use a similar strategy for QueryMethodCall and QueryGlobalCall
+          it.type.hasAnnotation<Captured>() ||
+            (it as? IrDeclarationReference)?.let {
+              // i.e. it's a function, field, or value (that's what a IrDeclarationReference is)
+              it.symbol.owner.hasAnnotation<CapturedReturn>() == true
+            } ?: false
+        }
+        .then { _ ->
+          val bid = BID.new()
+          binds.addRuntime(bid, expr)
+          XR.TagForSqlQuery(bid, TypeParser.of(expr), expr.loc)
       },
-    ) ?: parseError("Could not parse map from: ${expr.dumpSimple()}", expr)
+    ) ?: parseError("Could not parse the expression.", expr)
 }
 
 context(ParserContext, CompileLogger)

@@ -4,7 +4,6 @@ import io.exoquery.annotation.ExoGoldenOverride
 import io.exoquery.annotation.ExoGoldenTest
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.location
-import io.exoquery.plugin.locationLite
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.CompileLogger.Companion.invoke
 import org.jetbrains.kotlin.ir.declarations.path
