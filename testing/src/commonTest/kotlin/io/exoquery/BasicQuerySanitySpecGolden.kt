@@ -5,20 +5,33 @@ import io.exoquery.printing.cr
 object BasicQuerySanitySpecGolden: GoldenQueryFile {
   override val queries = mapOf(
     "basic query" to cr(
-      "SELECT p.id AS id, p.name AS name, p.age AS age FROM Person p WHERE p.name = 'Joe'"
+      """
+      SELECT
+        x.id AS id,
+        x.name AS name,
+        x.age AS age
+      FROM
+        Person x
+      """
     ),
-    "query with join" to cr(
+    "query with map" to cr(
+      """
+      SELECT
+        p.name AS name
+      FROM
+        Person p
+      """
+    ),
+    "query with filter" to cr(
       """
       SELECT
         p.id AS id,
         p.name AS name,
-        p.age AS age,
-        a.ownerId AS ownerId,
-        a.street AS street,
-        a.city AS city
+        p.age AS age
       FROM
         Person p
-        INNER JOIN Address a ON a.ownerId = p.id
+      WHERE
+        p.age > 18
       """
     ),
   )

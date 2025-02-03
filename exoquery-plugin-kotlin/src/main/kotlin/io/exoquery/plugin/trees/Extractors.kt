@@ -332,7 +332,7 @@ object Ir {
     object FunctionRec {
       context (CompileLogger) operator fun <AP : Pattern<List<IrExpression>>> get(x: AP): Pattern1<AP, List<IrExpression>, IrCall> =
         customPattern1("Ir.Call.FunctionRec", x) { it: IrCall ->
-          val reciever = it.dispatchReceiver ?: it.extensionReceiver
+          val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.all { it != null }) {
             Components1(it.simpleValueArgs.requireNoNulls())
           } else {
@@ -346,7 +346,7 @@ object Ir {
       // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
       context (CompileLogger) operator fun <AP : Pattern<A>, A:IrExpression, BP : Pattern<B>, B:IrExpression> get(x: AP, y: BP): Pattern2<AP, BP, A, B, IrCall> =
         customPattern2("Ir.Call.FunctionRec1", x, y) { it: IrCall ->
-          val reciever = it.dispatchReceiver ?: it.extensionReceiver
+          val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null }) {
             Components2(reciever, it.simpleValueArgs.first())
           } else {
@@ -360,7 +360,7 @@ object Ir {
       // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
       context (CompileLogger) operator fun <AP : Pattern<A>, A:IrExpression> get(x: AP): Pattern1<AP, A, IrCall> =
         customPattern1("Ir.Call.FunctionRec0", x) { it: IrCall ->
-          val reciever = it.dispatchReceiver ?: it.extensionReceiver
+          val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.size == 0 && it.simpleValueArgs.all { it != null }) {
             Components1(reciever)
           } else {

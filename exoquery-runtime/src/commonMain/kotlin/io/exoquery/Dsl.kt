@@ -29,6 +29,28 @@ fun <T> capture(block: CapturedBlock.() -> SqlQuery<T>): @Captured SqlQuery<T> =
 
 interface CapturedBlock {
   fun <T> param(value: T): T = error("Compile time plugin did not transform the tree")
+
+  // Extension recivers for SqlQuery<T>
+  fun <T, R> SqlQuery<T>.map(f: (T) -> R): SqlQuery<R> = error("The `map` expression of the Query was not inlined")
+  fun <T, R> SqlQuery<T>.flatMap(f: (T) -> SqlQuery<R>): SqlQuery<R> = error("The `flatMap` expression of the Query was not inlined")
+  fun <T, R> SqlQuery<T>.concatMap(f: (T) -> Iterable<R>): SqlQuery<R> = error("The `concatMap` expression of the Query was not inlined")
+  fun <T> SqlQuery<T>.filter(f: (T) -> Boolean): SqlQuery<T> = error("The `filter` expression of the Query was not inlined")
+  fun <T> SqlQuery<T>.union(other: SqlQuery<T>): SqlQuery<T> = error("The `union` expression of the Query was not inlined")
+  fun <T> SqlQuery<T>.unionAll(other: SqlQuery<T>): SqlQuery<T> = error("The `unionAll` expression of the Query was not inlined")
+  fun <T> SqlQuery<T>.distinct(): SqlQuery<T> = error("The `distinct` expression of the Query was not inlined")
+  fun <T> SqlQuery<T>.distinctBy(): SqlQuery<T> = error("The `distinctBy` expression of the Query was not inlined")
+
+  fun <T> SqlQuery<T>.isNotEmpty(): Boolean = error("The `isNotEmpty` expression of the Query was not inlined")
+  fun <T> SqlQuery<T>.isEmpty(): Boolean = error("The `isEmpty` expression of the Query was not inlined")
+
+  fun <T> SqlQuery<T>.nested(): SqlQuery<T> = error("The `nested` expression of the Query was not inlined")
+  fun <T, R> SqlQuery<T>.sortedBy(f: (T) -> R): SqlQuery<T> = error("The sort-by expression of the Query was not inlined")
+  fun <T> SqlQuery<T>.take(f: Int): SqlQuery<T> = error("The take expression of the Query was not inlined")
+  fun <T> SqlQuery<T>.drop(f: Int): SqlQuery<T> = error("The drop expression of the Query was not inlined")
+  fun <T> SqlQuery<T>.size(): SqlQuery<Int> = error("The size expression of the Query was not inlined")
+
+  // Used in groupBy and various other places to convert query to an expression
+  fun <T> SqlQuery<T>.value(): SqlExpression<T> = error("The `value` expression of the Query was not inlined")
 }
 
 fun <T> Table(): SqlQuery<T> = error("The `Table<T>` constructor function was not inlined")
