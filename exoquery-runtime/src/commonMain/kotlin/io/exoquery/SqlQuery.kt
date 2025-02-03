@@ -29,6 +29,12 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
   Add another capability: Annotation on the top of a file to put into different location:
   @file:ExoLocation("src/main/resources/queries")
    */
+
+  fun buildRuntime(dialect: SqlIdiom, label: String?): SqlCompiledQuery<T> {
+    val query = dialect.translate(xr)
+    return SqlCompiledQuery(query, label)
+  }
+
   fun build(dialect: SqlIdiom): SqlCompiledQuery<T> = TODO()
   fun build(dialect: SqlIdiom, label: String): SqlCompiledQuery<T> = TODO()
 

@@ -89,7 +89,7 @@ object QueryParser {
         uprootable.xr // TODO catch errors here?
       },
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is { it == "map" || it == "concatMap" || it == "filter" }, Is()]).thenThis { head, lambda ->
-        val (head, id, body) = processQueryLambda(head, lambda) ?: parseError("Could not parse XR.Map/ConcatMap/Filter from: ${expr.dumpSimple()}", expr)
+        val (head, id, body) = processQueryLambda(head, lambda) ?: parseError("Could not parse XR.Map/ConcatMap/Filter", expr)
         when (this.symbol.safeName) {
           "map" -> XR.Map(head, id, body, expr.loc)
           "concatMap" -> XR.ConcatMap(head, id, body, expr.loc)
@@ -104,6 +104,9 @@ object QueryParser {
             }
             // TODO for this error message need to have a advanced "mode" that will print out the RAW IR
           ) ?: parseError("SqlQuery.flatMap(...) lambdas can only be single-statement expressions, they cannot be block-lambdas like:\n${lambda.dumpKotlinLike()}\n-----------------------------------\n${lambda.dumpSimple()}", lambda)
+      },
+      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<SqlQuery<*>>(), Is("nested")]).thenThis { head, _ ->
+        XR.Nested(parse(head), expr.loc)
       },
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is { it == "union" || it == "unionAll" }, Is()]).thenThis { head, tail ->
         val tailXR = parse(tail)
@@ -123,7 +126,6 @@ object QueryParser {
       // if nothing else matches the expression, we need to look at it in a couple of different ways and then find out if it is a dynamic query
       // TODO When QueryMethodCall and QueryGlobalCall are introduced need to revisit this to see what happens if there is a dynamic call on a query
       //      and how to differentitate it from something that we want to capture. Perhaps we would need some kind of "query-method whitelist"
-      // TODO require a @CapturedDynamic annotation
       case(ExtractorsDomain.DynamicQueryCall[Is()])
         .thenIf {
           // We don't want arbitrary functions returning SqlQuery to be treated as dynamic (e.g. right now I am working on parsing for .nested

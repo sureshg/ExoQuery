@@ -83,7 +83,11 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
           }
         ) ?: run {
           warn("The query could not be transformed at compile-time", expr.location(ctx.currentFile.fileEntry))
-          expr
+          with (Lifter(ctx)) {
+            val labelExpr = if (label != null) label.lift() else irBuilder.irNull()
+            // we still know it's x.build or x.buildPretty so just use that (for now ignore formatting if it is at runtime)
+            expr.dispatchReceiver!!.callDispatch("buildRuntime")(dialect, labelExpr)
+          }
         }
       }
     ) ?: run {

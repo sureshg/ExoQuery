@@ -3,7 +3,6 @@
 package io.exoquery.sql
 
 import io.exoquery.PostgresDialect
-import io.exoquery.printing.PrintXR
 import io.exoquery.util.Globals
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
@@ -24,18 +23,45 @@ import io.decomat.HasProductClass as PC
 
 final data class OrderByCriteria(val ast: XR.Expression, val ordering: PropertyOrdering)
 
-sealed interface FromContext { val type: XRType }
+sealed interface FromContext {
+  val type: XRType
+
+  fun transformXR(f: StatelessTransformer): FromContext =
+    when (this) {
+      is TableContext -> this
+      is QueryContext -> QueryContext(query.transformXR(f), alias)
+      is InfixContext -> this.transformParamXRs { xr -> (xr as? XR.Query)?.let { f(it) } ?: xr }
+      is FlatJoinContext -> FlatJoinContext(joinType, from.transformXR(f), f(on))
+    }
+
+// Scala:
+//def mapAst(f: Ast => Ast): FromContext = this match {
+//  case c: TableContext            => c
+//    case QueryContext(query, alias) => QueryContext(query.mapAst(f), alias)
+//  case c: InfixContext            => c.mapAsts(f)
+//  case JoinContext(t, a, b, on)   => JoinContext(t, a.mapAst(f), b.mapAst(f), f(on))
+//  case FlatJoinContext(t, a, on)  => FlatJoinContext(t, a.mapAst(f), f(on))
+//}
+}
 
 final data class TableContext(val entity: XR.Entity, val alias: String) : FromContext {
   override val type: XRType = entity.type
+  // TODO actually want the alias to be the identifier on which it is based, need to change that in SqlQuery
+  fun aliasIdent() = XR.Ident(alias, entity.type, XR.Location.Synth)
 }
 
 final data class QueryContext(val query: SqlQuery, val alias: String) : FromContext {
   override val type: XRType = query.type
+  fun aliasIdent() = XR.Ident(alias, query.type, XR.Location.Synth)
 }
 
 final data class InfixContext(val infix: XR.Infix, val alias: String) : FromContext {
   override val type: XRType = infix.type
+
+  fun transformParamXRs(f: (XR) -> XR): InfixContext =
+    copy(infix = infix.copy(params = infix.params.map(f)))
+
+  fun aliasIdent() = XR.Ident(alias, infix.type, XR.Location.Synth)
 }
 
 final data class FlatJoinContext(val joinType: XR.JoinType, val from: FromContext, val on: XR.Expression) : FromContext {
@@ -44,6 +70,20 @@ final data class FlatJoinContext(val joinType: XR.JoinType, val from: FromContex
 
 sealed interface SqlQuery {
   val type: XRType
+
+  fun transformType(f: (XRType) -> XRType): SqlQuery =
+    when (this) {
+      is FlattenSqlQuery -> copy(type = f(type))
+      is SetOperationSqlQuery -> copy(type = f(type))
+      is UnaryOperationSqlQuery -> copy(type = f(type))
+    }
+
+  fun transformXR(f: StatelessTransformer): SqlQuery =
+    when (this) {
+      is FlattenSqlQuery -> this.transformXR(f) // call the transformXR on FlattenSqlQuery directly
+      is SetOperationSqlQuery -> SetOperationSqlQuery(a.transformXR(f), op, b.transformXR(f), type)
+      is UnaryOperationSqlQuery -> UnaryOperationSqlQuery(op, query.transformXR(f), type)
+    }
 
   fun show(pretty: Boolean = false): String {
     val str =
@@ -129,7 +169,35 @@ final data class FlattenSqlQuery(
   val select: List<SelectValue> = emptyList(),
   val distinct: DistinctKind = DistinctKind.None,
   override val type: XRType
-): SqlQuery
+): SqlQuery {
+
+  // Overriding so make this return a more-specific type
+  override fun transformXR(f: StatelessTransformer): FlattenSqlQuery =
+    this.transformClauses(f)
+
+  fun transformClauses(f: StatelessTransformer): FlattenSqlQuery =
+    copy(
+      from = from.map { it.transformXR(f) },
+      where = where?.let { f(it) },
+      groupBy = groupBy?.let { f(it) },
+      orderBy = orderBy.map { it.copy(ast = f(it.ast)) },
+      limit = limit?.let { f(it) },
+      offset = offset?.let { f(it) },
+      select = select.map { it.copy(expr = f(it.expr)) }
+    )
+
+  /*
+    def mapAsts(f: Ast => Ast): FlattenSqlQuery =
+    copy(
+      where = where.map(f),
+      groupBy = groupBy.map(f),
+      orderBy = orderBy.map(o => o.copy(ast = f(o.ast))),
+      limit = limit.map(f),
+      offset = offset.map(f),
+      select = select.map(s => s.copy(ast = f(s.ast)))
+    )(quatType)
+   */
+}
 
 class SqlQueryApply(val traceConfig: TraceConfig) {
   val trace: Tracer = Tracer(TraceType.SqlQueryConstruct, traceConfig, 1)

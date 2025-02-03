@@ -34,17 +34,17 @@ class AtomicValueSelectSpec : GoldenSpec(BasicSelectClauseQuotationSpecGolden, {
 
   "parsing features spec" - {
 
-    // apply-map takes care of the non-nested case
+    // apply-map takes care of the non-nested case (should have that too)
     "from(atom) + join -> (p, r)" {
-      val names = capture { Table<Person>().map { p -> p.name } /*.nested()*/ }
+      val names = capture { Table<Person>().map { p -> p.name }.nested() }
       val people =
         select {
-          val n = from(names)
+          val n = from(names) //hello
           val r = join(Table<Robot>()) { r -> n == r.model }
           n to r
         }
 
-      println(people.buildPretty(PostgresDialect(), "from + join -> (p, r)").value)
+      println(people.buildRuntime(PostgresDialect(), "from + join -> (p, r)").value)
     }
 
     // TODO 2-table select with atomic value

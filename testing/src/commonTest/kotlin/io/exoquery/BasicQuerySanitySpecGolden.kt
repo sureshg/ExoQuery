@@ -17,7 +17,7 @@ object BasicQuerySanitySpecGolden: GoldenQueryFile {
     "query with map" to cr(
       """
       SELECT
-        p.name AS name
+        p.name AS value
       FROM
         Person p
       """

@@ -5,6 +5,18 @@ import kotlinx.serialization.Serializable
 // Formerly Quat
 @Serializable
 sealed class XRType {
+  fun isLeaf() =
+    when (this) {
+      is Product -> false
+      else -> true
+    }
+
+  fun isProduct() =
+    when (this) {
+      is Product -> true
+      else -> false
+    }
+
   fun isAbstract() =
     when (this) {
       is Generic -> true

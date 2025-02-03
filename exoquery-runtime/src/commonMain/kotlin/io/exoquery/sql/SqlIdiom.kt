@@ -1,5 +1,6 @@
 package io.exoquery.sql
 
+import io.exoquery.printing.HasPhasePrinting
 import io.exoquery.util.*
 import io.exoquery.xr.*
 import io.exoquery.xr.EqualityOperator.*
@@ -14,29 +15,41 @@ import io.exoquery.xr.XR.Const.Null
 import io.exoquery.xrError
 import io.exoquery.xr.XR.Location.Synth
 
-abstract class SqlIdiom {
+abstract class SqlIdiom: HasPhasePrinting {
 
-  abstract val traceConfig: TraceConfig
+  override val traceType: TraceType = TraceType.SqlNormalizations
   abstract val concatFunction: String
   abstract val useActionTableAliasAs: ActionTableAliasBehavior
 
   val aliasSeparator: String get() = "_"
   open fun joinAlias(alias: List<String>): String = alias.joinToString(aliasSeparator)
 
-  val trace: Tracer by lazy { Tracer(TraceType.SqlNormalizations, traceConfig, 1) }
+  override val trace: Tracer by lazy { Tracer(traceType, traceConf, 1) }
 
   protected fun normalizeQuery(xr: XR.Query) =
-    SqlNormalize(traceConf = traceConfig, disableApplyMap = false)(xr)
+    SqlNormalize(traceConf = traceConf, disableApplyMap = false)(xr)
+
+  inline fun ((SqlQuery) -> SqlQuery).andThen(phaseTitle: String, crossinline f: (SqlQuery) -> SqlQuery): (SqlQuery) -> SqlQuery  =
+    { qRaw ->
+      val q = this(qRaw)
+      demarcate("Phase: ${phaseTitle}", q)
+      val output = f(q)
+      output
+    }
 
   fun prepareQuery(xr: XR.Query): SqlQuery {
     val q = normalizeQuery(xr)
-    val sqlQuery = SqlQueryApply(traceConfig)(q)
-    trace("SQL: ${sqlQuery.show()}").andLog()
-    val expanded = ExpandNestedQueries(::joinAlias)(sqlQuery)
-    trace("Expanded SQL: ${expanded.show()}").andLog()
-    val aliasesRemoved = expanded //RemoveExtraAlias()(expanded)
-    trace("Aliases Remove SQL: ${aliasesRemoved.show()}").andLog()
-    return aliasesRemoved
+    val sqlQuery = SqlQueryApply(traceConf)(q)
+    val root = { q: SqlQuery -> q }
+    val output =
+      root
+        .andThen("SqlQueryApply") { it -> it }
+        .andThen("ValueizeSingleSelects") { ValueizeSingleLeafSelects()(it, q.type) }
+        .andThen("ExpandNestedQueries") { ExpandNestedQueries(::joinAlias)(it) }
+        //.andThen("RemoveExtraAlias") { RemoveExtraAlias()(it) }
+        .invoke(sqlQuery)
+
+    return output
   }
 
   fun translate(xr: XR.Query) =
@@ -190,12 +203,12 @@ abstract class SqlIdiom {
         // Right now we are not removing extra select clauses here (via RemoveUnusedSelects) since I am not sure what
         // kind of impact that could have on selects. Can try to do that in the future.
         if (Globals.querySubexpand) {
-          val nestedExpanded = ExpandNestedQueries(::joinAlias)(SqlQueryApply(traceConfig)(this))
+          val nestedExpanded = ExpandNestedQueries(::joinAlias)(SqlQueryApply(traceConf)(this))
           // TODO Need to implement
           //RemoveExtraAlias(strategy)(nestedExpanded).token
           nestedExpanded.token
         } else
-          SqlQueryApply(traceConfig)(this).token
+          SqlQueryApply(traceConf)(this).token
       }
     }
 

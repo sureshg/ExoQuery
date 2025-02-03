@@ -174,6 +174,9 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
     operator fun invoke(ast: XR.Expression, vararg t: Pair<XR.Expression, XR.Expression>): XR.Expression =
       invoke(ast, TypeBehavior.SubstituteSubtypes, EmptyProductTypeBehavior.Ignore, *t)
 
+    fun ReplaceWithReduction(ast: XR.Expression, vararg t: Pair<XR.Expression, XR.Expression>): XR.Expression =
+      invoke(ast, TypeBehavior.ReplaceWithReduction, EmptyProductTypeBehavior.Ignore, *t)
+
     operator fun invoke(ast: XR.Expression, typeBehavior: TypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR.Expression =
       invokeTyped(ast, t.toMap(), typeBehavior, EmptyProductTypeBehavior.Ignore, { be, ir -> be.invoke(ir) })
 
