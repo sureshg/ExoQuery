@@ -47,7 +47,7 @@ object BasicSelectClauseQuotationSpecGolden: GoldenQueryFile {
     "from + join + where" to cr(
       """
       SELECT
-        p.name AS name
+        p.name AS value
       FROM
         Person p
         INNER JOIN Robot r ON p.id = r.ownerId
@@ -58,7 +58,7 @@ object BasicSelectClauseQuotationSpecGolden: GoldenQueryFile {
     "from + sort(Asc,Desc)" to cr(
       """
       SELECT
-        p.name AS name
+        p.name AS value
       FROM
         Person p
       ORDER BY
@@ -69,7 +69,7 @@ object BasicSelectClauseQuotationSpecGolden: GoldenQueryFile {
     "from + sort(Asc)" to cr(
       """
       SELECT
-        p.name AS name
+        p.name AS value
       FROM
         Person p
       ORDER BY
@@ -79,7 +79,7 @@ object BasicSelectClauseQuotationSpecGolden: GoldenQueryFile {
     "from + groupBy" to cr(
       """
       SELECT
-        p.age AS age
+        p.age AS value
       FROM
         Person p
       GROUP BY
@@ -89,7 +89,7 @@ object BasicSelectClauseQuotationSpecGolden: GoldenQueryFile {
     "from + groupBy(a, b)" to cr(
       """
       SELECT
-        p.age AS age
+        p.age AS value
       FROM
         Person p
       GROUP BY

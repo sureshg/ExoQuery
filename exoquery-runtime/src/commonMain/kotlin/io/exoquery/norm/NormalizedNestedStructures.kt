@@ -74,7 +74,7 @@ class NormalizeNestedStructures(val normalize: StatelessTransformer) {
         is Infix -> Infix.cs(parts, params.map { normalize(it) }).nullIfSameAs(q)
         is QueryOf -> null
         is TagForSqlQuery -> null
-        is CustomQueryRef -> CustomQueryRef.cs(customQuery.handleStatelessTransform(normalize))
+        is CustomQueryRef -> CustomQueryRef.cs(customQuery.handleStatelessTransform(normalize)).nullIfSameAs(q)
       }
     }
 

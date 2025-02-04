@@ -30,6 +30,10 @@ dependencies {
 }
 
 kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-Xwhen-guards")
+    }
+
     jvm()
     // ---- kspCommonMainMetadata won't actually exist without this and no KSP extensions for XR will be generated!
     linuxX64()
@@ -79,6 +83,12 @@ kotlin {
             }
         }
 
+        val jvmMain by getting {
+            dependencies {
+                api("com.github.vertical-blank:sql-formatter:2.0.4")
+            }
+        }
+
         val jvmTest by getting {
             dependencies {
                 implementation("io.kotest:kotest-runner-junit5:6.0.0.M1")
@@ -97,6 +107,8 @@ tasks.withType<KotlinCompilationTask<*>>().configureEach {
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     compilerOptions {
+        freeCompilerArgs.add("-Xwhen-guards")
+
         // DOesn't work in KMP
         //freeCompilerArgs.add("-Xcontext-receivers")
         // Otherwise will have: Could not resolve io.exoquery:pprint-kotlin:2.0.1.

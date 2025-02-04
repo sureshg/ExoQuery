@@ -96,6 +96,13 @@ class ValueizeSingleLeafSelects(): StatelessQueryTransformer() {
       if (leafValuedFroms.isNotEmpty()) {
         q.transformXR(object : StatelessTransformer {
           override fun invoke(xr: XR.Expression): XR.Expression =
+            // TODO Are there situations where indiscrmimanantly replacing things like this is problematic?
+            //      if we switch to beta reduction we need to collect the values first which is less efficient
+            //      or perhaps the dangerous cases have already been taken care of by dealising
+            //BetaReduction(xr, TypeBehavior.ReplaceWithReduction, CollectXR.byType<Ident>(xr)
+            //  .filter { leafValuedFroms.contains(it) }
+            //  .map { it to valueize(it) })
+
             when (xr) {
               is XR.Ident -> { if (leafValuedFroms.contains(xr)) valueize(xr) else xr }
               else -> super.invoke(xr)

@@ -3,6 +3,7 @@
 package io.exoquery.sql
 
 import io.exoquery.PostgresDialect
+import io.exoquery.sql.FlattenSqlQuery
 import io.exoquery.util.Globals
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
@@ -202,48 +203,49 @@ final data class FlattenSqlQuery(
 class SqlQueryApply(val traceConfig: TraceConfig) {
   val trace: Tracer = Tracer(TraceType.SqlQueryConstruct, traceConfig, 1)
 
-  operator fun invoke(query: XR): SqlQuery =
+  operator fun invoke(query: XR.Query): SqlQuery =
     with(query) {
-      when {
-        this is XR.Union ->
+      when(this) {
+        is XR.Union ->
           trace("Construct SqlQuery from: Union") andReturn {
             SetOperationSqlQuery(invoke(a), UnionOperation, invoke(b), query.type)
           }
-        this is XR.UnionAll ->
+        is XR.UnionAll ->
           trace("Construct SqlQuery from: UnionAll") andReturn {
             SetOperationSqlQuery(invoke(a), UnionAllOperation, invoke(b), query.type)
           }
-        this is XR.UnaryOp && this.expr is XR.Query ->
-          trace("Construct SqlQuery from: UnaryOp") andReturn {
-            UnaryOperationSqlQuery(this, invoke(this.expr), query.type)
-          }
-        // e.g. if the XR is a "a + b" make it into a `Select a + b`
-        this is XR.Expression ->
-          trace("Construct SqlQuery from: Expression") andReturn {
-            FlattenSqlQuery(select = listOf(SelectValue(this)), type = query.type)
-          }
+
+        // UnaryOp on query is currently now allowed for Query but perhaps we should have QueryUnaryOp
+        //this is XR.UnaryOp && this.expr is XR.Query ->
+        //  trace("Construct SqlQuery from: UnaryOp") andReturn {
+        //    UnaryOperationSqlQuery(this, invoke(this.expr), query.type)
+        //  }
+
         // e.g. if the XR is `Map(Ent(person), n, n)` then we just need the Ent(person) part
-        this is XR.Map && id == body ->
+        is Map if id == body ->
           trace("Construct SqlQuery from: Map") andReturn {
             invoke(head)
           }
         // e.g. Take(people.flatMap(p => addresses:Query), 3) -> `select ... from people, addresses... limit 3`
-        this is XR.Take && head is XR.FlatMap ->
+        is XR.Take if head is FlatMap ->
           trace("Construct SqlQuery from: TakeDropFlatten") andReturn {
             flatten(head, head.id.copy(name = "x")).copy(limit = num, type = query.type)
           }
         // e.g. Drop(people.flatMap(p => addresses:Query), 3) -> `select ... from people, addresses... offset 3`
-        this is XR.Drop && head is XR.FlatMap ->
+        is XR.Drop if head is FlatMap ->
           trace("Construct SqlQuery from: TakeDropFlatten") andReturn {
             flatten(head, head.id.copy(name = "x")).copy(offset = num, type = query.type)
           }
-        this is XR.Query ->
-          trace("Construct SqlQuery from: Query") andReturn { flatten(this, XR.Ident("x", type, XR.Location.Synth)) }
-        this is XR.Infix ->
+        is XR.Infix ->
           trace("Construct SqlQuery from: Infix") andReturn { flatten(this, XR.Ident("x", type, XR.Location.Synth)) }
+
+        // TODO This not ever happen here, need to examine situations where this is possible
+        is XR.CustomQueryRef if customQuery is SelectClause ->
+          flatten(customQuery.toXrTransform(), XR.Ident("x", type, XR.Location.Synth))
+
         else ->
-          trace("[INVALID] Construct SqlQuery from: other") andReturn {
-            xrError("Query not properly normalized. Please open a bug report. Ast: '$query'")
+          trace("Construct SqlQuery from: Query").andReturn {
+            flatten(this, XR.Ident("x", type, XR.Location.Synth))
           }
       }
     }
@@ -264,34 +266,34 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
   }
 
 
-  private fun flattenContexts(query: XR): Pair<List<Layer>, XR> =
+  private fun flattenContexts(query: XR.Query): Pair<List<Layer>, XR.Labels.QueryOrExpression> =
     with(query) {
       when {
         // A flat-join query with no maps e.g: `qr1.flatMap(e1 => qr1.join(e2 => e1.i == e2.i))`
-        this is FlatMap && body is FlatJoin ->
+        this is XR.FlatMap && body is FlatJoin ->
           trace("Flattening FlatMap with FlatJoin") andReturn {
             val cc: XR.Product = XR.Product.fromProductIdent(body.id)
             flattenContexts(FlatMap.csf(head, id, Map(body, body.id, cc, loc))(this))
           }
-        this is FlatMap && body is XR.Infix ->
+        this is XR.FlatMap && body is XR.Infix ->
           trace("[INVALID] Flattening Flatmap with Infix") andReturn {
             xrError("Infix can't be use as a `flatMap` body. $query")
           }
         // Conceptually (the actual DSL is different):
         // people.flatMap(p -> groupBy(expr).flatMap(rest)) is:
         //   FlatMap(people, p, FlatMap(GroupBy(expr), rest)))
-        this is FlatMap && (head is FlatUnit) ->
+        this is XR.FlatMap && (head is FlatUnit) ->
           trace("Flattening Flatmap with FlatGroupBy") andReturn {
             val (nestedContexts, finalFlatMapBody) = flattenContexts(body)
             listOf(Layer.fromFlatUnit(head)) + nestedContexts to finalFlatMapBody
           }
 
-        this is Map && head is FlatUnit ->
+        this is XR.Map && head is FlatUnit ->
           trace("Flattening Flatmap with FlatGroupBy") andReturn {
             listOf(Layer.fromFlatUnit(head)) to body
           }
 
-        this is FlatMap ->
+        this is XR.FlatMap ->
           trace("Flattening Flatmap with Query") andReturn {
             val source                             = source(head, id.name)
             val (nestedContexts, finalFlatMapBody) = flattenContexts(body)
@@ -306,7 +308,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
 
 
-  private fun flatten(query: XR, alias: XR.Ident): FlattenSqlQuery =
+  private fun flatten(query: XR.Query, alias: XR.Ident): FlattenSqlQuery =
     trace("Flattening ${query}") andReturn {
       val (sources, finalFlatMapBody) = flattenContexts(query)
       // TODO Check if the 2nd-to-last source is a groupBy otherwise we're doing things
@@ -318,7 +320,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         when (finalFlatMapBody) {
           is XR.Expression ->
             FlattenSqlQuery(from = contexts, select = selectValues(finalFlatMapBody), type = query.type)
-          else ->
+          is XR.Query ->
             flatten(contexts, finalFlatMapBody, alias, nestNextMap = false)
         }
       val query =
@@ -334,7 +336,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
   private fun flatten(
     sources: List<FromContext>,
-    finalFlatMapBody: XR,
+    finalFlatMapBody: XR.Query,
     alias: XR.Ident,
     nestNextMap: Boolean
   ): FlattenSqlQuery {
@@ -381,10 +383,16 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
       }
 
       val type = finalFlatMapBody.type
+
+      fun flattenStandard(q: XR.Query) =
+        trace("Flattening| Other").andReturn {
+          FlattenSqlQuery(from = sources + source(q, alias), select = select(alias.name, type, q.loc), type = type)
+        }
+
       return trace("Flattening (alias = $alias) sources $sources from $finalFlatMapBody") andReturn {
         with (finalFlatMapBody) {
-          when {
-            this is XR.ConcatMap ->
+          when (this) {
+            is XR.ConcatMap ->
               trace("Flattening| ConcatMap") andReturn {
                 FlattenSqlQuery(
                   from = sources + source(head, alias),
@@ -393,7 +401,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 )
               }
 
-            this is XR.GroupByMap -> {
+            is XR.GroupByMap -> {
               trace("Flattening| GroupByMap") andReturn {
                 val b = base(head, alias = byAlias, nestNextMap = true)
                 val flatGroupByAsts = ExpandSelection(b.from).ofSubselect(listOf(SelectValue(byBody))).map { it.expr }
@@ -415,7 +423,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
               }
             }
 
-            this is Map -> {
+            is Map -> {
               val b = base(head, id, nestNextMap = false)
               val aggs = b.select.filter { it.expr is XR.Aggregation }
               if (!b.distinct.isDistinct && aggs.isEmpty())
@@ -432,7 +440,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 }
             }
 
-            this is XR.Filter -> {
+            is XR.Filter -> {
               // If it's a filter, pass on the value of nestNextMap in case there is a future map we need to nest
               val b = base(head, id, nestNextMap)
               // If the filter body uses the filter id, make sure it matches one of the aliases in the fromContexts
@@ -452,7 +460,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 }
             }
 
-            this is XR.SortBy -> {
+            is XR.SortBy -> {
               fun allIdentsIn(criteria: List<OrderByCriteria>) =
                 criteria.flatMap { CollectXR.byType<XR.Ident>(it.ast).map { it.name } }
 
@@ -474,7 +482,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 }
             }
 
-            this is XR.Take -> {
+            is XR.Take -> {
               val b = base(head, alias, nestNextMap = false)
               if (b.limit == null)
                 trace("Flattening| Take [Simple]") andReturn {
@@ -491,7 +499,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 }
             }
 
-            this is XR.Drop -> {
+            is XR.Drop -> {
               val b = base(head, alias, nestNextMap = false)
               if (b.offset != null && b.limit != null)
                 trace("Flattening| Drop [Simple]") andReturn {
@@ -508,14 +516,14 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 }
             }
 
-            this is XR.Distinct -> {
+            is XR.Distinct -> {
               val b = base(head, alias, nestNextMap = false)
               trace("Flattening| Distinct") andReturn {
                 b.copy(distinct = DistinctKind.Distinct, type = type)
               }
             }
 
-            this is XR.DistinctOn -> {
+            is XR.DistinctOn -> {
               val distinctList =
                 when (by) {
                   // Typically when you have something like `people.distinctOn(p -> tupleOf(p.name, p.age))`
@@ -552,14 +560,43 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
               }
             }
 
-            else ->
-              trace("Flattening| Other") andReturn {
-                FlattenSqlQuery(
-                  from = sources + source(this, alias),
-                  select = select(alias.name, type, alias.loc),
-                  type = type
-                )
-              }
+            is XR.Entity ->
+              FlattenSqlQuery(
+                from = sources + source(this, alias),
+                select = select(alias.name, type, alias.loc),
+                type = type
+              )
+
+            // TODO This not ever happen here, need to examine situations where this is possible
+            is XR.CustomQueryRef if this.customQuery is SelectClause ->
+              FlattenSqlQuery(
+                from = sources + source(this.customQuery.toXrTransform(), alias),
+                select = select(alias.name, type, alias.loc),
+                type = type
+              )
+
+            //else ->
+            //  xrError("Invalid flattening: ${this.showRaw()}")
+              //trace("Flattening| Other") andReturn {
+              //  FlattenSqlQuery(
+              //    from = sources + source(this, alias),
+              //    select = select(alias.name, type, alias.loc),
+              //    type = type
+              //  )
+              //}
+
+            is XR.CustomQueryRef -> flattenStandard(this)
+            is FlatFilter -> flattenStandard(this)
+            is FlatGroupBy -> flattenStandard(this)
+            is FlatJoin -> flattenStandard(this)
+            is FlatMap -> flattenStandard(this)
+            is FlatSortBy -> flattenStandard(this)
+            is XR.Infix -> flattenStandard(this)
+            is XR.Nested -> flattenStandard(this)
+            is XR.QueryOf -> flattenStandard(this)
+            is XR.TagForSqlQuery -> flattenStandard(this)
+            is XR.Union -> flattenStandard(this)
+            is XR.UnionAll -> flattenStandard(this)
           }
         }
       }
@@ -590,9 +627,9 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
   private fun selectValues(ast: XR.Expression) = listOf(SelectValue(ast))
 
-  private fun source(ast: XR, alias: XR.Ident): FromContext =
+  private fun source(ast: XR.Query, alias: XR.Ident): FromContext =
     source(ast, alias.name)
-  private fun source(ast: XR, alias: String): FromContext =
+  private fun source(ast: XR.Query, alias: String): FromContext =
     with (ast) {
       when (this) {
         is XR.Entity            -> TableContext(this, alias)

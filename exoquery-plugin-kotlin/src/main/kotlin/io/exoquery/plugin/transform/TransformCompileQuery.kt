@@ -53,6 +53,7 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
 
         val sqlQueryExpr = superTransformer.visitExpression(sqlQueryExprRaw)
         sqlQueryExpr.match(
+          // .thenIf { _ -> false }
           case(SqlQueryExpr.Uprootable[Is()]).then { uprootable ->
             val xr = uprootable.xr // deserialize the XR, TODO need to handle deserialization failures here
             val dialect = PostgresDialect() // TODO compiler-arg or file-annotation to add a trace config to trace phases during compile-time?
@@ -86,7 +87,7 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
           with (Lifter(ctx)) {
             val labelExpr = if (label != null) label.lift() else irBuilder.irNull()
             // we still know it's x.build or x.buildPretty so just use that (for now ignore formatting if it is at runtime)
-            expr.dispatchReceiver!!.callDispatch("buildRuntime")(dialect, labelExpr)
+            expr.dispatchReceiver!!.callDispatch("buildRuntime")(dialect, labelExpr, isPretty.lift())
           }
         }
       }

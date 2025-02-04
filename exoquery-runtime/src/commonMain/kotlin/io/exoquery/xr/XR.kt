@@ -50,6 +50,7 @@ sealed interface XR {
     // it will also be a lifted value.
     sealed interface Terminal: Expression, XR
     sealed interface FlatUnit: XR.Query
+    sealed interface QueryOrExpression: XR
     sealed interface Function: XR {
       val params: List<XR.Ident>
       val body: XR.Expression
@@ -85,10 +86,10 @@ sealed interface XR {
   }
 
   @Serializable
-  sealed interface Expression: XR
+  sealed interface Expression: XR, Labels.QueryOrExpression
 
   @Serializable
-  sealed interface Query: XR
+  sealed interface Query: XR, Labels.QueryOrExpression
 
   // *******************************************************************************************
   // ****************************************** Query ******************************************

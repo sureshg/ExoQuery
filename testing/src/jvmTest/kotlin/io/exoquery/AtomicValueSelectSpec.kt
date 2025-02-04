@@ -14,37 +14,45 @@ import io.exoquery.xr.XRType
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.equals.shouldBeEqual
 
-class AtomicValueSelectSpec : GoldenSpec(BasicSelectClauseQuotationSpecGolden, {
+class AtomicValueSelectSpec : GoldenSpec(AtomicValueSelectSpecGolden, {
   data class Person(val id: Int, val name: String, val age: Int)
   data class Robot(val ownerId: Int, val model: String)
   data class Address(val ownerId: Int, val street: String, val zip: Int)
-  val personTpe = XRType.Product("Person", listOf("id" to XRType.Value, "name" to XRType.Value, "age" to XRType.Value))
-  val robotTpe = XRType.Product("Robot", listOf("ownerId" to XRType.Value, "model" to XRType.Value))
-  val addressTpe = XRType.Product("Address", listOf("ownerId" to XRType.Value, "street" to XRType.Value, "zip" to XRType.Value))
-  val personEnt = XR.Entity("Person", personTpe)
-  val robotEnt = XR.Entity("Robot", robotTpe)
-  val addressEnt = XR.Entity("Address", addressTpe)
-  val pIdent = XR.Ident("p", personTpe)
-  val rIdent = XR.Ident("r", robotTpe)
-  val aIdent = XR.Ident("a", addressTpe)
-  val joinRobot = XR.BinaryOp(XR.Property(pIdent, "id"), EqualityOperator.`==`, XR.Property(rIdent, "ownerId"))
-  val joinAddress = XR.BinaryOp(XR.Property(pIdent, "id"), EqualityOperator.`==`, XR.Property(aIdent, "ownerId"))
-
-  infix fun Expression.prop(propName: String): Expression = XR.Property(this, propName)
 
   "parsing features spec" - {
-
     // apply-map takes care of the non-nested case (should have that too)
-    "from(atom) + join -> (p, r)" {
+    "from(atom.nested) + join -> (p, r)" {
       val names = capture { Table<Person>().map { p -> p.name }.nested() }
       val people =
         select {
-          val n = from(names) //hello
+          val n = from(names)
           val r = join(Table<Robot>()) { r -> n == r.model }
           n to r
         }
-
-      println(people.buildRuntime(PostgresDialect(), "from + join -> (p, r)").value)
+      people.buildPretty(PostgresDialect(), "from(atom.nested) + join -> (p, r)").shouldBeGolden()
+    }
+    "from(atom.nested.nested) + join -> (p, r)" {
+      val names = capture { Table<Person>().map { p -> p.name }.nested().nested() }
+      val people =
+        select {
+          val n = from(names)
+          val r = join(Table<Robot>()) { r -> n == r.model }
+          n to r
+        }
+      people.buildPretty(PostgresDialect(), "from(atom.nested.nested) + join -> (p, r)").shouldBeGolden()
+    }
+    "groupBy(n.nested) -> join(n)" {
+      val names = select {
+        val n = from(Table<Person>().map { p -> p.name }.nested())
+        groupBy(n)
+        n
+      }
+      val addresses = select {
+        val n = from(names)
+        val a = join(Table<Address>()) { a -> n == a.street }
+        n to a
+      }
+      addresses.buildPretty(PostgresDialect(), "groupBy(n.nested) -> join(n)").shouldBeGolden()
     }
 
     // TODO 2-table select with atomic value
