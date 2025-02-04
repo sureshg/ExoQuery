@@ -106,6 +106,8 @@ fun IrClassSymbol.dataClassProperties() =
 
 val IrSimpleFunctionSymbol.fullName get() = this.owner.kotlinFqName.asString()
 
+val IrCall.symName get() = this.symbol.safeName
+
 val IrSymbol.safeName   get() =
   (if (owner is IrFunction && (owner as IrFunction).isPropertyAccessor) {
     (owner as IrFunction).name.asStringStripSpecialMarkers().removePrefix("get-")

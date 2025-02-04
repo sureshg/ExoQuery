@@ -239,10 +239,6 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         is XR.Infix ->
           trace("Construct SqlQuery from: Infix") andReturn { flatten(this, XR.Ident("x", type, XR.Location.Synth)) }
 
-        // TODO This not ever happen here, need to examine situations where this is possible
-        is XR.CustomQueryRef if customQuery is SelectClause ->
-          flatten(customQuery.toXrTransform(), XR.Ident("x", type, XR.Location.Synth))
-
         else ->
           trace("Construct SqlQuery from: Query").andReturn {
             flatten(this, XR.Ident("x", type, XR.Location.Synth))
@@ -568,12 +564,15 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
               )
 
             // TODO This not ever happen here, need to examine situations where this is possible
-            is XR.CustomQueryRef if this.customQuery is SelectClause ->
+            is XR.CustomQueryRef if this.customQuery is XR.CustomQuery.Tokenizeable ->
               FlattenSqlQuery(
-                from = sources + source(this.customQuery.toXrTransform(), alias),
+                from = sources + source(this, alias),
                 select = select(alias.name, type, alias.loc),
                 type = type
               )
+
+            is XR.CustomQueryRef if this.customQuery is XR.CustomQuery.Convertable ->
+              xrError("Encountered a CustomQueryRef during flattening (All queries should have flattened previously): $this")
 
             //else ->
             //  xrError("Invalid flattening: ${this.showRaw()}")

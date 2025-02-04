@@ -24,10 +24,18 @@ data class SelectClause(
   fun allComponents(): List<SX> = from + joins + listOfNotNull(where, groupBy, sortBy)
 
   // Do nothing for now, in the cuture recurse in queries and expressions inside the SX clauses
-  override fun handleStatelessTransform(transformer: StatelessTransformer): XR.CustomQuery = this
+  override fun handleStatelessTransform(t: StatelessTransformer): XR.CustomQuery.Convertable =
+    copy(
+      from.map { from -> from.copy(t.invokeIdent(from.variable), t(from.xr)) },
+      joins.map { join -> join.copy(variable = t.invokeIdent(join.variable), onQuery = t(join.onQuery), conditionVariable = t.invokeIdent(join.conditionVariable), condition = t(join.condition)) },
+      where?.let { where -> where.copy(t(where.condition)) },
+      groupBy?.let { groupBy -> groupBy.copy(t(groupBy.grouping)) },
+      sortBy?.let { sortBy -> sortBy.copy(t(sortBy.sorting)) },
+      t(select)
+    )
 
   // Do nothing for now, in the cuture recurse in queries and expressions inside the SX clauses
-  override fun <S> handleStatefulTransformer(transformer: StatefulTransformer<S>): Pair<XR.CustomQuery, StatefulTransformer<S>> = this to transformer
+  override fun <S> handleStatefulTransformer(transformer: StatefulTransformer<S>): Pair<XR.CustomQuery.Convertable, StatefulTransformer<S>> = this to transformer
   override fun showTree(config: PPrinterConfig): Tree = PrintSkipLoc<SelectClause>(serializer(), config).treeify(this, null, false, false)
 
   companion object {

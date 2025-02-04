@@ -55,22 +55,22 @@ class Normalize(override val traceConf: TraceConfig, val disableApplyMap: Boolea
   }
 
   private fun norm(q: Query): Query {
-    fun normIfNew(qry: Query): Query? = if (qry != q) norm(qry) else null
+    //fun normIfNew(qry: Query): Query? = if (qry != q) norm(qry) else null
     return NormalizeNestedStructuresPhase(q)?.let {
       demarcate("NormalizeNestedStructures", it)
-      normIfNew(it)
+      norm(it)
     } ?: ApplyMapPhase(q)?.let {
       demarcate("ApplyMap", it)
-      normIfNew(it)
+      norm(it)
     } ?: SymbolicReductionPhase(q)?.let {
       demarcate("SymbolicReduction", it)
-      normIfNew(it)
+      norm(it)
     } ?: AdHocReductionPhase(q)?.let {
       demarcate("AdHocReduction", it)
-      normIfNew(it)
+      norm(it)
     } ?: OrderTermsPhase(q)?.let {
       demarcate("OrderTerms", it)
-      normIfNew(it)
+      norm(it)
     }
     ?: q
   }

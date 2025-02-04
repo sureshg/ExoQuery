@@ -3,12 +3,14 @@ package io.exoquery
 import io.exoquery.plugin.location
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.source
+import io.exoquery.plugin.symName
 import io.exoquery.plugin.transform.LocateableContext
 import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.ParserContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
@@ -38,3 +40,6 @@ class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) 
 fun parseError(msg: String, location: CompilerMessageSourceLocation? = null): Nothing = throw ParseError(msg, location)
 
 context(LocateableContext) fun parseError(msg: String, expr: IrElement): Nothing = throw ParseError.withFullMsg(msg, expr, currentFile, expr.location())
+
+context(LocateableContext) fun parseErrorSym(expr: IrCall): Nothing =
+  throw ParseError.withFullMsg("Invalid function name or symbol: ${expr.symName}", expr, currentFile, expr.location())

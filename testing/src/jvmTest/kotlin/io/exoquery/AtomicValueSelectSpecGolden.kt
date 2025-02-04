@@ -51,18 +51,13 @@ object AtomicValueSelectSpecGolden: GoldenQueryFile {
       FROM
         (
           SELECT
-            n.value_value AS value
+            p.name AS value
           FROM
-            (
-              SELECT
-                p.name AS value
-              FROM
-                Person p
-            ) AS n
-          GROUP BY
-            n.value_value
+            Person p
         ) AS n
         INNER JOIN Address a ON n.value = a.street
+      GROUP BY
+        n.value
       """
     ),
   )

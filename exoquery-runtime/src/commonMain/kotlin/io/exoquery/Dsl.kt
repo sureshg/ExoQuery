@@ -38,13 +38,14 @@ interface CapturedBlock {
   fun <T> SqlQuery<T>.union(other: SqlQuery<T>): SqlQuery<T> = error("The `union` expression of the Query was not inlined")
   fun <T> SqlQuery<T>.unionAll(other: SqlQuery<T>): SqlQuery<T> = error("The `unionAll` expression of the Query was not inlined")
   fun <T> SqlQuery<T>.distinct(): SqlQuery<T> = error("The `distinct` expression of the Query was not inlined")
-  fun <T> SqlQuery<T>.distinctBy(): SqlQuery<T> = error("The `distinctBy` expression of the Query was not inlined")
+  fun <T, R> SqlQuery<T>.distinctBy(f: (T) -> R): SqlQuery<T> = error("The `distinctBy` expression of the Query was not inlined")
 
   fun <T> SqlQuery<T>.isNotEmpty(): Boolean = error("The `isNotEmpty` expression of the Query was not inlined")
   fun <T> SqlQuery<T>.isEmpty(): Boolean = error("The `isEmpty` expression of the Query was not inlined")
 
   fun <T> SqlQuery<T>.nested(): SqlQuery<T> = error("The `nested` expression of the Query was not inlined")
   fun <T, R> SqlQuery<T>.sortedBy(f: (T) -> R): SqlQuery<T> = error("The sort-by expression of the Query was not inlined")
+  fun <T, R> SqlQuery<T>.sortedByDescending(f: (T) -> R): SqlQuery<T> = error("The sort-by expression of the Query was not inlined")
   fun <T> SqlQuery<T>.take(f: Int): SqlQuery<T> = error("The take expression of the Query was not inlined")
   fun <T> SqlQuery<T>.drop(f: Int): SqlQuery<T> = error("The drop expression of the Query was not inlined")
   fun <T> SqlQuery<T>.size(): SqlQuery<Int> = error("The size expression of the Query was not inlined")
@@ -80,7 +81,7 @@ interface SelectClauseCapturedBlock: CapturedBlock {
   fun sortBy(vararg orderings: Pair<*, Ord>): Unit = error("The `sortBy` expression of the Query was not inlined")
 }
 
-fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = error("The `select` expression of the Query was not inlined")
+fun <T> select(block: SelectClauseCapturedBlock.() -> T): @Captured SqlQuery<T> = error("The `select` expression of the Query was not inlined")
 
 // TODO Dsl functions for grouping
 

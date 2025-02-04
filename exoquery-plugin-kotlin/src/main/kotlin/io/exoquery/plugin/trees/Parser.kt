@@ -16,6 +16,7 @@ import io.exoquery.annotation.CapturedReturn
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.parseError
+import io.exoquery.parseErrorSym
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.transform.LocateableContext
@@ -41,6 +42,8 @@ data class ParserContext(val location: LocationContext, val binds: DynamicsAccum
 }
 
 context(ParserContext) private val IrElement.loc get() = this.locationXR()
+
+inline fun <reified R> Is.Companion.of(vararg possibilities: R): Is<R> = Is.PredicateAs(io.decomat.Typed<R>(), { possibilities.contains(it) })
 
 object Parser {
   context(LocationContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR, DynamicsAccum> =
@@ -90,11 +93,11 @@ object QueryParser {
       },
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is { it == "map" || it == "concatMap" || it == "filter" }, Is()]).thenThis { head, lambda ->
         val (head, id, body) = processQueryLambda(head, lambda) ?: parseError("Could not parse XR.Map/ConcatMap/Filter", expr)
-        when (this.symbol.safeName) {
+        when (symName) {
           "map" -> XR.Map(head, id, body, expr.loc)
           "concatMap" -> XR.ConcatMap(head, id, body, expr.loc)
           "filter" -> XR.Filter(head, id, body, expr.loc)
-          else -> parseError("Unknown SqlQuery method call: ${this.symbol.safeName} in: ${expr.dumpKotlinLike()}", expr)
+          else -> parseError("Unknown SqlQuery method call: ${symName} in: ${expr.dumpKotlinLike()}", expr)
         }
       },
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is("flatMap"), Is()]).thenThis { head, lambda ->
@@ -105,15 +108,33 @@ object QueryParser {
             // TODO for this error message need to have a advanced "mode" that will print out the RAW IR
           ) ?: parseError("SqlQuery.flatMap(...) lambdas can only be single-statement expressions, they cannot be block-lambdas like:\n${lambda.dumpKotlinLike()}\n-----------------------------------\n${lambda.dumpSimple()}", lambda)
       },
-      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<SqlQuery<*>>(), Is("nested")]).thenThis { head, _ ->
-        XR.Nested(parse(head), expr.loc)
+      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("distinct", "nested")]).thenThis { head, _ ->
+        when (symName) {
+          "distinct" -> XR.Distinct(parse(head), expr.loc)
+          "nested" -> XR.Nested(parse(head), expr.loc)
+          else -> parseErrorSym(this)
+        }
       },
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is { it == "union" || it == "unionAll" }, Is()]).thenThis { head, tail ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("sortedBy", "sortedByDescending"), Ir.FunctionExpression.withBlock[Is(), Is()]]).thenThis { head, (params, body) ->
+        when (symName) {
+          "sortedBy" -> XR.SortBy(parse(head), params.first().makeIdent(), ExpressionParser.parseFunctionBlockBody(body), XR.Ordering.Asc, expr.loc)
+          "sortedByDescending" -> XR.SortBy(parse(head), params.first().makeIdent(), ExpressionParser.parseFunctionBlockBody(body), XR.Ordering.Desc, expr.loc)
+          else -> parseErrorSym(this)
+        }
+      },
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("take", "drop"), Is()]).thenThis { head, num ->
+        when (symName) {
+          "take" -> XR.Take(parse(head), ExpressionParser.parse(num), expr.loc)
+          "drop" -> XR.Drop(parse(head), ExpressionParser.parse(num), expr.loc)
+          else -> parseErrorSym(this)
+        }
+      },
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("union", "unionAll"), Is()]).thenThis { head, tail ->
         val tailXR = parse(tail)
-        when (this.symbol.safeName) {
+        when (symName) {
           "union" -> XR.Union(parse(head), tailXR, expr.loc)
           "unionAll" -> XR.UnionAll(parse(head), tailXR, expr.loc)
-          else -> parseError("Unknown SqlQuery method call: ${this.symbol.safeName} in: ${expr.dumpKotlinLike()}", expr)
+          else -> parseErrorSym(this)
         }
       },
       case(Ir.Call.FunctionUntethered0[Is("io.exoquery.Table")]).thenThis { _ ->

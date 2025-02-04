@@ -22,7 +22,7 @@ class SqlNormalize(
 
   val NormalizePhase = Normalize(traceConf, disableApplyMap)
   val RepropagateTypesPhase = RepropagateTypes(traceConf)
-  val NormalizeCustomQueriesPhase = NormalizeCustomQueries()
+  val NormalizeCustomQueriesPhase = NormalizeCustomQueries
 
   private val root = { it: Query -> it }
   private val normalize =

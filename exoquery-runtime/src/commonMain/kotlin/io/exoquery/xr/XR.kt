@@ -772,9 +772,13 @@ sealed interface XR {
     fun <S> handleStatefulTransformer(transformer: StatefulTransformer<S>): Pair<CustomQuery, StatefulTransformer<S>>
 
     interface Convertable: CustomQuery {
+      override fun handleStatelessTransform(transformer: StatelessTransformer): Convertable
+      override fun <S> handleStatefulTransformer(transformer: StatefulTransformer<S>): Pair<Convertable, StatefulTransformer<S>>
       fun toQueryXR(): XR.Query
     }
     interface Tokenizeable: CustomQuery {
+      override fun handleStatelessTransform(transformer: StatelessTransformer): Tokenizeable
+      override fun <S> handleStatefulTransformer(transformer: StatefulTransformer<S>): Pair<Tokenizeable, StatefulTransformer<S>>
       fun tokenize(): Token
     }
   }
