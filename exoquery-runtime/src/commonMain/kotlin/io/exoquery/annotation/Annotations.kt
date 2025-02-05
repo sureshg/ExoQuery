@@ -10,6 +10,10 @@ package io.exoquery.annotation
 @Retention(AnnotationRetention.BINARY)
 annotation class CapturedFunction
 
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.FIELD, AnnotationTarget.PROPERTY, AnnotationTarget.LOCAL_VARIABLE)
+@Retention(AnnotationRetention.BINARY)
+annotation class CapturedDynamic
+
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.BINARY)
 annotation class Dsl

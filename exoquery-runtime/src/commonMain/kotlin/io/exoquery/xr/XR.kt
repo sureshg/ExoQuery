@@ -50,8 +50,14 @@ sealed interface XR {
   object Labels {
     // Things that store their own XRType. Right now this is just an Ident but in the future
     // it will also be a lifted value.
+
+    @Serializable
     sealed interface Terminal: Expression, XR
+
+    @Serializable
     sealed interface FlatUnit: XR.Query
+
+    @Serializable
     sealed interface QueryOrExpression: XR {
       fun asExpr(): XR.Expression =
         when (this) {
@@ -64,6 +70,7 @@ sealed interface XR {
           is XR.Query -> this
         }
     }
+
     sealed interface Function: XR {
       val params: List<XR.Ident>
       val body: XR.Labels.QueryOrExpression

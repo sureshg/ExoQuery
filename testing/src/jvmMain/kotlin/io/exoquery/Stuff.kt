@@ -25,16 +25,17 @@ fun main() {
   val jacks = capture { Table<Person>().filter { p -> p.name == "Jack" } }
 
   // then try this only with a fun and generic
-//  val joinPeopleToAddress2 = captureValue {
-//     { q: SqlQuery<Person> ->
-//       select {
-//         val p = from(q)
-//         val a = join(Table<Address>()) { a -> a.ownerId == p.id }
-//         p to a
-//       }
-//     }
-//   }
-//
+  val joinPeopleToAddress2 = captureValue {
+     { input: SqlQuery<Person> ->
+       select {
+         val p = from(input)
+         // TODO now we should parse the IrGetValue. Can we found out that it is coming from captureValue? Print-debug the owernship chain
+         val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+         p to a
+       }
+     }
+   }
+
   fun joinPeopleToAddress(people: SqlQuery<Person>) =
     select {
       val p = from(people)

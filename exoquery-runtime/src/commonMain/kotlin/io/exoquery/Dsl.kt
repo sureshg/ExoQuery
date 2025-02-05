@@ -29,7 +29,7 @@ fun <T> capture(block: CapturedBlock.() -> SqlQuery<T>): @Captured SqlQuery<T> =
 
 
 interface CapturedBlock {
-  fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = error("The `select` expression of the Query was not inlined")
+  @Dsl fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = error("The `select` expression of the Query was not inlined")
 
   @Dsl fun <T> param(value: T): T = error("Compile time plugin did not transform the tree")
   val <T> SqlExpression<T>.use: T get() = throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context")

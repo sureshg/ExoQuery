@@ -6,12 +6,14 @@ import io.decomat.caseEarly
 import io.decomat.match
 import io.decomat.on
 import io.exoquery.BID
+import io.exoquery.CapturedBlock
 import io.exoquery.Ord
 import io.exoquery.xr.SX
 import io.exoquery.SelectClauseCapturedBlock
 import io.exoquery.xr.SelectClause
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
+import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.annotation.Dsl
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.TransformerScope
@@ -24,6 +26,7 @@ import io.exoquery.plugin.trees.ExtractorsDomain.Call.`(op)x`
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`x to y`
 import io.exoquery.plugin.trees.ExtractorsDomain.IsSelectFunction
 import io.exoquery.xr.*
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
@@ -34,7 +37,9 @@ import org.jetbrains.kotlin.ir.declarations.IrSymbolOwner
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.name.FqName
 
 data class LocationContext(val internalVars: TransformerScope, override val currentFile: IrFile): LocateableContext {
   fun newParserCtx() = ParserContext(this)
@@ -94,7 +99,7 @@ object QueryParser {
       // this processes everything like that.
       expr is IrCall && expr.isDslCall() -> parseDslCall(expr) ?: parseError("Could not parse the DSL call", expr)
       else -> {
-        expr.match(
+        on(expr).match<XR.Query>(
           // If we couldn't parse the expression treat (and it is indeed a SqlQuery<*> treat it as dynamic i.e. non-uprootable
           // Since there's no splice-operator for SqlQuery like there is .use for SqlExpression (i.e. the variable/function-call is used directly)
           // if nothing else matches the expression, we need to look at it in a couple of different ways and then find out if it is a dynamic query
@@ -108,25 +113,33 @@ object QueryParser {
             uprootable.xr // TODO catch errors here?
           },
           case(ExtractorsDomain.DynamicQueryCall[Is()])
-            .then { _ ->
-              when {
-                  expr is IrGetValue && expr.isFunctionParam() -> {
-                    val warning =
-                    """|It appears that this expression is an argument coming from a function call. Since at compile-time we do not know
-                       |what else this function does, we need to make the query dynamic. If the whole function `${(expr.ownerFunction()?.name ?: "<???>")}` 
-                       |just returns a SqlQuery and does nothing else, annotate it as @CapturedFunction and you can then use it to build compile-time functions.
-                      """.trimMargin()
-                    warn(warning, expr)
-                  }
-                  else -> ""
-              }
-
+            .thenIf {
+              // We don't want arbitrary functions returning SqlQuery to be treated as dynamic (e.g. right now I am working on parsing for .nested
+              // and since it doesn't exist yet this case is being hit). Make the user either annotate the type or the function with @CapturedReturn
+              // in order to know we shuold actually be doing this. Should use a similar strategy for QueryMethodCall and QueryGlobalCall
+              it.type.hasAnnotation(FqName("io.exoquery.Captured")) ||
+                (it as? IrDeclarationReference)?.let {
+                  // i.e. it's a function, field, or value (that's what a IrDeclarationReference is)
+                  (it.symbol.owner as IrSymbolOwner).hasAnnotation<CapturedDynamic>() == true
+                } ?: false
+            }.then { _ ->
               val bid = BID.new()
               binds.addRuntime(bid, expr)
               XR.TagForSqlQuery(bid, TypeParser.of(expr), expr.loc)
-            }
+          }
         ) ?: run {
-          parseError("Could not parse the expression.", expr)
+          val additionalHelp =
+            when {
+              expr is IrGetValue && expr.symbol.owner is IrSimpleFunction ->
+                """|It appears that this expression is an argument coming from a function call. In this case you need to annotate the function with @CapturedDynamic
+                   |and it will be a dynamic query. If the whole function `${expr.symbol.owner.name}` just returns a SqlQuery and does nothing
+                   |else, annotate it as @CapturedFunction and you can then use it to build compile-time functions.
+                """.trimMargin()
+
+              else -> ""
+            }
+
+          parseError("Could not parse the expression." + (if (additionalHelp.isNotEmpty()) "\n${additionalHelp}" else ""), expr)
         }
       }
     }
@@ -186,6 +199,9 @@ object QueryParser {
         val tpeProd = tpe as? XRType.Product ?: parseError("Table<???>() call argument type must be a data-class, but was: ${tpe}", expr)
         XR.Entity(tpeProd.name, tpeProd, expr.locationXR())
       },
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is("select"), Ir.FunctionExpression[Is()]]).thenThis { _, (selectLambda) ->
+        XR.CustomQueryRef(SelectClauseParser.parseSelectLambda(selectLambda))
+      },
     )
 }
 
@@ -198,19 +214,28 @@ fun IrFunctionExpression.firstParam() =
 
 
 object SelectClauseParser {
+  context(ParserContext, CompileLogger) fun processSelectLambda(statementsFromRet: List<IrStatement>, loc: CompilerMessageSourceLocation): SelectClause {
+    if (statementsFromRet.isEmpty()) parseError("A select-clause usually should have two statements, a from(query) and an output. This one has neither", loc) // TODO provide example in the error
+    if (statementsFromRet.last() !is IrReturn) parseError("A select-clause must return a plain (i.e. not SqlQuery) value.", loc)
+    val ret = statementsFromRet.last()
+    val retXR = ExpressionParser.parse((ret as IrReturn).value)
+    if (ret !is IrReturn) parseError("The last statement in a select-clause must be a return statement", ret) // TODO provide example in the error
+    val statementsFrom = statementsFromRet.dropLast(1)
+    if (statementsFrom.isEmpty()) SelectClause.justSelect(retXR, loc.toLocationXR())
+
+    val statementsToParsed = statementsFrom.map { parseSubClause(it) to it }
+    return ValidateAndOrganize(statementsToParsed, retXR)
+  }
+
   context(ParserContext, CompileLogger) fun parseSelectLambda(lambda: IrStatement): SelectClause =
     lambda.match(
+      // this typically happens when the top-level select is called
       case(Ir.FunctionExpression.withBlockStatements[Is(), Is()]).thenThis { _, statementsFromRet ->
-        if (statementsFromRet.isEmpty()) parseError("A select-clause usually should have two statements, a from(query) and an output. This one has neither", lambda) // TODO provide example in the error
-        if (statementsFromRet.last() !is IrReturn) parseError("A select-clause must return a plain (i.e. not SqlQuery) value.", lambda)
-        val ret = statementsFromRet.last()
-        val retXR = ExpressionParser.parse((ret as IrReturn).value)
-        if (ret !is IrReturn) parseError("The last statement in a select-clause must be a return statement", ret) // TODO provide example in the error
-        val statementsFrom = statementsFromRet.dropLast(1)
-        if (statementsFrom.isEmpty()) SelectClause.justSelect(retXR, lambda.loc)
-
-        val statementsToParsed = statementsFrom.map { parseSubClause(it) to it }
-        ValidateAndOrganize(statementsToParsed, retXR)
+        processSelectLambda(statementsFromRet, lambda.location())
+      },
+      // this typiclally happens when select inside of a CapturedBlock
+      case(Ir.SimpleFunction[Is(), Is()]).thenThis { _, body ->
+        processSelectLambda(body.statements, lambda.location())
       }
     ) ?: parseError("Could not parse Select Clause from: ${lambda.dumpSimple()}", lambda)
 
@@ -331,8 +356,13 @@ object ExpressionParser {
         }
     ) ?: parseError("Could not parse IrBlockBody:\n${blockBody.dumpKotlinLike()}")
 
+
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Expression =
     on(expr).match<XR.Expression>(
+
+      case(Ir.Expr.ClassOf<SqlQuery<*>>()).then { expr ->
+        XR.QueryToExpr(QueryParser.parse(expr), expr.loc)
+      },
 
       case(ExtractorsDomain.CaseClassConstructorCall[Is()]).then { data ->
         XR.Product(data.className, data.fields.map { (name, valueOpt) -> name to (valueOpt?.let { parse(it) } ?: XR.Const.Null(expr.loc)) }, expr.loc)
