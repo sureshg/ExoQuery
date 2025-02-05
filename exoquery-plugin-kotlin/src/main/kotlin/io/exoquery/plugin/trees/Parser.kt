@@ -12,7 +12,6 @@ import io.exoquery.xr.SelectClause
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.annotation.Captured
-import io.exoquery.annotation.CapturedReturn
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.parseError
@@ -28,9 +27,11 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 data class LocationContext(val internalVars: TransformerScope, override val currentFile: IrFile): LocateableContext {
   fun newParserCtx() = ParserContext(this)
@@ -152,18 +153,27 @@ object QueryParser {
           // We don't want arbitrary functions returning SqlQuery to be treated as dynamic (e.g. right now I am working on parsing for .nested
           // and since it doesn't exist yet this case is being hit). Make the user either annotate the type or the function with @CapturedReturn
           // in order to know we shuold actually be doing this. Should use a similar strategy for QueryMethodCall and QueryGlobalCall
-          it.type.hasAnnotation<Captured>() ||
-            (it as? IrDeclarationReference)?.let {
-              // i.e. it's a function, field, or value (that's what a IrDeclarationReference is)
-              it.symbol.owner.hasAnnotation<CapturedReturn>() == true
-            } ?: false
+          it.type.hasAnnotation<Captured>()
         }
         .then { _ ->
           val bid = BID.new()
           binds.addRuntime(bid, expr)
           XR.TagForSqlQuery(bid, TypeParser.of(expr), expr.loc)
       },
-    ) ?: parseError("Could not parse the expression.", expr)
+    ) ?: run {
+      val additionalHelp =
+        when {
+          expr is IrGetValue && expr.isFunctionParam() ->
+            """|It appears that this expression is an argument coming from a function call. In this case you need to annotate the function with @Captured
+               |and it will be a dynamic query. If the whole function `${(expr.ownerFunction()?.name ?: "<???>")}` just returns a SqlQuery and does nothing
+               |else, annotate it as @CapturedFunction and you can then use it to build compile-time functions.
+            """.trimMargin()
+
+          else -> ""
+        }
+
+      parseError("Could not parse the expression." + (if (additionalHelp.isNotEmpty()) "\n${additionalHelp}" else ""), expr)
+    }
 }
 
 context(ParserContext, CompileLogger)

@@ -6,7 +6,7 @@ annotation class Captured
 
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.FIELD, AnnotationTarget.PROPERTY, AnnotationTarget.LOCAL_VARIABLE)
 @Retention(AnnotationRetention.BINARY)
-annotation class CapturedReturn
+annotation class CapturedFunction
 
 @Target(AnnotationTarget.FILE)
 @Retention(AnnotationRetention.BINARY)

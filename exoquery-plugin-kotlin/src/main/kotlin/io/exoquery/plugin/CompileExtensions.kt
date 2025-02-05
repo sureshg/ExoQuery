@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrSymbolOwner
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
@@ -107,6 +108,12 @@ fun IrClassSymbol.dataClassProperties() =
 val IrSimpleFunctionSymbol.fullName get() = this.owner.kotlinFqName.asString()
 
 val IrCall.symName get() = this.symbol.safeName
+
+fun IrGetValue.isFunctionParam() =
+  this.symbol.owner is IrValueParameter && this.symbol.owner.parent is IrSimpleFunction
+
+fun IrGetValue.ownerFunction() =
+  (this.symbol.owner as? IrValueParameter)?.let { it.parent as? IrSimpleFunction }
 
 val IrSymbol.safeName   get() =
   (if (owner is IrFunction && (owner as IrFunction).isPropertyAccessor) {

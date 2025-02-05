@@ -20,6 +20,7 @@ import io.decomat.HasProductClass as PC
 
 
 // TODO everything now needs to use Decomat Ids
+// TODO everything now needs to use Decomat Ids
 
 /**
  * This is the core syntax tree there are essentially three primary concepts represented here:

@@ -1,7 +1,6 @@
 package io.exoquery
 
 import io.exoquery.annotation.Captured
-import io.exoquery.annotation.CapturedReturn
 import io.exoquery.comapre.Compare
 import io.exoquery.comapre.PrintDiff
 import io.exoquery.comapre.show
@@ -19,14 +18,14 @@ fun main() {
   val joes = capture { Table<Person>().filter { p -> p.name == "Joe" } }
   val jacks = capture { Table<Person>().filter { p -> p.name == "Jack" } }
 
-  fun joinPeopleToAddress() =
+  fun joinPeopleToAddress(people: @Captured SqlQuery<Person>) =
     select {
-      val p = from(jacks)
+      val p = from(people)
       val a = join(Table<Address>()) { a -> a.ownerId == p.id }
       p to a
     }
 
-  val result = joinPeopleToAddress()
+  val result = joinPeopleToAddress(jacks)
 
   println(result.buildPretty(PostgresDialect()).value)
 }
