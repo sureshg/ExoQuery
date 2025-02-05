@@ -38,7 +38,7 @@ class TransformShowAnnotations(override val ctx: BuilderContext, val superTransf
     val newExpression = superTransformer.visitExpression(expression)
     val sqlExpressionType = newExpression.type
 
-    val capturedAnnot = sqlExpressionType.getAnnotation(FqName("io.exoquery.annotation.Captured")) ?:
+    val capturedAnnot = sqlExpressionType.getAnnotation(FqName("io.exoquery.Captured")) ?:
       throw IllegalStateException(
         "Cannot find Captured annotation from type: ${sqlExpressionType.dumpKotlinLike()} in the expression:\n${newExpression.dumpKotlinLike()}\nCurrent Annotations are:\n${sqlExpressionType.annotations.map { it.dumpKotlinLike() }.joinToString("\n", "[", "]")}"
       )

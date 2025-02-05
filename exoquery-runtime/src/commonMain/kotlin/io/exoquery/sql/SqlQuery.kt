@@ -3,7 +3,6 @@
 package io.exoquery.sql
 
 import io.exoquery.PostgresDialect
-import io.exoquery.sql.FlattenSqlQuery
 import io.exoquery.util.Globals
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
@@ -31,7 +30,7 @@ sealed interface FromContext {
     when (this) {
       is TableContext -> this
       is QueryContext -> QueryContext(query.transformXR(f), alias)
-      is InfixContext -> this.transformParamXRs { xr -> (xr as? XR.Query)?.let { f(it) } ?: xr }
+      is InfixContext -> InfixContext(f(infix), alias) //this.transformParamXRs { xr -> (xr as? XR.Query)?.let { f(it) } ?: xr }
       is FlatJoinContext -> FlatJoinContext(joinType, from.transformXR(f), f(on))
     }
 
@@ -56,12 +55,9 @@ final data class QueryContext(val query: SqlQuery, val alias: String) : FromCont
   fun aliasIdent() = XR.Ident(alias, query.type, XR.Location.Synth)
 }
 
-final data class InfixContext(val infix: XR.Infix, val alias: String) : FromContext {
+// TODO rename to ExpressionContext
+final data class InfixContext(val infix: XR.Expression, val alias: String) : FromContext {
   override val type: XRType = infix.type
-
-  fun transformParamXRs(f: (XR) -> XR): InfixContext =
-    copy(infix = infix.copy(params = infix.params.map(f)))
-
   fun aliasIdent() = XR.Ident(alias, infix.type, XR.Location.Synth)
 }
 
@@ -291,7 +287,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
         this is XR.FlatMap ->
           trace("Flattening Flatmap with Query") andReturn {
-            val source                             = source(head, id.name)
+            val source                             = sourceSpecific(head, id.name) ?: QueryContext(invoke(head), id.name)
             val (nestedContexts, finalFlatMapBody) = flattenContexts(body)
             (listOf(Layer.Context(source)) + nestedContexts to finalFlatMapBody)
           }
@@ -346,7 +342,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         }
         with(query) {
           when {
-            this is XR.GroupByMap -> trace("base| Nesting GroupByMap $query") andReturn { nest(source(query, alias.name)) }
+            this is XR.GroupByMap -> trace("base| Nesting GroupByMap $query") andReturn { nest(source(this, alias.name)) }
 
             // A map that contains mapped-to aggregations e.g.
             //   people.map(p=>max(p.name))
@@ -356,42 +352,41 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             //   people.map(p=>SomeCaseClassOrTuple(p.name, someStatefulSqlFunction(p.age)))
             // therefore we need to check if there are elements like this inside of the map-function and nest it
             this is XR.Map && containsImpurities() ->
-              trace("base| Nesting Map(a=>ContainsImpurities(a)) $query") andReturn { nest(source(query, alias.name)) }
+              trace("base| Nesting Map(a=>ContainsImpurities(a)) $query") andReturn { nest(source(this, alias.name)) }
 
-            this is XR.Nested -> trace("base| Nesting Nested $query") andReturn { nest(source(head, alias.name)) }
+            this is XR.Nested -> trace("base| Nesting Nested $query") andReturn { nest(source(this, alias.name)) }
 
-            this is XR.ConcatMap -> trace("base| Nesting ConcatMap $query") andReturn { nest(source(this, alias)) }
+            this is XR.ConcatMap -> trace("base| Nesting ConcatMap $query") andReturn { nest(source(this, alias.name)) }
 
             this is XR.Filter -> trace("base| Flattening Filter $query") andReturn { flatten(sources, query, alias, nestNextMap) }
             this is XR.Entity -> trace("base| Flattening Entity $query") andReturn { flatten(sources, query, alias, nestNextMap) }
 
             this is XR.Map && nestNextMap ->
-              trace("base| Map + nest $query") andReturn { nest(source(query, alias)) }
+              trace("base| Map + nest $query") andReturn { nest(source(this, alias.name)) }
             this is XR.Map ->
               trace("base| Map $query") andReturn { flatten(sources, query, alias, nestNextMap) }
 
             sources.isEmpty() ->
               trace("base| Flattening Empty-Sources $query") andReturn { flatten(sources, query, alias, nestNextMap) }
 
-            else -> trace("base| Nesting 'other' $query") andReturn { nest(source(query, alias)) }
+            else -> trace("base| Nesting 'other' $query") andReturn {
+              sourceSpecific(query, alias.name)?.let { nest(it) } ?:
+                xrError("Cannot compute base for the query: $query")
+            }
           }
         }
       }
 
       val type = finalFlatMapBody.type
 
-      fun flattenStandard(q: XR.Query) =
-        trace("Flattening| Other").andReturn {
-          FlattenSqlQuery(from = sources + source(q, alias), select = select(alias.name, type, q.loc), type = type)
-        }
-
+      // ---------------------------------------- HANDLING OF CLAUSES DIRECTLY TRANSLATED INTO SQL ----------------------------------------
       return trace("Flattening (alias = $alias) sources $sources from $finalFlatMapBody") andReturn {
         with (finalFlatMapBody) {
           when (this) {
             is XR.ConcatMap ->
               trace("Flattening| ConcatMap") andReturn {
                 FlattenSqlQuery(
-                  from = sources + source(head, alias),
+                  from = sources + QueryContext(invoke(head), alias.name),
                   select = selectValues(body).map { it.copy(concat = true) },
                   type = type
                 )
@@ -558,18 +553,20 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
             is XR.Entity ->
               FlattenSqlQuery(
-                from = sources + source(this, alias),
+                from = sources + source(this, alias.name),
                 select = select(alias.name, type, alias.loc),
                 type = type
               )
 
-            // TODO This not ever happen here, need to examine situations where this is possible
+            // TODO introduce a CustomQueryContext that will take this. for now just throw an error.
+            //is XR.CustomQueryRef if this.customQuery is XR.CustomQuery.Tokenizeable ->
+            //  FlattenSqlQuery(
+            //    from = sources + source(this, alias.name),
+            //    select = select(alias.name, type, alias.loc),
+            //    type = type
+            //  )
             is XR.CustomQueryRef if this.customQuery is XR.CustomQuery.Tokenizeable ->
-              FlattenSqlQuery(
-                from = sources + source(this, alias),
-                select = select(alias.name, type, alias.loc),
-                type = type
-              )
+              xrError("Encountered a Tokenizeable CustomQueryRef, not supported yet. Need to build a CustomQueryContext): $this")
 
             is XR.CustomQueryRef if this.customQuery is XR.CustomQuery.Convertable ->
               xrError("Encountered a CustomQueryRef during flattening (All queries should have flattened previously): $this")
@@ -584,19 +581,26 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
               //  )
               //}
 
-            is XR.CustomQueryRef -> flattenStandard(this)
-            is FlatFilter -> flattenStandard(this)
-            is FlatGroupBy -> flattenStandard(this)
-            is FlatJoin -> flattenStandard(this)
-            is FlatMap -> flattenStandard(this)
-            is FlatSortBy -> flattenStandard(this)
-            is XR.Infix -> flattenStandard(this)
-            is XR.Nested -> flattenStandard(this)
-            is XR.ExprToQuery -> flattenStandard(this)
-            is XR.TagForSqlQuery -> flattenStandard(this)
-            is XR.Union -> flattenStandard(this)
-            is XR.UnionAll -> flattenStandard(this)
+            is XR.CustomQueryRef -> xrError("already took care of this case")
 
+
+            is FlatFilter -> xrError("FlatUnit functions should have already been handled in the `base` phase: ${this}")
+            is FlatGroupBy -> xrError("FlatUnit functions should have already been handled in the `base` phase: ${this}")
+            is FlatJoin -> xrError("FlatUnit functions should have already been handled in the `base` phase: ${this}")
+            is FlatMap -> xrError("FlatUnit functions should have already been handled in the `base` phase: ${this}")
+            is FlatSortBy -> xrError("FlatUnit functions should have already been handled in the `base` phase: ${this}")
+
+            // The following have special handling in source function
+            is XR.ExprToQuery -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
+            is XR.Infix -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
+            is XR.Nested -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
+
+            is XR.TagForSqlQuery ->
+              xrError("Invalid flattening, XR.TagForSqlQuery should have been reduced-out of the query construction already: ${this.showRaw()}")
+            is XR.Union ->
+              xrError("Union should have been handled by the SetOperationSqlQuery ${this.showRaw()}")
+            is XR.UnionAll ->
+              xrError("UnionAll should have been handled by the SetOperationSqlQuery ${this.showRaw()}")
             is XR.FunctionApply, is XR.Ident ->
               xrError("Invalid flattening, should have been beta-reduced already: ${this.showRaw()}")
           }
@@ -629,19 +633,32 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
   private fun selectValues(ast: XR.Expression) = listOf(SelectValue(ast))
 
-  private fun source(ast: XR.Query, alias: XR.Ident): FromContext =
-    source(ast, alias.name)
-  private fun source(ast: XR.Query, alias: String): FromContext =
+  private fun source(ast: XR.Entity, alias: String): FromContext = TableContext(ast, alias)
+
+  private fun source(ast: XR.Infix, alias: String): FromContext = InfixContext(ast, alias)
+  private fun source(ast: XR.ExprToQuery, alias: String): FromContext = InfixContext(ast.head, alias)
+  private fun source(ast: XR.FlatJoin, alias: String): FromContext =
+    FlatJoinContext(ast.joinType, sourceSpecific(ast.head, ast.id.name) ?: QueryContext(invoke(ast.head), ast.id.name), ast.on)
+  private fun source(ast: XR.Nested, alias: String): FromContext = QueryContext(invoke(ast.head), alias)
+
+  // These calls are safe because `invoke` calls `flatten.return` which has specific handling for XR.Map
+  private fun source(ast: XR.Map, alias: String): FromContext = QueryContext(invoke(ast), alias) // safe because `flatten.return` directly handles Map
+  private fun source(ast: XR.ConcatMap, alias: String): FromContext = QueryContext(invoke(ast), alias) // safe because `flatten.return` directly handles ConcatMap
+  private fun source(ast: XR.GroupByMap, alias: String): FromContext = QueryContext(invoke(ast), alias) // safe because `flatten.return` directly handles GroupByMap
+
+  // DO NOT call QueryContext(invoke(ast), alias) from this function as it can potentially cause infinite loops
+  // calling `invoke` which eventually calls `flatten.return`. Instead call QueryContext(invoke(ast.head), alias) manually if this fails
+  // if it is safe (e.g. in the `invoke` function but NOT in `flatten.return`).
+  private fun sourceSpecific(ast: XR.Query, alias: String): FromContext? =
     with (ast) {
       when (this) {
-        is XR.Entity            -> TableContext(this, alias)
-        is XR.Infix             -> InfixContext(this, alias)
-        // people.flatMap(p -> join(addresses, on).flatMap(rest)) is:
-        //   FlatMap(people, p, FlatMap(FlatJoin(people, on), rest))
-        is XR.FlatJoin          -> FlatJoinContext(joinType, source(head, id.name), on)
-        is XR.Nested            -> QueryContext(invoke(head), alias)
+        is XR.Entity            -> source(this, alias)
+        is XR.Infix             -> source(this, alias)
+        is XR.ExprToQuery       -> source(this, alias)
+        is XR.FlatJoin          -> source(this, alias)
+        is XR.Nested            -> source(this, alias)
         is FlatUnit             -> xrError("Source of a query cannot a flat-unit (e.g. where/groupBy/sortedBy)\n" + this.toString())
-        else                    -> QueryContext(invoke(ast), alias)
+        else -> null
       }
     }
 

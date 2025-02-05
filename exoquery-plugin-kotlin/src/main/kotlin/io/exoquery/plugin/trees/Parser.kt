@@ -2,6 +2,7 @@ package io.exoquery.plugin.trees
 
 import io.decomat.Is
 import io.decomat.case
+import io.decomat.caseEarly
 import io.decomat.match
 import io.decomat.on
 import io.exoquery.BID
@@ -11,7 +12,7 @@ import io.exoquery.SelectClauseCapturedBlock
 import io.exoquery.xr.SelectClause
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
-import io.exoquery.annotation.Captured
+import io.exoquery.annotation.Dsl
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.parseError
@@ -26,8 +27,10 @@ import io.exoquery.xr.*
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
+import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrSymbolOwner
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -81,18 +84,58 @@ object QueryParser {
       }
     )
 
+  context(ParserContext, CompileLogger)
+  fun IrCall.isDslCall() =
+    (this.symbol.owner as IrAnnotationContainer).let { it.hasAnnotation<Dsl>() } ?: false
 
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Query =
+    when {
+      // We don't want arbitrary functions returning SqlQuery to be treated as dynamic so we make sure they are annotated with @Dsl
+      // this processes everything like that.
+      expr is IrCall && expr.isDslCall() -> parseDslCall(expr) ?: parseError("Could not parse the DSL call", expr)
+      else -> {
+        expr.match(
+          // If we couldn't parse the expression treat (and it is indeed a SqlQuery<*> treat it as dynamic i.e. non-uprootable
+          // Since there's no splice-operator for SqlQuery like there is .use for SqlExpression (i.e. the variable/function-call is used directly)
+          // if nothing else matches the expression, we need to look at it in a couple of different ways and then find out if it is a dynamic query
+          // TODO When QueryMethodCall and QueryGlobalCall are introduced need to revisit this to see what happens if there is a dynamic call on a query
+          //      and how to differentitate it from something that we want to capture. Perhaps we would need some kind of "query-method whitelist"
+          case(SqlQueryExpr.Uprootable[Is()]).thenThis { uprootable ->
+            val sqlQueryIr = this
+            // Add all binds from the found SqlQuery instance, this will be truned into something like `currLifts + SqlQuery.lifts` late
+            binds.addAllParams(sqlQueryIr)
+            // Then unpack and return the XR
+            uprootable.xr // TODO catch errors here?
+          },
+          case(ExtractorsDomain.DynamicQueryCall[Is()])
+            .then { _ ->
+              when {
+                  expr is IrGetValue && expr.isFunctionParam() -> {
+                    val warning =
+                    """|It appears that this expression is an argument coming from a function call. Since at compile-time we do not know
+                       |what else this function does, we need to make the query dynamic. If the whole function `${(expr.ownerFunction()?.name ?: "<???>")}` 
+                       |just returns a SqlQuery and does nothing else, annotate it as @CapturedFunction and you can then use it to build compile-time functions.
+                      """.trimMargin()
+                    warn(warning, expr)
+                  }
+                  else -> ""
+              }
+
+              val bid = BID.new()
+              binds.addRuntime(bid, expr)
+              XR.TagForSqlQuery(bid, TypeParser.of(expr), expr.loc)
+            }
+        ) ?: run {
+          parseError("Could not parse the expression.", expr)
+        }
+      }
+    }
+
+  // Assuming everything that gets into here is already annotated with @Dsl
+  context(ParserContext, CompileLogger) private fun parseDslCall(expr: IrExpression): XR.Query? =
     // Note, every single instance being parsed here shuold be of SqlQuery<*>, should check for that as an entry sanity-check
     on(expr).match<XR.Query>(
-      case(SqlQueryExpr.Uprootable[Is()]).thenThis { uprootable ->
-        val sqlQueryIr = this
-        // Add all binds from the found SqlQuery instance, this will be truned into something like `currLifts + SqlQuery.lifts` late
-        binds.addAllParams(sqlQueryIr)
-        // Then unpack and return the XR
-        uprootable.xr // TODO catch errors here?
-      },
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is { it == "map" || it == "concatMap" || it == "filter" }, Is()]).thenThis { head, lambda ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("map", "concatMap", "filter"), Is()]).thenThis { head, lambda ->
         val (head, id, body) = processQueryLambda(head, lambda) ?: parseError("Could not parse XR.Map/ConcatMap/Filter", expr)
         when (symName) {
           "map" -> XR.Map(head, id, body, expr.loc)
@@ -143,37 +186,7 @@ object QueryParser {
         val tpeProd = tpe as? XRType.Product ?: parseError("Table<???>() call argument type must be a data-class, but was: ${tpe}", expr)
         XR.Entity(tpeProd.name, tpeProd, expr.locationXR())
       },
-      // If we couldn't parse the expression treat (and it is indeed a SqlQuery<*> treat it as dynamic i.e. non-uprootable
-      // Since there's no splice-operator for SqlQuery like there is .use for SqlExpression (i.e. the variable/function-call is used directly)
-      // if nothing else matches the expression, we need to look at it in a couple of different ways and then find out if it is a dynamic query
-      // TODO When QueryMethodCall and QueryGlobalCall are introduced need to revisit this to see what happens if there is a dynamic call on a query
-      //      and how to differentitate it from something that we want to capture. Perhaps we would need some kind of "query-method whitelist"
-      case(ExtractorsDomain.DynamicQueryCall[Is()])
-        .thenIf {
-          // We don't want arbitrary functions returning SqlQuery to be treated as dynamic (e.g. right now I am working on parsing for .nested
-          // and since it doesn't exist yet this case is being hit). Make the user either annotate the type or the function with @CapturedReturn
-          // in order to know we shuold actually be doing this. Should use a similar strategy for QueryMethodCall and QueryGlobalCall
-          it.type.hasAnnotation<Captured>()
-        }
-        .then { _ ->
-          val bid = BID.new()
-          binds.addRuntime(bid, expr)
-          XR.TagForSqlQuery(bid, TypeParser.of(expr), expr.loc)
-      },
-    ) ?: run {
-      val additionalHelp =
-        when {
-          expr is IrGetValue && expr.isFunctionParam() ->
-            """|It appears that this expression is an argument coming from a function call. In this case you need to annotate the function with @Captured
-               |and it will be a dynamic query. If the whole function `${(expr.ownerFunction()?.name ?: "<???>")}` just returns a SqlQuery and does nothing
-               |else, annotate it as @CapturedFunction and you can then use it to build compile-time functions.
-            """.trimMargin()
-
-          else -> ""
-        }
-
-      parseError("Could not parse the expression." + (if (additionalHelp.isNotEmpty()) "\n${additionalHelp}" else ""), expr)
-    }
+    )
 }
 
 context(ParserContext, CompileLogger)
@@ -321,8 +334,6 @@ object ExpressionParser {
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Expression =
     on(expr).match<XR.Expression>(
 
-
-
       case(ExtractorsDomain.CaseClassConstructorCall[Is()]).then { data ->
         XR.Product(data.className, data.fields.map { (name, valueOpt) -> name to (valueOpt?.let { parse(it) } ?: XR.Const.Null(expr.loc)) }, expr.loc)
       },
@@ -330,6 +341,10 @@ object ExpressionParser {
       // parse lambda in a capture block
       case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
         XR.FunctionN(params.map { it.makeIdent() }, parseFunctionBlockBody(blockBody), expr.loc)
+      },
+
+      case(Ir.Call.FunctionMemN[Ir.Expr.ClassOf<kotlin.Function<*>>(), Is("invoke"), Is()]).thenThis { hostFunction, args ->
+        XR.FunctionApply(parse(hostFunction), args.map { parse(it) }, expr.loc)
       },
 
       case(Ir.Call.FunctionMem1.WithCaller[Is(), Is("param"), Is()]).thenThis { _, paramValue ->
@@ -342,6 +357,7 @@ object ExpressionParser {
         XR.QueryToExpr(QueryParser.parse(sqlQueryIr), sqlQueryIr.loc)
       },
       // Now the same for SqlExpression
+      // TODO check that the extension reciever is Ir.Expr.ClassOf<SqlExpression<*>> (and the dispatch method is CapturedBlock)
       case(Ir.Call.FunctionMem0[Is(), Is("use")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlExpression<*>>() }.then { sqlExprIr, _ ->
         sqlExprIr.match(
           case(SqlExpressionExpr.Uprootable[Is()]).then { uprootable ->
@@ -465,6 +481,11 @@ object ExpressionParser {
           XR.When(casesAst, elseBranchOrLast.then, expr.loc)
         }
       },
+      // I.e. a physical lambda applied in an expression e.g:
+      // captureValue { { x: Int -> x + 1 } }
+      //case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
+      //  XR.FunctionN(params.map { it.makeIdent() }, parseFunctionBlockBody(blockBody), expr.loc)
+      //},
 
 
 

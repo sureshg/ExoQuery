@@ -61,9 +61,6 @@ data class Params(val lifts: List<Param<*>>) {
 // (also need a way to get them easily from the IrContainer)
 
 data class SqlExpression<T>(override val xr: XR.Expression, override val runtimes: Runtimes, override val params: Params): ContainerOfXR {
-  val use: T by lazy { throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context") }
-
-
   fun determinizeDynamics(): SqlExpression<T> = DeterminizeDynamics().ofExpression(this)
 
   fun show() = PrintMisc().invoke(this)
