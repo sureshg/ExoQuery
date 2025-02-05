@@ -46,7 +46,7 @@ class SymbolicReduction(val traceConfig: TraceConfig) {
         this is XR.FlatMap && head is XR.Filter -> {
           val (a, b, c) = Triple(head.head, head.id, head.body)
           val (d, e) = Pair(id, body)
-          val cr = BetaReduction(c, b to d)
+          val cr = BetaReduction(c, b to d).asExpr()
           val er = with(head) {
             AttachToEntity({ q, id -> Filter.cs(q, id, cr) })(e)
           }

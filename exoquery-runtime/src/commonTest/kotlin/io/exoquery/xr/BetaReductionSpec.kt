@@ -19,11 +19,6 @@ class BetaReductionSpec : FreeSpec({
       val ast: XR = FunctionApply(function, listOf(Ident("b")))
       BetaReduction.ofXR(ast) shouldBe Ident("b")
     }
-    "function1 apply" {
-      val function = Function1(Ident("a"), Ident("a"))
-      val ast: XR = FunctionApply(function, listOf(Ident("b")))
-      BetaReduction.ofXR(ast) shouldBe Ident("b")
-    }
   }
   "replaces identifiers by actuals" - {
     "ident" {
@@ -155,12 +150,6 @@ class BetaReductionSpec : FreeSpec({
   }
 
   "function reduction" - {
-    "function1" {
-      val ast: XR =
-        Function1(Ident("a"), BinaryOp(Ident("a"), NumericOperator.plus, XR.Const.Int(123)))
-
-      BetaReduction.ofXR(ast, Ident("a") to Ident("aa")) shouldBe Function1(Ident("aa"), BinaryOp(Ident("aa"), NumericOperator.plus, XR.Const.Int(123)))
-    }
 
     "functionN" {
       val ast: XR =

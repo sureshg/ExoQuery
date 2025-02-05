@@ -310,8 +310,16 @@ object ExpressionParser {
 
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Expression =
     on(expr).match<XR.Expression>(
+
+
+
       case(ExtractorsDomain.CaseClassConstructorCall[Is()]).then { data ->
         XR.Product(data.className, data.fields.map { (name, valueOpt) -> name to (valueOpt?.let { parse(it) } ?: XR.Const.Null(expr.loc)) }, expr.loc)
+      },
+
+      // parse lambda in a capture block
+      case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
+        XR.FunctionN(params.map { it.makeIdent() }, parseFunctionBlockBody(blockBody), expr.loc)
       },
 
       case(Ir.Call.FunctionMem1.WithCaller[Is(), Is("param"), Is()]).thenThis { _, paramValue ->
@@ -321,7 +329,7 @@ object ExpressionParser {
       },
 
       case(Ir.Call.FunctionMem0[Is(), Is("value")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlQuery<*>>() }.then { sqlQueryIr, _ ->
-        XR.ValueOf(QueryParser.parse(sqlQueryIr), sqlQueryIr.loc)
+        XR.QueryToExpr(QueryParser.parse(sqlQueryIr), sqlQueryIr.loc)
       },
       // Now the same for SqlExpression
       case(Ir.Call.FunctionMem0[Is(), Is("use")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlExpression<*>>() }.then { sqlExprIr, _ ->

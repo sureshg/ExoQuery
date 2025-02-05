@@ -92,12 +92,19 @@ class StatelessTransformerSpec : FreeSpec({
         Subject(Ident("a") to Ident("a'"), Ident("b") to Ident("b'"))(ast) shouldBe
           BinaryOp(Ident("a'"), BooleanOperator.and, Ident("b'"))
       }
-      "function apply" {
-        val fun1 = XR.Function1(Ident("a"), Ident("a"))
-        val fun1Prime = XR.Function1(Ident("'a"), Ident("'a"))
-        val ast: XR = FunctionApply(fun1, listOf(Ident("b"), Ident("c")))
-        Subject(fun1 to fun1Prime, Ident("b") to Ident("b'"), Ident("c") to Ident("c'"))(ast) shouldBe
-          FunctionApply(fun1Prime, listOf(Ident("b'"), Ident("c'")))
+      //"function apply" {
+      //  val fun1 = XR.Function1(Ident("a"), Ident("a"))
+      //  val fun1Prime = XR.Function1(Ident("'a"), Ident("'a"))
+      //  val ast: XR = FunctionApply(fun1, listOf(Ident("b"), Ident("c")))
+      //  Subject(fun1 to fun1Prime, Ident("b") to Ident("b'"), Ident("c") to Ident("c'"))(ast) shouldBe
+      //    FunctionApply(fun1Prime, listOf(Ident("b'"), Ident("c'")))
+      //}
+      "functionN apply" {
+        val funN = XR.FunctionN(listOf(Ident("a"), Ident("b")), Ident("a"))
+        val funNPrime = XR.FunctionN(listOf(Ident("'a"), Ident("'b")), Ident("'a"))
+        val ast: XR = FunctionApply(funN, listOf(Ident("c"), Ident("d")))
+        Subject(funN to funNPrime, Ident("c") to Ident("c'"), Ident("d") to Ident("d'"))(ast) shouldBe
+          FunctionApply(funNPrime, listOf(Ident("c'"), Ident("d'")))
       }
       "constant" {
         val ast: XR = XR.Const.String("a")
@@ -147,11 +154,6 @@ class StatelessTransformerSpec : FreeSpec({
         XR.Variable(Ident("x"), Ident("a'"))
     }
     // Same thing with functions
-    "function1" {
-      val ast: XR = XR.Function1(Ident("a"), Ident("a"))
-      Subject(Ident("a") to Ident("a'"))(ast) shouldBe
-        XR.Function1(Ident("a"), Ident("a'"))
-    }
     "functionN" {
       val ast: XR = XR.FunctionN(listOf(Ident("a"), Ident("b")), Ident("a"))
       Subject(Ident("a") to Ident("a'"), Ident("b") to Ident("b'"))(ast) shouldBe

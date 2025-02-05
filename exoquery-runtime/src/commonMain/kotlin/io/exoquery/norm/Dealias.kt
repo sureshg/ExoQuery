@@ -8,6 +8,7 @@ import io.exoquery.xr.XR.Map // Make sure to explicitly have this import or Scal
 import io.exoquery.xr.XR
 import io.exoquery.xr.*
 import io.exoquery.xr.copy.*
+import io.exoquery.xrError
 
 data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig): StatefulTransformer<Ident?> {
   val trace: Tracer =
@@ -83,8 +84,8 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
             alias != null -> {
               val byAlias1 = alias.copy(type = byAlias.type)
               val mapAlias1 = alias.copy(type = mapAlias.type)
-              val byBody1 = BetaReduction(byBody, byAlias to byAlias1)
-              val mapBody1 = BetaReduction(mapBody, mapAlias to mapAlias1)
+              val byBody1 = BetaReduction(byBody, byAlias to byAlias1).asExpr()
+              val mapBody1 = BetaReduction(mapBody, mapAlias to mapAlias1).asExpr()
               GroupByMap(an, byAlias1, byBody1, mapAlias1, mapBody1) to t
             }
             else -> {
@@ -153,7 +154,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //      case _: Entity | _: Distinct | _: Nested =>
 //        (q, Dealias(None, traceConfig))
 
-        is Entity, is Distinct, is Nested, is FlatFilter, is FlatSortBy, is FlatGroupBy, is Infix, is QueryOf, is TagForSqlQuery -> {
+        is Entity, is Distinct, is Nested, is FlatFilter, is FlatSortBy, is FlatGroupBy, is Infix, is ExprToQuery, is TagForSqlQuery -> {
           this to Dealias(null, traceConfig)
         }
 
@@ -161,6 +162,8 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
           val (customQuery, state) = customQuery.handleStatefulTransformer(this@Dealias)
           CustomQueryRef.cs(customQuery) to state
         }
+        is FunctionApply, is FunctionN, is Ident ->
+          xrError("Dealiasing not supported (it should have been done already) for: $this")
       }
   }
 
@@ -174,7 +177,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
       alias != null -> {
         val retypedAlias = alias.copy(type = b.type)
         trace("Dealias (Q/Expr) $b into $retypedAlias").andLog()
-        DealiasResultA(an, retypedAlias, BetaReduction(c, b to retypedAlias), t)
+        DealiasResultA(an, retypedAlias, BetaReduction(c, b to retypedAlias).asExpr(), t)
       }
       else ->
         DealiasResultA(a, b, c, Dealias(b, traceConfig))

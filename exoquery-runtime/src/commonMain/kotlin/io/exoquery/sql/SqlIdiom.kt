@@ -112,8 +112,8 @@ abstract class SqlIdiom: HasPhasePrinting {
       is XR.When          -> token
       is XR.GlobalCall    -> token
       is XR.MethodCall    -> token
-      is XR.ValueOf       -> token
-      is XR.Function1, is XR.FunctionN, is XR.FunctionApply, is XR.Block ->
+      is XR.QueryToExpr       -> token
+      is XR.FunctionN, is XR.FunctionApply, is XR.Block ->
         xrError("Malformed or unsupported construct: $this.")
       is XR.TagForParam -> +"?" // TODO this should be a dialect-dependent placeholder
       is XR.TagForSqlExpression ->
@@ -125,10 +125,10 @@ abstract class SqlIdiom: HasPhasePrinting {
   /**
    * For example something like `people.map(_.age).avg` would be something like `people.map(_.age).value.avg`
    * This should in-turn take advantage of GlobalCall so it shold really be something like: `people.map(_.age).value.globalCall("kotlin.Int", "avg")`.
-   * In the AST this would be something like: `GlobalCall("kotlin.Int", "avg", listOf(ValueOf( <people.map(_.age)> )))`.
+   * In the AST this would be something like: `GlobalCall("kotlin.Int", "avg", listOf(QueryToExpr( <people.map(_.age)> )))`.
    * Now on an SQL level we don't
    */
-  val XR.ValueOf.token get(): Token = head.token
+  val XR.QueryToExpr.token get(): Token = head.token
 
   fun tokenizeMethodCallFqName(name: XR.FqName): Token =
     // TODO this should be per dialect, maybe even configureable. I.e. every dialect should have it's supported MethodCall functions
@@ -194,7 +194,7 @@ abstract class SqlIdiom: HasPhasePrinting {
 
   val XR.Query.token get(): Token =
     when (this) {
-      is XR.QueryOf -> head.token
+      is XR.ExprToQuery -> head.token
       else -> {
         // This case typically happens when you have a select inside of an insert
         // infix or a set operation (e.g. query[Person].exists).

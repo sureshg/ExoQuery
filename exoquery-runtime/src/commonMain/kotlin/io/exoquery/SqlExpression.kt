@@ -119,5 +119,5 @@ internal class DeterminizeDynamics() {
 
 
 
-//fun <T> SqlExpression<T>.convertToQuery(): Query<T> = QueryContainer<T>(io.exoquery.xr.XR.QueryOf(xr), binds)
-//fun <T> Query<T>.convertToSqlExpression(): SqlExpression<T> = SqlExpressionContainer<T>(io.exoquery.xr.XR.ValueOf(xr), binds)
+//fun <T> SqlExpression<T>.convertToQuery(): Query<T> = QueryContainer<T>(io.exoquery.xr.XR.ExprToQuery(xr), binds)
+//fun <T> Query<T>.convertToSqlExpression(): SqlExpression<T> = SqlExpressionContainer<T>(io.exoquery.xr.XR.QueryToExpr(xr), binds)

@@ -37,10 +37,6 @@ class EncodingSpecXR: FreeSpec({
       val xr = XR.Property(XR.Ident("foo", XRType.Value), "bar")
       xr.encode().decodeXR() shouldBeXR xr
     }
-    "Function1" {
-      val xr = XR.Function1(XR.Ident("foo", XRType.Value), XR.Ident("bar", XRType.Value))
-      xr.encode().decodeXR() shouldBeXR xr
-    }
     "FunctionN" {
       val xr = XR.FunctionN(listOf(XR.Ident("foo", XRType.Value)), XR.Ident("bar", XRType.Value))
       xr.encode().decodeXR() shouldBeXR xr

@@ -414,7 +414,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 //   SelectValue(p.name,p.age.max)
                 // since the `p` variable is in the `from` part of the query
                 // (also need to make sure that the `a` variable does not have p's type)
-                val realiasedSelect = BetaReduction(mapBody, TypeBehavior.ReplaceWithReduction, mapAlias to byAlias)
+                val realiasedSelect = BetaReduction(mapBody, TypeBehavior.ReplaceWithReduction, mapAlias to byAlias).asExpr()
                 b.copy(groupBy = groupByClause, select = selectValues(realiasedSelect), type = type)
               }
             }
@@ -592,10 +592,13 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             is FlatSortBy -> flattenStandard(this)
             is XR.Infix -> flattenStandard(this)
             is XR.Nested -> flattenStandard(this)
-            is XR.QueryOf -> flattenStandard(this)
+            is XR.ExprToQuery -> flattenStandard(this)
             is XR.TagForSqlQuery -> flattenStandard(this)
             is XR.Union -> flattenStandard(this)
             is XR.UnionAll -> flattenStandard(this)
+
+            is XR.FunctionApply, is XR.Ident ->
+              xrError("Invalid flattening, should have been beta-reduced already: ${this.showRaw()}")
           }
         }
       }

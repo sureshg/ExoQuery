@@ -79,10 +79,6 @@ interface StatefulTransformer<T> {
           val (b, stateB) = stateA.invoke(b)
           BinaryOp.cs(a, op, b) to stateB
         }
-        is Function1 -> {
-          val (bodyA, stateBody) = invoke(body)
-          Function1.cs(param, bodyA) to stateBody
-        }
         is FunctionN -> {
           val (bodyA, stateBody) = invoke(body)
           FunctionN.cs(params, bodyA) to stateBody
@@ -128,13 +124,13 @@ interface StatefulTransformer<T> {
           val (argsA, stateA) = applyList(args) { t, v -> t.invoke(v) }
           GlobalCall.cs(argsA) to stateA
         }
-        is ValueOf -> {
+        is QueryToExpr -> {
           val (headA, stateA) = invoke(head)
-          ValueOf.cs(headA) to stateA
+          QueryToExpr.cs(headA) to stateA
         }
         is Block -> invoke(this)
         is Const -> this to this@StatefulTransformer
-        is Ident -> this to this@StatefulTransformer
+        is Ident -> invokeIdent(this)
         is Const.Null -> this to this@StatefulTransformer
         is TagForParam -> this to this@StatefulTransformer
         is TagForSqlExpression -> this to this@StatefulTransformer
@@ -231,16 +227,42 @@ interface StatefulTransformer<T> {
           val (paramsA, stateA) = applyList(params) { t, v -> t.invoke(v) }
           Infix(parts, paramsA, pure, transparent, type, loc) to stateA
         }
-        is QueryOf -> {
+        is ExprToQuery -> {
           val (headA, stateA) = invoke(head)
-          QueryOf.cs(headA) to stateA
+          ExprToQuery.cs(headA) to stateA
         }
         is TagForSqlQuery -> this to this@StatefulTransformer
         is CustomQueryRef -> {
           val (cust, state) = customQuery.handleStatefulTransformer(this@StatefulTransformer)
           CustomQueryRef.cs(cust) to state
         }
+        is FunctionApply -> invoke(this)
+        is Ident -> invokeIdent(this)
       }
+    }
+
+  fun invokeIdent(xr: Ident): Pair<Ident, StatefulTransformer<T>> =
+    with(xr) {
+      this to this@StatefulTransformer
+    }
+
+  operator fun invoke(xr: XR.Labels.QueryOrExpression): Pair<XR.Labels.QueryOrExpression, StatefulTransformer<T>> =
+    when(xr) {
+      is XR.Query -> invoke(xr)
+      is XR.Expression -> invoke(xr)
+    }
+
+  operator fun invoke(xr: XR.FunctionN): Pair<XR.FunctionN, StatefulTransformer<T>> =
+    with(xr) {
+      val (bodyA, stateA) = invoke(body)
+      FunctionN.cs(params, bodyA) to stateA
+    }
+
+  operator fun invoke(xr: XR.FunctionApply): Pair<XR.FunctionApply, StatefulTransformer<T>> =
+    with(xr) {
+      val (functionA, stateA) = invoke(function)
+      val (argsA, stateB) = applyList(args) { t, v -> t.invoke(v) }
+      FunctionApply.cs(functionA, argsA) to stateB
     }
 
   operator fun invoke(xr: XR.Block): Pair<XR.Block, StatefulTransformer<T>> =

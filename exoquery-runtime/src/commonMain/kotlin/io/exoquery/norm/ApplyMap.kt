@@ -110,7 +110,7 @@ class ApplyMap(val traceConfig: TraceConfig) {
       // a.map(b => c).map(d => e) =>
       //    a.map(b => e[d := c])
       case(XR.Map[MapWithoutInfixes[Is(), Is()], Is()]).thenThis { (a, b, c), d, e ->
-        val er = BetaReduction(e, d to c)
+        val er = BetaReduction(e, d to c).asExpr()
         trace("ApplyMap on double-map for $q") andReturn { Map.cs(a, b, er) }
       },
 
@@ -145,7 +145,7 @@ class ApplyMap(val traceConfig: TraceConfig) {
       // a.map(b => c).filter(d => e) =>
       //    a.filter(b => e[d := c]).map(b => c)
       case(XR.Filter[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
-        val er = BetaReduction(e, d to c)
+        val er = BetaReduction(e, d to c).asExpr()
         trace("ApplyMap inside filter for $q") andReturn { XR.Map.csf(XR.Filter.csf(a, b, er)(comp), b, c)(compLeft) }
       },
 
@@ -158,7 +158,7 @@ class ApplyMap(val traceConfig: TraceConfig) {
       // a.map(b => c).sortBy(d => e) =>
       //    a.sortBy(b => e[d := c]).map(b => c)
       case(XR.SortBy[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
-        val er = BetaReduction(e, d to c)
+        val er = BetaReduction(e, d to c).asExpr()
         trace("ApplyMap inside sortBy for $q") andReturn { XR.Map.csf(XR.SortBy.csf(a, b, er, comp.ordering)(comp), b, c)(compLeft) }
       },
 
@@ -179,7 +179,7 @@ class ApplyMap(val traceConfig: TraceConfig) {
       // a.map(b => c).sortBy(d => e).distinct =>
       //    a.sortBy(b => e[d := c]).map(b => c).distinct
       case(XR.SortBy.DistinctHead[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
-        val er = BetaReduction(e, d to c)
+        val er = BetaReduction(e, d to c).asExpr()
         trace("ApplyMap inside sortBy+distinct for $q") andReturn { XR.Distinct(XR.Map.csf(XR.SortBy.csf(a, b, er, comp.ordering)(comp), b, c)(compLeft)) }
       },
 
@@ -212,8 +212,8 @@ class ApplyMap(val traceConfig: TraceConfig) {
         val d1 = mapAlias
         val f = mapBody
 
-        val er  = BetaReduction(e, d to c)
-        val fr  = BetaReduction(f, d1 to c)
+        val er  = BetaReduction(e, d to c).asExpr()
+        val fr  = BetaReduction(f, d1 to c).asExpr()
         val grp = GroupByMap.cs(a, b, er, b, fr)
         trace("ApplyMap inside groupByMap for $q") andReturn { grp }
       },

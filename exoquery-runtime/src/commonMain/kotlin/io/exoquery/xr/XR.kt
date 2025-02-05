@@ -8,6 +8,7 @@ import io.exoquery.util.NumbersToWords
 import io.exoquery.util.ShowTree
 import io.exoquery.util.dropLastSegment
 import io.exoquery.util.takeLastSegment
+import io.exoquery.xr.XR.Labels.QueryOrExpression
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import io.decomat.Matchable as Mat
@@ -50,10 +51,21 @@ sealed interface XR {
     // it will also be a lifted value.
     sealed interface Terminal: Expression, XR
     sealed interface FlatUnit: XR.Query
-    sealed interface QueryOrExpression: XR
+    sealed interface QueryOrExpression: XR {
+      fun asExpr(): XR.Expression =
+        when (this) {
+          is XR.Expression -> this
+          is XR.Query -> XR.QueryToExpr(this)
+        }
+      fun asQuery(): XR.Query =
+        when (this) {
+          is XR.Expression -> XR.ExprToQuery(this)
+          is XR.Query -> this
+        }
+    }
     sealed interface Function: XR {
       val params: List<XR.Ident>
-      val body: XR.Expression
+      val body: XR.Labels.QueryOrExpression
     }
   }
 
@@ -157,32 +169,32 @@ sealed interface XR {
    * This is the primary to way to turn a query into an expression both for things like aggregations
    * and co-related subqueries. For example an aggregation Query<Int>.avg in something like `people.map(_.age).avg`
    * should actually be represented as `people.map(_.age).map(i -> sum(i)).value` whose tree is:
-   * `ValueOf(Map(Map(people, x, x.age), i, sum(i)))`. In situations where GlobalCall/MethodCall are used perhaps
+   * `QueryToExpr(Map(Map(people, x, x.age), i, sum(i)))`. In situations where GlobalCall/MethodCall are used perhaps
    * we shold use this as well to convert to expressions. To fully support that we have
-   * the reverse of ValueOf i.e. QueryOf that converts a XR.Expression back into an XR.Query.
+   * the reverse of QueryToExpr i.e. ExprToQuery that converts a XR.Expression back into an XR.Query.
    */
   @Serializable
   @Mat
-  data class ValueOf(@Slot val head: XR.Query, override val loc: Location = Location.Synth): Expression, PC<ValueOf> {
+  data class QueryToExpr(@Slot val head: XR.Query, override val loc: Location = Location.Synth): Expression, PC<QueryToExpr> {
     @Transient override val productComponents = productOf(this, head)
     override val type get() = head.type
     companion object {}
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
-    override fun equals(other: Any?): Boolean = other is ValueOf && other.id() == cid
+    override fun equals(other: Any?): Boolean = other is QueryToExpr && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class QueryOf(@Slot val head: XR.Expression, override val loc: Location = Location.Synth): Query, PC<QueryOf> {
+  data class ExprToQuery(@Slot val head: XR.Expression, override val loc: Location = Location.Synth): Query, PC<ExprToQuery> {
     @Transient override val productComponents = productOf(this, head)
     override val type get() = head.type
     companion object {}
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
-    override fun equals(other: Any?): Boolean = other is QueryOf && other.id() == cid
+    override fun equals(other: Any?): Boolean = other is ExprToQuery && other.id() == cid
   }
 
   @Serializable
@@ -411,26 +423,10 @@ sealed interface XR {
   // ****************************************** Function ********************************************
   // ************************************************************************************************
 
-  // Functions are essentially lambdas that are invoked via FunctionApply. Since they can be written into
-  // expresison-variables (inside of Encode-Expressions) etc... so they need to be subtypes of XR.Expression.
-
+  // I.e. a lambda function. It can be used as an expression in some cases but not a query (although it's body maybe a query or expression)
   @Serializable
   @Mat
-  data class Function1(@CS val param: XR.Ident, @Slot override val body: XR.Expression, override val loc: Location = Location.Synth): Expression, Labels.Function, PC<Function1> {
-    @Transient override val productComponents = productOf(this, body)
-    override val type get() = body.type
-    companion object {}
-
-    override val params get() = listOf(param)
-    override fun toString() = show()
-    @Transient private val cid = id()
-    override fun hashCode(): Int = cid.hashCode()
-    override fun equals(other: Any?): Boolean = other is Function1 && other.id() == cid
-  }
-
-  @Serializable
-  @Mat
-  data class FunctionN(@CS override val params: List<Ident>, @Slot override val body: XR.Expression, override val loc: Location = Location.Synth): Expression, Labels.Function, PC<FunctionN> {
+  data class FunctionN(@CS override val params: List<Ident>, @Slot override val body: XR.Labels.QueryOrExpression, override val loc: Location = Location.Synth): Expression, Labels.Function, PC<FunctionN> {
     @Transient override val productComponents = productOf(this, body)
     override val type get() = body.type
     companion object {}
@@ -445,11 +441,14 @@ sealed interface XR {
   // ************************************************************************************************
 
   /**
+   * A function applied to some arguments. The result can be a Expression or Query hence it extends both.
    * Note that the `function` slot can be an expression but in practice its almost always a function
+   * the only other thing it can be is FunctionApply for the case where we have a function-apply, applied to a function-apply.
+   * See the "nested function apply" case in BetaReductionSpec for more details.
    */
   @Serializable
   @Mat
-  data class FunctionApply(@Slot val function: Expression, @Slot val args: List<XR.Expression>, override val loc: Location = Location.Synth): Expression, PC<FunctionApply> {
+  data class FunctionApply(@Slot val function: QueryOrExpression, @Slot val args: List<XR.Labels.QueryOrExpression>, override val loc: Location = Location.Synth): Query, Expression, PC<FunctionApply> {
     @Transient override val productComponents = productOf(this, function, args)
     override val type get() = function.type
     companion object {}
@@ -581,9 +580,9 @@ sealed interface XR {
 //   * The element that unifies query and expression. For example
 //   * `people.map(_.age).avg` should be represented as:
 //   * `people.map(_.age).map(i -> sum(i)).value whose tree is:
-//   * ValueOf(Map(Map(people, x, x.age), i, sum(i)))
+//   * QueryToExpr(Map(Map(people, x, x.age), i, sum(i)))
 //   */
-//  data class ValueOf(val head: Query, override val loc: Location = Location.Synth): XR.Expression {
+//  data class QueryToExpr(val head: Query, override val loc: Location = Location.Synth): XR.Expression {
 //    override val type: XRType = head.type
 //  }
 
@@ -593,9 +592,11 @@ sealed interface XR {
   // **********************************************************************************************
 
   // TODO should have some information defining a symbol as "Anonymous" e.g. from the .join clause so use knows that in warnings
+
+  // A identifier. Can either represent an expression or query
   @Serializable
   @Mat
-  data class Ident(@Slot val name: String, override val type: XRType, override val loc: Location = Location.Synth, val visibility: Visibility = Visibility.Visible) : XR, Labels.Terminal, PC<XR.Ident> {
+  data class Ident(@Slot val name: String, override val type: XRType, override val loc: Location = Location.Synth, val visibility: Visibility = Visibility.Visible) : XR, XR.Expression, XR.Query, Labels.Terminal, PC<XR.Ident> {
 
     @Transient override val productComponents = productOf(this, name)
     companion object {

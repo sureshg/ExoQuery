@@ -26,7 +26,7 @@ class Normalize(override val traceConf: TraceConfig, val disableApplyMap: Boolea
   // Quill originally did this at the root-level. I think it is fine
   // to just do it for expressions because normalizations will propagate down to them anyway but I'm not 100% sure
   override fun invoke(xr: Expression): Expression =
-    super.invoke(BetaReduction(xr))
+    super.invoke(BetaReduction(xr).asExpr())
 
 //  override def apply(q: Action): Action =
 //    NormalizeReturningPhase(super.apply(q))

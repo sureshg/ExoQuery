@@ -88,7 +88,7 @@ class RepropagateTypes(val traceConfig: TraceConfig): StatelessTransformer {
     val ar = invoke(a)
     val br = b.retypeFrom(ar.type)
     val cr = BetaReduction(c, RWR, b to br)
-    trace("Repropagate ${a.type.shortString()} from ${a} into:") andReturn { f(ar, br, invoke(cr)) }
+    trace("Repropagate ${a.type.shortString()} from ${a} into:") andReturn { f(ar, br, invoke(cr).asExpr()) }
   }
 
 
@@ -112,7 +112,7 @@ class RepropagateTypes(val traceConfig: TraceConfig): StatelessTransformer {
           val mapAliasR = mapAlias.retypeFrom(ar.type)
           val cr = BetaReduction(byBody, RWR, byAlias to byAliasR)
           val er = BetaReduction(mapBody, RWR, mapAlias to mapAliasR)
-          trace("Repropagate ${head.type.shortString()} from $head into:") andReturn { GroupByMap.cs(ar, byAliasR, cr, mapAliasR, er) }
+          trace("Repropagate ${head.type.shortString()} from $head into:") andReturn { GroupByMap.cs(ar, byAliasR, cr.asExpr(), mapAliasR, er.asExpr()) }
         }
         is DistinctOn -> applyBody(head, id, by) { a, b, c -> DistinctOn.cs(a, b, c) }
         is SortBy -> applyBody(head, id, criteria) { a, b, c -> SortBy.cs(a, b, c, ordering) }
@@ -120,7 +120,7 @@ class RepropagateTypes(val traceConfig: TraceConfig): StatelessTransformer {
           val ar = invoke(head)
           val iAr = id.retypeFrom(ar.type)
           val onr = BetaReduction(on, RWR, id to iAr)
-          trace("Repropagate ${head.type.shortString()} from $head into:") andReturn { FlatJoin.cs(ar, iAr, invoke(onr)) }
+          trace("Repropagate ${head.type.shortString()} from $head into:") andReturn { FlatJoin.cs(ar, iAr, invoke(onr).asExpr()) }
         }
         // FlatFilter, FlatGroupBy, FlatSortBy, Nested, and Distinct etc... do not have head-fields to repropagate types from
         else -> super.invoke(this)

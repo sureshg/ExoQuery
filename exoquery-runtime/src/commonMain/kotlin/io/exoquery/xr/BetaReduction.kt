@@ -1,6 +1,8 @@
 package io.exoquery.xr
 
 import io.exoquery.xr.copy.*
+import io.exoquery.xrError
+import io.exoquery.xr.XR.Labels.QueryOrExpression
 
 sealed interface TypeBehavior {
   object SubstituteSubtypes: TypeBehavior
@@ -12,19 +14,19 @@ sealed interface EmptyProductTypeBehavior {
   object Ignore: EmptyProductTypeBehavior
 }
 
-// I think beta reduction should be used for XR.Expression in all the cases, shuold
+// I think beta reduction should be used for QueryOrExpression in all the cases, shuold
 // move forward and find out if this is actually the case. If it is not, can probably
 // just add `case ast if map.contains(ast) =>` to the apply for Query, Function, etc...
 // maybe should have separate maps for Query, Function, etc... for that reason if those cases even exist
-data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBehavior: TypeBehavior, val emptyBehavior: EmptyProductTypeBehavior):
+data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val typeBehavior: TypeBehavior, val emptyBehavior: EmptyProductTypeBehavior):
   StatelessTransformer {
 
   private fun replaceWithReduction() = typeBehavior == TypeBehavior.ReplaceWithReduction
 
-  private fun BetaReduce(map: Map<XR.Expression, XR.Expression>) =
+  private fun BetaReduce(map: Map<QueryOrExpression, QueryOrExpression>) =
     BetaReduction(map, typeBehavior, emptyBehavior)
 
-  private fun correctTheTypeOfReplacement(orig: XR.Expression, rep: XR.Expression) =
+  private fun correctTheTypeOfReplacement(orig: QueryOrExpression, rep: QueryOrExpression): QueryOrExpression =
     when {
       replaceWithReduction() -> rep
       rep is XR.Labels.Terminal && rep.isBottomTypedTerminal() -> rep.withType(orig.type)
@@ -38,7 +40,15 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
       else -> rep
     }
 
-  override fun invoke(xr: XR.Expression): XR.Expression {
+  override fun invoke(xr: XR.Expression): XR.Expression =
+    replaceAtHead(xr)?.let {
+      when(it) {
+        is XR.Expression -> it
+        is XR.Query -> XR.QueryToExpr(it)
+      }
+    } ?: xr
+
+  fun replaceAtHead(xr: XR.Labels.QueryOrExpression): XR.Labels.QueryOrExpression? {
     val replacement = map[xr]
     return when {
       // I.e. we have an actual replacement for this element
@@ -109,7 +119,7 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
           stmts.reversed()
             // Important to go down to invoke(XR) recursively here since we are reducing
             //   XR.Block -> XR.Statement and that is only possible on the root-level
-            .fold(Pair(mapOf<XR.Expression, XR.Expression>(), output)) { (map, stmt), line ->
+            .fold(Pair(mapOf<QueryOrExpression, QueryOrExpression>(), output)) { (map, stmt), line ->
               // Beta-reduce the statements from the end to the beginning
               val reduct: XR.Variable = BetaReduce(map)(line)
               // If the beta reduction is a some 'val x=t', add x->t to the beta reductions map
@@ -131,10 +141,6 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
           }
         return with(xr) {
           when(this) {
-            is XR.Function1 -> {
-              val newParams = mapParams(params)
-              Function1.cs(newParams.first(), BetaReduce(map + params.zip(newParams))(body))
-            }
             is XR.FunctionN -> {
               val newParams = mapParams(params)
               FunctionN.cs(newParams, BetaReduce(map + params.zip(newParams))(body))
@@ -144,58 +150,65 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
         }
       }
 
-      else -> super.invoke(xr)
+      else -> null
     }
   }
 
   override fun invoke(xr: XR.Query): XR.Query =
-    with(xr) {
-      when(this) {
-        is XR.Filter -> Filter.cs(invoke(head), id, BetaReduce(map - id)(body))
-        is XR.Map -> Map.cs(invoke(head), id, BetaReduce(map - id)(body))
-        is XR.FlatMap -> FlatMap.cs(invoke(head), id, BetaReduce(map - id)(body))
-        is XR.ConcatMap -> ConcatMap.cs(invoke(head), id, BetaReduce(map - id)(body))
-        is XR.SortBy -> SortBy.cs(invoke(head), id, BetaReduce(map - id)(this.criteria), ordering)
-        is XR.GroupByMap -> GroupByMap.cs(invoke(head), byAlias, BetaReduce(map - byAlias)(this.byBody), mapAlias, BetaReduce(map - mapAlias)(this.mapBody))
-        is XR.FlatJoin -> FlatJoin.cs(invoke(head), id, BetaReduce(map - id)(on))
-        is XR.DistinctOn -> DistinctOn.cs(invoke(head), id, BetaReduce(map - id)(by))
-        // is XR.Take, is XR.Entity, is XR.Drop, is XR.Union, is XR.UnionAll, is XR.Aggregation, is XR.Distinct, is XR.Nested
-        else -> super.invoke(this)
+    replaceAtHead(xr)?.let {
+      when(it) {
+        is XR.Query -> it
+        is XR.Expression -> XR.ExprToQuery(it)
+      }
+    } ?: run {
+      with(xr) {
+        when (this) {
+          is XR.Filter -> Filter.cs(invoke(head), id, BetaReduce(map - id)(body))
+          is XR.Map -> Map.cs(invoke(head), id, BetaReduce(map - id)(body))
+          is XR.FlatMap -> FlatMap.cs(invoke(head), id, BetaReduce(map - id)(body))
+          is XR.ConcatMap -> ConcatMap.cs(invoke(head), id, BetaReduce(map - id)(body))
+          is XR.SortBy -> SortBy.cs(invoke(head), id, BetaReduce(map - id)(this.criteria), ordering)
+          is XR.GroupByMap -> GroupByMap.cs(invoke(head), byAlias, BetaReduce(map - byAlias)(this.byBody), mapAlias, BetaReduce(map - mapAlias)(this.mapBody))
+          is XR.FlatJoin -> FlatJoin.cs(invoke(head), id, BetaReduce(map - id)(on))
+          is XR.DistinctOn -> DistinctOn.cs(invoke(head), id, BetaReduce(map - id)(by))
+          // is XR.Take, is XR.Entity, is XR.Drop, is XR.Union, is XR.UnionAll, is XR.Aggregation, is XR.Distinct, is XR.Nested
+          else -> super.invoke(this)
+        }
       }
     }
 
   companion object {
-    fun ofXR(ast: XR, vararg t: Pair<XR.Expression, XR.Expression>): XR =
+    fun ofXR(ast: XR, vararg t: Pair<QueryOrExpression, QueryOrExpression>): XR =
       ofXR(ast, TypeBehavior.SubstituteSubtypes, EmptyProductTypeBehavior.Ignore, *t)
 
-    fun ofXR(ast: XR, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR =
+    fun ofXR(ast: XR, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<QueryOrExpression, QueryOrExpression>): XR =
       invokeTyped(ast, t.toMap(), typeBehavior, emptyBehavior, { be, ir -> be.invoke(ir) })
 
-    operator fun invoke(ast: XR.Expression, vararg t: Pair<XR.Expression, XR.Expression>): XR.Expression =
+    operator fun invoke(ast: QueryOrExpression, vararg t: Pair<QueryOrExpression, QueryOrExpression>): QueryOrExpression =
       invoke(ast, TypeBehavior.SubstituteSubtypes, EmptyProductTypeBehavior.Ignore, *t)
 
-    fun ReplaceWithReduction(ast: XR.Expression, vararg t: Pair<XR.Expression, XR.Expression>): XR.Expression =
+    fun ReplaceWithReduction(ast: QueryOrExpression, vararg t: Pair<QueryOrExpression, QueryOrExpression>): QueryOrExpression =
       invoke(ast, TypeBehavior.ReplaceWithReduction, EmptyProductTypeBehavior.Ignore, *t)
 
-    operator fun invoke(ast: XR.Expression, typeBehavior: TypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR.Expression =
+    operator fun invoke(ast: QueryOrExpression, typeBehavior: TypeBehavior, vararg t: Pair<QueryOrExpression, QueryOrExpression>): QueryOrExpression =
       invokeTyped(ast, t.toMap(), typeBehavior, EmptyProductTypeBehavior.Ignore, { be, ir -> be.invoke(ir) })
 
-    operator fun invoke(ast: XR.Expression, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR.Expression =
+    operator fun invoke(ast: QueryOrExpression, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<QueryOrExpression, QueryOrExpression>): QueryOrExpression =
       invokeTyped(ast, t.toMap(), typeBehavior, emptyBehavior, { be, ir -> be.invoke(ir) })
 
-    fun ofQuery(ast: XR.Query, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR.Query =
+    fun ofQuery(ast: XR.Query, typeBehavior: TypeBehavior, emptyBehavior: EmptyProductTypeBehavior, vararg t: Pair<QueryOrExpression, QueryOrExpression>): XR.Query =
       invokeTyped(ast, t.toMap(), typeBehavior, emptyBehavior, { be, ir -> be.invoke(ir) })
 
-    fun ofQuery(ast: XR.Query, typeBehavior: TypeBehavior, vararg t: Pair<XR.Expression, XR.Expression>): XR.Query =
+    fun ofQuery(ast: XR.Query, typeBehavior: TypeBehavior, vararg t: Pair<QueryOrExpression, QueryOrExpression>): XR.Query =
       invokeTyped(ast, t.toMap(), typeBehavior, EmptyProductTypeBehavior.Ignore, { be, ir -> be.invoke(ir) })
 
-    fun ofQuery(ast: XR.Query, vararg t: Pair<XR.Expression, XR.Expression>): XR.Query =
+    fun ofQuery(ast: XR.Query, vararg t: Pair<QueryOrExpression, QueryOrExpression>): XR.Query =
       invokeTyped(ast, t.toMap(), TypeBehavior.SubstituteSubtypes, EmptyProductTypeBehavior.Ignore, { be, ir -> be.invoke(ir) })
 
 
     internal fun <X: XR> invokeTyped(
       ast: X,
-      replacements: Map<XR.Expression, XR.Expression>,
+      replacements: Map<QueryOrExpression, QueryOrExpression>,
       typeBehavior: TypeBehavior,
       emptyBehavior: EmptyProductTypeBehavior,
       astLevelInvoker: (BetaReduction, X) -> X
@@ -208,7 +221,7 @@ data class BetaReduction(val map: Map<XR.Expression, XR.Expression>, val typeBeh
         // sure to return the actual AST that was matched as opposed to the one passed in.
         reducedAst == ast -> reducedAst
         // Perform an additional beta reduction on the reduced XR since it may not have been fully reduced yet
-        else -> invokeTyped<X>(reducedAst, mapOf<XR.Expression, XR.Expression>(), typeBehavior, emptyBehavior, astLevelInvoker)
+        else -> invokeTyped<X>(reducedAst, mapOf<QueryOrExpression, QueryOrExpression>(), typeBehavior, emptyBehavior, astLevelInvoker)
       }
     }
 

@@ -16,6 +16,12 @@ interface StatelessTransformerSingleRoot: StatelessTransformer {
 
 interface StatelessTransformer {
 
+  operator fun invoke(xr: Labels.QueryOrExpression) =
+    when (xr) {
+      is XR.Query -> invoke(xr)
+      is XR.Expression -> invoke(xr)
+    }
+
   operator fun invoke(xr: XR): XR =
     with(xr) {
       when (this) {
@@ -31,13 +37,13 @@ interface StatelessTransformer {
   operator fun invoke(xr: XR.Variable): XR.Variable = with(xr) { Variable.csf(name, invoke(rhs))(this) }
   operator fun invoke(xr: XR.Branch): XR.Branch = with(xr) { XR.Branch.csf(invoke(cond), invoke(then))(this) }
   operator fun invoke(xr: XR.Block): XR.Block = with(xr) { Block.csf(stmts.map { invoke(it) }, invoke(output))(this) }
+  operator fun invoke(xr: XR.FunctionN): XR.FunctionN = with(xr) { FunctionN.csf(params.map { invokeIdent(it) }, invoke(body))(this) }
 
   operator fun invoke(xr: XR.Expression): XR.Expression =
     with(xr) {
       when (this) {
         is BinaryOp -> BinaryOp.csf(invoke(a), op, invoke(b))(this)
         is Const -> this
-        is Function1 -> Function1.csf(param, invoke(body))(this)
         is FunctionN -> FunctionN.csf(params, invoke(body))(this)
         is FunctionApply -> FunctionApply.csf(invoke(function), args.map { invoke(it) })(this)
         is Ident -> invokeIdent(this)
@@ -52,7 +58,7 @@ interface StatelessTransformer {
         is Aggregation -> Aggregation.csf(op, invoke(expr))(this)
         is MethodCall -> MethodCall.csf(invoke(head), args.map { invoke(it) })(this)
         is GlobalCall -> GlobalCall.csf(args.map { invoke(it) })(this)
-        is ValueOf -> ValueOf.csf(invoke(head))(this)
+        is QueryToExpr -> QueryToExpr.csf(invoke(head))(this)
 
         is TagForParam -> this
         is TagForSqlExpression -> this
@@ -80,11 +86,13 @@ interface StatelessTransformer {
         is ConcatMap -> ConcatMap.csf(invoke(head), invokeIdent(id), invoke(body))(this)
         is GroupByMap -> GroupByMap.csf(invoke(head), invokeIdent(byAlias), invoke(byBody), invokeIdent(mapAlias), invoke(mapBody))(this)
         is Nested -> Nested.csf(invoke(head))(this)
-        is QueryOf -> QueryOf.csf(invoke(head))(this)
+        is ExprToQuery -> ExprToQuery.csf(invoke(head))(this)
         // Infix can both be Expression and Query
         is Infix -> Infix.csf(parts, params.map { invoke(it) })(this)
         is TagForSqlQuery -> this
         is CustomQueryRef -> CustomQueryRef.csf(customQuery.handleStatelessTransform(this@StatelessTransformer))(this)
+        is FunctionApply -> FunctionApply.csf(invoke(function), args.map { invoke(it) })(this)
+        is Ident -> invokeIdent(this)
       }
     }
 }

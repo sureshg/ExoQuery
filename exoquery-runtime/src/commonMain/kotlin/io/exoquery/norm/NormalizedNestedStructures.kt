@@ -3,8 +3,10 @@ package io.exoquery.norm
 import io.exoquery.xr.StatelessTransformer
 import io.exoquery.xr.*
 import io.exoquery.xr.XR.*
+import io.exoquery.xr.XR.Map
 import io.exoquery.xr.XR
 import io.exoquery.xr.copy.*
+import io.exoquery.xrError
 
 class NormalizeNestedStructures(val normalize: StatelessTransformer) {
 
@@ -15,7 +17,7 @@ class NormalizeNestedStructures(val normalize: StatelessTransformer) {
     with(q) {
       when(this) {
         is Entity -> null
-        is XR.Map -> Map.cs(normalize(head), id, normalize(body)).nullIfSameAs(q)
+        is Map -> Map.cs(normalize(head), id, normalize(body)).nullIfSameAs(q)
 //      case Map(a, b, c)       => apply(a, c)(Map(_, b, _))
 
         is FlatMap -> FlatMap.cs(normalize(head), id, normalize(body)).nullIfSameAs(q)
@@ -72,9 +74,12 @@ class NormalizeNestedStructures(val normalize: StatelessTransformer) {
         is FlatSortBy -> FlatSortBy.cs(normalize(by), ordering).nullIfSameAs(q)
         // Not sure why Quill didn't normalize Infixes (maybe it didn't matter because normalization is mainly for XR.Query)
         is Infix -> Infix.cs(parts, params.map { normalize(it) }).nullIfSameAs(q)
-        is QueryOf -> null
+        is ExprToQuery -> null
         is TagForSqlQuery -> null
         is CustomQueryRef -> CustomQueryRef.cs(customQuery.handleStatelessTransform(normalize)).nullIfSameAs(q)
+
+        is FunctionApply, is Ident ->
+          xrError("Unexpected AST node (these should have already been beta reduced): $this")
       }
     }
 

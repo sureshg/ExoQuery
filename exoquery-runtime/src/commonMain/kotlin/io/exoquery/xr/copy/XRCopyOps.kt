@@ -9,8 +9,8 @@ import io.exoquery.xr.XR.ConcatMap
 import io.exoquery.xr.XR.Entity
 import io.exoquery.xr.XR.Filter
 import io.exoquery.xr.XR.Map
-import io.exoquery.xr.XR.QueryOf
-import io.exoquery.xr.XR.ValueOf
+import io.exoquery.xr.XR.ExprToQuery
+import io.exoquery.xr.XR.QueryToExpr
 import io.exoquery.xr.XR.SortBy
 import io.exoquery.xr.XR.GroupByMap
 import io.exoquery.xr.XR.Take
@@ -26,7 +26,6 @@ import io.exoquery.xr.XR.Distinct
 import io.exoquery.xr.XR.DistinctOn
 import io.exoquery.xr.XR.Nested
 import io.exoquery.xr.XR.Infix
-import io.exoquery.xr.XR.Function1
 import io.exoquery.xr.XR.FunctionN
 import io.exoquery.xr.XR.FunctionApply
 import io.exoquery.xr.XR.BinaryOp
@@ -59,11 +58,11 @@ fun Map.cs(head: XR.Query, id: XR.Ident, body: XR.Expression) = io.exoquery.xr.X
 val ConcatMap.ConcatMap get() = this
 fun ConcatMap.cs(head: XR.Query, id: XR.Ident, body: XR.Expression) = io.exoquery.xr.XR.ConcatMap.csf(head, id, body)(this)
 
-val ValueOf.ValueOf get() = this
-fun ValueOf.cs(head: XR.Query) = io.exoquery.xr.XR.ValueOf.csf(head)(this)
+val QueryToExpr.QueryToExpr get() = this
+fun QueryToExpr.cs(head: XR.Query) = io.exoquery.xr.XR.QueryToExpr.csf(head)(this)
 
-val QueryOf.QueryOf get() = this
-fun QueryOf.cs(head: XR.Expression) = io.exoquery.xr.XR.QueryOf.csf(head)(this)
+val ExprToQuery.ExprToQuery get() = this
+fun ExprToQuery.cs(head: XR.Expression) = io.exoquery.xr.XR.ExprToQuery.csf(head)(this)
 
 val SortBy.SortBy get() = this
 fun SortBy.cs(head: XR.Query, id: XR.Ident, criteria: XR.Expression, ordering: XR.Ordering) = io.exoquery.xr.XR.SortBy.csf(head, id, criteria, ordering)(this)
@@ -110,14 +109,11 @@ fun Nested.cs(head: XR.Query) = io.exoquery.xr.XR.Nested.csf(head)(this)
 val Infix.Infix get() = this
 fun Infix.cs(parts: List<String>, params: List<XR>) = io.exoquery.xr.XR.Infix.csf(parts, params)(this)
 
-val Function1.Function1 get() = this
-fun Function1.cs(param: XR.Ident, body: XR.Expression) = io.exoquery.xr.XR.Function1.csf(param, body)(this)
-
 val FunctionN.FunctionN get() = this
-fun FunctionN.cs(params: List<Ident>, body: XR.Expression) = io.exoquery.xr.XR.FunctionN.csf(params, body)(this)
+fun FunctionN.cs(params: List<Ident>, body: XR.Labels.QueryOrExpression) = io.exoquery.xr.XR.FunctionN.csf(params, body)(this)
 
 val FunctionApply.FunctionApply get() = this
-fun FunctionApply.cs(function: XR.Expression, args: List<XR.Expression>) = io.exoquery.xr.XR.FunctionApply.csf(function, args)(this)
+fun FunctionApply.cs(function: XR.Labels.QueryOrExpression, args: List<XR.Labels.QueryOrExpression>) = io.exoquery.xr.XR.FunctionApply.csf(function, args)(this)
 
 val BinaryOp.BinaryOp get() = this
 fun BinaryOp.cs(a: XR.Expression, op: BinaryOperator, b: XR.Expression) = io.exoquery.xr.XR.BinaryOp.csf(a, op, b)(this)

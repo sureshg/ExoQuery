@@ -8,7 +8,7 @@ object SelectClauseToXR {
     // COMPLEX! Need to walk throught the select-clause and recurisvley use `nest` function to nest things in each-other
     val components = selectClause.allComponents()
     if (components.isEmpty()) {
-      XR.QueryOf(selectClause.select)
+      XR.ExprToQuery(selectClause.select)
     } else {
       nest(selectClause.from.first().xr, selectClause.from.first().variable, components.tail(), selectClause.select)
     }
