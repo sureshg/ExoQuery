@@ -37,6 +37,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSymbolOwner
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.get
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.name.FqName
@@ -112,6 +113,13 @@ object QueryParser {
             // Then unpack and return the XR
             uprootable.xr // TODO catch errors here?
           },
+          case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() }.thenThis { sym->
+            XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR())
+          },
+          // TODO check that the output is a SqlQuery and pass to this parser instead of expression parser?
+          case(Ir.Call.FunctionMemN[Ir.Expr.ClassOf<kotlin.Function<*>>(), Is("invoke"), Is()]).thenThis { hostFunction, args ->
+            XR.FunctionApply(ExpressionParser.parse(hostFunction), args.map { ExpressionParser.parse(it) }, expr.loc)
+          },
           case(ExtractorsDomain.DynamicQueryCall[Is()])
             .thenIf {
               // We don't want arbitrary functions returning SqlQuery to be treated as dynamic (e.g. right now I am working on parsing for .nested
@@ -132,6 +140,9 @@ object QueryParser {
                    |else, annotate it as @CapturedFunction and you can then use it to build compile-time functions.
                 """.trimMargin()
 
+              expr is IrGetValue ->
+                "Lineage: ${expr.showLineage()}"
+
 //              expr is IrGetValue ->
 //                """|--->
 //                   |${expr.symbol.safeName} ->
@@ -147,20 +158,56 @@ object QueryParser {
               else -> ""
             }
 
-          parseError("Could not parse the expression." + (if (additionalHelp.isNotEmpty()) "\n${additionalHelp}" else ""), expr)
+          parseError("Could not parse the Query." + (if (additionalHelp.isNotEmpty()) "\n${additionalHelp}" else ""), expr)
         }
       }
     }
 
   fun IrGetValue.isCapturedVariable(): Boolean {
-    tailrec fun rec(elem: IrElement): Boolean =
+    tailrec fun rec(elem: IrElement, recurseCount: Int): Boolean =
       when {
+        recurseCount == 0 -> false
         elem is IrFunction && elem.extensionReceiverParameter?.type?.isClass<CapturedBlock>() ?: false -> true
-        elem is IrFunction -> rec(elem.symbol.owner)
-        elem is IrVariable -> rec(elem.symbol.owner)
+        elem is IrFunction -> rec(elem.symbol.owner.parent, recurseCount-1)
+        elem is IrValueParameter -> rec(elem.symbol.owner.parent, recurseCount-1)
+        elem is IrVariable -> rec(elem.symbol.owner.parent, recurseCount-1)
         else -> false
       }
-    return rec(this.symbol.owner)
+
+    return rec(this.symbol.owner, 100)
+  }
+
+  fun IrGetValue.showLineage(): String {
+    val collect = mutableListOf<String>()
+    tailrec fun rec(elem: IrElement, recurseCount: Int): Unit {
+      collect.add("RecurseInto:${(elem as? IrFunction)?.let { "F-" + it.symbol.safeName } ?: (elem as? IrVariable)?.let { "V-" + it.symbol.safeName } ?: (elem as? IrValueParameter)?.let { "P-" + it.symbol.safeName } ?: "???"}")
+      when {
+        recurseCount == 0 -> {
+          collect.add("RECURSION LIMIT HIT")
+          Unit
+        }
+        elem is IrFunction && elem.extensionReceiverParameter?.type?.isClass<CapturedBlock>() ?: false -> {
+          collect.add("${elem.symbol.safeName} has CapturedBlock")
+          Unit
+        }
+        elem is IrFunction -> {
+          collect.add("IRF-GotoOwner")
+          rec(elem.symbol.owner.parent, recurseCount-1)
+        }
+        elem is IrValueParameter -> {
+          collect.add("IRP-GotoOwner")
+          rec(elem.symbol.owner.parent, recurseCount-1)
+        }
+        elem is IrVariable -> {
+          collect.add("IRV-GotoOwner")
+          rec(elem.symbol.owner.parent, recurseCount-1)
+        }
+        else -> Unit
+      }
+    }
+
+    rec(this.symbol.owner, 100)
+    return collect.joinToString("->")
   }
 
   // Assuming everything that gets into here is already annotated with @Dsl
@@ -472,6 +519,8 @@ object ExpressionParser {
       case(Ir.GetValue[Is()]).thenThis { sym ->
 
         // TODO re-enable scope vars and pass them into here.
+
+        // TODO try to use the IrGetValue.isCapturedVariable here
 
         //if (!internalVars.contains(sym) && !(sym.owner.let { it is IrVariable && it.origin == IrDeclarationOrigin.IR_TEMPORARY_VARIABLE }) ) {
         //  val loc = this.location()
