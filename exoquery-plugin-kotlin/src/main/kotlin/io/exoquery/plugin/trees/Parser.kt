@@ -2,7 +2,6 @@ package io.exoquery.plugin.trees
 
 import io.decomat.Is
 import io.decomat.case
-import io.decomat.caseEarly
 import io.decomat.match
 import io.decomat.on
 import io.exoquery.BID
@@ -32,13 +31,14 @@ import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrSymbolOwner
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
-import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.name.FqName
 
 data class LocationContext(val internalVars: TransformerScope, override val currentFile: IrFile): LocateableContext {
@@ -117,11 +117,7 @@ object QueryParser {
               // We don't want arbitrary functions returning SqlQuery to be treated as dynamic (e.g. right now I am working on parsing for .nested
               // and since it doesn't exist yet this case is being hit). Make the user either annotate the type or the function with @CapturedReturn
               // in order to know we shuold actually be doing this. Should use a similar strategy for QueryMethodCall and QueryGlobalCall
-              it.type.hasAnnotation(FqName("io.exoquery.Captured")) ||
-                (it as? IrDeclarationReference)?.let {
-                  // i.e. it's a function, field, or value (that's what a IrDeclarationReference is)
-                  (it.symbol.owner as IrSymbolOwner).hasAnnotation<CapturedDynamic>() == true
-                } ?: false
+              it.type.hasAnnotation<CapturedDynamic>() ?: false
             }.then { _ ->
               val bid = BID.new()
               binds.addRuntime(bid, expr)
@@ -130,11 +126,23 @@ object QueryParser {
         ) ?: run {
           val additionalHelp =
             when {
-              expr is IrGetValue && expr.symbol.owner is IrSimpleFunction ->
+              expr is IrGetValue && expr.symbol.owner is IrFunction ->
                 """|It appears that this expression is an argument coming from a function call. In this case you need to annotate the function with @CapturedDynamic
                    |and it will be a dynamic query. If the whole function `${expr.symbol.owner.name}` just returns a SqlQuery and does nothing
                    |else, annotate it as @CapturedFunction and you can then use it to build compile-time functions.
                 """.trimMargin()
+
+//              expr is IrGetValue ->
+//                """|--->
+//                   |${expr.symbol.safeName} ->
+//                   |  ${expr.symbol.owner::class.simpleName} ->
+//                   |    ${expr.symbol.owner.parent::class.simpleName}
+//                   |        ${(expr.symbol.owner.parent as IrFunction).symbol.safeName}
+//                   |          ${(expr.symbol.owner.parent as IrFunction).symbol.owner::class.simpleName}
+//                   |            ${((expr.symbol.owner.parent as IrFunction).symbol.owner as IrFunction).symbol.safeName}
+//                   |              ${((expr.symbol.owner.parent as IrFunction).symbol.owner.parent)::class.simpleName}
+//                   |                ${((((expr.symbol.owner.parent as IrFunction).symbol.owner.parent)) as IrFunction).extensionReceiverParameter?.type?.isClass<CapturedBlock>()}
+//                """.trimMargin()
 
               else -> ""
             }
@@ -143,6 +151,17 @@ object QueryParser {
         }
       }
     }
+
+  fun IrGetValue.isCapturedVariable(): Boolean {
+    tailrec fun rec(elem: IrElement): Boolean =
+      when {
+        elem is IrFunction && elem.extensionReceiverParameter?.type?.isClass<CapturedBlock>() ?: false -> true
+        elem is IrFunction -> rec(elem.symbol.owner)
+        elem is IrVariable -> rec(elem.symbol.owner)
+        else -> false
+      }
+    return rec(this.symbol.owner)
+  }
 
   // Assuming everything that gets into here is already annotated with @Dsl
   context(ParserContext, CompileLogger) private fun parseDslCall(expr: IrExpression): XR.Query? =
