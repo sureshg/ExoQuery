@@ -3,6 +3,7 @@
 package io.exoquery.sql
 
 import io.exoquery.PostgresDialect
+import io.exoquery.printing.PrintXR
 import io.exoquery.util.Globals
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
@@ -18,19 +19,23 @@ import io.exoquery.xr.XR.FlatJoin
 import io.exoquery.xr.XR.Ordering.PropertyOrdering
 import io.exoquery.xr.XR.Ordering.TupleOrdering
 import io.exoquery.xrError
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import io.decomat.productComponentsOf as productOf
 import io.decomat.HasProductClass as PC
 
+@Serializable
 final data class OrderByCriteria(val ast: XR.Expression, val ordering: PropertyOrdering)
 
+@Serializable
 sealed interface FromContext {
-  val type: XRType
+  @Transient val type: XRType
 
   fun transformXR(f: StatelessTransformer): FromContext =
     when (this) {
       is TableContext -> this
       is QueryContext -> QueryContext(query.transformXR(f), alias)
-      is InfixContext -> InfixContext(f(infix), alias) //this.transformParamXRs { xr -> (xr as? XR.Query)?.let { f(it) } ?: xr }
+      is ExpressionContext -> ExpressionContext(f(infix), alias) //this.transformParamXRs { xr -> (xr as? XR.Query)?.let { f(it) } ?: xr }
       is FlatJoinContext -> FlatJoinContext(joinType, from.transformXR(f), f(on))
     }
 
@@ -44,27 +49,32 @@ sealed interface FromContext {
 //}
 }
 
+@Serializable
 final data class TableContext(val entity: XR.Entity, val alias: String) : FromContext {
   override val type: XRType = entity.type
   // TODO actually want the alias to be the identifier on which it is based, need to change that in SqlQuery
   fun aliasIdent() = XR.Ident(alias, entity.type, XR.Location.Synth)
 }
 
+@Serializable
 final data class QueryContext(val query: SqlQuery, val alias: String) : FromContext {
   override val type: XRType = query.type
   fun aliasIdent() = XR.Ident(alias, query.type, XR.Location.Synth)
 }
 
-// TODO rename to ExpressionContext
-final data class InfixContext(val infix: XR.Expression, val alias: String) : FromContext {
+// A context for arbitrary XR expressions that can become queries
+@Serializable
+final data class ExpressionContext(val infix: XR.Expression, val alias: String) : FromContext {
   override val type: XRType = infix.type
   fun aliasIdent() = XR.Ident(alias, infix.type, XR.Location.Synth)
 }
 
+@Serializable
 final data class FlatJoinContext(val joinType: XR.JoinType, val from: FromContext, val on: XR.Expression) : FromContext {
   override val type: XRType = from.type
 }
 
+@Serializable
 sealed interface SqlQuery {
   val type: XRType
 
@@ -93,26 +103,28 @@ sealed interface SqlQuery {
   }
 
 
-  fun showRaw(color: Boolean = true): String {
-    // TODO need to instrument serialization of this in order to be able to pretty-print in KMP
-    //val str = PrintXR()(this)
-    //return if (color) str.toString() else str.plainText
-    return this.toString()
-  }
+  fun showRaw(color: Boolean = true): String =
+    PrintXR(SqlQuery.serializer())(this).toString()
 }
 
+@Serializable
 sealed interface SetOperation
-object UnionOperation : SetOperation
-object UnionAllOperation : SetOperation
+@Serializable object UnionOperation : SetOperation
+@Serializable object UnionAllOperation : SetOperation
 
+@Serializable
 sealed interface DistinctKind {
   val isDistinct: Boolean
 
+  @Serializable
   object Distinct : DistinctKind { override val isDistinct: Boolean = true }
+  @Serializable
   data class DistinctOn(val props: List<XR.Expression>) : DistinctKind { override val isDistinct: Boolean = true }
+  @Serializable
   object None : DistinctKind { override val isDistinct: Boolean = false }
 }
 
+@Serializable
 final data class SetOperationSqlQuery(
   val a: SqlQuery,
   val op: SetOperation,
@@ -120,6 +132,7 @@ final data class SetOperationSqlQuery(
   override val type: XRType
 ): SqlQuery
 
+@Serializable
 final data class UnaryOperationSqlQuery(
   val op: XR.UnaryOp,
   val query: SqlQuery,
@@ -150,12 +163,15 @@ final data class UnaryOperationSqlQuery(
  * because all of these paths e.g. `[first,id]`, `[second, id]` ultimately are used as alises, it makes sense
  * for the `alias` parameter to be a list. If this list is empty the field is not considered to have an alias.
  */
+
+@Serializable
 final data class SelectValue(val expr: XR.Expression, val alias: List<String> = listOf(), val concat: Boolean = false): PC<SelectValue> {
-  override val productComponents = productOf(this, expr, alias)
-  val type: XRType = expr.type
+  @Transient override val productComponents = productOf(this, expr, alias)
+  @Transient val type: XRType = expr.type
   companion object {}
 }
 
+@Serializable
 final data class FlattenSqlQuery(
   val from: List<FromContext> = emptyList(),
   val where: XR.Expression? = null,
@@ -635,8 +651,8 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
   private fun source(ast: XR.Entity, alias: String): FromContext = TableContext(ast, alias)
 
-  private fun source(ast: XR.Infix, alias: String): FromContext = InfixContext(ast, alias)
-  private fun source(ast: XR.ExprToQuery, alias: String): FromContext = InfixContext(ast.head, alias)
+  private fun source(ast: XR.Infix, alias: String): FromContext = ExpressionContext(ast, alias)
+  private fun source(ast: XR.ExprToQuery, alias: String): FromContext = ExpressionContext(ast.head, alias)
   private fun source(ast: XR.FlatJoin, alias: String): FromContext =
     FlatJoinContext(ast.joinType, sourceSpecific(ast.head, ast.id.name) ?: QueryContext(invoke(ast.head), ast.id.name), ast.on)
   private fun source(ast: XR.Nested, alias: String): FromContext = QueryContext(invoke(ast.head), alias)
@@ -668,7 +684,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         when (this) {
           is TableContext             -> listOf(alias)
           is QueryContext             -> listOf(alias)
-          is InfixContext             -> listOf(alias)
+          is ExpressionContext             -> listOf(alias)
           is FlatJoinContext -> collectAliases(listOf(from))
         }
       }
@@ -680,7 +696,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         when (this) {
           is TableContext             -> listOf(alias)
           is QueryContext             -> emptyList()
-          is InfixContext             -> emptyList()
+          is ExpressionContext             -> emptyList()
           is FlatJoinContext -> collectAliases(listOf(from))
         }
       }

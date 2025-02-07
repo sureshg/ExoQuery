@@ -1,6 +1,7 @@
 package io.exoquery.plugin.transform
 
 import io.exoquery.ParseError
+import io.exoquery.TransformXrError
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.CompileLogger.Companion.invoke
@@ -158,6 +159,9 @@ class VisitTransformExpressions(
       parseExpression()
     } catch (e: ParseError) {
       builderContext.logger.error(e.msg, e.location ?: expression.location(currentFile.fileEntry))
+      expression
+    } catch (e: TransformXrError) {
+      builderContext.logger.error("An error occurred during the transformation of the expression: ${e.message}\n" + e.stackTraceToString(), expression.location(currentFile.fileEntry))
       expression
     }
 

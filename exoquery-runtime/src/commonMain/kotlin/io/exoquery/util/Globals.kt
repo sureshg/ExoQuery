@@ -38,5 +38,5 @@ object Globals {
   fun tracesEnabled(tt: TraceType): Boolean =
     (traceEnabled && traces.contains(tt)) || tt == TraceType.Warning
 
-  fun traceConfig(): TraceConfig = TraceConfig(if (traceEnabled) traces else listOf(), Tracer.OutputSource.None)
+  fun traceConfig(): TraceConfig = TraceConfig(if (traceEnabled) traces else listOf(), Tracer.OutputSink.None)
 }

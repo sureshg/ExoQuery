@@ -46,7 +46,7 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
         is XR.Expression -> it
         is XR.Query -> XR.QueryToExpr(it)
       }
-    } ?: xr
+    } ?: super.invoke(xr)
 
   fun replaceAtHead(xr: XR.Labels.QueryOrExpression): XR.Labels.QueryOrExpression? {
     val replacement = map[xr]
@@ -66,8 +66,31 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
         invoke(fields[xr.name]!!)
       }
 
+      // ExprToQuery(QueryToExpr(expr)) -> expr
+      // e.g. select * from (ExprToQuery(QueryToExpr(select * from foo))) -> select * from foo
+      xr is XR.ExprToQuery && xr.head is XR.QueryToExpr -> {
+        xr.head.head
+      }
+
+      // QueryToExpr(ExprToQuery(query)) -> query
+      // e.g. ExprToQuery(QueryToExpr(select * from foo)) -> select * from foo
+      xr is XR.QueryToExpr && xr.head is XR.ExprToQuery -> {
+        xr.head.head
+      }
+
+      // If we have any FunctionApply(ExprToQuery/QueryToExpr(core))) we need to get at the core element and repeat reduction
+      xr is XR.FunctionApply && (xr.function is XR.ExprToQuery) ->
+        replaceAtHead(XR.FunctionApply(xr.function.head, xr.args))
+      xr is XR.FunctionApply && (xr.function is XR.QueryToExpr) ->
+        replaceAtHead(XR.FunctionApply(xr.function.head, xr.args))
+      // Same with the FunctionN(ExprToQuery/QueryToExpr(core)) case. We need to get at the core
+      xr is XR.FunctionN && xr.body is XR.ExprToQuery ->
+        replaceAtHead(XR.FunctionN(xr.params, xr.body.head))
+      xr is XR.FunctionN && xr.body is XR.QueryToExpr ->
+        replaceAtHead(XR.FunctionN(xr.params, xr.body.head))
+
       // case FunctionApply(Function(params, body), values) =>
-      xr is XR.FunctionApply && xr.function is XR.Labels.Function -> {
+      xr is XR.FunctionApply && xr.function is XR.FunctionN -> {
         val params = xr.function.params
         val body = xr.function.body
         val applyArgs = xr.args
@@ -130,7 +153,7 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
         invoke(output)
       }
 
-      xr is XR.Labels.Function -> {
+      xr is XR.FunctionN -> {
         fun mapParams(params: List<XR.Ident>) =
           params.map { p ->
             when (val v = map.get(p)) {
@@ -163,6 +186,10 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
     } ?: run {
       with(xr) {
         when (this) {
+          // For each of these clauses the tail part uses the Ident defined inside e.g. FlatMap(foo, id, bar(...uses id...)) so
+          // when we beta-reduce bar if we have a List(id->id') in the map we don't want to replace the id in the bar with id'
+          // since it was shadowed by the id in the FlatMap. That is why we need to remove the id from the map before reducing the body
+          // hence the BetaReduce(map - id)(body) part.
           is XR.Filter -> Filter.cs(invoke(head), id, BetaReduce(map - id)(body))
           is XR.Map -> Map.cs(invoke(head), id, BetaReduce(map - id)(body))
           is XR.FlatMap -> FlatMap.cs(invoke(head), id, BetaReduce(map - id)(body))

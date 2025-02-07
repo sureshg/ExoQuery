@@ -1,9 +1,6 @@
 package io.exoquery.sql
 
-import io.exoquery.xr.BetaReduction
-import io.exoquery.xr.CollectXR
 import io.exoquery.xr.StatelessTransformer
-import io.exoquery.xr.TypeBehavior
 import io.exoquery.xr.XR
 import io.exoquery.xr.XR.Ident
 import io.exoquery.xr.XRType
@@ -52,7 +49,7 @@ class ValueizeSingleLeafSelects(): StatelessQueryTransformer() {
       when (val c = it) {
         is TableContext -> listOf(c.aliasIdent())
         is QueryContext -> listOf(c.aliasIdent())
-        is InfixContext -> listOf(c.aliasIdent())
+        is ExpressionContext -> listOf(c.aliasIdent())
         is FlatJoinContext -> collectAliases(listOf(c.from))
         else -> emptyList()
       }

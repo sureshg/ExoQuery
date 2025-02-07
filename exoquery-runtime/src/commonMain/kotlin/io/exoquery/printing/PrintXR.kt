@@ -29,6 +29,7 @@ class PrintMisc(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Any?>
     when (x) {
       is XR -> PrintXR(XR.serializer(), config.copy(defaultShowFieldNames = false)).treeifyThis(x, elementName)
       is XRType -> PrintXR(XRType.serializer(), config).treeifyThis(x, elementName)
+      is io.exoquery.sql.SqlQuery -> PrintXR(io.exoquery.sql.SqlQuery.serializer(), config).treeifyThis(x, elementName)
       is SqlExpression<*> -> Tree.Apply("SqlExpression", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
       is SqlQuery<*> -> Tree.Apply("SqlQuery", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
       is Params -> Tree.Apply("Params", x.lifts.map { l -> Tree.KeyValue(l.id.value, Tree.Literal(l.value.toString())) }.iterator())
@@ -73,7 +74,7 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
         // { "type": "Custom", "value": { "hex": "FF0000" } } which in pprint will appear as Custom(type="package.Custom", value=Custom(hex="FF0000"))
         // now when it is recursing inside the outer object the serializer it will call treeifyElement which will recurse inside here.
         // Then the `serializer<XR>` will create the same outer-serializer again and the cycle will go on forever.
-        when (val tree = super.treeifyComposite(elem, elementName, showFieldNames)) {
+        when (val tree = super.treeifyComposite(elem, elementName, config.defaultShowFieldNames)) {
           is Tree.Apply -> {
             val superNodes = tree.body.asSequence()
               .filterNot { it.elementName == "loc" }
@@ -83,8 +84,24 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
           else -> tree
         }
       is ShowTree -> x.showTree(config)
+
+      // A bunch of FlattenSqlQuery child-elements could be null, don't print them. Also because it has so many different kinds of things in it it really helps to know the headings
+      // (There seems to be a bug in pprint where the headings of a null values are not printed when showFieldNames is true. Need to look into that.)
+      is io.exoquery.sql.FlattenSqlQuery ->
+        when (val treet = super.treeifyComposite(elem, elementName, true)) {
+          is Tree.Apply -> {
+            val superNodes = treet.body.asSequence()
+              .filterNot { it is Tree.KeyValue && it.value is Tree.Literal && it.value.elementName == "null" }
+            Tree.Apply(treet.prefix, superNodes.iterator(), elementName)
+          }
+          else -> treet
+        }
+
+      is io.exoquery.sql.SqlQuery -> super.treeifyComposite(elem, elementName, true)
+
       else -> super.treeifyComposite(elem, elementName, showFieldNames)
     }
+
 
 
   override fun <R> treeifyValueOrNull(x: R, elementName: String?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree? = run {
@@ -110,7 +127,6 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
       is XR.Const.Short -> Tree.Apply("Short", iteratorOf(Tree.Literal("${x.value}", null)), elementName)
       is XR.Const.Long -> Tree.Apply("Long", iteratorOf(Tree.Literal("${x.value}", null)), elementName)
       is XR.Const.Float -> Tree.Apply("Float", iteratorOf(Tree.Literal("${x.value}", null)), elementName)
-
 
       //is DistinctKind -> Tree.Literal(x::class.simpleName ?: "BinaryOp?")
       is Operator -> Tree.Literal(x.symbol, elementName)

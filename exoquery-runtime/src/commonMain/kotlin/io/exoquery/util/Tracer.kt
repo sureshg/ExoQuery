@@ -5,8 +5,6 @@ import io.exoquery.pprint.PPrinterConfig
 import io.exoquery.pprint.Tree
 import io.exoquery.printing.PrintMisc
 import io.exoquery.terpal.Interpolator
-import io.exoquery.xr.XR
-import io.exoquery.xr.XRType
 
 data class DebugDump(val info: MutableList<DebugMsg> = mutableListOf()){
   fun dump(str: String) = info.add(DebugMsg.Fragment(str))
@@ -32,25 +30,25 @@ class Tracer(
   val traceType: TraceType,
   val traceConfig: TraceConfig,
   val defaultIndent: Int = 0,
-  val color: Boolean = false,
+  val color: Boolean = true,
   val globalTracesEnabled: (TraceType) -> Boolean = { Globals.tracesEnabled(it) }
 ): Interpolator<Any, Traceable> {
 
-  interface OutputSource {
+  interface OutputSink {
     fun output(str: String): Unit
 
     companion object {
-      val None = object: OutputSource { override fun output(str: String) = Unit }
+      val None = object: OutputSink { override fun output(str: String) = Unit }
     }
   }
 
   fun tracesEnabled(): Boolean =
     traceConfig.enabledTraces.contains(traceType) || globalTracesEnabled(traceType)
 
-  fun print(str: String) = if (tracesEnabled()) traceConfig.outputSource.output(str + "\n") else Unit
+  fun print(str: String) = if (tracesEnabled()) traceConfig.outputSink.output(str + "\n") else Unit
 
   override fun interpolate(parts: () -> List<String>, params: () -> List<Any>): Traceable =
-    Traceable(parts, params, traceType, color, defaultIndent, traceConfig, globalTracesEnabled, traceConfig.outputSource)
+    Traceable(parts, params, traceType, color, defaultIndent, traceConfig, globalTracesEnabled, traceConfig.outputSink)
 }
 
 class Traceable(
@@ -61,10 +59,10 @@ class Traceable(
   val defaultIndent: Int,
   val traceConfig: TraceConfig,
   val globalTracesEnabled: (TraceType) -> Boolean,
-  val outputSource: Tracer.OutputSource
+  val outputSink: Tracer.OutputSink
 ) {
 
-  fun <T> writeln(str: T) = outputSource.output(str.toString() + "\n")
+  fun <T> writeln(str: T) = outputSink.output(str.toString() + "\n")
 
   fun tracesEnabled(): Boolean =
     traceConfig.enabledTraces.contains(traceType) || globalTracesEnabled(traceType)

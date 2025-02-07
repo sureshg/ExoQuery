@@ -1,7 +1,6 @@
 package io.exoquery.sql
 
 import io.decomat.*
-import io.exoquery.util.mkString
 import io.exoquery.xr.*
 import io.exoquery.xr.XR.Visibility
 
@@ -179,7 +178,7 @@ class ExpandNestedQueries(val pathJoinFunction: (List<String>) -> String): State
       when (s) {
         is QueryContext -> QueryContext(invoke(s.query, QueryLevel.Inner), s.alias)
         is FlatJoinContext -> FlatJoinContext(s.joinType, expandContextRec(s.from), flattenNested.inside(s.on))
-        is TableContext, is InfixContext -> s
+        is TableContext, is ExpressionContext -> s
       }
 
     return expandContextRec(s)

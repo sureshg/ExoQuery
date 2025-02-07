@@ -4,38 +4,20 @@ import com.github.vertical_blank.sqlformatter.SqlFormatter
 import io.decomat.*
 import io.exoquery.PostgresDialect
 import io.exoquery.SqlCompiledQuery
-import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
-import io.exoquery.annotation.TracesEnabled
 import io.exoquery.parseError
-import io.exoquery.plugin.getAnnotation
-import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.printing.FilePrintOutputSource
-import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.safeName
-import io.exoquery.plugin.source
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.Lifter
 import io.exoquery.plugin.trees.LocationContext
-import io.exoquery.plugin.trees.SqlExpressionExpr
 import io.exoquery.plugin.trees.SqlQueryExpr
 import io.exoquery.plugin.trees.simpleTypeArgs
-import io.exoquery.plugin.varargValues
-import io.exoquery.util.TraceConfig
-import io.exoquery.util.TraceType
-import io.exoquery.util.Tracer
-import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
-import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.builders.irNull
-import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import java.awt.print.Printable
-import kotlin.time.measureTime
 import kotlin.time.measureTimedValue
 
 
@@ -47,6 +29,10 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
   override fun matchesBase(expr: IrCall): Boolean =
     (expr.dispatchReceiver?.type?.isClass<SqlQuery<*>>() ?: false) && isNamedBuild(expr.symbol.safeName)
 
+
+
+  // TODO need lots of cleanup and separation of concerns here
+  // TODO propagate labels into the trace logger
   context(LocationContext, BuilderContext, CompileLogger)
   override fun transformBase(expr: IrCall): IrExpression {
     // recurse down into the expression in order to make it into an Uprootable if needed
@@ -54,25 +40,9 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
       case(Ir.Call.FunctionMemN[Is(), Is.invoke { isNamedBuild(it) }, Is(/*TODO this is the dialect*/)]).then { sqlQueryExprRaw, args ->
         val isPretty = expr.symbol.safeName == "buildPretty"
 
-        // get annotations
-        val traceTypesClsRef = currentFileRaw.getAnnotation<TracesEnabled>()?.valueArguments?.firstOrNull()?.varargValues() ?: emptyList()
-        val traceTypesNames =
-          traceTypesClsRef
-            .map { ref -> (ref as? IrClassReference) ?: parseError("Invalid Trace Type: ${ref.source() ?: ref.dumpKotlinLike()} was not a class-reference:\n${ref.dumpSimple()}") }
-            .mapNotNull { ref ->
-              // it's TracesEnabled(KClass<TraceType.Normalizations>, etc...) so we need to take 1st argument from the type
-              val shortName = ref.type.simpleTypeArgs.first().classFqName?.shortName()?.asString()
-              shortName?.let { TraceType.fromClassStr(it) }
-            }
+        val (traceConfig, writeSource) = ComputeEngineTracing.invoke()
 
-        val writeSource =
-          if (traceTypesNames.isNotEmpty())
-            FilePrintOutputSource.open(options)
-          else
-            null
-        val traceConfig = TraceConfig.empty.copy(traceTypesNames, writeSource ?: Tracer.OutputSource.None)
-
-        warn("-------------- TracesEnabled Annotation (${writeSource}) ---------------\n" + traceTypesNames.joinToString(","), currentFileRaw.location())
+        //warn("-------------- TracesEnabled Annotation (${writeSource}) ---------------\n" + traceTypesNames.joinToString(","), currentFileRaw.location())
 
         val dialect = args[0]
         val label =
@@ -89,8 +59,14 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
           case(SqlQueryExpr.Uprootable[Is()]).then { uprootable ->
             val xr = uprootable.xr // deserialize the XR, TODO need to handle deserialization failures here
             val dialect = PostgresDialect(traceConfig) // TODO compiler-arg or file-annotation to add a trace config to trace phases during compile-time?
+
             val (queryStringRaw, compileTime) = measureTimedValue {
-              dialect.translate(xr) // TODO catch any potential errors coming from the query compiler
+              try {
+                dialect.translate(xr) // TODO catch any potential errors coming from the query compiler
+              } finally {
+                // close file writing if it was happening
+                writeSource?.close()
+              }
             }
 
             // Can include the sql-formatting library here since the compiler is always on the JVM!
@@ -99,9 +75,6 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
                 SqlFormatter.format(queryStringRaw)
               else
                 queryStringRaw
-
-            // close file writing if it was happening
-            writeSource?.close()
 
             ctx.transformerScope.addQuery(PrintableQuery(queryString, expr.location(ctx.currentFile.fileEntry), label))
 

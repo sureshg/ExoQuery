@@ -1,4 +1,4 @@
-@file:TracesEnabled(TraceType.SqlNormalizations::class)
+@file:TracesEnabled(TraceType.SqlNormalizations::class, TraceType.Normalizations::class)
 
 package io.exoquery
 
@@ -43,6 +43,7 @@ fun main() {
        }
      }
    }
+  println("hello")
 
   val x = capture {
     joinPeopleToAddress2.use.invoke(joes)

@@ -27,8 +27,17 @@ class SqlNormalize(
   private val root = { it: Query -> it }
   private val normalize =
     root
+      .andThen("Beginning-Normalization") {
+        it
+      }
       .andThen("NormalizeCustomQueries") {
+        // Make sure to do this before the initial beta-reduction because custom queries
+        // can contain aliases would not otherwise be reduced by the beta-reducer.
+        // See the note for CustomQuery (in XR.scala) for more information.
         NormalizeCustomQueriesPhase(it)
+      }
+      .andThen("BetaReduce-Initial") {
+        BetaReduction.ofQuery(it)
       }
       .andThen("RepropagateTypes") {
         RepropagateTypesPhase(it)
@@ -40,11 +49,10 @@ class SqlNormalize(
 
   inline fun ((Query) -> Query).andThen(phaseTitle: String, crossinline f: (Query) -> Query): (Query) -> Query = { qRaw ->
     // Too much noise when both before and after the phase are printed
-    demarcate("Beginning: ${phaseTitle}", qRaw)
     //demarcate(phaseTitle, q)
     val q = this(qRaw)
     val output = f(q)
-    //demarcate("Completed: ${phaseTitle}", output)
+    demarcate("${phaseTitle}", output)
     output
   }
 

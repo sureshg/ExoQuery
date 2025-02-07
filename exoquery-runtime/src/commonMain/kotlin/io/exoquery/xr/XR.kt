@@ -70,11 +70,6 @@ sealed interface XR {
           is XR.Query -> this
         }
     }
-
-    sealed interface Function: XR {
-      val params: List<XR.Ident>
-      val body: XR.Labels.QueryOrExpression
-    }
   }
 
   abstract val type: XRType
@@ -435,7 +430,7 @@ sealed interface XR {
   // I.e. a lambda function. It can be used as an expression in some cases but not a query (although it's body maybe a query or expression)
   @Serializable
   @Mat
-  data class FunctionN(@CS override val params: List<Ident>, @Slot override val body: XR.Labels.QueryOrExpression, override val loc: Location = Location.Synth): Expression, Labels.Function, PC<FunctionN> {
+  data class FunctionN(@CS val params: List<Ident>, @Slot val body: XR.Labels.QueryOrExpression, override val loc: Location = Location.Synth): Expression, PC<FunctionN> {
     @Transient override val productComponents = productOf(this, body)
     override val type get() = body.type
     companion object {}
@@ -774,6 +769,14 @@ sealed interface XR {
   // NOTE that either way, the custom extnesions need to be registered need to be serializeable by Kotlin and registered in the
   // EncodingXR.module
   // (Note extending ShowTree also ensures that the implementor must implement a way to show the CustomQuery tree via the printer)
+  // Althought theoretically it should be possible to just call handleStateless/StaefulTransformer on the CustomQuery
+  // and pipe it down the transformations that way, in situations involving beta reduction it doesn't work because
+  // beta-reduction needs to take into account shadowing of variables that occors in the nested clauses e.g. when reducing
+  // FlatMap(foo, id, bar(... id ...)) and we have a Map(id->id') in our map when we it that FlatMap we need to remove the id->id' mapping
+  // in the case of custom queries however, this is harder to do because their encoding may not be such that finding out potential shadowing
+  // is simple. For example if doing a beta-reduction of SelectClause, we would need to go through Variable-by-Variable line and remove
+  // each successive definition from the beta-reduction map. For this reason, the Monadic encoding is clearly easier for this kind of transformation.
+  // This is why for now, the preferable thing is to convert the CustomQuery to a regular XR.Query before the beta-reduction phase implementing CustomQuery.Convertable.
   sealed interface CustomQuery: ShowTree {
     val type: XRType
     val loc: XR.Location

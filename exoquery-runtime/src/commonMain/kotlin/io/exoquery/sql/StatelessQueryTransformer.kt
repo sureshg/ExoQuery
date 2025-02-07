@@ -23,7 +23,7 @@ abstract class StatelessQueryTransformer {
       when(this) {
         is QueryContext -> QueryContext(invoke(query, QueryLevel.Inner), alias)
         is FlatJoinContext -> FlatJoinContext(joinType, expandContext(from), on)
-        is TableContext, is InfixContext -> this
+        is TableContext, is ExpressionContext -> this
       }
     }
 }

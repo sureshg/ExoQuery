@@ -533,7 +533,7 @@ abstract class SqlIdiom: HasPhasePrinting {
     when (this) {
       is TableContext -> +"${entity.token} ${alias.token}"
       is QueryContext -> +"(${query.token})${` AS`} ${alias.token}"
-      is InfixContext -> +"(${(infix as XR.Expression).token})${` AS`} ${alias.token}"
+      is ExpressionContext -> +"(${(infix as XR.Expression).token})${` AS`} ${alias.token}"
       is FlatJoinContext -> +"${joinType.token} ${from.token} ON ${on.token}"
     }
 
