@@ -5,7 +5,6 @@ import io.decomat.case
 import io.decomat.match
 import io.decomat.on
 import io.exoquery.BID
-import io.exoquery.Captured
 import io.exoquery.CapturedBlock
 import io.exoquery.Ord
 import io.exoquery.xr.SX
@@ -126,7 +125,7 @@ object QueryParser {
               // We don't want arbitrary functions returning SqlQuery to be treated as dynamic (e.g. right now I am working on parsing for .nested
               // and since it doesn't exist yet this case is being hit). Make the user either annotate the type or the function with @CapturedReturn
               // in order to know we shuold actually be doing this. Should use a similar strategy for QueryMethodCall and QueryGlobalCall
-              it.type.hasAnnotation<CapturedDynamic>() || it.type.hasAnnotation<Captured>()
+              it.type.hasAnnotation<CapturedDynamic>() || it.type.hasAnnotation(FqName("io.exoquery.Captured"))
             }.then { _ ->
               val bid = BID.new()
               binds.addRuntime(bid, expr)

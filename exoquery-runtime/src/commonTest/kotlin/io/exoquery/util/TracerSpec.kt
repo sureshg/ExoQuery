@@ -1,31 +1,49 @@
-//package io.exoquery.util
-//
-//import io.kotest.core.spec.style.FreeSpec
-//
-// TODO re-enable using the new debug-dumping
-//class TracerSpec :  FreeSpec({
-//  fun makeTracer(): Pair<Tracer.OutputSink.InMem, Tracer> =
-//    Tracer.OutputSink.InMem(DebugDump()).let { it ->
-//      it to Tracer(TraceType.Standard, TraceConfig(listOf(TraceType.Standard)), defaultIndent = 0, color = false, globalTracesEnabled = { true }, it)
-//    }
-//
-//  "two-level-andReturn" {
+package io.exoquery.util
+
+import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.shouldBe
+
+class TracerSpec :  FreeSpec({
+  class ToStringOutputSink : Tracer.OutputSink {
+    val info = mutableListOf<String>()
+    override fun output(str: String) {
+      info.add(str)
+    }
+    fun print() = info.joinToString("")
+  }
+
+  fun makeTracer() =
+    ToStringOutputSink().let { it ->
+      it to Tracer(TraceType.Standard, TraceConfig(listOf(TraceType.Standard), it), defaultIndent = 0, color = false, globalTracesEnabled = { true })
+    }
+
+  "two-level-andReturn" {
+    val (output, tracer) = makeTracer()
+    val str = tracer("level1").andReturn {
+      tracer("level2").andReturn {
+        tracer("level3").andLog()
+        "level4"
+      }
+    }
+    output.print() shouldBe run {
+      """level1
+        |    level2
+        |    level3
+        |    > "level4"
+        |> "level4"
+        |
+        """.trimMargin()
+    }
+  }
+
+
+//  "two-level-andReturnIf" {
 //    val (output, tracer) = makeTracer()
-//    val str = tracer("level1").andReturn {
-//      tracer("level2").andReturn {
+//    val str = tracer("level1").andReturnIf {
+//      tracer("level2").andReturnIf {
 //        tracer("level3").andLog()
-//      }
-//    }
-//    println(output.sink.info)
+//      }({ true })
+//    }({ true })
+//    println(output.value.toString())
 //  }
-//
-////  "two-level-andReturnIf" {
-////    val (output, tracer) = makeTracer()
-////    val str = tracer("level1").andReturnIf {
-////      tracer("level2").andReturnIf {
-////        tracer("level3").andLog()
-////      }({ true })
-////    }({ true })
-////    println(output.value.toString())
-////  }
-//})
+})
