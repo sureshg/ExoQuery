@@ -24,8 +24,12 @@ interface HasPhasePrinting {
   }
 
   fun demarcate(heading: String, q: SqlQuery) {
-    trace.print(title("$heading"))
-    trace.interpolate({ listOf("", "") }, { listOf(q) }).andLog()
+    // Make sure to compute q.showRaw() outside of the trace parameter. Otherwise in some situations fansi blow up. Not sure exactly why.
+    val titleString = title("$heading")
+    trace("${titleString}").andLog()
+    val queryString = q.showRaw()
+    trace("${queryString}").andLog()
+    //trace.interpolate({ listOf("", "") }, { listOf(q) }).andLog()
   }
 
 

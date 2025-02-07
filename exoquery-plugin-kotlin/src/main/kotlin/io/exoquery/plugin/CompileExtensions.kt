@@ -6,6 +6,7 @@ import io.exoquery.annotation.*
 import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.LocateableContext
+import io.exoquery.plugin.transform.LoggableContext
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.ParserContext
@@ -184,6 +185,9 @@ inline fun <reified T> fqNameOf(): FqName {
 inline fun <reified T> IrFile.hasAnnotation() =
   (this as? IrAnnotationContainer)?.hasAnnotation<T>() ?: false
 
+inline fun <reified T> IrFile.getAnnotation() =
+  (this as? IrAnnotationContainer)?.let { it.annotations.find { ctor -> ctor.type.isClass<T>() } }
+
 inline fun <reified T> IrSymbolOwner.hasAnnotation() =
   (this as? IrAnnotationContainer)?.hasAnnotation<T>() ?: false
 
@@ -195,6 +199,16 @@ inline fun <reified T> IrType.isClass(): Boolean {
   val className = T::class.qualifiedNameForce
   return className == this.classFqName.toString() || this.superTypes().any { it.classFqName.toString() == className }
 }
+
+context(LoggableContext) fun IrExpression.varargValues(): List<IrExpression> =
+  (this as? IrVararg ?: run{
+    logger.warn("[ExoQuery-WARN] Expected the argument to be an IrVararg but it was not: ${this.dumpKotlinLike()}"); null
+    null
+  })?.elements?.mapNotNull {
+    it as? IrExpression ?: run{
+      logger.warn("[ExoQuery-WARN] Expected the argument to be an IrExpression but it was not: ${it.dumpKotlinLike()}"); null
+    }
+  } ?: emptyList()
 
 inline fun <reified T> IrCall.reciverIs() =
   this.dispatchReceiver?.isClass<T>() ?: false

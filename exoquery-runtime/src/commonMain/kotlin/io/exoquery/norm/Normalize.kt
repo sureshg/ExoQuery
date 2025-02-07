@@ -33,7 +33,8 @@ class Normalize(override val traceConf: TraceConfig, val disableApplyMap: Boolea
 
   override operator fun invoke(q: Query): Query =
     trace("Avoid Capture and Normalize $q into:") andReturn {
-      norm(DealiasPhase(AvoidAliasConflictPhase(q, false)))
+      val reduced = BetaReduction(q).asQuery()
+      norm(DealiasPhase(AvoidAliasConflictPhase(reduced, false)))
       //norm(AvoidAliasConflictPhase(q, false))
     }
 

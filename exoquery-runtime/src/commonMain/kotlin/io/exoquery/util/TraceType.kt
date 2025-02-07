@@ -34,6 +34,9 @@ sealed interface TraceType {
   object Particularization: TraceType      { override val value = "parti"       }
 
   companion object {
+    fun fromClassStr(classStr: String) =
+      values.find { it::class.simpleName == classStr ?: false }
+
     val values: List<TraceType> = listOf(
       Standard,
       SqlNormalizations,
@@ -61,8 +64,8 @@ sealed interface TraceType {
   }
 }
 
-data class TraceConfig(val enabledTraces: List<TraceType>) {
+data class TraceConfig(val enabledTraces: List<TraceType>, val outputSource: Tracer.OutputSource) {
   companion object {
-    val empty = TraceConfig(listOf())
+    val empty = TraceConfig(listOf(), Tracer.OutputSource.None)
   }
 }

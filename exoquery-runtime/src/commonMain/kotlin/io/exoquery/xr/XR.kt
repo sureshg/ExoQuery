@@ -81,7 +81,8 @@ sealed interface XR {
   abstract val loc: XR.Location
 
   fun show(pretty: Boolean = false): String {
-    return PrintXR.BlackWhite.invoke(this).plainText
+    //return PrintXR.BlackWhite.invoke(this).plainText
+    return showRaw()
   }
 
   @Serializable

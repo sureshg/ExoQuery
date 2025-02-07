@@ -1,5 +1,8 @@
 package io.exoquery.annotation
 
+import io.exoquery.util.TraceType
+import kotlin.reflect.KClass
+
 /**
  * This annotation means that the construct e.g. the SqlQuery represents a value captured during compile-time by the
  * ExoQuery system (via the parser and transformers). It cannot be specified by the user.
@@ -21,6 +24,10 @@ annotation class Dsl
 @Target(AnnotationTarget.FILE)
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoGoldenTest
+
+@Target(AnnotationTarget.FILE)
+@Retention(AnnotationRetention.BINARY)
+annotation class TracesEnabled(vararg val traceType: KClass<out TraceType>)
 
 @Target(AnnotationTarget.FILE)
 @Retention(AnnotationRetention.BINARY)

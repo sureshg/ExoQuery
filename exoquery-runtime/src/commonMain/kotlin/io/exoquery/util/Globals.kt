@@ -1,18 +1,17 @@
 package io.exoquery.util
 
+expect fun getExoVariable(propName: String, envName: String, default: String): String
+
 object Globals {
 
   // This needs to be at the top for some reason, even if it is lazy
   private val cacheMap: MutableMap<String, Any> by lazy { mutableMapOf() }
 
-  // TODO for KMP use kotlinx.cinterop.* from kotlin-stdlib-common
-  //      see https://stackoverflow.com/a/55002326
   private fun variable(propName: String, envName: String, default: String) =
-    default // TODO make a platform-dependent implementation based on this: https://github.com/ScottPierce/kotlin-env-var/tree/main/src
-    //System.getProperty(propName) ?: System.getenv(envName) ?: default
+    getExoVariable(propName, envName, default)
 
   val querySubexpand: Boolean = cache("exo.trace.color", variable("exo.trace.color", "exo_trace_color,", "true").toBoolean())
-  val traceColors get() = cache("exo.trace.color", variable("exo.trace.color", "exo_trace_color,", "false").toBoolean())
+  val traceColors get() = cache("exo.trace.color", variable("exo.trace.color", "exo_trace_color,", "true").toBoolean())
   val traceEnabled get() = cache("exo.trace.enabled", variable("exo.trace.enabled", "exo_trace_enabled", "false").toBoolean())
 
   fun resetCache(): Unit                        = cacheMap.clear()
@@ -39,5 +38,5 @@ object Globals {
   fun tracesEnabled(tt: TraceType): Boolean =
     (traceEnabled && traces.contains(tt)) || tt == TraceType.Warning
 
-  fun traceConfig(): TraceConfig = TraceConfig(if (traceEnabled) traces else listOf())
+  fun traceConfig(): TraceConfig = TraceConfig(if (traceEnabled) traces else listOf(), Tracer.OutputSource.None)
 }

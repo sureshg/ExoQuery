@@ -84,7 +84,7 @@ class VisitTransformExpressions(
   // TODO move this to visitGetValue? That would be more efficient but what other things might we wnat to transform?
   override fun visitExpression(expression: IrExpression, data: TransformerScope): IrExpression {
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val transformerCtx = TransformerOrigin(context, config, this.currentFile, data)
+    val transformerCtx = TransformerOrigin(context, config, this.currentFile, data, exoOptions)
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
     val transformProjectCapture = TransformProjectCapture(builderContext, this)
 
@@ -109,7 +109,7 @@ class VisitTransformExpressions(
     //compileLogger.warn(stack.stackTrace.map { it.toString() }.joinToString("\n"))
 
 
-    val transformerCtx = TransformerOrigin(context, config, this.currentFile, data)
+    val transformerCtx = TransformerOrigin(context, config, this.currentFile, data, exoOptions)
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
 
     val transformPrint = TransformPrintSource(builderContext, this)

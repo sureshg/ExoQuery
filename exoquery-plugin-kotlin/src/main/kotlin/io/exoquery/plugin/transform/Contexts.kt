@@ -1,6 +1,7 @@
 package io.exoquery.plugin.transform
 
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.settings.ExoCompileOptions
 import io.exoquery.plugin.trees.Lifter
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
@@ -15,7 +16,8 @@ data class BuilderContext(
   val scopeOwner: IrSymbol,
   val currentFile: IrFile,
   val currentExpr: IrElement,
-  val transformerScope: TransformerScope
+  val transformerScope: TransformerScope,
+  val options: ExoCompileOptions
 ): LoggableContext {
   override val logger = CompileLogger(compilerConfig, currentFile, currentExpr)
   val builder = DeclarationIrBuilder(pluginCtx, scopeOwner, currentExpr.startOffset, currentExpr.endOffset)
@@ -28,8 +30,9 @@ data class TransformerOrigin(
   val pluginCtx: IrPluginContext,
   val config: CompilerConfiguration,
   val currentFile: IrFile,
-  val parentScopeSymbols: TransformerScope
+  val parentScopeSymbols: TransformerScope,
+  val options: ExoCompileOptions
 ) {
   fun makeBuilderContext(expr: IrElement, scopeOwner: IrSymbol) =
-    BuilderContext(pluginCtx, config, scopeOwner, currentFile, expr, parentScopeSymbols)
+    BuilderContext(pluginCtx, config, scopeOwner, currentFile, expr, parentScopeSymbols, options)
 }

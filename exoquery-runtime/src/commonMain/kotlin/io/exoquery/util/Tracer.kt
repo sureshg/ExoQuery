@@ -32,32 +32,25 @@ class Tracer(
   val traceType: TraceType,
   val traceConfig: TraceConfig,
   val defaultIndent: Int = 0,
-  val color: Boolean = Globals.traceColors,
-  val globalTracesEnabled: (TraceType) -> Boolean = { Globals.tracesEnabled(it) },
-  val outputSource: OutputSource = OutputSource.Println
+  val color: Boolean = false,
+  val globalTracesEnabled: (TraceType) -> Boolean = { Globals.tracesEnabled(it) }
 ): Interpolator<Any, Traceable> {
 
-  sealed interface OutputSource {
-    fun output(str: String): Unit {
-      when (this) {
-        is InMem -> this.dump(str)
-        is Println -> print(str) // The \n is already being done in in the .output beforehand
-      }
-    }
+  interface OutputSource {
+    fun output(str: String): Unit
 
-    data class InMem(val sink: DebugDump): OutputSource {
-      fun dump(str: String) = sink.dump(str)
+    companion object {
+      val None = object: OutputSource { override fun output(str: String) = Unit }
     }
-    object Println: OutputSource
   }
 
   fun tracesEnabled(): Boolean =
     traceConfig.enabledTraces.contains(traceType) || globalTracesEnabled(traceType)
 
-  fun print(str: String) = if (tracesEnabled()) outputSource.output(str + "\n") else Unit
+  fun print(str: String) = if (tracesEnabled()) traceConfig.outputSource.output(str + "\n") else Unit
 
   override fun interpolate(parts: () -> List<String>, params: () -> List<Any>): Traceable =
-    Traceable(parts, params, traceType, color, defaultIndent, traceConfig, globalTracesEnabled, outputSource)
+    Traceable(parts, params, traceType, color, defaultIndent, traceConfig, globalTracesEnabled, traceConfig.outputSource)
 }
 
 class Traceable(
