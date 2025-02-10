@@ -3,6 +3,7 @@
 package io.exoquery
 
 import io.exoquery.annotation.CapturedDynamic
+import io.exoquery.annotation.CapturedFunction
 import io.exoquery.annotation.TracesEnabled
 import io.exoquery.comapre.Compare
 import io.exoquery.comapre.PrintDiff
@@ -29,32 +30,61 @@ fun main() {
 
   // TODO beta reduce out ExprOfQuery(QueryOfExpr()), also probably want to check for that in the SqlQuery builder
 
-  val joes = capture { Table<Person>().filter { p -> p.name == "Joe" } }
-  val jacks = capture { Table<Person>().filter { p -> p.name == "Jack" } }
+  //val joes = capture { Table<Person>().filter { p -> p.name == "Joe" } }
+  //val jacks = capture { Table<Person>().filter { p -> p.name == "Jack" } }
+
+  // Need tests for both the static and dynamic variations of this
+  @CapturedFunction
+  fun joinPeopleToAddress(people: SqlQuery<Person>) =
+    select {
+      val p = from(people)
+      val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+      p to a
+    }
+
+// can test how this thing is actually parsed
+//  val result = joinPeopleToAddress(jacks)
+//  println(result.show())
+//  println("hello")
+
+  val result = capture {
+    /*
+    ======= Could not parse expression from: =======
+    <destruct>.component1()
+    --------- With the Tree ---------
+    [IrCall] Fun(component1) - dispatch=kotlin.Pair
+      [IrGetValue] Param(<destruct>)
+     */
+    //joinPeopleToAddress(jacks).map { (p, a) -> p.name + " lives at " + a.street }
+    joinPeopleToAddress(Table<Person>()).map { kv -> kv.first.name + " lives at " + kv.second.street }
+  }
+  println(result.show())
+
+  println("hellooooooooooo")
 
   // then try this only with a fun and generic
-  val joinPeopleToAddress2 = captureValue {
-     { input: SqlQuery<Person> ->
-       select {
-         val p = from(input)
-         // TODO now we should parse the IrGetValue. Can we found out that it is coming from captureValue? Print-debug the owernship chain
-         val a = join(Table<Address>()) { a -> a.ownerId == p.id }
-         p to a
-       }
-     }
-   }
-  println("hello")
-
-  val x = capture {
-    joinPeopleToAddress2.use.invoke(joes)
-  }
-  println(x.buildPretty(PostgresDialect()).value) // helloo
-
-
-  println("hello")
-
-  println("---------------------\n" + x.xr.show())
-  println("------------------ Reduced: ------------------\n" + BetaReduction(x.xr))
+//  val joinPeopleToAddress2 = captureValue {
+//     { input: SqlQuery<Person> ->
+//       select {
+//         val p = from(input)
+//         // TODO now we should parse the IrGetValue. Can we found out that it is coming from captureValue? Print-debug the owernship chain
+//         val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+//         p to a
+//       }
+//     }
+//   }
+//  println("hello")
+//
+//  val x = capture {
+//    joinPeopleToAddress2.use.invoke(joes)
+//  }
+//  println(x.buildPretty(PostgresDialect()).value) // helloo
+//
+//
+//  println("hello")
+//
+//  println("---------------------\n" + x.xr.show())
+//  println("------------------ Reduced: ------------------\n" + BetaReduction(x.xr))
 
 
 //  fun joinPeopleToAddress(people: @CapturedDynamic SqlQuery<Person>) =

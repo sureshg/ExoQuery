@@ -23,20 +23,7 @@ class TransformSelectClause(override val ctx: BuilderContext, val superTransform
   // parent symbols are collected in the parent context
   context(LocationContext, BuilderContext, CompileLogger)
   override fun transformBase(selectExpressionRaw: IrCall): IrExpression {
-    // since there could be SqlQuery clauses inside we need to recurisvely transform the stuff inside the Select-Clause first
-    // therefore we need to call the super-transform on the select lambda
-    val selectLambda =
-      selectExpressionRaw.match(
-        case(Ir.Call.FunctionUntethered1[Is("io.exoquery.select"), Is()]).then { name, selectLambdaRaw ->
-          superTransformer.visitExpression(selectLambdaRaw)
-        }
-        // TODO use Messages.kt, use better example
-      ) ?: parseError("Parsing Failed\n================== The Select-expresson was not a Global Function (with one argument-block): ==================\n" + selectExpressionRaw.dumpKotlinLike() + "\n--------------------------\n" + selectExpressionRaw.dumpSimple())
-
-    val (selectClause, dynamics) = Parser.parseSelectClauseLambda(selectLambda)
-    // Store the selectClause inside a XR.CustomQueryRef instance so that we can invoke the XR serialization and "plant" it into the IR
-    // This way we can directly expose this SelectClause for much simpler testing and deal with needing to transform it into XR later
-    val xr = XR.CustomQueryRef(selectClause)
+    val (xr, dynamics) = parseSelectClause(selectExpressionRaw, superTransformer)
     val paramsExprModel = dynamics.makeParams()
     val newSqlQuery =
       if (dynamics.noRuntimes()) {
@@ -47,10 +34,27 @@ class TransformSelectClause(override val ctx: BuilderContext, val superTransform
 
     //logger.warn("=============== Modified value to: ${capturedAnnot.valueArguments[0]?.dumpKotlinLike()}\n======= Whole Type is now:\n${makeCasted.type.dumpKotlinLike()}")
     //logger.warn("========== Query Output: ==========\n${newSqlQuery.dumpKotlinLike()}")
-
     return newSqlQuery
   }
+
+  companion object {
+    context(LocationContext, BuilderContext, CompileLogger)
+    fun parseSelectClause(selectExpressionRaw: IrCall, superTransformer: VisitTransformExpressions)  = run {
+      // since there could be SqlQuery clauses inside we need to recurisvely transform the stuff inside the Select-Clause first
+      // therefore we need to call the super-transform on the select lambda
+      val selectLambda =
+        selectExpressionRaw.match(
+          case(Ir.Call.FunctionUntethered1[Is("io.exoquery.select"), Is()]).then { name, selectLambdaRaw ->
+            superTransformer.visitExpression(selectLambdaRaw)
+          }
+          // TODO use Messages.kt, use better example
+        ) ?: parseError("Parsing Failed\n================== The Select-expresson was not a Global Function (with one argument-block): ==================\n" + selectExpressionRaw.dumpKotlinLike() + "\n--------------------------\n" + selectExpressionRaw.dumpSimple())
+
+      val (selectClause, dynamics) = Parser.parseSelectClauseLambda(selectLambda)
+      // Store the selectClause inside a XR.CustomQueryRef instance so that we can invoke the XR serialization and "plant" it into the IR
+      // This way we can directly expose this SelectClause for much simpler testing and deal with needing to transform it into XR later
+      val xr = XR.CustomQueryRef(selectClause)
+      xr to dynamics
+    }
+  }
 }
-
-
-

@@ -145,6 +145,8 @@ fun IrElement.location(fileEntry: IrFileEntry): CompilerMessageSourceLocation {
 fun CompilerMessageSourceLocation.show() =
   "${path}:${line}:${column}"
 
+val IrCall.funName get() = this.symbol.safeName
+
 // TODO change to LocationContainingContext
 context(LocateableContext) fun IrElement.location(): CompilerMessageSourceLocation =
   this.location(currentFile.fileEntry)
@@ -152,7 +154,7 @@ context(LocateableContext) fun IrElement.location(): CompilerMessageSourceLocati
 fun IrFile.location(): CompilerMessageSourceLocation =
   this.location(this.fileEntry)
 
-context(ParserContext) fun IrElement.locationXR(): XR.Location =
+context(LocateableContext) fun IrElement.locationXR(): XR.Location =
   this.location(currentFile.fileEntry).toLocationXR()
 
 context(BuilderContext) fun IrElement.buildLocation(): CompilerMessageSourceLocation =
@@ -180,19 +182,25 @@ inline fun <reified T> fqNameOf(): FqName {
   return FqName(className)
 }
 
+inline fun <reified T> IrElement.hasAnnotation() =
+  when (this) {
+    is IrAnnotationContainer ->
+      this.annotations.any { it.type.classFqName == fqNameOf<T>() }
+    is IrSimpleFunction ->
+      this.annotations.any { it.type.classFqName == fqNameOf<T>() }
+    else -> false
+  }
+
+inline fun <reified T> IrType.hasAnnotation() =
+  this.annotations.any { it.type.classFqName == fqNameOf<T>() }
+
 // IrFile is both a IrSymbolOwner and a IrAnnotationContainer so
 // have a override specifically for. Otherwise would need to use a @this for it
-inline fun <reified T> IrFile.hasAnnotation() =
-  (this as? IrAnnotationContainer)?.hasAnnotation<T>() ?: false
+inline fun <reified T> IrFile.fileHasAnnotation() =
+  this.annotations.any { it.type.classFqName == fqNameOf<T>() }
 
 inline fun <reified T> IrFile.getAnnotation() =
-  (this as? IrAnnotationContainer)?.let { it.annotations.find { ctor -> ctor.type.isClass<T>() } }
-
-inline fun <reified T> IrSymbolOwner.hasAnnotation() =
-  (this as? IrAnnotationContainer)?.hasAnnotation<T>() ?: false
-
-inline fun <reified T> IrAnnotationContainer.hasAnnotation() =
-  this.annotations.any { it.type.classFqName == fqNameOf<T>() }
+  this.let { it.annotations.find { ctor -> ctor.type.isClass<T>() } }
 
 inline fun <reified T> IrType.isClass(): Boolean {
   // NOTE memoize these things for performance?

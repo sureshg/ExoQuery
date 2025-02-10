@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -69,7 +70,7 @@ class VisitTransformExpressions(
       loggerCtx.logger.warn("Current file is not the same as the file being visited: ${currentFile.path} != ${file.path}. Will not write this file.")
     }
 
-    val fileScope = TransformerScope(data.symbols, FileQueryAccum.RealFile(file))
+    val fileScope = TransformerScope(data.symbols, data.capturedFunctionParameters, FileQueryAccum.RealFile(file))
     val ret = super.visitFileNew(file, fileScope)
 
     if (sanityCheck && fileScope.hasQueries()) {
@@ -81,6 +82,35 @@ class VisitTransformExpressions(
     return ret
   }
 
+  override fun visitFunctionNew(declaration: IrFunction, data: TransformerScope): IrStatement {
+    val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
+    val transformerCtx = TransformerOrigin(context, config, this.currentFile, data, exoOptions)
+    val builderContext = transformerCtx.makeBuilderContext(declaration, scopeOwner)
+
+    val transformAnnotatedFunction = TransformAnnotatedFunction(builderContext, this)
+    return catchErrors(builderContext, declaration) {
+      when {
+        transformAnnotatedFunction.matches(declaration) -> transformAnnotatedFunction.transform(declaration)
+        else -> super.visitFunctionNew(declaration, data)
+      }
+    }
+  }
+
+  fun <T: IrElement> catchErrors(builderCtx: BuilderContext, expression: T, block: () -> T): T {
+    return try {
+      block()
+    } catch (e: ParseError) {
+      // builderContext.logger.error(e.msg, e.location ?: expression.location(currentFile.fileEntry))
+      val location = e.location ?: expression.location(currentFile.fileEntry)
+      builderCtx.logger.error(e.msg, location)
+      expression
+    } catch (e: TransformXrError) {
+      val location = expression.location(currentFile.fileEntry)
+      builderCtx.logger.error("An error occurred during the transformation of the expression: ${e.message}\n" + e.stackTraceToString(), location)
+      expression
+    }
+  }
+
 
   // TODO move this to visitGetValue? That would be more efficient but what other things might we wnat to transform?
   override fun visitExpression(expression: IrExpression, data: TransformerScope): IrExpression {
@@ -89,26 +119,25 @@ class VisitTransformExpressions(
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
     val transformProjectCapture = TransformProjectCapture(builderContext, this)
 
-    return when {
-      transformProjectCapture.matches(expression) ->
-        transformProjectCapture.transform(expression) ?: run {
-          // In many situations where the capture cannot be projected e.g.
-          // val x = if(x) capture { 123 } else capture { 456 } we need to go further into the expression
-          // and transform the `capture { ... }` expressions inside into SqlExpession instances. Calling
-          // the super-transformer does that.
-          super.visitExpression(expression, data)
-        }
-      else -> super.visitExpression(expression, data)
+    return catchErrors(builderContext, expression) {
+      when {
+        transformProjectCapture.matches(expression) ->
+          transformProjectCapture.transform(expression) ?: run {
+            // In many situations where the capture cannot be projected e.g.
+            // val x = if(x) capture { 123 } else capture { 456 } we need to go further into the expression
+            // and transform the `capture { ... }` expressions inside into SqlExpession instances. Calling
+            // the super-transformer does that.
+            super.visitExpression(expression, data)
+          }
+        else -> super.visitExpression(expression, data)
+      }
     }
   }
 
   override fun visitCall(expression: IrCall, data: TransformerScope): IrElement {
 
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-
     val stack = RuntimeException()
-    //compileLogger.warn(stack.stackTrace.map { it.toString() }.joinToString("\n"))
-
 
     val transformerCtx = TransformerOrigin(context, config, this.currentFile, data, exoOptions)
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
@@ -121,6 +150,7 @@ class VisitTransformExpressions(
     // I.e. tranforms the SqlQuery.build call (i.e. the SqlQuery should have already been transformed into an Uprootable before recursing "out" to the .build call
     // or the .build call should have recursed down into it (because it calls the superTransformer on the reciever of the .build call)
     val transformCompileQuery = TransformCompileQuery(builderContext, this)
+    val transformScaffoldAnnotatedFunctionCall = TransformScaffoldAnnotatedFunctionCall(builderContext, this)
 
     // TODO Catch parser errors here, make a warning via the compileLogger (in the BuilderContext) & don't transform the expresison
 
@@ -132,9 +162,9 @@ class VisitTransformExpressions(
     //      does this.
 
 
-    //compileLogger.warn("---------- Call Checking:\n" + expression.dumpKotlinLike())
-    fun parseExpression() =
+    return catchErrors(builderContext, expression) {
       when {
+        transformScaffoldAnnotatedFunctionCall.matches(expression) -> transformScaffoldAnnotatedFunctionCall.transform(expression)
 
         // 1st that that runs here because printed stuff should not be transformed
         // (and this does not recursively transform stuff inside)
@@ -146,6 +176,8 @@ class VisitTransformExpressions(
         // Is this an sqlQuery.build(PostgresDialect) call? if yes see if the it is a compile-time query and transform it
         transformCompileQuery.matches(expression) -> transformCompileQuery.transform(expression)
 
+
+
         //showAnnotations.matches(expression) -> showAnnotations.transform(expression)
 
         // Want to run interpolator invoke before other things because the result of it is an SqlExpression that will
@@ -154,18 +186,7 @@ class VisitTransformExpressions(
           // No additional data (i.e. Scope-Symbols) to add since none of the transformers was activated
           super.visitCall(expression, data)
       }
-
-    val out = try {
-      parseExpression()
-    } catch (e: ParseError) {
-      builderContext.logger.error(e.msg, e.location ?: expression.location(currentFile.fileEntry))
-      expression
-    } catch (e: TransformXrError) {
-      builderContext.logger.error("An error occurred during the transformation of the expression: ${e.message}\n" + e.stackTraceToString(), expression.location(currentFile.fileEntry))
-      expression
     }
-
-    return out
   }
 }
 

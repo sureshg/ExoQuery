@@ -1,8 +1,12 @@
 package io.exoquery.plugin.logging
 
+import io.exoquery.annotation.CapturedFunction
 import io.exoquery.plugin.dataClassProperties
 import io.exoquery.plugin.printing.dumpSimple
+import io.exoquery.plugin.source
+import io.exoquery.plugin.transform.LocateableContext
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrReturn
 import org.jetbrains.kotlin.ir.types.classOrNull
@@ -10,22 +14,41 @@ import org.jetbrains.kotlin.ir.util.*
 
 object Messages {
 
+context(LocateableContext)
+fun CapturedFunctionFormWrong(msg: String) =
+"""
+$msg
+
+The form of the function annotated with @CapturedFunction is incorrect. It must be a function with a 
+single output expression that returns a SqlQuery<T> instance. For example:
+
+@CapturedFunction
+fun myFunction(): SqlQuery<Int> = capture { Table<Person>().map { it.age } }
+
+@CapturedFunction
+fun myFunction(): SqlQuery<Int> = select { 
+  val p = from(Table<Person>())
+  p.age
+}
+""".trimIndent()
+
+
   fun ParserMessage(ir: IrExpression?, parsedCode: String?) =
 """
 ================ Parsed As: ================
 $parsedCode
-================ IR: ================
+================ Interpreted IR: ================
 ${ir?.dumpKotlinLike()}
-================= Ast: ========================
+================= Raw IR: ========================
 ${ir?.dumpSimple()}
 """.trimIndent()
 
 
   fun PrintingMessage(ir: IrExpression?) =
 """
-================ Kotlin-Like: ================
+================ Interpreated IR: ================
 ${ir?.dumpKotlinLike()}
-================= IR: ========================
+================= Raw IR: ========================
 ${ir?.dumpSimple()}
 """.trimIndent()
 

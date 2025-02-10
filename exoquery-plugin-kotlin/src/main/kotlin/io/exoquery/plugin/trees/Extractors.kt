@@ -564,6 +564,18 @@ object Ir {
         }
     }
 
+    object FunctionUntetheredN {
+      context (CompileLogger) operator fun <AP : Pattern<String>, BP: Pattern<List<IrExpression?>>> get(x: AP, y: BP): Pattern2<AP, BP, String, List<IrExpression?>, IrCall> =
+        customPattern2("Ir.Call.FunctionUntetheredN", x, y) { it: IrCall ->
+          val reciever = it.extensionReceiver ?: it.dispatchReceiver
+          if (reciever == null) {
+            Components2(it.symbol.fullName, it.simpleValueArgs)
+          } else {
+            null
+          }
+        }
+    }
+
     object FunctionUntethered2 {
       context (CompileLogger) operator fun <AP : Pattern<A>, BP : Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP): Pattern2<AP, BP, A, B, IrCall> =
         customPattern2("Ir.Call.FunctionUntethered2", x, y) { it: IrCall ->

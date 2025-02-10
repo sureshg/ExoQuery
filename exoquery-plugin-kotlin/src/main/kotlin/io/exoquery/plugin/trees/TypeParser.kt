@@ -35,14 +35,14 @@ object TypeParser {
   context(ParserContext, CompileLogger) fun ofTypeAt(type: IrType, loc: Location): XRType =
     try {
       parse(type)
-    } catch (e: ParseError) {
+    } catch (e: Exception) {
       parseError("""(${loc.show()}) ERROR Could not parse type: ${type.dumpKotlinLike()}""")
     }
 
   context(ParserContext, CompileLogger) private fun ofElementWithType(expr: IrElement, type: IrType) =
     try {
       parse(type)
-    } catch (e: ParseError) {
+    } catch (e: Exception) {
       val loc = expr.location()
       parseError(
         """|(${loc.show()}) ERROR Could not parse type: ${type.dumpKotlinLike()} (${type.toString()}) 
@@ -69,9 +69,8 @@ object TypeParser {
       },
 
       // If it's a SqlQuery, same idea
-      case(Ir.Type
-        .ClassOfType<io.exoquery.SqlQuery<*>>()).then { sqlQueryType ->
-        parse(sqlQueryType.simpleTypeArgs[0])
+      case(Ir.Type.ClassOfType<io.exoquery.SqlQuery<*>>()).then { sqlQueryType ->
+        sqlQueryType.simpleTypeArgs.firstOrNull()?.let { parse(it) } ?: XRType.Generic
       },
 
       // For now treat lists like value types, may way to change in future

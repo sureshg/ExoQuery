@@ -27,7 +27,7 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
 class CallMethod(private val callerRaw: Caller, private val replacementFun: ReplacementMethodToCall, private val types: List<IrType>, private val tpe: IrType?) {
-  context(BuilderContext) operator fun invoke(vararg args: IrExpression): IrExpression {
+  context(BuilderContext) operator fun invoke(vararg args: IrExpression?): IrExpression {
     val caller =
       when (replacementFun.callerType) {
         ChangeReciever.ToDispatch -> callerRaw.toDispatch()
@@ -51,7 +51,7 @@ class CallMethod(private val callerRaw: Caller, private val replacementFun: Repl
     return when (invokeMethod) {
       is MethodType.Getter -> {
         if (args.isNotEmpty()) {
-          throw IllegalArgumentException("Cannot call a getter with arguments but tried to call `${invokeMethod.sym.safeName}` with arguments: ${args.joinToString(", ") { it.dumpKotlinLike() }}")
+          throw IllegalArgumentException("Cannot call a getter with arguments but tried to call `${invokeMethod.sym.safeName}` with arguments: ${args.joinToString(", ") { it?.dumpKotlinLike() ?: "<NULL>" }}")
         }
         with(builder) {
           when (caller) {

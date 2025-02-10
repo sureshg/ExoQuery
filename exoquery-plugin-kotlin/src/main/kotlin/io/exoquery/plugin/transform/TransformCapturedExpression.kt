@@ -40,29 +40,7 @@ class TransformCapturedExpression(override val ctx: BuilderContext, val superTra
   // parent symbols are collected in the parent context
   context(LocationContext, BuilderContext, CompileLogger)
   override fun transformBase(expression: IrCall): IrExpression {
-    val bodyRaw =
-      on(expression).match(
-        // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
-        case(io.exoquery.plugin.trees.Ir.Call.FunctionUntethered1.Arg[io.exoquery.plugin.trees.Ir.FunctionExpression.withBlock[Is(), Is()]]).then { (_, body) ->
-          body
-        }
-      )
-      ?: parseError("Parsing Failed\n================== The expresson was not a Global Function (with one argument-block): ==================\n" + expression.dumpKotlinLike() + "\n--------------------------\n" + expression.dumpSimple())
-
-    // Transform the contents of `capture { ... }` this is important for several reasons,
-    // most notable any kind of variables used inside that need to be inlined e.g:
-    // val x = capture { 123 }
-    // val y = capture { x.use + 1 } // <- this is what we are transforming
-    // Then the `val y` needs to first be transformed into:
-    // val y = capture { SqlExpression(XR.Int(123), ...).use + 1 } which will be done by TransformProjectCapture
-    // which is called by the superTransformer.visitBlockBody
-    val body = superTransformer.visitBlockBody(bodyRaw) as IrBlockBody
-
-    // TODO Needs to convey SourceLocation coordinates, think I did this in terpal-sql somehow
-    val (xr, dynamics) = Parser.parseFunctionBlockBody(body)
-
-    val xrExpr = xr as? XR.Expression ?: parseError("Could not parse to expression:\n${xr}") // TODO better print
-
+    val (xrExpr, dynamics) = parseSqlExpression(expression, superTransformer)
     val paramsExprModel = dynamics.makeParams()
     //val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr, paramsListExpr))
     //val makeCasted = builder.irImplicitCast(make, expression.type)
@@ -74,11 +52,34 @@ class TransformCapturedExpression(override val ctx: BuilderContext, val superTra
       }
 
     //logger.warn("=============== Modified value to: ${capturedAnnot.valueArguments[0]?.dumpKotlinLike()}\n======= Whole Type is now:\n${makeCasted.type.dumpKotlinLike()}")
-    //logger.warn("========== Output: ==========\n${newSqlExpression.dumpKotlinLike()}")
-
-    // maybe get rid of @Capture by copying (i.e. splicing since it's presence might tell us where we don't want to splice?)
-    // alternatively would need to account for the annotation in the ExprModel?
-
+    //logger.error("========== Output: ==========\n${newSqlExpression.dumpKotlinLike()}")
     return newSqlExpression
+  }
+
+  companion object {
+    context(LocationContext, BuilderContext, CompileLogger)
+    fun parseSqlExpression(expression: IrCall, superTransformer: VisitTransformExpressions)  = run {
+      val bodyRaw =
+        on(expression).match(
+          // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
+          case(Ir.Call.FunctionUntethered1.Arg[Ir.FunctionExpression.withBlock[Is(), Is()]]).then { (_, body) ->
+            body
+          }
+        )
+          ?: parseError("Parsing Failed\n================== The expresson was not a Global Function (with one argument-block): ==================\n" + expression.dumpKotlinLike() + "\n--------------------------\n" + expression.dumpSimple())
+
+      // Transform the contents of `capture { ... }` this is important for several reasons,
+      // most notable any kind of variables used inside that need to be inlined e.g:
+      // val x = capture { 123 }
+      // val y = capture { x.use + 1 } // <- this is what we are transforming
+      // Then the `val y` needs to first be transformed into:
+      // val y = capture { SqlExpression(XR.Int(123), ...).use + 1 } which will be done by TransformProjectCapture
+      // which is called by the superTransformer.visitBlockBody
+      val body = superTransformer.visitBlockBody(bodyRaw) as IrBlockBody
+      val (xr, dynamics) = Parser.parseFunctionBlockBody(body)
+
+      val xrExpr = xr as? XR.Expression ?: parseError("Could not parse to expression:\n${xr}")
+      xrExpr to dynamics
+    }
   }
 }

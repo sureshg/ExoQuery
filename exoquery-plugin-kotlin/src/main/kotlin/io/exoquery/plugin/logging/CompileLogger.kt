@@ -2,6 +2,7 @@ package io.exoquery.plugin.logging
 
 import io.exoquery.plugin.Diagnostics.SQL
 import io.exoquery.plugin.location
+import io.exoquery.plugin.transform.LocateableContext
 import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.ParserContext
 import org.jetbrains.kotlin.AbstractKtSourceElement
@@ -90,7 +91,7 @@ data class CompileLogger(val messageCollector: MessageCollector, val currentFile
     messageCollector.report(CompilerMessageSeverity.ERROR, msg, loc)
   }
 
-  context(ParserContext) fun error(msg: String, elem: IrElement) {
+  context(LocateableContext) fun error(msg: String, elem: IrElement) {
     messageCollector.report(CompilerMessageSeverity.ERROR, msg, elem.location())
   }
 

@@ -38,16 +38,22 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.get
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.name.FqName
 
 data class LocationContext(val internalVars: TransformerScope, override val currentFile: IrFile): LocateableContext {
   fun newParserCtx() = ParserContext(this)
+  fun withCapturedFunctionParameters(capturedFunctionParameters: List<IrValueParameter>) =
+    LocationContext(internalVars.withCapturedFunctionParameters(capturedFunctionParameters), currentFile)
+  fun withSymbols(symbols: List<IrSymbol>) =
+    LocationContext(internalVars.withSymbols(symbols), currentFile)
 }
 
 data class ParserContext(val location: LocationContext, val binds: DynamicsAccum = DynamicsAccum.newEmpty()): LocateableContext {
   val internalVars get() = location.internalVars
+  val capturedFunctionSymbols get() = internalVars.capturedFunctionParameters
   override val currentFile get() = location.currentFile
 }
 
@@ -75,6 +81,9 @@ object Parser {
     with (newParserCtx()) {
       ExpressionParser.parse(expr) to binds
     }
+
+  context(LocationContext, CompileLogger) fun parseValueParamter(expr: IrValueParameter): XR.Ident =
+    with (newParserCtx()) { expr.makeIdent() }
 }
 
 object QueryParser {
@@ -92,7 +101,7 @@ object QueryParser {
 
   context(ParserContext, CompileLogger)
   fun IrCall.isDslCall() =
-    (this.symbol.owner as IrAnnotationContainer).let { it.hasAnnotation<Dsl>() } ?: false
+    this.symbol.owner.let { it.hasAnnotation<Dsl>() } ?: false
 
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Query =
     when {
@@ -101,6 +110,43 @@ object QueryParser {
       expr is IrCall && expr.isDslCall() -> parseDslCall(expr) ?: parseError("Could not parse the DSL call", expr)
       else -> {
         on(expr).match<XR.Query>(
+          // If you find a random identifier hanging around, check if:
+          // 1. It is coming from a scope outside of the inside of the current function e.g. `capture { val x = Table<Person>; x/*<- we are here*/.map(...) }`
+          //    (if it isn't then we know it needs to be a dynamic)
+          // 2. It is a captured variable or function argument
+//          case(Ir.GetValue[Is()]).thenThis { sym->
+//            error("----------- GetValue Owner ---------\n${this.symbol.owner}")
+//            XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR())
+//          },
+
+          case(Ir.Call.FunctionUntetheredN[Is("io.exoquery.util.scaffoldCapFunctionQuery"), Is()]).thenThis { _, args ->
+            val callExpr = this
+            val sqlQueryExpr = args.first() ?: parseError("The first argument of the scaffoldCapFunctionQuery call was not found", expr)
+            val warppedQueryCall =
+              sqlQueryExpr.match(
+                case(SqlQueryExpr.Uprootable[Is()]).thenThis { uprootable ->
+                  val sqlQueryIr = this
+                  // Add all binds from the found SqlQuery instance, this will be truned into something like `currLifts + SqlQuery.lifts` late
+                  binds.addAllParams(sqlQueryIr)
+                  // Then unpack and return the XR
+                  uprootable.xr // TODO catch errors here?
+                },
+                case(ExtractorsDomain.DynamicQueryCall[Is()]).then { _ ->
+                  val bid = BID.new()
+                  binds.addRuntime(bid, sqlQueryExpr)
+                  // need to type the parse
+                  XR.TagForSqlQuery(bid, TypeParser.of(sqlQueryExpr), expr.loc)
+                }
+              ) ?: parseError("Could not parse the SqlQuery from the scaffold call", sqlQueryExpr)
+            val otherArgs = args.drop(1).map { arg -> arg?.let { ExpressionParser.parse(it) } ?: XR.Const.Null(callExpr.loc) }
+            val out = XR.FunctionApply(warppedQueryCall, otherArgs, expr.loc)
+            //error("-------------- Returning: ${out.showRaw()}")
+            out
+          },
+
+          case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym->
+            XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR())
+          },
           // If we couldn't parse the expression treat (and it is indeed a SqlQuery<*> treat it as dynamic i.e. non-uprootable
           // Since there's no splice-operator for SqlQuery like there is .use for SqlExpression (i.e. the variable/function-call is used directly)
           // if nothing else matches the expression, we need to look at it in a couple of different ways and then find out if it is a dynamic query
@@ -112,9 +158,6 @@ object QueryParser {
             binds.addAllParams(sqlQueryIr)
             // Then unpack and return the XR
             uprootable.xr // TODO catch errors here?
-          },
-          case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() }.thenThis { sym->
-            XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR())
           },
           // TODO check that the output is a SqlQuery and pass to this parser instead of expression parser?
           case(Ir.Call.FunctionMemN[Ir.Expr.ClassOf<kotlin.Function<*>>(), Is("invoke"), Is()]).thenThis { hostFunction, args ->
@@ -162,20 +205,6 @@ object QueryParser {
         }
       }
     }
-
-  fun IrGetValue.isCapturedVariable(): Boolean {
-    tailrec fun rec(elem: IrElement, recurseCount: Int): Boolean =
-      when {
-        recurseCount == 0 -> false
-        elem is IrFunction && elem.extensionReceiverParameter?.type?.isClass<CapturedBlock>() ?: false -> true
-        elem is IrFunction -> rec(elem.symbol.owner.parent, recurseCount-1)
-        elem is IrValueParameter -> rec(elem.symbol.owner.parent, recurseCount-1)
-        elem is IrVariable -> rec(elem.symbol.owner.parent, recurseCount-1)
-        else -> false
-      }
-
-    return rec(this.symbol.owner, 100)
-  }
 
   fun IrGetValue.showLineage(): String {
     val collect = mutableListOf<String>()
@@ -516,18 +545,7 @@ object ExpressionParser {
       },
 
       // Other situations where you might have an identifier which is not an SqlVar e.g. with variable bindings in a Block (inside an expression)
-      case(Ir.GetValue[Is()]).thenThis { sym ->
-
-        // TODO re-enable scope vars and pass them into here.
-
-        // TODO try to use the IrGetValue.isCapturedVariable here
-
-        //if (!internalVars.contains(sym) && !(sym.owner.let { it is IrVariable && it.origin == IrDeclarationOrigin.IR_TEMPORARY_VARIABLE }) ) {
-        //  val loc = this.location()
-        //  // TODO Need much longer and better error message (need to say what the clause is)
-        //  error("The symbol `${sym.safeName}` is external. Cannot find it in the symbols-list belonging to the clause ${internalVars.symbols.map { it.safeName }}", loc)
-        //}
-
+      case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym ->
         XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR()) // this.symbol.owner.type
       },
       case(Ir.Const[Is()]).thenThis {

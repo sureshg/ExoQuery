@@ -20,7 +20,7 @@ class GenerationExtension(
         moduleFragment
             .transform(
                 VisitTransformExpressions(pluginContext, config, exoOptions),
-                TransformerScope(listOf(), FileQueryAccum.Empty)
+                TransformerScope(listOf(), listOf(), FileQueryAccum.Empty)
             )
     }
 }

@@ -1,7 +1,6 @@
 package io.exoquery.plugin.transform
 
 import io.decomat.Is
-import io.decomat.Then1
 import io.decomat.case
 import io.decomat.caseEarly
 import io.decomat.match
@@ -10,20 +9,16 @@ import io.exoquery.SqlQuery
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
-import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.LocationContext
-import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.plugin.trees.SqlExpressionExpr
 import io.exoquery.plugin.trees.SqlQueryExpr
+import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
+import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.kotlinFqName
-
-
 
 class TransformProjectCapture(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): FalliableTransformer<IrExpression>() {
 
@@ -51,6 +46,11 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
   override fun transformBase(expression: IrExpression): IrExpression? {
     val exprType = expression.exprTypeOf()
     return expression.match(
+      // Transform calls to @CapturedFunction so:
+      //  @CapturedFunction fun foo(x: SqlQuery<Person>) = select { ... }
+      // then later:
+      //  capture { 2 + foo(123).use }
+
       case(Ir.Call[Is()]).thenIf { call -> expression.isContainerOfXR() && call.symbol.owner is IrSimpleFunction }.then { call ->
         // For example:
         //   fun foo(x: Int) = capture { 1 + lift(x) } // i.e. SqlExpression(Int(1) + ScalarTag(UUID), lifts=ScalarLift(UUID,x))
