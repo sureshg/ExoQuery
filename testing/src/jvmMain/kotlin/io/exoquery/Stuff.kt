@@ -30,10 +30,12 @@ fun main() {
 
   // TODO beta reduce out ExprOfQuery(QueryOfExpr()), also probably want to check for that in the SqlQuery builder
 
-  //val joes = capture { Table<Person>().filter { p -> p.name == "Joe" } }
-  //val jacks = capture { Table<Person>().filter { p -> p.name == "Jack" } }
+  val joes = capture { Table<Person>().filter { p -> p.name == "Joe" } }
+  val jacks = capture { Table<Person>().filter { p -> p.name == "Jack" } }
+
 
   // Need tests for both the static and dynamic variations of this
+  // need to test where both the people variable as well as the joinPeopleToAddress is dynamic (the latter might be a bit trickier e.g. it needs to itself call a dynamic function
   @CapturedFunction
   fun joinPeopleToAddress(people: SqlQuery<Person>) =
     select {
@@ -56,11 +58,13 @@ fun main() {
       [IrGetValue] Param(<destruct>)
      */
     //joinPeopleToAddress(jacks).map { (p, a) -> p.name + " lives at " + a.street }
-    joinPeopleToAddress(Table<Person>()).map { kv -> kv.first.name + " lives at " + kv.second.street }
+    joinPeopleToAddress(joes).map { kv -> kv.first.name + " lives at " + kv.second.street }
   }
   println(result.show())
 
-  println("hellooooooooooo")
+  println(result.build(PostgresDialect()).value)
+
+  println("helloooooooooooooo")
 
   // then try this only with a fun and generic
 //  val joinPeopleToAddress2 = captureValue {
