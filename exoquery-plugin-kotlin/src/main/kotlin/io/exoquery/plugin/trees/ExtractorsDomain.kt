@@ -150,7 +150,7 @@ object ExtractorsDomain {
       context (CompileLogger) operator fun <AP: Pattern<OperatorCall>> get(x: AP) =
         customPattern1("x op y", x) { it: IrCall ->
           it.match(
-            case(Ir.Call.FunctionUntethered2[Is(), Is()])
+            case(Ir.Call.FunctionUntethered2[Is(), Is(), Is()])
               .thenIfThis { _, _ -> BinaryOperators.operators.get(symbol.safeName) != null }
               .thenThis { arg1, arg2 -> Triple(this.symbol.safeName, arg1, arg2) },
             case(Ir.Call.FunctionRec1[Is(), Is()])

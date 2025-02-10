@@ -147,6 +147,9 @@ fun CompilerMessageSourceLocation.show() =
 
 val IrCall.funName get() = this.symbol.safeName
 
+val IrGetValue.ownerFunName get() =
+  (this.symbol.owner as? IrFunction)?.let { it.symbol.safeName }
+
 // TODO change to LocationContainingContext
 context(LocateableContext) fun IrElement.location(): CompilerMessageSourceLocation =
   this.location(currentFile.fileEntry)

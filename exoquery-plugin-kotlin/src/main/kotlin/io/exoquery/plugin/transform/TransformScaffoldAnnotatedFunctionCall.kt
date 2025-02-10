@@ -4,13 +4,18 @@ import io.exoquery.annotation.CapturedFunction
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.trees.LocationContext
+import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
 import io.exoquery.plugin.trees.simpleValueArgs
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irNull
+import org.jetbrains.kotlin.ir.builders.irVararg
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.makeNullable
 
 
 context(LocationContext, BuilderContext, CompileLogger)
@@ -27,9 +32,10 @@ fun IrCall.zeroisedArgs(): IrCall {
 }
 
 context(LocationContext, BuilderContext, CompileLogger)
-fun buildScaffolding(zeroisedCall: IrExpression, originalArgs: List<IrExpression?>): IrExpression {
-  val args = listOf(zeroisedCall) + originalArgs
-  return call("io.exoquery.util.scaffoldCapFunctionQuery").invoke(*args.toTypedArray())
+fun buildScaffolding(zeroisedCall: IrExpression, scaffoldType: IrType, originalArgs: List<IrExpression?>): IrExpression {
+  var argsAsVararg = builder.irVararg(pluginCtx.symbols.any.defaultType.makeNullable(), originalArgs.map { it ?: builder.irNull() })
+  val args = listOf(zeroisedCall) + argsAsVararg
+  return callWithParamsAndOutput(io_exoquery_util_scaffoldCapFunctionQuery, listOf(scaffoldType), scaffoldType).invoke(*args.toTypedArray())
 }
 
 
@@ -94,7 +100,7 @@ class TransformScaffoldAnnotatedFunctionCall(override val ctx: BuilderContext, v
 
     //val zeroizedCall = zeroizedCallRaw as IrCall
 
-    val scaffoldedCall = buildScaffolding(zeroizedCall, projectedArgs)
+    val scaffoldedCall = buildScaffolding(zeroizedCall, call.type, projectedArgs)
     //error("""
     //  |--------------------------- Scaffolded call: ---------------------------
     //  |${scaffoldedCall.dumpKotlinLike()}

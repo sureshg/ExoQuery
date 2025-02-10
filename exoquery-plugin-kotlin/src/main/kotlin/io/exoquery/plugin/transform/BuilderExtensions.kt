@@ -109,17 +109,27 @@ fun ReceiverCaller.callWithOutput(method: String, fullOutputType: IrType) = Call
 fun ReceiverCaller.callWithParams(method: String, typeParams: List<IrType>): CallMethod = CallMethod(this, ReplacementMethodToCall(method), typeParams, null)
 fun ReceiverCaller.callWithParamsAndOutput(method: String, typeParams: List<IrType>, fullOutputType: IrType): CallMethod = CallMethod(this, ReplacementMethodToCall(method), typeParams, fullOutputType)
 
-fun call(fullPathMethod: String): CallMethod {
-  val split = fullPathMethod.split('.')
-  val method = split.takeLast(1).firstOrNull() ?: throw IllegalArgumentException("No method to call inthe path: $fullPathMethod")
+fun String.splitMethodPath(): Pair<String, String> {
+  val split = this.split('.')
+  val method = split.takeLast(1).firstOrNull() ?: throw IllegalArgumentException("No method to call in the path: $this")
   val pack = split.dropLast(1)
-  return call(pack.joinToString("."), method)
+  return pack.joinToString(".") to method
 }
+
+fun call(fullPathMethod: String): CallMethod =
+  fullPathMethod.splitMethodPath().let { (pack, method) ->
+    call(pack, method)
+  }
+
 fun call(packageName: String, method: String) = CallMethod(Caller.TopLevelMethod(packageName), ReplacementMethodToCall(method), listOf(), null)
 fun callWithOutput(packageName: String, method: String, tpe: IrType) = CallMethod(Caller.TopLevelMethod(packageName), ReplacementMethodToCall(method), listOf(), tpe)
 
 fun callWithParams(packageName: String, method: String, typeParams: List<IrType>) = CallMethod(Caller.TopLevelMethod(packageName), ReplacementMethodToCall(method), typeParams, null)
 fun callWithParamsAndOutput(packageName: String, method: String, typeParams: List<IrType>, tpe: IrType) = CallMethod(Caller.TopLevelMethod(packageName), ReplacementMethodToCall(method), typeParams, tpe)
+fun callWithParamsAndOutput(fullPathMethod: String, typeParams: List<IrType>, tpe: IrType) =
+  fullPathMethod.splitMethodPath().let { (pack, method) ->
+    callWithParamsAndOutput(pack, method, typeParams, tpe)
+  }
 
 
 fun IrExpression.callDispatch(method: String) = CallMethod(Caller.Dispatch(this), ReplacementMethodToCall(method), listOf(), null)

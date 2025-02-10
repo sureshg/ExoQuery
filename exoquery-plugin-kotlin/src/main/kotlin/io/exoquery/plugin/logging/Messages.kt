@@ -14,6 +14,14 @@ import org.jetbrains.kotlin.ir.util.*
 
 object Messages {
 
+fun VariableComingFromNonCapturedFunction(funName: String) =
+"""
+It appears that this expression is an argument coming from a function call. In this case, annotate the function with @CapturedDynamic
+to mark it as a dynamic query. If the whole function `${funName}` just returns a SqlQuery and does nothing
+else, annotate it as @CapturedFunction and you can then use it to build compile-time functions.
+""".trimIndent()
+
+
 context(LocateableContext)
 fun CapturedFunctionFormWrong(msg: String) =
 """

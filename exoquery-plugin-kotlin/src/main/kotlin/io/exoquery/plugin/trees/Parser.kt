@@ -20,24 +20,21 @@ import io.exoquery.parseError
 import io.exoquery.parseErrorSym
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.transform.LocateableContext
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`(op)x`
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`x to y`
 import io.exoquery.plugin.trees.ExtractorsDomain.IsSelectFunction
+import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
 import io.exoquery.xr.*
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
-import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.IrSymbolOwner
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.get
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
@@ -119,9 +116,11 @@ object QueryParser {
 //            XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR())
 //          },
 
-          case(Ir.Call.FunctionUntetheredN[Is("io.exoquery.util.scaffoldCapFunctionQuery"), Is()]).thenThis { _, args ->
+          // TODO need to make sure 1st arg is SqlQuery instance and also the owner function has a @CapturedFunction annotate
+          //     (also parser should check for any IrFunction that has a @CapturedFunction annotation that doesn't have scaffolding and immediately report an error on that)
+          case(Ir.Call.FunctionUntethered2[Is(io_exoquery_util_scaffoldCapFunctionQuery), Is(), Ir.Vararg[Is()]]).thenThis { sqlQueryArg, (args) ->
             val callExpr = this
-            val sqlQueryExpr = args.first() ?: parseError("The first argument of the scaffoldCapFunctionQuery call was not found", expr)
+            val sqlQueryExpr = sqlQueryArg
             val warppedQueryCall =
               sqlQueryExpr.match(
                 case(SqlQueryExpr.Uprootable[Is()]).thenThis { uprootable ->
@@ -165,6 +164,7 @@ object QueryParser {
           },
           case(ExtractorsDomain.DynamicQueryCall[Is()])
             .thenIf {
+              // TODO should disable this Strict-Model by default (when the entire DSL is built out) and make this just a warning by default
               // We don't want arbitrary functions returning SqlQuery to be treated as dynamic (e.g. right now I am working on parsing for .nested
               // and since it doesn't exist yet this case is being hit). Make the user either annotate the type or the function with @CapturedReturn
               // in order to know we shuold actually be doing this. Should use a similar strategy for QueryMethodCall and QueryGlobalCall
@@ -178,26 +178,10 @@ object QueryParser {
           val additionalHelp =
             when {
               expr is IrGetValue && expr.symbol.owner is IrFunction ->
-                """|It appears that this expression is an argument coming from a function call. In this case you need to annotate the function with @CapturedDynamic
-                   |and it will be a dynamic query. If the whole function `${expr.symbol.owner.name}` just returns a SqlQuery and does nothing
-                   |else, annotate it as @CapturedFunction and you can then use it to build compile-time functions.
-                """.trimMargin()
+                Messages.VariableComingFromNonCapturedFunction(expr.ownerFunName ?: "<???>")
 
               expr is IrGetValue ->
                 "Lineage: ${expr.showLineage()}"
-
-//              expr is IrGetValue ->
-//                """|--->
-//                   |${expr.symbol.safeName} ->
-//                   |  ${expr.symbol.owner::class.simpleName} ->
-//                   |    ${expr.symbol.owner.parent::class.simpleName}
-//                   |        ${(expr.symbol.owner.parent as IrFunction).symbol.safeName}
-//                   |          ${(expr.symbol.owner.parent as IrFunction).symbol.owner::class.simpleName}
-//                   |            ${((expr.symbol.owner.parent as IrFunction).symbol.owner as IrFunction).symbol.safeName}
-//                   |              ${((expr.symbol.owner.parent as IrFunction).symbol.owner.parent)::class.simpleName}
-//                   |                ${((((expr.symbol.owner.parent as IrFunction).symbol.owner.parent)) as IrFunction).extensionReceiverParameter?.type?.isClass<CapturedBlock>()}
-//                """.trimMargin()
-
               else -> ""
             }
 
@@ -205,39 +189,6 @@ object QueryParser {
         }
       }
     }
-
-  fun IrGetValue.showLineage(): String {
-    val collect = mutableListOf<String>()
-    tailrec fun rec(elem: IrElement, recurseCount: Int): Unit {
-      collect.add("RecurseInto:${(elem as? IrFunction)?.let { "F-" + it.symbol.safeName } ?: (elem as? IrVariable)?.let { "V-" + it.symbol.safeName } ?: (elem as? IrValueParameter)?.let { "P-" + it.symbol.safeName } ?: "???"}")
-      when {
-        recurseCount == 0 -> {
-          collect.add("RECURSION LIMIT HIT")
-          Unit
-        }
-        elem is IrFunction && elem.extensionReceiverParameter?.type?.isClass<CapturedBlock>() ?: false -> {
-          collect.add("${elem.symbol.safeName} has CapturedBlock")
-          Unit
-        }
-        elem is IrFunction -> {
-          collect.add("IRF-GotoOwner")
-          rec(elem.symbol.owner.parent, recurseCount-1)
-        }
-        elem is IrValueParameter -> {
-          collect.add("IRP-GotoOwner")
-          rec(elem.symbol.owner.parent, recurseCount-1)
-        }
-        elem is IrVariable -> {
-          collect.add("IRV-GotoOwner")
-          rec(elem.symbol.owner.parent, recurseCount-1)
-        }
-        else -> Unit
-      }
-    }
-
-    rec(this.symbol.owner, 100)
-    return collect.joinToString("->")
-  }
 
   // Assuming everything that gets into here is already annotated with @Dsl
   context(ParserContext, CompileLogger) private fun parseDslCall(expr: IrExpression): XR.Query? =
@@ -289,7 +240,7 @@ object QueryParser {
           else -> parseErrorSym(this)
         }
       },
-      case(Ir.Call.FunctionUntethered0[Is("io.exoquery.Table")]).thenThis { _ ->
+      case(Ir.Call.FunctionUntethered0[Is(PT.io_exoquery_Table)]).thenThis { _ ->
         val tpe = TypeParser.ofTypeAt(this.typeArguments[0] ?: parseError("Type arguemnt of Table() call was not found>"), this.location())
         val tpeProd = tpe as? XRType.Product ?: parseError("Table<???>() call argument type must be a data-class, but was: ${tpe}", expr)
         XR.Entity(tpeProd.name, tpeProd, expr.locationXR())

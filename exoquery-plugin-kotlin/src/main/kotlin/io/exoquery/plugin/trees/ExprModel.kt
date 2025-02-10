@@ -81,7 +81,7 @@ object SqlExpressionExpr {
     // avaiable as well keep inlining the SqlExpression instances
     context(BuilderContext, CompileLogger)
     fun replant(paramsFrom: IrExpression): IrExpression {
-      val strExpr = call("io.exoquery.unpackExpr").invoke(builder.irString(packedXR))
+      val strExpr = call(PT.io_exoquery_unpackExpr).invoke(builder.irString(packedXR))
       // TODO we know at this point Runtimes is Runtimes.Empty so need to add that when we add that variable
       //error(
       //  """|------- Calling replant -------
@@ -91,8 +91,8 @@ object SqlExpressionExpr {
       val callParams = paramsFrom.callDispatch("params").invoke()
 
       // Not sure why calling it like this makes it blow up
-      //val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr, Caller.Dispatch(paramsFrom).call("params")()))
-      val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr, RuntimeEmpty(), callParams))
+      //val make = makeClassFromString(Paths.SqlExpression, listOf(strExpr, Caller.Dispatch(paramsFrom).call("params")()))
+      val make = makeClassFromString(PT.io_exoquery_SqlExpression, listOf(strExpr, RuntimeEmpty(), callParams))
       return make
     }
 
@@ -101,7 +101,7 @@ object SqlExpressionExpr {
         customPattern1("SqlExpressionExpr.Uprootable", x) { it: IrExpression ->
           it.match(
             // Match on: SqlExpression(unpackExpr(str))
-            case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is("io.exoquery.SqlExpression"), Ir.Call.FunctionUntethered1[Is("io.exoquery.unpackExpr"), Is()]])
+            case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is(PT.io_exoquery_SqlExpression), Ir.Call.FunctionUntethered1[Is(PT.io_exoquery_unpackExpr), Is()]])
               .thenIf { _, _ ->
                 // Check that the 2nd argument to SqlExpression is Runtimes.Empty i.e. SqlExpression(xr=unpackExpr(str), runtimes=Runtimes.Empty, ...)
                 comp.valueArguments[1].match(
@@ -118,15 +118,15 @@ object SqlExpressionExpr {
 
       context(BuilderContext, CompileLogger) fun plantNewUprootable(xr: XR.Expression, params: ParamsExpr): IrExpression {
         val packedXR = xr.encode()
-        val strExpr = call("io.exoquery.unpackExpr").invoke(builder.irString(packedXR))
-        val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr, RuntimeEmpty(), params.lift()))
+        val strExpr = call(PT.io_exoquery_unpackExpr).invoke(builder.irString(packedXR))
+        val make = makeClassFromString(PT.io_exoquery_SqlExpression, listOf(strExpr, RuntimeEmpty(), params.lift()))
         return make
       }
 
       context(BuilderContext, CompileLogger) fun plantNewPluckable(xr: XR.Expression, runtimes: RuntimesExpr, params: ParamsExpr): IrExpression {
         val packedXR = xr.encode()
-        val strExpr = call("io.exoquery.unpackExpr").invoke(builder.irString(packedXR))
-        val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr, runtimes.lift(), params.lift()))
+        val strExpr = call(PT.io_exoquery_unpackExpr).invoke(builder.irString(packedXR))
+        val make = makeClassFromString(PT.io_exoquery_SqlExpression, listOf(strExpr, runtimes.lift(), params.lift()))
         return make
       }
     }
@@ -141,9 +141,9 @@ object SqlQueryExpr {
     val xr by lazy { EncodingXR.protoBuf.decodeFromHexString<XR.Query>(packedXR) }
     context(BuilderContext, CompileLogger)
     fun replant(paramsFrom: IrExpression): IrExpression {
-      val strExpr = call("io.exoquery.unpackQuery").invoke(builder.irString(packedXR))
+      val strExpr = call(PT.io_exoquery_unpackQuery).invoke(builder.irString(packedXR))
       val callParams = paramsFrom.callDispatch("params").invoke()
-      val make = makeClassFromString("io.exoquery.SqlQuery", listOf(strExpr, RuntimeEmpty(), callParams))
+      val make = makeClassFromString(PT.io_exoquery_SqlQuery, listOf(strExpr, RuntimeEmpty(), callParams))
       return make
     }
 
@@ -151,10 +151,10 @@ object SqlQueryExpr {
       context (CompileLogger) operator fun <AP: Pattern<Uprootable>> get(x: AP) =
         customPattern1("SqlQueryExpr.Uprootable", x) { it: IrExpression ->
           it.match(
-            case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is("io.exoquery.SqlQuery"), Ir.Call.FunctionUntethered1[Is("io.exoquery.unpackQuery"), Is()]])
+            case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is(PT.io_exoquery_SqlQuery), Ir.Call.FunctionUntethered1[Is(PT.io_exoquery_unpackQuery), Is()]])
               .thenIf { _, _ ->
                 comp.valueArguments[1].match(
-                  case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<io.exoquery.Runtimes.Companion>(), Is("Empty")]).then { expr, _ -> true }
+                  case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<io.exoquery.Runtimes.Companion>(), Is(PT.EmptyRuntimes)]).then { expr, _ -> true }
                 ) ?: false
               }
               .then { _, (_, irStr) ->
@@ -166,15 +166,15 @@ object SqlQueryExpr {
 
       context(BuilderContext, CompileLogger) fun plantNewUprootable(xr: XR.Query, params: ParamsExpr): IrExpression {
         val packedXR = xr.encode()
-        val strExpr = call("io.exoquery.unpackQuery").invoke(builder.irString(packedXR))
-        val make = makeClassFromString("io.exoquery.SqlQuery", listOf(strExpr, RuntimeEmpty(), params.lift()))
+        val strExpr = call(PT.io_exoquery_unpackQuery).invoke(builder.irString(packedXR))
+        val make = makeClassFromString(PT.io_exoquery_SqlQuery, listOf(strExpr, RuntimeEmpty(), params.lift()))
         return make
       }
 
       context(BuilderContext, CompileLogger) fun plantNewPluckable(xr: XR.Query, runtimes: RuntimesExpr, params: ParamsExpr): IrExpression {
         val packedXR = xr.encode()
-        val strExpr = call("io.exoquery.unpackQuery").invoke(builder.irString(packedXR))
-        val make = makeClassFromString("io.exoquery.SqlQuery", listOf(strExpr, runtimes.lift(), params.lift()))
+        val strExpr = call(PT.io_exoquery_unpackQuery).invoke(builder.irString(packedXR))
+        val make = makeClassFromString(PT.io_exoquery_SqlQuery, listOf(strExpr, runtimes.lift(), params.lift()))
         return make
       }
     }

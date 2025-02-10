@@ -107,7 +107,7 @@ class TransformAnnotatedFunction(override val ctx: BuilderContext, val superTran
         case(Ir.Call.FunctionUntethered1[Is.of("io.exoquery.capture", "io.exoquery.select"), Is()]).thenThis { funName, _ ->
           // now call the super-transformer on the body of the function
           when (this.funName) {
-            "capture" -> TransformCapturedExpression.parseSqlExpression(this, superTransformer)
+            "capture" -> TransformCapturedQuery.parseCapturedQuery(this, superTransformer)
             "select" -> TransformSelectClause.parseSelectClause(this, superTransformer)
             else -> parseError(Messages.CapturedFunctionFormWrong("Invalid capture-function called in the @CapturedFunction body: '${this.funName}'"), capFunReturn)
           }
@@ -115,6 +115,7 @@ class TransformAnnotatedFunction(override val ctx: BuilderContext, val superTran
       ) ?: parseError(Messages.CapturedFunctionFormWrong("Invalid capture-function body"), capFunReturn)
     }
 
+    // Note that when we add TransformCapturedExpression above this will possible be an XR.Expression as well
     val queryXR = rawQueryXR as? XR.Query ?: parseError("The return value of a @CapturedFunction must be a Query ADT instance but it was: ${rawQueryXR.showRaw()}", capFunReturn)
 
     // The function should not have any parameters since they will be captured in the XR
