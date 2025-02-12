@@ -97,8 +97,9 @@ sealed interface XR {
 
   @Serializable
   sealed interface JoinType {
-    @Serializable data object Inner: JoinType { override fun toString() = "Inner" }
-    @Serializable data object Left: JoinType { override fun toString() = "Left" }
+    val simpleName: String
+    @Serializable data object Inner: JoinType { override fun toString() = "Inner"; override val simpleName = "join" }
+    @Serializable data object Left: JoinType { override fun toString() = "Left"; override val simpleName = "leftJoin" }
   }
 
   @Serializable
@@ -656,7 +657,7 @@ sealed interface XR {
   }
 
   @Serializable
-  sealed class ConstType<T>: PC<ConstType<T>>, XR.Expression {
+  sealed class ConstType<T>: PC<ConstType<T>>, Const, XR.Expression {
     abstract val value: T
     override val productComponents by lazy { productOf(this, value) }
     @Transient override val type = XRType.Value

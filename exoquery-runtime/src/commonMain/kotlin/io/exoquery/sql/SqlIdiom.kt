@@ -400,10 +400,10 @@ abstract class SqlIdiom: HasPhasePrinting {
       a is Any  && op is `!=` && b is Null -> +"${scopedTokenizer(a)} IS NOT NULL"
       a is Null && op is `!=` && b is Any  -> +"${scopedTokenizer(b)} IS NOT NULL"
 
-      a is Any  && op is StringOperator.`startsWith` && b is Any ->
-        +"${scopedTokenizer(a)} LIKE (${BinaryOp(b, StringOperator.`+`, XR.Const.String("%", Synth), Synth).token})" // In Quill there was an upcast here, not sure if this is needed
-      a is Any && op is StringOperator.`split` && b is Any ->
-        +"${op.token}(${scopedTokenizer(a)}, ${scopedTokenizer(b)})"
+//      a is Any  && op is StringOperator.`startsWith` && b is Any ->
+//        +"${scopedTokenizer(a)} LIKE (${BinaryOp(b, StringOperator.`+`, XR.Const.String("%", Synth), Synth).token})" // In Quill there was an upcast here, not sure if this is needed
+//      a is Any && op is StringOperator.`split` && b is Any ->
+//        +"${op.token}(${scopedTokenizer(a)}, ${scopedTokenizer(b)})"
 
       a is Any && op is SetOperator.`contains` && b is Any -> SetContainsToken(scopedTokenizer(b), op.token, a.token)
       a is Any && op is `and` && b is Any ->
@@ -432,10 +432,10 @@ abstract class SqlIdiom: HasPhasePrinting {
     when(this) {
       is NumericOperator.minus -> +"-"
       is BooleanOperator.not -> +"NOT"
-      is StringOperator.toUpperCase -> +"UPPER"
-      is StringOperator.toLowerCase -> +"LOWER"
-      is StringOperator.toLong -> emptyStatement // cast is implicit
-      is StringOperator.toInt -> emptyStatement // cast is implicit
+//      is StringOperator.toUpperCase -> +"UPPER"
+//      is StringOperator.toLowerCase -> +"LOWER"
+//      is StringOperator.toLong -> emptyStatement // cast is implicit
+//      is StringOperator.toInt -> emptyStatement // cast is implicit
       is SetOperator.isEmpty -> +"NOT EXISTS"
       is SetOperator.nonEmpty -> +"EXISTS"
     }
@@ -472,8 +472,8 @@ abstract class SqlIdiom: HasPhasePrinting {
       is BooleanOperator.and -> +"AND"
       is BooleanOperator.or -> +"OR"
       is StringOperator.`+` -> +"||" // String concat is `||` is most dialects (SQL Server uses + and MySQL only has the `CONCAT` function)
-      is StringOperator.startsWith -> xrError("bug: this code should be unreachable")
-      is StringOperator.split -> +"SPLIT"
+//      is StringOperator.startsWith -> xrError("bug: this code should be unreachable")
+//      is StringOperator.split -> +"SPLIT"
       is NumericOperator.minus -> +"-"
       is NumericOperator.plus -> +"+"
       is NumericOperator.mult -> +"*"

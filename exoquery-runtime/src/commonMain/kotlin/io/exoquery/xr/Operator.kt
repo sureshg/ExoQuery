@@ -39,12 +39,13 @@ object NumericOperator {
 // TODO remove these and replace with XR.MethodCall/GlobalCall
 object StringOperator {
   @Serializable data object `+`          : BinaryOperator { override val symbol = "+" }
-  @Serializable data object `startsWith` : BinaryOperator, YieldsBool { override val symbol = "startsWith" }
-  @Serializable data object `split`      : BinaryOperator { override val symbol = "split" }
-  @Serializable data object `toUpperCase`: PostfixUnaryOperator { override val symbol = "toUpperCase" }
-  @Serializable data object `toLowerCase`: PostfixUnaryOperator { override val symbol = "toLowerCase" }
-  @Serializable data object `toLong`     : PostfixUnaryOperator { override val symbol = "toLong" }
-  @Serializable data object `toInt`      : PostfixUnaryOperator { override val symbol = "toInt" }
+// TODO implement these as GlobalCall and MethodCall
+//  @Serializable data object `startsWith` : BinaryOperator, YieldsBool { override val symbol = "startsWith" }
+//  @Serializable data object `split`      : BinaryOperator { override val symbol = "split" }
+//  @Serializable data object `toUpperCase`: PostfixUnaryOperator { override val symbol = "toUpperCase" }
+//  @Serializable data object `toLowerCase`: PostfixUnaryOperator { override val symbol = "toLowerCase" }
+//  @Serializable data object `toLong`     : PostfixUnaryOperator { override val symbol = "toLong" }
+//  @Serializable data object `toInt`      : PostfixUnaryOperator { override val symbol = "toInt" }
 }
 
 
