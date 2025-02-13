@@ -14,6 +14,7 @@ import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.annotation.Dsl
+import io.exoquery.annotation.DslCall
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.parseError
@@ -26,6 +27,8 @@ import io.exoquery.plugin.trees.ExtractorsDomain.Call.`(op)x`
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`x to y`
 import io.exoquery.plugin.trees.ExtractorsDomain.IsSelectFunction
 import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
+import io.exoquery.plugin.trees.ParserContext
+import io.exoquery.util.mkString
 import io.exoquery.xr.*
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
@@ -35,9 +38,12 @@ import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.name.FqName
 
 data class LocationContext(val internalVars: TransformerScope, override val currentFile: IrFile): LocateableContext {
@@ -104,6 +110,7 @@ object QueryParser {
     when {
       // We don't want arbitrary functions returning SqlQuery to be treated as dynamic so we make sure they are annotated with @Dsl
       // this processes everything like that.
+      expr is IrCall && expr.hasAnnotation<DslCall>() -> CallParser.parse(expr).asQuery() ?: parseError("Could not parse the DslCall", expr)
       expr is IrCall && expr.isDslCall() -> parseDslCall(expr) ?: parseError("Could not parse the DSL call", expr)
       else -> {
         on(expr).match<XR.Query>(
@@ -258,6 +265,38 @@ fun IrValueParameter.makeIdent() =
 fun IrFunctionExpression.firstParam() =
   this.function.simpleValueParams[0]
 
+// Parser for GlobalCall and MethodCall
+object CallParser {
+  context(ParserContext, CompileLogger)
+  fun parse(expr: IrCall): XR.Labels.QueryOrExpression {
+    fun parseArg(arg: IrExpression) =
+      when {
+        arg.type.isClass<SqlQuery<*>>() -> QueryParser.parse(arg)
+        else -> ExpressionParser.parse(arg)
+      }
+    fun FqName.toFqNameXR() = run {
+      this.shortNameOrSpecial()
+      XR.FqName(this.pathSegments().joinToString("."), this.shortNameOrSpecial().asString())
+    }
+    fun IrSimpleFunctionSymbol.toFqNameXR() =
+      this.owner.kotlinFqName.toFqNameXR()
+    val reciever = expr.extensionReceiver ?: expr.dispatchReceiver
+
+    return if (reciever != null) {
+      XR.GlobalCall(expr.symbol.toFqNameXR(), expr.simpleValueArgs.map { arg -> arg?.let { parseArg(it) } ?: XR.Const.Null() }, TypeParser.of(expr), expr.loc)
+    } else {
+      XR.MethodCall(
+        head = parseArg(reciever!!),
+        name = expr.symbol.safeName,
+        args = expr.simpleValueArgs.map { arg -> arg?.let { parseArg(it) } ?: XR.Const.Null() },
+        originalHostType = expr.type.classFqName?.toFqNameXR() ?: XR.FqName("", ""),
+        type = TypeParser.of(expr),
+        loc = expr.loc
+      )
+    }
+  }
+
+}
 
 object SelectClauseParser {
   context(ParserContext, CompileLogger) fun processSelectLambda(statementsFromRet: List<IrStatement>, loc: CompilerMessageSourceLocation): SelectClause {
@@ -405,6 +444,10 @@ object ExpressionParser {
 
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Expression =
     on(expr).match<XR.Expression>(
+
+      case(Ir.Call[Is()]).thenIf { it.hasAnnotation<DslCall>() }.then { call ->
+        CallParser.parse(call).asExpr()
+      },
 
       case(Ir.Expr.ClassOf<SqlQuery<*>>()).then { expr ->
         XR.QueryToExpr(QueryParser.parse(expr), expr.loc)

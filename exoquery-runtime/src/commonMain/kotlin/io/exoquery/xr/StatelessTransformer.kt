@@ -38,6 +38,8 @@ interface StatelessTransformer {
   operator fun invoke(xr: XR.Branch): XR.Branch = with(xr) { XR.Branch.csf(invoke(cond), invoke(then))(this) }
   operator fun invoke(xr: XR.Block): XR.Block = with(xr) { Block.csf(stmts.map { invoke(it) }, invoke(output))(this) }
   operator fun invoke(xr: XR.FunctionN): XR.FunctionN = with(xr) { FunctionN.csf(params.map { invokeIdent(it) }, invoke(body))(this) }
+  operator fun invoke(xr: GlobalCall): GlobalCall = with(xr) { GlobalCall.csf(args.map { invoke(it) })(this) }
+  operator fun invoke(xr: MethodCall): MethodCall = with(xr) { MethodCall.csf(invoke(head), args.map { invoke(it) })(this) }
 
   operator fun invoke(xr: XR.Expression): XR.Expression =
     with(xr) {
@@ -56,8 +58,8 @@ interface StatelessTransformer {
         // Infix can both be Expression and Query
         is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type, loc)
         is Aggregation -> Aggregation.csf(op, invoke(expr))(this)
-        is MethodCall -> MethodCall.csf(invoke(head), args.map { invoke(it) })(this)
-        is GlobalCall -> GlobalCall.csf(args.map { invoke(it) })(this)
+        is MethodCall -> invoke(this)
+        is GlobalCall -> invoke(this)
         is QueryToExpr -> QueryToExpr.csf(invoke(head))(this)
 
         is TagForParam -> this
@@ -93,6 +95,8 @@ interface StatelessTransformer {
         is CustomQueryRef -> CustomQueryRef.csf(customQuery.handleStatelessTransform(this@StatelessTransformer))(this)
         is FunctionApply -> FunctionApply.csf(invoke(function), args.map { invoke(it) })(this)
         is Ident -> invokeIdent(this)
+        is GlobalCall -> invoke(this)
+        is MethodCall -> invoke(this)
       }
     }
 }

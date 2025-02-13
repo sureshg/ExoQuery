@@ -2,7 +2,6 @@ package io.exoquery.xr
 
 import io.kotest.core.spec.style.FreeSpec
 import io.exoquery.xr.XR.*
-import io.exoquery.xr.XR
 import io.kotest.matchers.shouldBe
 
 class StatelessTransformerSpec : FreeSpec({
@@ -46,9 +45,9 @@ class StatelessTransformerSpec : FreeSpec({
           SortBy(Entity("a'"), Ident("b"), Ident("c'"), Ordering.AscNullsFirst)
       }
       "aggregation" {
-        val ast: XR = Aggregation(AggregationOperator.`max`, Ident("a"))
+        val ast: XR = Aggregation(OP.`max`, Ident("a"))
         Subject(Ident("a") to Ident("a'"))(ast) shouldBe
-          Aggregation(AggregationOperator.`max`, Ident("a'"))
+          Aggregation(OP.`max`, Ident("a'"))
       }
       "take" {
         val ast: XR = Take(Entity("a"), Ident("b"))
@@ -83,14 +82,14 @@ class StatelessTransformerSpec : FreeSpec({
 
     "expression" - {
       "unary" {
-        val ast: XR = UnaryOp(BooleanOperator.not, Ident("a"))
+        val ast: XR = UnaryOp(OP.not, Ident("a"))
         Subject(Ident("a") to Ident("a'"))(ast) shouldBe
-          UnaryOp(BooleanOperator.not, Ident("a'"))
+          UnaryOp(OP.not, Ident("a'"))
       }
       "binary" {
-        val ast: XR = BinaryOp(Ident("a"), BooleanOperator.and, Ident("b"))
+        val ast: XR = BinaryOp(Ident("a"), OP.and, Ident("b"))
         Subject(Ident("a") to Ident("a'"), Ident("b") to Ident("b'"))(ast) shouldBe
-          BinaryOp(Ident("a'"), BooleanOperator.and, Ident("b'"))
+          BinaryOp(Ident("a'"), OP.and, Ident("b'"))
       }
       //"function apply" {
       //  val fun1 = XR.Function1(Ident("a"), Ident("a"))

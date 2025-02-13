@@ -6,12 +6,12 @@ import io.decomat.customPattern2M
 import io.exoquery.BID
 
 // Can't use || or && chars because they don't work with linuxX64
-infix fun XR.Expression.`+or+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, BooleanOperator.or, other, this.loc)
-infix fun XR.Expression.`+and+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, BooleanOperator.and, other, this.loc)
-infix fun XR.Expression.`+==+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, EqualityOperator.`==`, other, this.loc)
-infix fun XR.Expression.`+!=+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, EqualityOperator.`!=`, other, this.loc)
-infix fun XR.Expression.`+'+'+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, StringOperator.`+`, other, this.loc)
-infix fun XR.Expression.`+++`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, NumericOperator.plus, other, this.loc)
+infix fun XR.Expression.`+or+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.or, other, this.loc)
+infix fun XR.Expression.`+and+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.and, other, this.loc)
+infix fun XR.Expression.`+==+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.`==`, other, this.loc)
+infix fun XR.Expression.`+!=+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.`!=`, other, this.loc)
+infix fun XR.Expression.`+'+'+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.strPlus, other, this.loc)
+infix fun XR.Expression.`+++`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.plus, other, this.loc)
 
 fun XR.Query.swapTags(tagMap: Map<BID, BID>): XR.Query =
   SwapTagsTransformer(tagMap).invoke(this)

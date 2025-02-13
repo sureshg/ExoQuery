@@ -619,6 +619,10 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
               xrError("UnionAll should have been handled by the SetOperationSqlQuery ${this.showRaw()}")
             is XR.FunctionApply, is XR.Ident ->
               xrError("Invalid flattening, should have been beta-reduced already: ${this.showRaw()}")
+
+            // TODO these are supposed to drive isEmpty etc... need to figure out how to handle them here
+            is XR.GlobalCall -> TODO()
+            is XR.MethodCall -> TODO()
           }
         }
       }

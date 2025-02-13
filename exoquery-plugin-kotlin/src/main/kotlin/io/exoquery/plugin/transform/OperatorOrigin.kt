@@ -15,68 +15,68 @@ AggregationOperator.sum -> "sum"
 object UnaryOperators {
   val operators =
     listOf<UnaryOperator>(
-      SetOperator.isEmpty,
-      SetOperator.nonEmpty,
+      OP.isEmpty,
+      OP.nonEmpty,
 //      StringOperator.toInt,
 //      StringOperator.toLong,
 //      StringOperator.toLowerCase,
 //      StringOperator.toUpperCase,
-      BooleanOperator.not,
-      NumericOperator.minus
+      OP.not,
+      OP.minus
     ).map { it -> it.symbolName to it }.toMap()
 
   val UnaryOperator.symbolName: String get() =
     when (this) {
-      SetOperator.isEmpty -> "isEmpty"
-      SetOperator.nonEmpty -> "nonEmpty"
+      OP.isEmpty -> "isEmpty"
+      OP.nonEmpty -> "nonEmpty"
 //      StringOperator.toInt -> "toInt"
 //      StringOperator.toLong -> "toLong"
 //      StringOperator.toLowerCase -> "toLowerCase"
 //      StringOperator.toUpperCase -> "toUpperCase"
-      BooleanOperator.not -> "not"
-      NumericOperator.minus -> "unaryMinus"
+      OP.not -> "not"
+      OP.minus -> "unaryMinus"
     }
 }
 
 object BinaryOperators {
   val operators =
     listOf<BinaryOperator>(
-      StringOperator.`+`,
-      EqualityOperator.`==`,
-      EqualityOperator.`!=`,
-      BooleanOperator.and,
-      BooleanOperator.or,
-      SetOperator.contains,
-      NumericOperator.div,
-      NumericOperator.gt,
-      NumericOperator.gte,
-      NumericOperator.lt,
-      NumericOperator.lte,
-      NumericOperator.minus,
-      NumericOperator.mod,
-      NumericOperator.mult,
-      NumericOperator.plus,
+      OP.strPlus,
+      OP.`==`,
+      OP.`!=`,
+      OP.and,
+      OP.or,
+      OP.contains,
+      OP.div,
+      OP.gt,
+      OP.gte,
+      OP.lt,
+      OP.lte,
+      OP.minus,
+      OP.mod,
+      OP.mult,
+      OP.plus,
 //      StringOperator.split,
 //      StringOperator.startsWith
     ).map { it -> it.symbolName to it }.toMap()
 
   val BinaryOperator.symbolName: String get() =
     when (this) {
-      StringOperator.`+` -> "plus"
-      EqualityOperator.`==` -> IrStatementOrigin.EQEQ.debugName
-      EqualityOperator.`!=` -> IrStatementOrigin.EXCLEQ.debugName // EXCEL == exclamation point
-      BooleanOperator.and -> IrStatementOrigin.ANDAND.debugName
-      BooleanOperator.or -> IrStatementOrigin.OROR.debugName
-      SetOperator.contains -> IrStatementOrigin.IN.debugName
-      NumericOperator.div -> "div"
-      NumericOperator.gt -> "greater"
-      NumericOperator.gte -> "greaterOrEqual"
-      NumericOperator.lt -> "less"
-      NumericOperator.lte -> "lessOrEqual"
-      NumericOperator.minus -> "minus"
-      NumericOperator.mod -> "rem"
-      NumericOperator.mult -> "times"
-      NumericOperator.plus -> "plus"
+      OP.strPlus -> "plus"
+      OP.`==` -> IrStatementOrigin.EQEQ.debugName
+      OP.`!=` -> IrStatementOrigin.EXCLEQ.debugName // EXCEL == exclamation point
+      OP.and -> IrStatementOrigin.ANDAND.debugName
+      OP.or -> IrStatementOrigin.OROR.debugName
+      OP.contains -> IrStatementOrigin.IN.debugName
+      OP.div -> "div"
+      OP.gt -> "greater"
+      OP.gte -> "greaterOrEqual"
+      OP.lt -> "less"
+      OP.lte -> "lessOrEqual"
+      OP.minus -> "minus"
+      OP.mod -> "rem"
+      OP.mult -> "times"
+      OP.plus -> "plus"
 //      StringOperator.split -> "split"
 //      StringOperator.startsWith -> "startsWith"
   }

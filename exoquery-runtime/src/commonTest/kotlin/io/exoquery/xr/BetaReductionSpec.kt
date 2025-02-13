@@ -1,9 +1,7 @@
 package io.exoquery.xr
 
-import io.exoquery.printing.PrintXR
 import io.exoquery.tupleOf
 import io.exoquery.xr.XR.*
-import io.exoquery.xr.XR
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 
@@ -153,23 +151,23 @@ class BetaReductionSpec : FreeSpec({
 
     "functionN" {
       val ast: XR =
-        FunctionN(listOf(Ident("a"), Ident("b")), BinaryOp(Ident("a"), NumericOperator.plus, Ident("b")))
+        FunctionN(listOf(Ident("a"), Ident("b")), BinaryOp(Ident("a"), OP.plus, Ident("b")))
 
-      BetaReduction.ofXR(ast, Ident("a") to Ident("aa")) shouldBe FunctionN(listOf(Ident("aa"), Ident("b")), BinaryOp(Ident("aa"), NumericOperator.plus, Ident("b")))
+      BetaReduction.ofXR(ast, Ident("a") to Ident("aa")) shouldBe FunctionN(listOf(Ident("aa"), Ident("b")), BinaryOp(Ident("aa"), OP.plus, Ident("b")))
     }
   }
 
   "doesn't shadow identifiers" - {
     "function apply" {
       val ast: XR = FunctionApply(
-        FunctionN(listOf(Ident("a"), Ident("b")), BinaryOp(Ident("a"), NumericOperator.div, Ident("b"))),
+        FunctionN(listOf(Ident("a"), Ident("b")), BinaryOp(Ident("a"), OP.div, Ident("b"))),
         listOf(Ident("b"), Ident("a"))
       )
-      BetaReduction.ofXR(ast) shouldBe BinaryOp(Ident("b"), NumericOperator.div, Ident("a"))
+      BetaReduction.ofXR(ast) shouldBe BinaryOp(Ident("b"), OP.div, Ident("a"))
     }
     "nested function apply" {
       // (b) => a/b
-      val f1 = FunctionN(listOf(Ident("b")), BinaryOp(Ident("a"), NumericOperator.div, Ident("b")))
+      val f1 = FunctionN(listOf(Ident("b")), BinaryOp(Ident("a"), OP.div, Ident("b")))
       // (a) => (b) => a/b
       val f2 = FunctionN(listOf(Ident("a")), f1)
       // ((a) => (b) => a/b).apply(b).apply(a) ->
@@ -177,7 +175,7 @@ class BetaReductionSpec : FreeSpec({
       //       b/tmp_b ->
       //         b/a
       val ast: XR = FunctionApply(FunctionApply(f2, listOf(Ident("b"))), listOf(Ident("a")))
-      BetaReduction.ofXR(ast) shouldBe BinaryOp(Ident("b"), NumericOperator.div, Ident("a"))
+      BetaReduction.ofXR(ast) shouldBe BinaryOp(Ident("b"), OP.div, Ident("a"))
     }
   }
 

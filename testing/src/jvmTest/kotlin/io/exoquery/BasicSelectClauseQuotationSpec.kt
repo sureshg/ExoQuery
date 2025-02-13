@@ -3,7 +3,7 @@
 package io.exoquery
 
 import io.exoquery.Ord.*
-import io.exoquery.xr.EqualityOperator
+import io.exoquery.xr.OP
 import io.exoquery.xr.SX
 import io.exoquery.xr.SelectClause
 import io.exoquery.xr.XR
@@ -11,7 +11,6 @@ import io.exoquery.xr.XR.Ordering.TupleOrdering
 import io.exoquery.xr.XR.Product.Companion.TupleSmartN
 import io.exoquery.xr.XR.Expression
 import io.exoquery.xr.XRType
-import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.equals.shouldBeEqual
 
 class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpecGolden, {
@@ -27,8 +26,8 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
   val pIdent = XR.Ident("p", personTpe)
   val rIdent = XR.Ident("r", robotTpe)
   val aIdent = XR.Ident("a", addressTpe)
-  val joinRobot = XR.BinaryOp(XR.Property(pIdent, "id"), EqualityOperator.`==`, XR.Property(rIdent, "ownerId"))
-  val joinAddress = XR.BinaryOp(XR.Property(pIdent, "id"), EqualityOperator.`==`, XR.Property(aIdent, "ownerId"))
+  val joinRobot = XR.BinaryOp(XR.Property(pIdent, "id"), OP.`==`, XR.Property(rIdent, "ownerId"))
+  val joinAddress = XR.BinaryOp(XR.Property(pIdent, "id"), OP.`==`, XR.Property(aIdent, "ownerId"))
 
   infix fun Expression.prop(propName: String): Expression = XR.Property(this, propName)
 
@@ -103,7 +102,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
       people.xr shouldBeEqual SelectClause.of(
         from = listOf(SX.From(pIdent, personEnt)),
         joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
-        where = SX.Where(XR.BinaryOp(XR.Property(pIdent, "name"), EqualityOperator.`==`, XR.Const("Joe"))),
+        where = SX.Where(XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const("Joe"))),
         select = XR.Property(pIdent, "name"),
         type = XRType.Value
       ).toXrRef()

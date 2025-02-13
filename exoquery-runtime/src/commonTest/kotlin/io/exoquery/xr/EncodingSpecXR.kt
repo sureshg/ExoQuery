@@ -48,14 +48,14 @@ class EncodingSpecXR: FreeSpec({
     "BinaryOp" {
       val one = XR.Const.Int(1)
       val two = XR.Const.Int(2)
-      XR.BinaryOp(one, NumericOperator.plus, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
-      XR.BinaryOp(one, NumericOperator.minus, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
-      XR.BinaryOp(one, NumericOperator.mult, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
-      XR.BinaryOp(one, NumericOperator.div, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
+      XR.BinaryOp(one, OP.plus, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
+      XR.BinaryOp(one, OP.minus, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
+      XR.BinaryOp(one, OP.mult, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
+      XR.BinaryOp(one, OP.div, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
     }
     "UnaryOp" {
       val one = XR.Const.Int(1)
-      XR.UnaryOp(NumericOperator.minus, one).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
+      XR.UnaryOp(OP.minus, one).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
     }
     "TagForParam" {
       val xr = XR.TagForParam(BID.Companion.new(), XRType.Value)
@@ -66,7 +66,7 @@ class EncodingSpecXR: FreeSpec({
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Aggregation" {
-      val xr = XR.Aggregation(AggregationOperator.max, XR.Ident("foo", XRType.Value))
+      val xr = XR.Aggregation(OP.max, XR.Ident("foo", XRType.Value))
       xr.encode().decodeXR() shouldBeXR xr
     }
     "MethodCall" {

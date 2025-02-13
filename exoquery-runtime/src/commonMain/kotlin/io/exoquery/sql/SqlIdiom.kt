@@ -3,9 +3,9 @@ package io.exoquery.sql
 import io.exoquery.printing.HasPhasePrinting
 import io.exoquery.util.*
 import io.exoquery.xr.*
-import io.exoquery.xr.EqualityOperator.*
-import io.exoquery.xr.BooleanOperator.and
-import io.exoquery.xr.BooleanOperator.or
+import io.exoquery.xr.OP.*
+import io.exoquery.xr.OP.and
+import io.exoquery.xr.OP.or
 import io.exoquery.xr.XR.BinaryOp
 import io.exoquery.xr.XR.Ordering.*
 import io.exoquery.xr.XR.Visibility.*
@@ -13,7 +13,6 @@ import io.exoquery.xr.XR.JoinType.*
 import io.exoquery.xr.XR.Ident
 import io.exoquery.xr.XR.Const.Null
 import io.exoquery.xrError
-import io.exoquery.xr.XR.Location.Synth
 
 abstract class SqlIdiom: HasPhasePrinting {
 
@@ -406,7 +405,7 @@ abstract class SqlIdiom: HasPhasePrinting {
 //      a is Any && op is StringOperator.`split` && b is Any ->
 //        +"${op.token}(${scopedTokenizer(a)}, ${scopedTokenizer(b)})"
 
-      a is Any && op is SetOperator.`contains` && b is Any -> SetContainsToken(scopedTokenizer(b), op.token, a.token)
+      a is Any && op is OP.`contains` && b is Any -> SetContainsToken(scopedTokenizer(b), op.token, a.token)
       a is Any && op is `and` && b is Any ->
         when {
           // (a1 || a2) && (b1 || b2) i.e. need parens around the a and b
@@ -431,14 +430,14 @@ abstract class SqlIdiom: HasPhasePrinting {
 
   val UnaryOperator.token get(): Token =
     when(this) {
-      is NumericOperator.minus -> +"-"
-      is BooleanOperator.not -> +"NOT"
+      is OP.minus -> +"-"
+      is OP.not -> +"NOT"
 //      is StringOperator.toUpperCase -> +"UPPER"
 //      is StringOperator.toLowerCase -> +"LOWER"
 //      is StringOperator.toLong -> emptyStatement // cast is implicit
 //      is StringOperator.toInt -> emptyStatement // cast is implicit
-      is SetOperator.isEmpty -> +"NOT EXISTS"
-      is SetOperator.nonEmpty -> +"EXISTS"
+      is OP.isEmpty -> +"NOT EXISTS"
+      is OP.nonEmpty -> +"EXISTS"
     }
 
 
@@ -453,11 +452,11 @@ abstract class SqlIdiom: HasPhasePrinting {
 
   val AggregationOperator.token get(): Token =
     when(this) {
-      is AggregationOperator.`min`  -> +"MIN"
-      is AggregationOperator.`max`  -> +"MAX"
-      is AggregationOperator.`avg`  -> +"AVG"
-      is AggregationOperator.`sum`  -> +"SUM"
-      is AggregationOperator.`size` -> +"COUNT"
+      is OP.`min`  -> +"MIN"
+      is OP.`max`  -> +"MAX"
+      is OP.`avg`  -> +"AVG"
+      is OP.`sum`  -> +"SUM"
+      is OP.`size` -> +"COUNT"
     }
 
 //  case AggregationOperator.`min`  => stmt"MIN"
@@ -468,23 +467,23 @@ abstract class SqlIdiom: HasPhasePrinting {
 
   val BinaryOperator.token get(): Token =
     when(this) {
-      is EqualityOperator.`==` -> +"="
-      is EqualityOperator.`!=` -> +"<>"
-      is BooleanOperator.and -> +"AND"
-      is BooleanOperator.or -> +"OR"
-      is StringOperator.`+` -> +"||" // String concat is `||` is most dialects (SQL Server uses + and MySQL only has the `CONCAT` function)
+      is OP.`==` -> +"="
+      is OP.`!=` -> +"<>"
+      is OP.and -> +"AND"
+      is OP.or -> +"OR"
+      is OP.strPlus -> +"||" // String concat is `||` is most dialects (SQL Server uses + and MySQL only has the `CONCAT` function)
 //      is StringOperator.startsWith -> xrError("bug: this code should be unreachable")
 //      is StringOperator.split -> +"SPLIT"
-      is NumericOperator.minus -> +"-"
-      is NumericOperator.plus -> +"+"
-      is NumericOperator.mult -> +"*"
-      is NumericOperator.gt -> +">"
-      is NumericOperator.gte -> +">="
-      is NumericOperator.lt -> +"<"
-      is NumericOperator.lte -> +"<="
-      is NumericOperator.div -> +"/"
-      is NumericOperator.mod -> +"%"
-      is SetOperator.contains -> +"IN"
+      is OP.minus -> +"-"
+      is OP.plus -> +"+"
+      is OP.mult -> +"*"
+      is OP.gt -> +">"
+      is OP.gte -> +">="
+      is OP.lt -> +"<"
+      is OP.lte -> +"<="
+      is OP.div -> +"/"
+      is OP.mod -> +"%"
+      is OP.contains -> +"IN"
     }
 
 

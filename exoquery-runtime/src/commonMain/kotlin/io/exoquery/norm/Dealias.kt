@@ -154,7 +154,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //      case _: Entity | _: Distinct | _: Nested =>
 //        (q, Dealias(None, traceConfig))
 
-        is Entity, is Distinct, is Nested, is FlatFilter, is FlatSortBy, is FlatGroupBy, is Infix, is ExprToQuery, is TagForSqlQuery -> {
+        is Entity, is Distinct, is Nested, is FlatFilter, is FlatSortBy, is FlatGroupBy, is Infix, is ExprToQuery, is TagForSqlQuery, is GlobalCall, is MethodCall -> {
           this to Dealias(null, traceConfig)
         }
 

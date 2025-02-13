@@ -194,6 +194,15 @@ inline fun <reified T> IrElement.hasAnnotation() =
     else -> false
   }
 
+inline fun IrElement.hasAnnotation(fqName: FqName) =
+  when (this) {
+    is IrAnnotationContainer ->
+      this.annotations.any { it.type.classFqName == fqName }
+    is IrSimpleFunction ->
+      this.annotations.any { it.type.classFqName == fqName }
+    else -> false
+  }
+
 inline fun <reified T> IrType.hasAnnotation() =
   this.annotations.any { it.type.classFqName == fqNameOf<T>() }
 

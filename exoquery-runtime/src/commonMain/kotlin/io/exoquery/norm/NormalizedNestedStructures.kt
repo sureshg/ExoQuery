@@ -80,6 +80,8 @@ class NormalizeNestedStructures(val normalize: StatelessTransformer) {
 
         is FunctionApply, is Ident ->
           xrError("Unexpected AST node (these should have already been beta reduced): $this")
+        is GlobalCall -> GlobalCall.cs(args.map { normalize(it) }).nullIfSameAs(q)
+        is MethodCall -> MethodCall.cs(normalize(head), args.map { normalize(it) }).nullIfSameAs(q)
       }
     }
 

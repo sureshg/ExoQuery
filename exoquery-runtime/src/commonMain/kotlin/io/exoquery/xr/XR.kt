@@ -537,11 +537,11 @@ sealed interface XR {
     @Transient override val productComponents = productOf(this, expr)
     override val type by lazy {
       when (op) {
-        AggregationOperator.`min` -> expr.type // TODO since they could be BooleanValue? When adding String etc... to XRType should probably make all of them like this? Or maybe they shuold be removed due to the reason above.
-        AggregationOperator.`max` -> expr.type
-        AggregationOperator.`avg` -> XRType.Value
-        AggregationOperator.`sum` -> XRType.Value
-        AggregationOperator.`size` -> XRType.Value
+        OP.`min` -> expr.type // TODO since they could be BooleanValue? When adding String etc... to XRType should probably make all of them like this? Or maybe they shuold be removed due to the reason above.
+        OP.`max` -> expr.type
+        OP.`avg` -> XRType.Value
+        OP.`sum` -> XRType.Value
+        OP.`size` -> XRType.Value
       }
     }
     companion object {}
@@ -553,7 +553,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class MethodCall(@Slot val head: XR.Expression, val name: String, @Slot val args: List<XR.Expression>, val originalHostType: XR.FqName, override val type: XRType, override val loc: Location = Location.Synth): Expression, PC<MethodCall> {
+  data class MethodCall(@Slot val head: XR.Labels.QueryOrExpression, val name: String, @Slot val args: List<XR.Labels.QueryOrExpression>, val originalHostType: XR.FqName, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<MethodCall> {
     @Transient override val productComponents = productOf(this, head, args)
     companion object {}
     override fun toString() = show()
@@ -564,7 +564,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class GlobalCall(val name: XR.FqName, @Slot val args: List<XR.Expression>, override val type: XRType, override val loc: Location = Location.Synth): Expression, PC<GlobalCall> {
+  data class GlobalCall(val name: XR.FqName, @Slot val args: List<XR.Labels.QueryOrExpression>, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<GlobalCall> {
     @Transient override val productComponents = productOf(this, args)
     companion object {}
     override fun toString() = show()

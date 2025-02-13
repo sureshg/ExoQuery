@@ -124,10 +124,10 @@ val Aggregation.Aggregation get() = this
 fun Aggregation.cs(op: AggregationOperator, expr: XR.Expression) = io.exoquery.xr.XR.Aggregation.csf(op, expr)(this)
 
 val MethodCall.MethodCall get() = this
-fun MethodCall.cs(head: XR.Expression, args: List<XR.Expression>) = io.exoquery.xr.XR.MethodCall.csf(head, args)(this)
+fun MethodCall.cs(head: XR.Labels.QueryOrExpression, args: List<XR.Labels.QueryOrExpression>) = io.exoquery.xr.XR.MethodCall.csf(head, args)(this)
 
 val GlobalCall.GlobalCall get() = this
-fun GlobalCall.cs(args: List<XR.Expression>) = io.exoquery.xr.XR.GlobalCall.csf(args)(this)
+fun GlobalCall.cs(args: List<XR.Labels.QueryOrExpression>) = io.exoquery.xr.XR.GlobalCall.csf(args)(this)
 
 val Ident.Ident get() = this
 fun Ident.cs(name: String) = io.exoquery.xr.XR.Ident.csf(name)(this)

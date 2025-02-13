@@ -129,7 +129,7 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
       is XR.Const.Float -> Tree.Apply("Float", iteratorOf(Tree.Literal("${x.value}", null)), elementName)
 
       //is DistinctKind -> Tree.Literal(x::class.simpleName ?: "BinaryOp?")
-      is Operator -> Tree.Literal(x.symbol, elementName)
+      is OP -> Tree.Literal(x.symbol, elementName)
       //is PC<*> -> Tree.Apply(x::class.simpleName ?: "PC?", run {
       //  when (val pc = x.productComponents) {
       //    is ProductClass0 -> iteratorOf()

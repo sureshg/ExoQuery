@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isTypeParameter
 import org.jetbrains.kotlin.ir.util.superTypes
+import org.jetbrains.kotlin.name.FqName
 
 fun <T> List0() = Is(listOf<T>())
 
@@ -91,6 +92,17 @@ object Ir {
       companion object {
         inline operator fun <reified T> invoke() =
           ClassOf<T>(T::class.qualifiedNameForce)
+      }
+    }
+
+    class HasAnnotation(val annotationName: FqName): Pattern0<IrExpression>(Typed<IrExpression>()) {
+      override fun matches(r: ProductClass<IrExpression>): Boolean =
+        Typed<IrExpression>().typecheck(r.productClassValueUntyped) &&
+          r.productClassValue.hasAnnotation(annotationName)
+
+      companion object {
+        inline operator fun <reified T> invoke() =
+          HasAnnotation(classIdOf<T>().packageFqName)
       }
     }
   }

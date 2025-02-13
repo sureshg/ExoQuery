@@ -4,6 +4,10 @@ import io.exoquery.sql.mkStmt
 import io.exoquery.util.interleaveWith
 import io.exoquery.util.stmt
 import io.exoquery.xr.AggregationOperator
+import io.exoquery.xr.BinaryOperator
+import io.exoquery.xr.OP
+import io.exoquery.xr.PostfixUnaryOperator
+import io.exoquery.xr.PrefixUnaryOperator
 import io.exoquery.xr.SX
 import io.exoquery.xr.SelectClause
 import io.exoquery.xr.XR
@@ -40,7 +44,10 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
   val XR.Ident.token: Token get() = name.token
 
   val XR.JoinType.token: Token get() = simpleName.token
+
+  val BinaryOperator.token: Token get() = symbol.token
   val AggregationOperator.token: Token get() = symbol.token
+
   // stmt"${scopedTokenizer(function)}.apply(${values.token})"
   val XR.FunctionApply.token: Token get() = stmt("${function.tokenScoped}.apply(${args.token { it.token }})")
   val XR.FunctionN.token: Token get() = stmt("{ ${params.map { it.name.token }.mkStmt(", ")} -> ${body.token} }")
@@ -75,23 +82,36 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
       stmt("")
 
   val XR.Ordering.token: Token get() = TODO()
+  val XR.GlobalCall.token: Token get() =
+    stmt("${name.name.token}${suffix().token}(${args.token { it.token }})")
+  val XR.MethodCall.token: Token get() =
+    stmt("${head.tokenScoped}.${name.token}${suffix().token}(${args.token { it.token }})")
 
   val XR.Expression.token: Token get() =
     when (this) {
       is XR.Aggregation -> TODO()
-      is XR.BinaryOp -> TODO()
-      is XR.UnaryOp -> TODO()
+
+      is XR.BinaryOp -> stmt("${a.token} ${op.token} ${b.token}")
+
+      is XR.UnaryOp ->
+        when (op) {
+          is PrefixUnaryOperator -> stmt("${op.symbol.token}${expr.token}")
+          // TODO these are not supposed to be on Expr, they're supposed to be on Query. Replace them with MethodCall/GlobalCall
+          is OP.isEmpty -> stmt("${expr.token}.isEmpty")
+          is OP.nonEmpty -> stmt("${expr.token}.nonEmpty")
+        }
+
       is XR.Block -> TODO()
-      is XR.FunctionN -> this.tokenScoped
-      is XR.GlobalCall -> TODO()
-      is XR.MethodCall ->
-        stmt("${head.tokenScoped}.${name.token}${suffix().token}(${args.token { it.token }})")
+
+      is XR.FunctionN -> this.token
+      is XR.GlobalCall -> this.token
+      is XR.MethodCall -> this.token
       is XR.When ->
         if (this.branches.size == 1)
           // for only one branch, make it a if-statement
           stmt("if (${this.branches.first().cond.token}) ${this.branches.first().then.token} else ${orElse.token}")
         else
-          stmt("when { ${this.branches.map { it.token }.mkStmt("; ").token}; else -> ${orElse.token} }")
+          stmt("when { ${this.branches.map { it.token }.mkStmt("; ").token}; else ->- ${orElse.token} }")
 
       is XR.FunctionApply -> this.token
       is XR.Ident -> this.token
@@ -158,6 +178,8 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
       is XR.Ident -> this.token
       is XR.Infix -> this.token
       is XR.TagForSqlQuery -> stmt("TagQ(${id.value})")
+      is XR.GlobalCall -> this.token
+      is XR.MethodCall -> this.token
     }
 
 // Scala:

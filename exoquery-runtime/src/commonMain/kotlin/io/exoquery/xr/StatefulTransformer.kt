@@ -115,15 +115,8 @@ interface StatefulTransformer<T> {
           val (bodyA, stateA) = invoke(expr)
           Aggregation.cs(op, bodyA) to stateA
         }
-        is MethodCall -> {
-          val (headA, stateA) = invoke(head)
-          val (argsA, stateB) = stateA.applyList(args) { t, v -> t.invoke(v) }
-          MethodCall.cs(headA, argsA) to stateB
-        }
-        is GlobalCall -> {
-          val (argsA, stateA) = applyList(args) { t, v -> t.invoke(v) }
-          GlobalCall.cs(argsA) to stateA
-        }
+        is MethodCall -> invoke(this)
+        is GlobalCall -> invoke(this)
         is QueryToExpr -> {
           val (headA, stateA) = invoke(head)
           QueryToExpr.cs(headA) to stateA
@@ -238,6 +231,8 @@ interface StatefulTransformer<T> {
         }
         is FunctionApply -> invoke(this)
         is Ident -> invokeIdent(this)
+        is GlobalCall -> invoke(this)
+        is MethodCall -> invoke(this)
       }
     }
 
@@ -256,6 +251,19 @@ interface StatefulTransformer<T> {
     with(xr) {
       val (bodyA, stateA) = invoke(body)
       FunctionN.cs(params, bodyA) to stateA
+    }
+
+  operator fun invoke(xr: XR.GlobalCall): Pair<XR.GlobalCall, StatefulTransformer<T>> =
+    with(xr) {
+      val (argsA, stateA) = applyList(args) { t, v -> t.invoke(v) }
+      GlobalCall.cs(argsA) to stateA
+    }
+
+  operator fun invoke(xr: XR.MethodCall): Pair<XR.MethodCall, StatefulTransformer<T>> =
+    with(xr) {
+      val (headA, stateA) = invoke(head)
+      val (argsA, stateB) = stateA.applyList(args) { t, v -> t.invoke(v) }
+      MethodCall.cs(headA, argsA) to stateB
     }
 
   operator fun invoke(xr: XR.FunctionApply): Pair<XR.FunctionApply, StatefulTransformer<T>> =

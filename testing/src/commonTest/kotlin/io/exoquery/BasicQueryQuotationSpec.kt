@@ -1,11 +1,6 @@
 package io.exoquery
 
-import io.exoquery.sql.SqlIdiom
-import io.exoquery.sql.SqlNormalize
-import io.exoquery.xr.`+++`
-import io.exoquery.xr.BinaryOperator
-import io.exoquery.xr.EqualityOperator
-import io.exoquery.xr.NumericOperator
+import io.exoquery.xr.OP
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import io.kotest.core.spec.style.FreeSpec
@@ -65,7 +60,7 @@ class BasicQueryQuotationSpec : FreeSpec({
       val cap0 = capture { Table<Person>() }
       val cap = capture { cap0.filter { p -> p.age > 18 } }
       cap.determinizeDynamics() shouldBeEqual SqlQuery(
-        XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "age"), NumericOperator.gt, XR.Const.Int(18))),
+        XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "age"), OP.gt, XR.Const.Int(18))),
         Runtimes.Empty,
         Params.Empty
       )
@@ -89,8 +84,8 @@ class BasicQueryQuotationSpec : FreeSpec({
         val cap = capture { capA.union(capB) }
         cap.determinizeDynamics() shouldBeEqual SqlQuery(
           XR.Union(
-            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), EqualityOperator.`==`, XR.Const.String("A"))),
-            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), EqualityOperator.`==`, XR.Const.String("B")))
+            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const.String("A"))),
+            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const.String("B")))
           ),
           Runtimes.Empty,
           Params.Empty
@@ -100,8 +95,8 @@ class BasicQueryQuotationSpec : FreeSpec({
         val cap = capture { capA.unionAll(capB) }
         cap.determinizeDynamics() shouldBeEqual SqlQuery(
           XR.UnionAll(
-            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), EqualityOperator.`==`, XR.Const.String("A"))),
-            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), EqualityOperator.`==`, XR.Const.String("B")))
+            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const.String("A"))),
+            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const.String("B")))
           ),
           Runtimes.Empty,
           Params.Empty

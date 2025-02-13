@@ -119,9 +119,9 @@ class StatefulTransformerSpec : FreeSpec({
 //      }
 
       "aggregation" {
-        val ast: XR = Aggregation(AggregationOperator.`max`, Ident("a"))
+        val ast: XR = Aggregation(OP.`max`, Ident("a"))
         Subject(listOf(), Ident("a") to Ident("a'"))(ast).let { (at, att) ->
-            at shouldBe Aggregation(AggregationOperator.`max`, Ident("a'"))
+            at shouldBe Aggregation(OP.`max`, Ident("a'"))
             att.state shouldBe listOf(Ident("a"))
         }
       }
