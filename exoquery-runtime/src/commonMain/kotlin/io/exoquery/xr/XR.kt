@@ -3,6 +3,7 @@ package io.exoquery.xr
 import io.exoquery.xr.id
 import io.exoquery.BID
 import io.exoquery.printing.PrintXR
+import io.exoquery.sql.MirrorIdiom
 import io.exoquery.sql.Token
 import io.exoquery.util.NumbersToWords
 import io.exoquery.util.ShowTree
@@ -75,9 +76,11 @@ sealed interface XR {
   abstract val type: XRType
   abstract val loc: XR.Location
 
-  fun show(pretty: Boolean = false): String {
-    //return PrintXR.BlackWhite.invoke(this).plainText
-    return showRaw()
+  fun show(pretty: Boolean = false, renderOptions: MirrorIdiom.RenderOptions = MirrorIdiom.RenderOptions()): String {
+    val xr: XR = this
+    return with(MirrorIdiom(renderOptions)) {
+      xr.token.toString()
+    }
   }
 
   @Serializable
@@ -550,17 +553,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class MethodCallName(@Slot val name: XR.FqName, @Slot val originalHostType: XR.FqName): PC<MethodCallName> {
-    @Transient override val productComponents = productOf(this, name, originalHostType)
-    companion object {}
-    @Transient private val cid = id()
-    override fun hashCode(): Int = cid.hashCode()
-    override fun equals(other: Any?): Boolean = other is MethodCallName && other.id() == cid
-  }
-
-  @Serializable
-  @Mat
-  data class MethodCall(@Slot val head: XR.Expression, val name: XR.MethodCallName, @Slot val args: List<XR.Expression>, override val type: XRType, override val loc: Location = Location.Synth): Expression, PC<MethodCall> {
+  data class MethodCall(@Slot val head: XR.Expression, val name: String, @Slot val args: List<XR.Expression>, val originalHostType: XR.FqName, override val type: XRType, override val loc: Location = Location.Synth): Expression, PC<MethodCall> {
     @Transient override val productComponents = productOf(this, head, args)
     companion object {}
     override fun toString() = show()

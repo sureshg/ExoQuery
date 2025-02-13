@@ -2,6 +2,8 @@ package io.exoquery.plugin.transform
 
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.settings.ExoCompileOptions
+import io.exoquery.printing.PrintableValue
+import io.exoquery.printing.QueryFileKotlinMaker
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import java.io.File
@@ -106,8 +108,10 @@ class QueryFile(
       return
     }
 
+    fun PrintableQuery.toPrintableValue() = io.exoquery.printing.PrintableValue(query, PrintableValue.Type.SqlQuery, label)
+
     val dumpedQueries = QueryFileKotlinMaker.invoke(
-      currentQueries, codeFilePath.nameWithoutExtension, codeFile.packageFqName.asString()
+      currentQueries.map { it.toPrintableValue() }, codeFilePath.nameWithoutExtension, codeFile.packageFqName.asString()
     )
     val fileExists = Files.exists(srcFile)
 

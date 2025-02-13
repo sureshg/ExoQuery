@@ -70,8 +70,7 @@ class EncodingSpecXR: FreeSpec({
       xr.encode().decodeXR() shouldBeXR xr
     }
     "MethodCall" {
-      val callName = XR.MethodCallName(XR.FqName("foo", "bar"), XR.FqName("baz", "qux"))
-      val xr = XR.MethodCall(XR.Ident("one", XRType.Value), callName, listOf(XR.Ident("two", XRType.Value)), XRType.Value)
+      val xr = XR.MethodCall(XR.Ident("one", XRType.Value), "foo", listOf(XR.Ident("two", XRType.Value)), XR.FqName("a", "b"), XRType.Value)
       xr.encode().decodeXR() shouldBeXR xr
     }
     "GlobalCall" {

@@ -31,7 +31,6 @@ import io.exoquery.xr.XR.FunctionApply
 import io.exoquery.xr.XR.BinaryOp
 import io.exoquery.xr.XR.UnaryOp
 import io.exoquery.xr.XR.Aggregation
-import io.exoquery.xr.XR.MethodCallName
 import io.exoquery.xr.XR.MethodCall
 import io.exoquery.xr.XR.GlobalCall
 import io.exoquery.xr.XR.Ident
@@ -123,9 +122,6 @@ fun UnaryOp.cs(op: UnaryOperator, expr: XR.Expression) = io.exoquery.xr.XR.Unary
 
 val Aggregation.Aggregation get() = this
 fun Aggregation.cs(op: AggregationOperator, expr: XR.Expression) = io.exoquery.xr.XR.Aggregation.csf(op, expr)(this)
-
-val MethodCallName.MethodCallName get() = this
-fun MethodCallName.cs(name: XR.FqName, originalHostType: XR.FqName) = io.exoquery.xr.XR.MethodCallName.csf(name, originalHostType)(this)
 
 val MethodCall.MethodCall get() = this
 fun MethodCall.cs(head: XR.Expression, args: List<XR.Expression>) = io.exoquery.xr.XR.MethodCall.csf(head, args)(this)

@@ -17,10 +17,10 @@ object UnaryOperators {
     listOf<UnaryOperator>(
       SetOperator.isEmpty,
       SetOperator.nonEmpty,
-      StringOperator.toInt,
-      StringOperator.toLong,
-      StringOperator.toLowerCase,
-      StringOperator.toUpperCase,
+//      StringOperator.toInt,
+//      StringOperator.toLong,
+//      StringOperator.toLowerCase,
+//      StringOperator.toUpperCase,
       BooleanOperator.not,
       NumericOperator.minus
     ).map { it -> it.symbolName to it }.toMap()
@@ -29,10 +29,10 @@ object UnaryOperators {
     when (this) {
       SetOperator.isEmpty -> "isEmpty"
       SetOperator.nonEmpty -> "nonEmpty"
-      StringOperator.toInt -> "toInt"
-      StringOperator.toLong -> "toLong"
-      StringOperator.toLowerCase -> "toLowerCase"
-      StringOperator.toUpperCase -> "toUpperCase"
+//      StringOperator.toInt -> "toInt"
+//      StringOperator.toLong -> "toLong"
+//      StringOperator.toLowerCase -> "toLowerCase"
+//      StringOperator.toUpperCase -> "toUpperCase"
       BooleanOperator.not -> "not"
       NumericOperator.minus -> "unaryMinus"
     }
@@ -56,8 +56,8 @@ object BinaryOperators {
       NumericOperator.mod,
       NumericOperator.mult,
       NumericOperator.plus,
-      StringOperator.split,
-      StringOperator.startsWith
+//      StringOperator.split,
+//      StringOperator.startsWith
     ).map { it -> it.symbolName to it }.toMap()
 
   val BinaryOperator.symbolName: String get() =
@@ -77,7 +77,7 @@ object BinaryOperators {
       NumericOperator.mod -> "rem"
       NumericOperator.mult -> "times"
       NumericOperator.plus -> "plus"
-      StringOperator.split -> "split"
-      StringOperator.startsWith -> "startsWith"
+//      StringOperator.split -> "split"
+//      StringOperator.startsWith -> "startsWith"
   }
 }

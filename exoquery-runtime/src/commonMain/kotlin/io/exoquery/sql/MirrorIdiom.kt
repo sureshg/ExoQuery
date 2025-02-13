@@ -10,7 +10,8 @@ import io.exoquery.xr.XR
 import io.exoquery.xr.id
 
 
-class MirrorIdiom {
+class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
+  data class RenderOptions(val showProductConstructorFields: Boolean = true, val showMethodCallSuffixes: Boolean = true)
 
   val <T: XR> T.tokenScoped: Token get() =
     when (this) {
@@ -30,9 +31,11 @@ class MirrorIdiom {
     when (this) {
       is XR.Query -> this.token
       is XR.Expression -> this.token
-      is XR.Branch -> TODO()
-      is XR.Variable -> TODO()
+      is XR.Branch -> this.token
+      is XR.Variable -> stmt("val ${name.token} = ${this.rhs.token}")
     }
+
+  val XR.Branch.token: Token get() = stmt("${cond.token} -> ${then.token}")
 
   val XR.Ident.token: Token get() = name.token
 
@@ -40,9 +43,10 @@ class MirrorIdiom {
   val AggregationOperator.token: Token get() = symbol.token
   // stmt"${scopedTokenizer(function)}.apply(${values.token})"
   val XR.FunctionApply.token: Token get() = stmt("${function.tokenScoped}.apply(${args.token { it.token }})")
+  val XR.FunctionN.token: Token get() = stmt("{ ${params.map { it.name.token }.mkStmt(", ")} -> ${body.token} }")
   val XR.Const.token: Token get() =
     when (this) {
-      is XR.ConstType<*> -> stmt("${value}")
+      is XR.ConstType<*> -> stmt("${value.toString().token}")
       is XR.Const.Null -> stmt("null")
     }
 
@@ -52,32 +56,59 @@ class MirrorIdiom {
       is XR.Expression -> this.token
     }
 
+  fun productKV(k: String, v: XR.Expression): Token =
+    if (renderOpts.showProductConstructorFields)
+      stmt("${k.token} = ${v.token}")
+    else
+      stmt("${v.token}")
+
+  fun XR.MethodCall.suffix() =
+    if (renderOpts.showMethodCallSuffixes)
+      stmt("_MC")
+    else
+      stmt("")
+
+  fun XR.GlobalCall.suffix() =
+    if (renderOpts.showMethodCallSuffixes)
+      stmt("_GC")
+    else
+      stmt("")
+
+  val XR.Ordering.token: Token get() = TODO()
+
   val XR.Expression.token: Token get() =
     when (this) {
       is XR.Aggregation -> TODO()
       is XR.BinaryOp -> TODO()
       is XR.UnaryOp -> TODO()
       is XR.Block -> TODO()
-      is XR.FunctionN -> TODO()
+      is XR.FunctionN -> this.tokenScoped
       is XR.GlobalCall -> TODO()
-      is XR.MethodCall -> TODO()
-      is XR.When -> TODO()
+      is XR.MethodCall ->
+        stmt("${head.tokenScoped}.${name.token}${suffix().token}(${args.token { it.token }})")
+      is XR.When ->
+        if (this.branches.size == 1)
+          // for only one branch, make it a if-statement
+          stmt("if (${this.branches.first().cond.token}) ${this.branches.first().then.token} else ${orElse.token}")
+        else
+          stmt("when { ${this.branches.map { it.token }.mkStmt("; ").token}; else -> ${orElse.token} }")
+
       is XR.FunctionApply -> this.token
       is XR.Ident -> this.token
       is XR.Infix -> this.token
       is XR.Const -> this.token
-      // scala: stmt"${name.token}(${values.map { case (k, v) => s"${k.token}: ${v.token}" }.mkString(", ").token})"
+      // scala: stmt"${name.token}(${values.map { case (k, v) -> s"${k.token}: ${v.token}" }.mkString(", ").token})"
       is XR.Product ->
-        // TODO only show field names if a setting is enabled
-        stmt("${name.token}(${fields.map { (k, v) -> stmt("${k.token}=${v.token}") }.mkStmt()})")
+        // TODO should have a 'showFieldNames' setting to disable display of field-names in products
+        stmt("${name.token}(${fields.map { (k, v) -> productKV(k, v) }.mkStmt()})")
       is XR.Property ->
         stmt("${of.tokenScoped}.${name.token}")
       is XR.QueryToExpr ->
         stmt("${head.token}.toExpr")
       is XR.TagForParam ->
-        stmt("TagParam(${id.value})")
+        stmt("TagP(${id.value})")
       is XR.TagForSqlExpression ->
-        stmt("TagExpr(${id.value})")
+        stmt("TagE(${id.value})")
     }
 
 
@@ -86,17 +117,17 @@ class MirrorIdiom {
       is XR.Entity ->
         stmt("${"Table".token}(${name.token})")
       is XR.Filter ->
-        stmt("${head.token}.filter { ${id.token} => ${body.token} }")
+        stmt("${head.token}.filter { ${id.token} -> ${body.token} }")
       is XR.Map ->
-        stmt("${head.token}.map { ${id.token} => ${body.token} }")
+        stmt("${head.token}.map { ${id.token} -> ${body.token} }")
       is XR.FlatMap ->
-        stmt("${head.token}.flatMap { ${id.token} => ${body.token} }")
+        stmt("${head.token}.flatMap { ${id.token} -> ${body.token} }")
       is XR.ConcatMap ->
-        stmt("${head.token}.concatMap { ${id.token} => ${body.token} }")
+        stmt("${head.token}.concatMap { ${id.token} -> ${body.token} }")
       is XR.SortBy ->
-        stmt("${head.token}.sortBy { ${id.token} => ${criteria.token})(${ordering} }")
+        stmt("${head.token}.sortBy { ${id.token} -> ${criteria.token})(${ordering.token} }")
       is XR.GroupByMap ->
-        stmt("${head.token}.groupByMap(${byAlias.token} => ${byBody.token})(${mapAlias.token} => ${mapBody.token})")
+        stmt("${head.token}.groupByMap(${byAlias.token} -> ${byBody.token})(${mapAlias.token} -> ${mapBody.token})")
       is XR.Aggregation ->
         stmt("${expr.tokenScoped}.${op.token}")
       is XR.Take ->
@@ -108,17 +139,17 @@ class MirrorIdiom {
       is XR.UnionAll ->
         stmt("${a.token}.unionAll(${b.token})")
       is XR.FlatJoin ->
-        stmt("${head.token}.${joinType.token}((${id.token}) => ${on.token})")
+        stmt("${head.token}.${joinType.token}((${id.token}) -> ${on.token})")
       is XR.FlatFilter ->
-        stmt("where(${by})")
+        stmt("where(${by.token})")
       is XR.FlatGroupBy ->
-        stmt("groupBy(${by})")
+        stmt("groupBy(${by.token})")
       is XR.FlatSortBy ->
-        stmt("sortBy(${by})(${ordering})")
+        stmt("sortBy(${by.token})(${ordering.token})")
       is XR.Distinct ->
         stmt("${head.token}.distinct")
       is XR.DistinctOn ->
-        stmt("${head.token}.distinctOn(${id.token} => ${by.token})")
+        stmt("${head.token}.distinctOn(${id.token} -> ${by.token})")
       is XR.Nested ->
         stmt("${head.token}.nested")
       is XR.CustomQueryRef -> this.token
@@ -126,75 +157,75 @@ class MirrorIdiom {
       is XR.FunctionApply -> this.token
       is XR.Ident -> this.token
       is XR.Infix -> this.token
-      is XR.TagForSqlQuery -> stmt("TagQuery(${id.value})")
+      is XR.TagForSqlQuery -> stmt("TagQ(${id.value})")
     }
 
 // Scala:
 //  implicit final def queryTokenizer(implicit externalTokenizer: Tokenizer[External]): Tokenizer[AstQuery] =
 //    Tokenizer[AstQuery] {
 //
-//      case Entity.Opinionated(name, Nil, _, renameable) =>
+//      case Entity.Opinionated(name, Nil, _, renameable) ->
 //        stmt"${tokenizeName("querySchema", renameable).token}(${s""""$name"""".token})"
 //
-//      case Entity.Opinionated(name, prop, _, renameable) =>
-//        val properties = prop.map(p => stmt"""_.${p.path.mkStmt(".")} -> "${p.alias.token}"""")
+//      case Entity.Opinionated(name, prop, _, renameable) ->
+//        val properties = prop.map(p -> stmt"""_.${p.path.mkStmt(".")} -> "${p.alias.token}"""")
 //        stmt"${tokenizeName("querySchema", renameable).token}(${s""""$name"""".token}, ${properties.token})"
 //
-//      case Filter(source, alias, body) =>
-//        stmt"${source.token}.filter(${alias.token} => ${body.token})"
+//      case Filter(source, alias, body) ->
+//        stmt"${source.token}.filter(${alias.token} -> ${body.token})"
 //
-//      case Map(source, alias, body) =>
-//        stmt"${source.token}.map(${alias.token} => ${body.token})"
+//      case Map(source, alias, body) ->
+//        stmt"${source.token}.map(${alias.token} -> ${body.token})"
 //
-//      case FlatMap(source, alias, body) =>
-//        stmt"${source.token}.flatMap(${alias.token} => ${body.token})"
+//      case FlatMap(source, alias, body) ->
+//        stmt"${source.token}.flatMap(${alias.token} -> ${body.token})"
 //
-//      case ConcatMap(source, alias, body) =>
-//        stmt"${source.token}.concatMap(${alias.token} => ${body.token})"
+//      case ConcatMap(source, alias, body) ->
+//        stmt"${source.token}.concatMap(${alias.token} -> ${body.token})"
 //
-//      case SortBy(source, alias, body, ordering) =>
-//        stmt"${source.token}.sortBy(${alias.token} => ${body.token})(${ordering.token})"
+//      case SortBy(source, alias, body, ordering) ->
+//        stmt"${source.token}.sortBy(${alias.token} -> ${body.token})(${ordering.token})"
 //
-//      case GroupBy(source, alias, body) =>
-//        stmt"${source.token}.groupBy(${alias.token} => ${body.token})"
+//      case GroupBy(source, alias, body) ->
+//        stmt"${source.token}.groupBy(${alias.token} -> ${body.token})"
 //
-//      case GroupByMap(source, byAlias, byBody, mapAlias, mapBody) =>
-//        stmt"${source.token}.groupByMap(${byAlias.token} => ${byBody.token})(${mapAlias.token} => ${mapBody.token})"
+//      case GroupByMap(source, byAlias, byBody, mapAlias, mapBody) ->
+//        stmt"${source.token}.groupByMap(${byAlias.token} -> ${byBody.token})(${mapAlias.token} -> ${mapBody.token})"
 //
-//      case Aggregation(op, ast) =>
+//      case Aggregation(op, ast) ->
 //        stmt"${scopedTokenizer(ast)}.${op.token}"
 //
-//      case Take(source, n) =>
+//      case Take(source, n) ->
 //        stmt"${source.token}.take(${n.token})"
 //
-//      case Drop(source, n) =>
+//      case Drop(source, n) ->
 //        stmt"${source.token}.drop(${n.token})"
 //
-//      case Union(a, b) =>
+//      case Union(a, b) ->
 //        stmt"${a.token}.union(${b.token})"
 //
-//      case UnionAll(a, b) =>
+//      case UnionAll(a, b) ->
 //        stmt"${a.token}.unionAll(${b.token})"
 //
-//      case Join(t, a, b, iA, iB, on) =>
-//        stmt"${a.token}.${t.token}(${b.token}).on((${iA.token}, ${iB.token}) => ${on.token})"
+//      case Join(t, a, b, iA, iB, on) ->
+//        stmt"${a.token}.${t.token}(${b.token}).on((${iA.token}, ${iB.token}) -> ${on.token})"
 //
-//      case FlatJoin(t, a, iA, on) =>
-//        stmt"${a.token}.${t.token}((${iA.token}) => ${on.token})"
+//      case FlatJoin(t, a, iA, on) ->
+//        stmt"${a.token}.${t.token}((${iA.token}) -> ${on.token})"
 //
-//      case Distinct(a) =>
+//      case Distinct(a) ->
 //        stmt"${a.token}.distinct"
 //
-//      case DistinctOn(source, alias, body) =>
-//        stmt"${source.token}.distinctOn(${alias.token} => ${body.token})"
+//      case DistinctOn(source, alias, body) ->
+//        stmt"${source.token}.distinctOn(${alias.token} -> ${body.token})"
 //
-//      case Nested(a) =>
+//      case Nested(a) ->
 //        stmt"${a.token}.nested"
 //    }
 
 
   val XR.Infix.token: Token get() = run {
-    val dol = '$'
+    val dol = ('$' + "").token
     fun tokenParam(ast: XR): Token =
       when (ast) {
         is XR.Ident -> stmt("${dol}${ast.token}")
@@ -209,11 +240,11 @@ class MirrorIdiom {
 
 // Scala:
 //  implicit final def infixTokenizer(implicit externalTokenizer: Tokenizer[External]): Tokenizer[Infix] =
-//  Tokenizer[Infix] { case Infix(parts, params, _, _, _) =>
+//  Tokenizer[Infix] { case Infix(parts, params, _, _, _) ->
 //    def tokenParam(ast: Ast) =
 //    ast match {
-//      case ast: Ident => stmt"$$${ast.token}"
-//      case _          => stmt"$${${ast.token}}"
+//      case ast: Ident -> stmt"$$${ast.token}"
+//      case _          -> stmt"$${${ast.token}}"
 //    }
 //
 //    val pt   = parts.map(_.token)
@@ -235,11 +266,11 @@ class MirrorIdiom {
 
   val SX.token: Token get() =
     when (this) {
-      is SX.From -> stmt("val ${variable} = from(${xr});")
-      is SX.Join -> stmt("val ${variable} = ${joinType.simpleName} { ${condition.token} };")
-      is SX.GroupBy -> stmt("groupBy(${grouping});")
-      is SX.SortBy -> stmt("sortBy(${sorting})(${ordering});")
-      is SX.Where -> stmt("where(${condition});")
+      is SX.From -> stmt("val ${variable.token} = from(${xr.token});")
+      is SX.Join -> stmt("val ${variable.token} = ${joinType.simpleName.token} { ${condition.token} };")
+      is SX.GroupBy -> stmt("groupBy(${grouping.token});")
+      is SX.SortBy -> stmt("sortBy(${sorting.token})(${ordering.token});")
+      is SX.Where -> stmt("where(${condition.token});")
     }
 
 }

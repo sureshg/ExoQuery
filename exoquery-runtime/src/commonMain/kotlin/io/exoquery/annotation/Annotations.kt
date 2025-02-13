@@ -32,3 +32,7 @@ annotation class TracesEnabled(vararg val traceType: KClass<out TraceType>)
 @Target(AnnotationTarget.FILE)
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoGoldenOverride
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
+annotation class DslExt

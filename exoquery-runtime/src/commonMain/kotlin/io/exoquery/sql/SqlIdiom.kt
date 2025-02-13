@@ -156,14 +156,15 @@ abstract class SqlIdiom: HasPhasePrinting {
       else -> throw IllegalArgumentException("Unknown global method: ${name.toString()}")
     }
 
+  // TODO needs lots of refinement
   val XR.MethodCall.token get(): Token = run {
     val argsToken = (listOf(head) + args).map { it -> it.token }.mkStmt()
-    +"${tokenizeMethodCallFqName(name.name)}(${argsToken})"
+    +"${head.token}.${name}(${argsToken})"
   }
 
   val XR.GlobalCall.token get(): Token = run {
     val argsToken = args.map { it -> it.token }.mkStmt()
-    +"${tokenizeGlobalCallFqName(name)}(${argsToken})"
+    +"${name.name}(${argsToken})"
   }
 
 

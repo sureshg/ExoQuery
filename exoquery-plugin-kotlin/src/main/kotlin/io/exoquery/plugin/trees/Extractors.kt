@@ -483,10 +483,10 @@ object Ir {
     object FunctionMem0 {
       object WithCaller {
         // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
-        context(CompileLogger) operator fun <AP : Pattern<A>, A : ReceiverCaller> get(x: AP): Pattern1<AP, A, IrCall> =
+        context(CompileLogger) operator fun <AP : Pattern<A>, MP: Pattern<String>, A : ReceiverCaller> get(x: AP, y: MP): Pattern1<AP, A, IrCall> =
           customPattern1("Ir.Call.FunctionMem0.WithCaller", x) { it: IrCall ->
             val reciever = it.caller()
-            if (reciever != null && it.simpleValueArgs.size == 0) {
+            if (reciever != null && it.simpleValueArgs.size == 0 && y.matchesAny(it.symbol.safeName)) {
               Components1(reciever)
             } else {
               null

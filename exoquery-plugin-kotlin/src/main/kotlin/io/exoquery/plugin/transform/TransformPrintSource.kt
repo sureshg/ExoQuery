@@ -4,7 +4,9 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.match
 import io.decomat.on
+import io.exoquery.annotation.DslExt
 import io.exoquery.parseError
+import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
@@ -17,6 +19,7 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.declarations.path
 import org.jetbrains.kotlin.ir.expressions.IrBlock
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrCall
@@ -34,12 +37,9 @@ class TransformPrintSource(
 ): Transformer<IrCall>() {
   private val compileLogger = ctx.logger
 
-  private val printSourceFqn: String = "io.exoquery.printSource"
-
   context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
-    expression.symbol.owner.kotlinFqName.asString()
-      .let { it == printSourceFqn }
+    expression.symbol.owner.hasAnnotation<DslExt>()
 
   sealed interface MatchedType {
     data class Multi(val irs: IrBlockBody): MatchedType
@@ -47,27 +47,32 @@ class TransformPrintSource(
   }
 
   context(LocationContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrCall): IrExpression {
-    val argsRaw =
+  override fun transformBase(expression: IrCall): IrExpression =
       with(compileLogger) {
-        on(expression).match(
-          case(Ir.Call.FunctionUntethered1.Arg[Ir.FunctionExpression.withReturnOnlyBlock[Is()]]).then { (ret) ->
-
-            //ret.match(
-            //  case(Ir.Call.FunctionMem0[Ir.Type.ClassOf<io.exoquery.Runtimes.Companion>(), Is("Empty")]).then { expr, _ ->
-            //    error("================== Matched Call to Empty ==================\n" + expr.dumpKotlinLike() + "\n--------------------------\n" + expr.dumpSimple())
-            //  },
-            //)
-
-            MatchedType.Single(ret)
-          },
-          // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
-          case(Ir.Call.FunctionUntethered1.Arg[Ir.FunctionExpression.withBlock[Is(), Is()]]).then { (_, args) ->
-            MatchedType.Multi(args)
-          }
-        )
+        with (ctx.makeLifter()) {
+          on(expression).match(
+            case(Ir.Call.FunctionUntethered1[Is("io.exoquery.printSource"), Ir.FunctionExpression.withReturnOnlyBlock[Is()]]).then { _, (ret) ->
+              transformPrintSource(MatchedType.Single(ret))
+            },
+            // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
+            case(Ir.Call.FunctionUntethered1[Is("io.exoquery.printSource"), Ir.FunctionExpression.withBlock[Is(), Is()]]).then { _, (_, args) ->
+              transformPrintSource(MatchedType.Multi(args))
+            },
+            case(Ir.Call.FunctionUntethered0[Is("currentSourceFile")]).then {
+              currentFileRaw.path.lift()
+            },
+            case(Ir.Call.FunctionMem0.WithCaller[Is(), Is("ExoGoldenTest")]).then { caller ->
+              caller.call("ExoGoldenTestExpr").invoke(currentFileRaw.path.lift())
+            },
+            case(Ir.Call.FunctionMem0.WithCaller[Is(), Is("ExoGoldenOverride")]).then { caller ->
+              caller.call("ExoGoldenOverrideExpr").invoke(currentFileRaw.path.lift())
+            }
+          )
+        }
       } ?: parseError("Parsing Failed\n================== The expresson was not a Global Function (with one argument-block): ==================\n" + expression.dumpKotlinLike() + "\n--------------------------\n" + expression.dumpSimple())
 
+  context(LocationContext, BuilderContext, CompileLogger)
+  fun transformPrintSource(argsRaw: MatchedType) = run {
     val args = when(argsRaw) {
       is MatchedType.Single ->
         argsRaw.copy(superTransformer.visitExpression(argsRaw.ir))
@@ -88,12 +93,11 @@ class TransformPrintSource(
 
     compileLogger.warn(message)
 
-    return with(ctx.builder) {
+    with(ctx.builder) {
       this.irCall(printSourceExpr).apply {
         putValueArgument(0, irString(message))
       }
     }
   }
-
 
 }

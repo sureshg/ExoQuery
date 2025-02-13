@@ -5,7 +5,9 @@ import io.exoquery.sql.StringToken
 import io.exoquery.sql.Token
 import io.exoquery.sql.token
 import io.exoquery.terpal.Interpolator
+import io.exoquery.terpal.InterpolatorBackend
 import io.exoquery.terpal.InterpolatorFunction
+import io.exoquery.terpal.InterpolatorWithWrapper
 
 @InterpolatorFunction<stmt>(stmt::class)
 operator fun String.unaryPlus(): Statement = error("THe unaryPlus interpolator was not inlined by the compiler plugin. Is Terpal on the plugin path?")
@@ -13,8 +15,10 @@ operator fun String.unaryPlus(): Statement = error("THe unaryPlus interpolator w
 val emptyStatement: Statement    = +""
 val externalStatement: Statement = +"?"
 
-object stmt: Interpolator<Token, Statement> {
-  override fun interpolate(parts: () -> List<String>, params: () -> List<Token>): Statement {
+object stmt: InterpolatorWithWrapper<Token, Statement> {
+  public operator fun invoke(string: kotlin.String): Statement = error("The invoke function was not inlined by the compiler plugin. Is Terpal on the plugin path?")
+
+  @InterpolatorBackend fun interpolate(parts: () -> List<String>, params: () -> List<Token>): Statement {
     //checkLengths(args, sc.parts)
     val partsIterator = parts().iterator()
     val argsIterator  = params().iterator()
@@ -79,6 +83,15 @@ object stmt: Interpolator<Token, Statement> {
     return output
   }
 
+  override fun inlined(value: String?): Token = value?.token ?: "null".token
+  override fun wrap(value: String?): Token =  value?.token ?: "null".token
+  override fun wrap(value: Int?): Token = value?.toString()?.token ?: "null".token
+  override fun wrap(value: Long?): Token = value?.toString()?.token ?: "null".token
+  override fun wrap(value: Short?): Token = value?.toString()?.token ?: "null".token
+  override fun wrap(value: Byte?): Token = value?.toString()?.token ?: "null".token
+  override fun wrap(value: Float?): Token = value?.toString()?.token ?: "null".token
+  override fun wrap(value: Double?): Token = value?.toString()?.token ?: "null".token
+  override fun wrap(value: Boolean?): Token = value?.toString()?.token ?: "null".token
 }
 
 inline fun <A, R, R1> ((A) -> R).andThen(crossinline f: (R) -> R1): (A) -> R1 =
