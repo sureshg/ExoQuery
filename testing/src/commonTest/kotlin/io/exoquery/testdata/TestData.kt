@@ -1,6 +1,5 @@
 package io.exoquery.testdata
 
-import io.exoquery.Table
 import io.exoquery.capture
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType

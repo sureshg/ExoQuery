@@ -7,7 +7,6 @@ object PT {
   val io_exoquery_unpackExpr = "io.exoquery.unpackExpr"
   val io_exoquery_SqlQuery = "io.exoquery.SqlQuery"
   val io_exoquery_SqlExpression = "io.exoquery.SqlExpression"
-  val io_exoquery_Table = "io.exoquery.Table"
   // this matches the function-call Runtimes.Empty which is needed for an SqlQuery/SqlExpression to be uprootable
   val EmptyRuntimes = "Empty"
 }

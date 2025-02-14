@@ -250,11 +250,12 @@ object QueryParser {
           else -> parseErrorSym(this)
         }
       },
-      case(Ir.Call.FunctionUntethered0[Is(PT.io_exoquery_Table)]).thenThis { _ ->
+      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<CapturedBlock>(), Is("Table")]).thenThis { _, _ ->
         val tpe = TypeParser.ofTypeAt(this.typeArguments[0] ?: parseError("Type arguemnt of Table() call was not found>"), this.location())
         val tpeProd = tpe as? XRType.Product ?: parseError("Table<???>() call argument type must be a data-class, but was: ${tpe}", expr)
         XR.Entity(tpeProd.name, tpeProd, expr.locationXR())
       },
+      // This is the select defined in the capture-block (that returns SqlQuery<T> as opposed to the top-level one which returns @Captured SqlQuery<T>.
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is("select"), Ir.FunctionExpression[Is()]]).thenThis { _, (selectLambda) ->
         XR.CustomQueryRef(SelectClauseParser.parseSelectLambda(selectLambda))
       },

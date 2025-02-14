@@ -59,9 +59,9 @@ interface CapturedBlock {
 
   // Used in groupBy and various other places to convert query to an expression
   @Dsl fun <T> SqlQuery<T>.value(): SqlExpression<T> = errorCap("The `value` expression of the Query was not inlined")
-}
 
-@Dsl fun <T> Table(): SqlQuery<T> = errorCap("The `Table<T>` constructor function was not inlined")
+  @Dsl fun <T> Table(): SqlQuery<T> = errorCap("The `Table<T>` constructor function was not inlined")
+}
 
 sealed interface Ord {
   @Dsl object Asc: Ord
