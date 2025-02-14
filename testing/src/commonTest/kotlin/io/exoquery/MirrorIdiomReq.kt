@@ -2,11 +2,14 @@ package io.exoquery
 
 import io.exoquery.xr.`+==+`
 import io.exoquery.xr.OP
+import io.exoquery.xr.SX
+import io.exoquery.xr.SelectClause
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 
-class MirrorContextSpec: GoldenSpecDynamic(MirrorContextSpecGolden, Mode.ExoGoldenOverride(), {
+class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGoldenTest(), {
   val personEnt = XR.Entity("Person", XRType.Product.leaf("Person", "name", "age"))
+  val addressEnt = XR.Entity("Address", XRType.Product.leaf("Address", "street", "city"))
   infix fun String.dot(other: String): XR.Property = XR.Property(this.id, other)
 
   "XR.Expression" - {
@@ -43,11 +46,11 @@ class MirrorContextSpec: GoldenSpecDynamic(MirrorContextSpecGolden, Mode.ExoGold
     "XR.FunctionApply" {
       shouldBeGolden(XR.FunctionApply(XR.Ident("foo"), listOf(XR.Ident("bar"), XR.Ident("baz"))))
     }
-    "XR.FunctionApply" {
+    "XR.FunctionApply - FunctionN" {
       val myFun = XR.FunctionN(listOf(XR.Ident("a"), XR.Ident("b")), XR.Ident("c"))
       shouldBeGolden(XR.FunctionApply(myFun, listOf(XR.Ident("bar"), XR.Ident("baz"))))
     }
-    "XR.FunctionApply - scoped" {
+    "XR.FunctionApply - Scoped" {
       shouldBeGolden(XR.FunctionApply(XR.Ident("a") `+==+` XR.Ident("b"), listOf(XR.Ident("bar"), XR.Ident("baz"))))
     }
     "XR.UnaryOp" {
@@ -134,6 +137,30 @@ class MirrorContextSpec: GoldenSpecDynamic(MirrorContextSpecGolden, Mode.ExoGold
     "XR.ConcatMap" {
       shouldBeGolden(XR.ConcatMap(personEnt, "p".id, "p" dot "name"))
     }
-
+    "XR.Nested" {
+      shouldBeGolden(XR.Nested(personEnt))
+    }
+    "XR.ExprToQuery" {
+      shouldBeGolden(XR.ExprToQuery(XR.Ident("foo")))
+    }
+    "XR.Infix" {
+      shouldBeGolden(XR.Infix(listOf("a", "b", "c"), listOf(XR.Ident("foo"), XR.Ident("bar"), XR.Ident("baz")), true, true, XRType.Value))
+    }
+    "XR.TagForSqlQuery" {
+      shouldBeGolden(XR.TagForSqlQuery(BID("foo"), XRType.Value))
+    }
+    "XR.CustomQueryRef - SelectValue" {
+      shouldBeGolden(XR.CustomQueryRef(
+        SelectClause(
+          listOf(SX.From("p".id, personEnt)),
+          listOf(SX.Join(XR.JoinType.Inner, "p".id, addressEnt, "a".id, ("p" dot "name") `+==+` ("a" dot "street"))),
+          SX.Where("p" dot "age" `+==+` XR.Const.Int(42)),
+          SX.GroupBy("p" dot "name"),
+          SX.SortBy("p" dot "name", XR.Ordering.Asc),
+          "p" dot "name",
+          XRType.Value
+        )
+      ))
+    }
   }
 })

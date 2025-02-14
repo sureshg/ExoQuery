@@ -3,7 +3,7 @@ package io.exoquery
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object MirrorContextSpecGolden: GoldenQueryFile {
+object MirrorIdiomReqGoldenDynamic: GoldenQueryFile {
   override val queries = mapOf<String, String>(
     "XR.Expression/XR.Ident" to kt(
       "foo"
@@ -51,13 +51,13 @@ object MirrorContextSpecGolden: GoldenQueryFile {
       "{ foo, bar -> baz }"
     ),
     "XR.Expression/XR.FunctionApply" to kt(
-      "foo.apply(listOf(bar, baz))"
+      "foo.apply(bar, baz)"
     ),
-    "XR.Expression/XR.FunctionApply" to kt(
-      "{ a, b -> c }.apply(listOf(bar, baz))"
+    "XR.Expression/XR.FunctionApply - FunctionN" to kt(
+      "{ a, b -> c }.apply(bar, baz)"
     ),
-    "XR.Expression/XR.FunctionApply - scoped" to kt(
-      "(a == b).apply(listOf(bar, baz))"
+    "XR.Expression/XR.FunctionApply - Scoped" to kt(
+      "(a == b).apply(bar, baz)"
     ),
     "XR.Expression/XR.UnaryOp" to kt(
       "-foo"
@@ -78,10 +78,10 @@ object MirrorContextSpecGolden: GoldenQueryFile {
       "max(foo)"
     ),
     "XR.Expression/XR.MethodCall" to kt(
-      "foo.method_MC(listOf(bar, baz))"
+      "foo.method_MC(bar, baz)"
     ),
     "XR.Expression/XR.GlobalCall" to kt(
-      "method_GC(listOf(bar, baz))"
+      "method_GC(bar, baz)"
     ),
     "XR.Expression/XR.QueryToExpr" to kt(
       "Table(Person).toExpr"
@@ -139,6 +139,21 @@ object MirrorContextSpecGolden: GoldenQueryFile {
     ),
     "XR.Query/XR.ConcatMap" to kt(
       "Table(Person).concatMap { p -> p.name }"
+    ),
+    "XR.Query/XR.Nested" to kt(
+      "Table(Person).nested"
+    ),
+    "XR.Query/XR.ExprToQuery" to kt(
+      "foo.toQuery"
+    ),
+    "XR.Query/XR.Infix" to kt(
+      """sql("a, ${'$'}foo, b, ${'$'}bar, c, ${'$'}baz")"""
+    ),
+    "XR.Query/XR.TagForSqlQuery" to kt(
+      "TagQ(foo)"
+    ),
+    "XR.Query/XR.CustomQueryRef - SelectValue" to kt(
+      "select { val p = from(Table(Person)); val p = join(Table(Address)) { p.name == a.street }; where(p.age == 42); groupBy(p.name); sortBy(Asc)(p.name) }"
     ),
   )
 }

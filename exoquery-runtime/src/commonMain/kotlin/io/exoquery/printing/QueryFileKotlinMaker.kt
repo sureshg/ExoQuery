@@ -68,7 +68,7 @@ object QueryFileKotlinMaker {
          |import io.exoquery.printing.cr
          |import io.exoquery.printing.kt
          |
-         |object ${fileName}Golden: GoldenQueryFile {
+         |object ${fileName}: GoldenQueryFile {
          |  override val queries = mapOf<String, String>(
          |$fileBody
          |  )

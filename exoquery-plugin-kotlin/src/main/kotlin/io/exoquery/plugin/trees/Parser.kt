@@ -27,8 +27,6 @@ import io.exoquery.plugin.trees.ExtractorsDomain.Call.`(op)x`
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`x to y`
 import io.exoquery.plugin.trees.ExtractorsDomain.IsSelectFunction
 import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
-import io.exoquery.plugin.trees.ParserContext
-import io.exoquery.util.mkString
 import io.exoquery.xr.*
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
@@ -87,6 +85,13 @@ object Parser {
 
   context(LocationContext, CompileLogger) fun parseValueParamter(expr: IrValueParameter): XR.Ident =
     with (newParserCtx()) { expr.makeIdent() }
+
+  context(ParserContext, CompileLogger)
+  internal fun parseArg(arg: IrExpression) =
+    when {
+      arg.type.isClass<SqlQuery<*>>() -> QueryParser.parse(arg)
+      else -> ExpressionParser.parse(arg)
+    }
 }
 
 object QueryParser {
@@ -144,10 +149,8 @@ object QueryParser {
                   XR.TagForSqlQuery(bid, TypeParser.of(sqlQueryExpr), expr.loc)
                 }
               ) ?: parseError("Could not parse the SqlQuery from the scaffold call", sqlQueryExpr)
-            val otherArgs = args.drop(1).map { arg -> arg?.let { ExpressionParser.parse(it) } ?: XR.Const.Null(callExpr.loc) }
-            val out = XR.FunctionApply(warppedQueryCall, otherArgs, expr.loc)
-            //error("-------------- Returning: ${out.showRaw()}")
-            out
+            val parsedArgs = args.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null(callExpr.loc) }
+            XR.FunctionApply(warppedQueryCall, parsedArgs, expr.loc)
           },
 
           case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym->
@@ -269,11 +272,6 @@ fun IrFunctionExpression.firstParam() =
 object CallParser {
   context(ParserContext, CompileLogger)
   fun parse(expr: IrCall): XR.Labels.QueryOrExpression {
-    fun parseArg(arg: IrExpression) =
-      when {
-        arg.type.isClass<SqlQuery<*>>() -> QueryParser.parse(arg)
-        else -> ExpressionParser.parse(arg)
-      }
     fun FqName.toFqNameXR() = run {
       this.shortNameOrSpecial()
       XR.FqName(this.pathSegments().joinToString("."), this.shortNameOrSpecial().asString())
@@ -283,12 +281,12 @@ object CallParser {
     val reciever = expr.extensionReceiver ?: expr.dispatchReceiver
 
     return if (reciever != null) {
-      XR.GlobalCall(expr.symbol.toFqNameXR(), expr.simpleValueArgs.map { arg -> arg?.let { parseArg(it) } ?: XR.Const.Null() }, TypeParser.of(expr), expr.loc)
+      XR.GlobalCall(expr.symbol.toFqNameXR(), expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() }, TypeParser.of(expr), expr.loc)
     } else {
       XR.MethodCall(
-        head = parseArg(reciever!!),
+        head = Parser.parseArg(reciever!!),
         name = expr.symbol.safeName,
-        args = expr.simpleValueArgs.map { arg -> arg?.let { parseArg(it) } ?: XR.Const.Null() },
+        args = expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() },
         originalHostType = expr.type.classFqName?.toFqNameXR() ?: XR.FqName("", ""),
         type = TypeParser.of(expr),
         loc = expr.loc

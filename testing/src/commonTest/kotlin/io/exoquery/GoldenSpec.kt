@@ -58,11 +58,13 @@ abstract class GoldenSpecDynamic(val goldenQueries: GoldenQueryFile, val mode: M
     }
 
   fun complete() {
+    fun isNotSep(c: Char) = c != '/' && c != '\\'
     if (mode is Mode.ExoGoldenOverride) {
-      val fileName = mode.fileName.dropLastWhile {it != '.'}.dropLast(1).takeLastWhile {it != '/' && it != '\\' && it != '.'}
+      val fileNameBase = mode.fileName.dropLastWhile {it != '.'}.dropLast(1).takeLastWhile { isNotSep(it) }
+      val fileName = fileNameBase + "GoldenDynamic"
       val fileContent = QueryFileKotlinMaker.invoke(outputQueries, fileName, "io.exoquery")
       println("========================= Generated Override File: ${mode.fileName} =========================\n" + fileContent)
-      writeToFile(mode.fileName, fileContent)
+      writeToFile(mode.fileName, fileName, fileContent)
     }
   }
 

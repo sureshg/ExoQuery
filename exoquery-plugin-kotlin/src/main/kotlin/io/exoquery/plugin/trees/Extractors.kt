@@ -598,7 +598,7 @@ object Ir {
       context (CompileLogger) operator fun <AP : Pattern<A>, MP : Pattern<String>, BP : Pattern<B>, A: IrExpression, B: IrExpression> get(m: MP, x: AP, y: BP): Pattern2<AP, BP, A, B, IrCall> =
         customPattern2("Ir.Call.FunctionUntethered2", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
-          if (reciever == null && it.simpleValueArgs.size == 2 && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.safeName)) {
+          if (reciever == null && it.simpleValueArgs.size == 2 && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.fullName)) {
             Components2(it.simpleValueArgs.first(), it.simpleValueArgs.get(1))
           } else {
             null

@@ -118,9 +118,14 @@ class VisitTransformExpressions(
     val transformerCtx = TransformerOrigin(context, config, this.currentFile, data, exoOptions)
     val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
     val transformProjectCapture = TransformProjectCapture(builderContext, this)
+    val transformScaffoldAnnotatedFunctionCall = TransformScaffoldAnnotatedFunctionCall(builderContext, this)
 
     return catchErrors(builderContext, expression) {
       when {
+        // If it is a call that needs to be scaffolded need to recurse into it as a priority (it will call superTransformer recursively and transformProjectCapture will be called on SqlQuery/SqlExpression clauses inside)
+        expression is IrCall && transformScaffoldAnnotatedFunctionCall.matches(expression) ->
+          transformScaffoldAnnotatedFunctionCall.transform(expression)
+
         transformProjectCapture.matches(expression) ->
           transformProjectCapture.transform(expression) ?: run {
             // In many situations where the capture cannot be projected e.g.

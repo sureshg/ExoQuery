@@ -70,6 +70,12 @@ object AttachToEntity {
         this is XR.SortBy && head.isEntity() -> SortBy.cs(f(head, id), id, criteria, ordering)
         this is XR.DistinctOn && head.isEntity() -> DistinctOn.cs(f(head, id), id, by)
 
+        this is XR.Union || this is XR.UnionAll || this is XR.FlatJoin || this is XR.FlatFilter || this is XR.FlatSortBy || this is XR.FlatGroupBy -> f(this, alias ?: XR.Ident("x", type, loc))
+
+        // Scala:
+        //_: Union | _: UnionAll | _: FlatJoin =>
+        // f(q, alias.getOrElse(Ident("x", q.quat)))
+
         this is XR.Map -> Map.cs(applyWithId(f, id, nextId + 1)(head), id, body)
         this is XR.FlatMap -> FlatMap.cs(applyWithId(f, id, nextId + 1)(head), id, body)
         this is XR.ConcatMap -> ConcatMap.cs(applyWithId(f, id, nextId + 1)(head), id, body)

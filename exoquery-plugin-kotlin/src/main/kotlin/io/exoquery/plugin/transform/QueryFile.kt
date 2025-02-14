@@ -111,7 +111,7 @@ class QueryFile(
     fun PrintableQuery.toPrintableValue() = io.exoquery.printing.PrintableValue(query, PrintableValue.Type.SqlQuery, label)
 
     val dumpedQueries = QueryFileKotlinMaker.invoke(
-      currentQueries.map { it.toPrintableValue() }, codeFilePath.nameWithoutExtension, codeFile.packageFqName.asString()
+      currentQueries.map { it.toPrintableValue() }, codeFilePath.nameWithoutExtension + "Golden", codeFile.packageFqName.asString()
     )
     val fileExists = Files.exists(srcFile)
 

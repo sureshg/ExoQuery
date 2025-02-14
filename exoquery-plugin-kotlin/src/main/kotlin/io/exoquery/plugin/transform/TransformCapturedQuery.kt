@@ -59,7 +59,9 @@ class TransformCapturedQuery(override val ctx: BuilderContext, val superTransfor
       val body = superTransformer.visitExpression(bodyExpr)
 
       // TODO Needs to convey SourceLocation coordinates, think I did this in terpal-sql somehow
-      Parser.parseQuery(body)
+      val p = Parser.parseQuery(body)
+      //warn("------------ Parsed Query: ------------\n${p.first.showRaw()}\n--------------------------\n${body.dumpSimple()}")
+      p
     }
   }
 }

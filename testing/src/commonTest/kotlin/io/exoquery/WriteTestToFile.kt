@@ -1,3 +1,3 @@
 package io.exoquery
 
-expect fun writeToFile(fileName: String, contents: String)
+expect fun writeToFile(originalFilePath: String, newFileName: String, contents: String)

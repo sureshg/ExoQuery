@@ -51,7 +51,7 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
   val AggregationOperator.token: Token get() = symbol.token
 
   // stmt"${scopedTokenizer(function)}.apply(${values.token})"
-  val XR.FunctionApply.token: Token get() = stmt("${function.tokenScoped}.apply(${args.token { it.token }})")
+  val XR.FunctionApply.token: Token get() = stmt("${function.tokenScoped}.apply(${args.map { it.token }.mkStmt(", ")})")
   val XR.FunctionN.token: Token get() = stmt("{ ${params.map { it.name.token }.mkStmt(", ")} -> ${body.token} }")
   val XR.Const.token: Token get() =
     when (this) {
@@ -86,9 +86,9 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
   val XR.Ordering.token: Token get() = (this::class.simpleName ?: "UNKNOWN").token
 
   val XR.GlobalCall.token: Token get() =
-    stmt("${name.name.token}${suffix().token}(${args.token { it.token }})")
+    stmt("${name.name.token}${suffix().token}(${args.map { it.token }.mkStmt(", ")})")
   val XR.MethodCall.token: Token get() =
-    stmt("${head.tokenScoped}.${name.token}${suffix().token}(${args.token { it.token }})")
+    stmt("${head.tokenScoped}.${name.token}${suffix().token}(${args.map { it.token }.mkStmt(", ")})")
 
   val XR.Expression.token: Token get() =
     when (this) {
@@ -281,19 +281,20 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
   // ----------------- Tokenizer for SelectClause and its fields -----------------
   val XR.CustomQueryRef.token: Token get() =
     when (this.customQuery) {
-      is SelectClause -> this.token
+      is SelectClause -> customQuery.token
       else -> stmt("CustomQueryRef(${this.customQuery.toString()})")
     }
 
-  val SelectClause.token: Token get() = TODO()
+  val SelectClause.token: Token get() =
+    stmt("select { ${allComponents().map { it.token }.mkStmt("; ")} }")
 
   val SX.token: Token get() =
     when (this) {
-      is SX.From -> stmt("val ${variable.token} = from(${xr.token});")
-      is SX.Join -> stmt("val ${variable.token} = ${joinType.simpleName.token} { ${condition.token} };")
-      is SX.GroupBy -> stmt("groupBy(${grouping.token});")
-      is SX.SortBy -> stmt("sortBy(${ordering.token})(${sorting.token});")
-      is SX.Where -> stmt("where(${condition.token});")
+      is SX.From -> stmt("val ${variable.token} = from(${xr.token})")
+      is SX.Join -> stmt("val ${variable.token} = ${joinType.simpleName.token}(${onQuery.token}) { ${condition.token} }")
+      is SX.GroupBy -> stmt("groupBy(${grouping.token})")
+      is SX.SortBy -> stmt("sortBy(${ordering.token})(${sorting.token})")
+      is SX.Where -> stmt("where(${condition.token})")
     }
 
 }
