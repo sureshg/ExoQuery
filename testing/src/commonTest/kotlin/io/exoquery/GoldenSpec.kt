@@ -4,10 +4,7 @@ import io.exoquery.annotation.DslExt
 import io.exoquery.printing.PrintableValue
 import io.exoquery.printing.QueryFileKotlinMaker
 import io.exoquery.xr.XR
-import io.kotest.assertions.print.Print
-import io.kotest.core.spec.AfterSpec
 import io.kotest.core.spec.DslDrivenSpec
-import io.kotest.core.spec.Spec
 import io.kotest.core.spec.style.scopes.FreeSpecRootScope
 import io.kotest.core.test.TestCase
 import io.kotest.core.test.TestScope
@@ -21,10 +18,10 @@ sealed interface Mode {
   companion object {
     // TODO add a parameter for package so tests can be in other packages then io.exoquery
     @DslExt
-    fun ExoGoldenTest(): Mode = ExoGoldenTest(error("No file name provided. This should be overridden by the compiler-plugin to ExoGoldenTestExpr"))
+    fun ExoGoldenTest(): Mode = ExoGoldenTest(errorCap("No file name provided. This should be overridden by the compiler-plugin to ExoGoldenTestExpr"))
     fun ExoGoldenTestExpr(fileName: String): Mode = ExoGoldenTest(fileName)
     @DslExt
-    fun ExoGoldenOverride(): Mode = ExoGoldenOverride(error("No file name provided. This should be overridden by the compiler-plugin to ExoGoldenOverrideExpr"))
+    fun ExoGoldenOverride(): Mode = ExoGoldenOverride(errorCap("No file name provided. This should be overridden by the compiler-plugin to ExoGoldenOverrideExpr"))
     fun ExoGoldenOverrideExpr(fileName: String): Mode = ExoGoldenOverride(fileName)
   }
 }
@@ -44,7 +41,7 @@ abstract class GoldenSpecDynamic(val goldenQueries: GoldenQueryFile, val mode: M
 
   // TODO the show() function should use the mirror idiom once that is complete
   fun XR.shouldBeGolden(label: String) = this.show().shouldBeGolden(label, PrintableValue.Type.KotlinCode)
-  fun SqlCompiledQuery<*>.shouldBeGolden() = this.value.shouldBeGolden(this.label ?: error("""The following query did not have a label: "$value""""), PrintableValue.Type.SqlQuery)
+  fun SqlCompiledQuery<*>.shouldBeGolden() = this.value.shouldBeGolden(this.label ?: errorCap("""The following query did not have a label: "$value""""), PrintableValue.Type.SqlQuery)
 
   fun String.shouldBeGolden(label: String, printType: PrintableValue.Type) =
     when (mode) {
@@ -54,7 +51,7 @@ abstract class GoldenSpecDynamic(val goldenQueries: GoldenQueryFile, val mode: M
             it.trimIndent().trim(), this.trimIndent().trim(),
             "Golden query for label: \"$label\" did not match"
           )
-        } ?: error("""No golden query found for label: "$label"""")
+        } ?: errorCap("""No golden query found for label: "$label"""")
 
       is Mode.ExoGoldenOverride ->
         outputQueries.add(PrintableValue(this, printType, label))
@@ -92,7 +89,7 @@ abstract class GoldenSpec(val goldenQueries: GoldenQueryFile, body: GoldenSpec.(
         it.trimIndent().trim(), this.value.trimIndent().trim(),
         "Golden query for label: \"$label\" did not match"
       )
-    } ?: error("""No golden query found for label: "$label"""")
+    } ?: errorCap("""No golden query found for label: "$label"""")
 
   init {
     body()

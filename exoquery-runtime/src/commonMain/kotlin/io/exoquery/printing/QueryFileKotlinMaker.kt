@@ -14,12 +14,21 @@ object QueryFileKotlinMaker {
 
   private fun singleLineQuery(label: String, query: String, type: PrintableValue.Type) = run {
       // create every line of the GoldeQueryFile
-      val row =
+    val qqq = """"""".repeat(3)
+    val row =
+      if (query.contains('"')) {
+        """|    "${label}" to ${type.interpolatorPrefix}(
+           |      ${qqq}${query}${qqq}
+           |    ),
+        """.trimMargin()
+      } else {
         """|    "${label}" to ${type.interpolatorPrefix}(
            |      "${query}"
            |    ),
         """.trimMargin()
-      row
+      }
+
+    row
   }
   private fun multiLineQuery(label: String, query: String, type: PrintableValue.Type) = run {
     // create every line of the GoldeQueryFile
@@ -36,6 +45,8 @@ object QueryFileKotlinMaker {
 
   operator fun invoke(queries: List<PrintableValue>, fileName: String, filePackage: String): String {
 
+    val dol = '$'
+    fun String.escapeDollar() = this.replace("$", "$dol{'$dol'}")
 
     val fileBody =
       queries
@@ -45,9 +56,9 @@ object QueryFileKotlinMaker {
         .mapNotNull { qf ->
           val label = qf.label!!
           if (qf.value.isMultiline())
-            multiLineQuery(label, qf.value, qf.type)
+            multiLineQuery(label, qf.value.escapeDollar(), qf.type)
           else
-            singleLineQuery(label, qf.value, qf.type)
+            singleLineQuery(label, qf.value.escapeDollar(), qf.type)
         }.joinToString("\n")
 
     // Need to have 'mapOf<String, String>' not just mapOf because otherwise when it is empty the type won't be inferred leading to a compile error

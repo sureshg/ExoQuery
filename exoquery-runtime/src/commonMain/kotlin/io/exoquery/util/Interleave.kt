@@ -11,6 +11,7 @@ fun <T> MutableList<T>.withAll(iterator: Iterator<T>): MutableList<T> {
 fun <T> List<T>.interleaveWith(other: List<T>): List<T> {
   tailrec fun rec(l1: Iterator<T>, l2: Iterator<T>, acc: MutableList<T>): List<T> =
     when {
+      !l1.hasNext() && !l2.hasNext() -> acc
       l1.hasNext() && !l2.hasNext() -> acc.withAll(l1)
       !l1.hasNext() && l2.hasNext() -> acc.withAll(l2)
       else -> rec(l1, l2, acc.withMore(l1.next()).withMore(l2.next()))

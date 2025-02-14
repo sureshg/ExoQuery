@@ -119,17 +119,6 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
         this is Filter && head.isUnaliased() ->
           invoke(id, body) { i, b -> Filter.cs(head, i, b) }
 
-        this is GroupByMap && head.isUnaliased() -> {
-          val (byComps, s1) = invoke(byAlias, byBody) { i, b -> i to b }
-          val (byId1, byBody1) = byComps
-          val (toComps, s2) = invoke(mapAlias, mapBody) { i, b -> i to b }
-          val (toId1, mapBody1) = toComps
-          (
-            GroupByMap.cs(head, byId1, byBody1, toId1, mapBody1) to
-              Recurse(s1.state + s2.state + state)
-            )
-        }
-
         this is DistinctOn && head.isUnaliased() ->
           invoke(id, by) { i, b -> DistinctOn.cs(head, i, b) }
 
@@ -144,18 +133,6 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
 
         this is Filter ->
           recurseAndApply(head, id, body) { q, i, b -> Filter.cs(q, i, b) }
-
-        this is GroupByMap -> {
-          val (newHead, newState) = super.invoke(head)
-          // Don't need to propagate state between these clauses since we are just refreshing aliases inside,
-          // not recursively calling the AvoidAliasConflictl like in the head.isUnalised cases
-          val (newByAlias, newByBody) = byAlias.refreshInsideOf(byBody) { "aliased-byBody-GroupByMap" }
-          val (newMapAlias, newMapBody) = byAlias.refreshInsideOf(byBody) { "aliased-mapBody-GroupByMap" }
-          (
-            GroupByMap.cs(newHead, newByAlias, newByBody, newMapAlias, newMapBody) to
-              Recurse(newState.state + state)
-            )
-        }
 
         this is DistinctOn ->
           recurseAndApply(head, id, by) { q, i, b -> DistinctOn.cs(q, i, b) }

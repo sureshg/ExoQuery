@@ -32,13 +32,6 @@ class NormalizeNestedStructures(val normalize: StatelessTransformer) {
         is SortBy -> SortBy.cs(normalize(head), id, normalize(criteria), ordering).nullIfSameAs(q)
 //      case SortBy(a, b, c, d) => apply(a, c)(SortBy(_, b, _, d))
 
-        is GroupByMap -> GroupByMap.cs(normalize(head), byAlias, normalize(byBody), mapAlias, normalize(mapBody)).nullIfSameAs(q)
-//      case GroupByMap(a, b, c, d, e) =>
-//        (normalize(a), normalize(c), normalize(e)) match {
-//          case (`a`, `c`, `e`) => None
-//          case (a, c, e)       => Some(GroupByMap(a, b, c, d, e))
-//        }
-
         is Take -> Take.cs(normalize(head), normalize(num)).nullIfSameAs(q)
 //      case Take(a, b)          => apply(a, b)(Take.apply)
 

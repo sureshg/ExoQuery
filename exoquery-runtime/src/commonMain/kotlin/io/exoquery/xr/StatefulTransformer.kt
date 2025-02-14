@@ -205,12 +205,6 @@ interface StatefulTransformer<T> {
           val (bA, stateB) = stateA.invoke(body)
           ConcatMap.cs(aA, id, bA) to stateB
         }
-        is GroupByMap -> {
-          val (queryA, stateA) = invoke(head)
-          val (byBodyA, stateB) = stateA.invoke(byBody)
-          val (mapBodyA, stateC) = stateB.invoke(mapBody)
-          GroupByMap.cs(queryA, byAlias, byBodyA, mapAlias, mapBodyA) to stateC
-        }
         is Nested -> {
           val (queryA, stateA) = invoke(head)
           Nested.cs(queryA) to stateA

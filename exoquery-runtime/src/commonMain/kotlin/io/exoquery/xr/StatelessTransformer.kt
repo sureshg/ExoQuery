@@ -46,12 +46,12 @@ interface StatelessTransformer {
       when (this) {
         is BinaryOp -> BinaryOp.csf(invoke(a), op, invoke(b))(this)
         is Const -> this
+        is Const.Null -> this
         is FunctionN -> FunctionN.csf(params, invoke(body))(this)
         is FunctionApply -> FunctionApply.csf(invoke(function), args.map { invoke(it) })(this)
         is Ident -> invokeIdent(this)
         is Property -> Property.csf(invoke(of), name)(this)
         is UnaryOp -> UnaryOp.csf(op, invoke(expr))(this)
-        is Const.Null -> this
         is When -> When.csf(branches.map { invoke(it) }, invoke(orElse))(this)
         is Block -> invoke(this)
         is Product -> Product.csf(fields.map { it.first to invoke(it.second) })(this)
@@ -86,7 +86,6 @@ interface StatelessTransformer {
         is FlatSortBy -> FlatSortBy.csf(invoke(by), ordering)(this)
         is FlatFilter -> FlatFilter.csf(invoke(by))(this)
         is ConcatMap -> ConcatMap.csf(invoke(head), invokeIdent(id), invoke(body))(this)
-        is GroupByMap -> GroupByMap.csf(invoke(head), invokeIdent(byAlias), invoke(byBody), invokeIdent(mapAlias), invoke(mapBody))(this)
         is Nested -> Nested.csf(invoke(head))(this)
         is ExprToQuery -> ExprToQuery.csf(invoke(head))(this)
         // Infix can both be Expression and Query

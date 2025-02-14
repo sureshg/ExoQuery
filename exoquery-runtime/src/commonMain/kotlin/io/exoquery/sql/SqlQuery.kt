@@ -358,8 +358,6 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         }
         with(query) {
           when {
-            this is XR.GroupByMap -> trace("base| Nesting GroupByMap $query") andReturn { nest(source(this, alias.name)) }
-
             // A map that contains mapped-to aggregations e.g.
             //   people.map(p=>max(p.name))
             // Could have more complex structures e.g: people.map(p=>SomeCaseClassOrTuple(max(p.name),min(p.age)))
@@ -407,28 +405,6 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                   type = type
                 )
               }
-
-            is XR.GroupByMap -> {
-              trace("Flattening| GroupByMap") andReturn {
-                val b = base(head, alias = byAlias, nestNextMap = true)
-                val flatGroupByAsts = ExpandSelection(b.from).ofSubselect(listOf(SelectValue(byBody))).map { it.expr }
-                val groupByClause: XR.Expression =
-                  // Can use TupleNumeric because we don't actually care about the field names
-                  if (flatGroupByAsts.size > 1) XR.Product.TupleNumeric(flatGroupByAsts, XR.Location.Synth)
-                  else flatGroupByAsts.first()
-
-                // We need to change the `a` var in:
-                //   people.groupByMap(p=>p.name)(a => (a.name,a.age.max))
-                // to same alias as 1st clause:
-                //   p => (p.name,p.age.max)
-                // since these become select-clauses:
-                //   SelectValue(p.name,p.age.max)
-                // since the `p` variable is in the `from` part of the query
-                // (also need to make sure that the `a` variable does not have p's type)
-                val realiasedSelect = BetaReduction(mapBody, TypeBehavior.ReplaceWithReduction, mapAlias to byAlias).asExpr()
-                b.copy(groupBy = groupByClause, select = selectValues(realiasedSelect), type = type)
-              }
-            }
 
             is Map -> {
               val b = base(head, id, nestNextMap = false)
@@ -620,9 +596,9 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             is XR.FunctionApply, is XR.Ident ->
               xrError("Invalid flattening, should have been beta-reduced already: ${this.showRaw()}")
 
-            // TODO these are supposed to drive isEmpty etc... need to figure out how to handle them here
-            is XR.GlobalCall -> TODO()
-            is XR.MethodCall -> TODO()
+            // Need to think more about how these are handled
+            is XR.GlobalCall -> FlattenSqlQuery(from = sources + ExpressionContext(this, alias.name), select = select(alias.name, type, loc), type = type)
+            is XR.MethodCall -> FlattenSqlQuery(from = sources + ExpressionContext(this, alias.name), select = select(alias.name, type, loc), type = type)
           }
         }
       }
@@ -664,7 +640,6 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
   // These calls are safe because `invoke` calls `flatten.return` which has specific handling for XR.Map
   private fun source(ast: XR.Map, alias: String): FromContext = QueryContext(invoke(ast), alias) // safe because `flatten.return` directly handles Map
   private fun source(ast: XR.ConcatMap, alias: String): FromContext = QueryContext(invoke(ast), alias) // safe because `flatten.return` directly handles ConcatMap
-  private fun source(ast: XR.GroupByMap, alias: String): FromContext = QueryContext(invoke(ast), alias) // safe because `flatten.return` directly handles GroupByMap
 
   // DO NOT call QueryContext(invoke(ast), alias) from this function as it can potentially cause infinite loops
   // calling `invoke` which eventually calls `flatten.return`. Instead call QueryContext(invoke(ast.head), alias) manually if this fails

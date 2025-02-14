@@ -39,6 +39,11 @@ sealed class XRType {
         fields.find { it.first == name }?.second
       else
         fieldsHash.get(name)
+
+    companion object {
+      fun of(name: String, vararg fields: Pair<String, XRType>) = Product(name, fields.toList())
+      fun leaf(name: String, vararg fieldNames: String) = Product(name, fieldNames.map { it to Value })
+    }
   }
 
   @Serializable

@@ -86,7 +86,6 @@ class ApplyMap(val traceConfig: TraceConfig) {
 //      case Map(a: FlatJoin, b, c) if (b == c)   => None // FlatJoin should always be surrounded by a Map
 //      case Nested(DetachableMap(a, b, c))       => None
 
-      case(XR.Map[Is<GroupByMap>(), Is()]).then { _, _, _ -> null },
       case(XR.Map[Is<Nested>(), Is()]).then { _, _, _ -> null },
       case(XR.Map[Is<FlatJoin>(), Is()]).then { _, _, _ -> null },
       case(Nested[DetachableMap[Is(), Is()]]).then { _ -> null }, // Maybe just Nested[XR.Map[...]]
@@ -181,41 +180,6 @@ class ApplyMap(val traceConfig: TraceConfig) {
       case(XR.SortBy.DistinctHead[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
         val er = BetaReduction(e, d to c).asExpr()
         trace("ApplyMap inside sortBy+distinct for $q") andReturn { XR.Distinct(XR.Map.csf(XR.SortBy.csf(a, b, er, comp.ordering)(comp), b, c)(compLeft)) }
-      },
-
-
-//      // a.map(b => c).sortBy(d => e).distinct =>
-//      //    a.sortBy(b => e[d := c]).map(b => c).distinct
-//      case SortBy(Distinct(DetachableMap(a, b, c)), d, e, f) =>
-//        val er = BetaReduction(e, d -> c)
-//        trace"ApplyMap inside sortBy+distinct for $q" andReturn Some(Distinct(Map(SortBy(a, b, er, f), b, c)))
-
-
-      // === Conceptual Example (same as for groupBy.map) ===
-      // Instead of transforming spirit into gin and the bottling the gin, bottle the
-      // spirit first, then have the spirit transform into gin inside of the bottles.
-      // (The only difference between this and groupByMap is that we have two kinds of bottles: A and B)
-      //
-      // spirits.map(spirit => ginifySpirit).groupByMap(gin => bottleGinA)(gin => bottleGinB) =>
-      //    spirits.groupByMap(spirit => bottleGinA[gin := ginifySpirit])(spirit => bottleGinB[gin := ginifySpirit])
-
-      // a.map(b => c).groupByMap(d => e)(d => f) =>
-      //    a.groupByMap(b => e[d := c])(b => f[d := c])
-      // where d := d1
-      // ============== Alternatively: ==============
-      // a.map(b => c).groupByMap(byAlias => byBody)(mapAlias => mapBody) =>
-      //    a.groupByMap(b => byBody[byAlias := c])(b => mapBody[mapAlias := c])
-      // where byAlias := mapAlias
-      case(XR.GroupByMap[DetachableMap[Is(), Is()], Is()]).thenThis { (a, b, c), _ ->
-        val d = byAlias
-        val e = byBody
-        val d1 = mapAlias
-        val f = mapBody
-
-        val er  = BetaReduction(e, d to c).asExpr()
-        val fr  = BetaReduction(f, d1 to c).asExpr()
-        val grp = GroupByMap.cs(a, b, er, b, fr)
-        trace("ApplyMap inside groupByMap for $q") andReturn { grp }
       },
 
 

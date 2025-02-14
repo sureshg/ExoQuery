@@ -77,23 +77,6 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
 //            (g, Dealias(Some(b), traceConfig))
 //        }
 
-        is GroupByMap -> {
-          val (an, t) = invoke(head)
-          val alias = t.state
-          when {
-            alias != null -> {
-              val byAlias1 = alias.copy(type = byAlias.type)
-              val mapAlias1 = alias.copy(type = mapAlias.type)
-              val byBody1 = BetaReduction(byBody, byAlias to byAlias1).asExpr()
-              val mapBody1 = BetaReduction(mapBody, mapAlias to mapAlias1).asExpr()
-              GroupByMap(an, byAlias1, byBody1, mapAlias1, mapBody1) to t
-            }
-            else -> {
-              this to Dealias(byAlias, traceConfig)
-            }
-          }
-        }
-
 //      case DistinctOn(a, b, c) =>
 //        dealias(a, b, c)(DistinctOn)
 

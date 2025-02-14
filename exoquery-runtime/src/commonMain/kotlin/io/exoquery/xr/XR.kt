@@ -255,19 +255,6 @@ sealed interface XR {
     //}
   }
 
-  // Treat this as a 2-slot use mapBody for matching since by-body is usually the less-important one
-  @Serializable
-  @Mat
-  data class GroupByMap(@Slot val head: XR.Query, @CS val byAlias: Ident, @CS val byBody: XR.Expression, @CS val mapAlias: Ident, @Slot val mapBody: XR.Expression, override val loc: Location = Location.Synth): Query, PC<GroupByMap> {
-    @Transient override val productComponents = productOf(this, head, mapBody)
-    override val type get() = head.type
-    companion object {}
-    override fun toString() = show()
-    @Transient private val cid = id()
-    override fun hashCode(): Int = cid.hashCode()
-    override fun equals(other: Any?): Boolean = other is GroupByMap && other.id() == cid
-  }
-
   @Serializable
   @Mat
   data class Take(@Slot val head: XR.Query, @Slot val num: XR.Expression, override val loc: Location = Location.Synth): Query, PC<Take> {

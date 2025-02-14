@@ -12,7 +12,6 @@ import io.exoquery.xr.XR.Map
 import io.exoquery.xr.XR.ExprToQuery
 import io.exoquery.xr.XR.QueryToExpr
 import io.exoquery.xr.XR.SortBy
-import io.exoquery.xr.XR.GroupByMap
 import io.exoquery.xr.XR.Take
 import io.exoquery.xr.XR.Drop
 import io.exoquery.xr.XR.Union
@@ -65,9 +64,6 @@ fun ExprToQuery.cs(head: XR.Expression) = io.exoquery.xr.XR.ExprToQuery.csf(head
 
 val SortBy.SortBy get() = this
 fun SortBy.cs(head: XR.Query, id: XR.Ident, criteria: XR.Expression, ordering: XR.Ordering) = io.exoquery.xr.XR.SortBy.csf(head, id, criteria, ordering)(this)
-
-val GroupByMap.GroupByMap get() = this
-fun GroupByMap.cs(head: XR.Query, byAlias: Ident, byBody: XR.Expression, mapAlias: Ident, mapBody: XR.Expression) = io.exoquery.xr.XR.GroupByMap.csf(head, byAlias, byBody, mapAlias, mapBody)(this)
 
 val Take.Take get() = this
 fun Take.cs(head: XR.Query, num: XR.Expression) = io.exoquery.xr.XR.Take.csf(head, num)(this)

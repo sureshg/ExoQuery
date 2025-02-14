@@ -106,14 +106,6 @@ class RepropagateTypes(val traceConfig: TraceConfig): StatelessTransformer {
         is XR.Map -> applyBody(head, id, body) { a, b, c -> Map.cs(a, b, c) }
         is FlatMap -> applyBody(head, id, body) { a, b, c -> FlatMap.cs(a, b, c) }
         is ConcatMap -> applyBody(head, id, body) { a, b, c -> ConcatMap.cs(a, b, c) }
-        is GroupByMap -> {
-          val ar = invoke(head)
-          val byAliasR = byAlias.retypeFrom(ar.type)
-          val mapAliasR = mapAlias.retypeFrom(ar.type)
-          val cr = BetaReduction(byBody, RWR, byAlias to byAliasR)
-          val er = BetaReduction(mapBody, RWR, mapAlias to mapAliasR)
-          trace("Repropagate ${head.type.shortString()} from $head into:") andReturn { GroupByMap.cs(ar, byAliasR, cr.asExpr(), mapAliasR, er.asExpr()) }
-        }
         is DistinctOn -> applyBody(head, id, by) { a, b, c -> DistinctOn.cs(a, b, c) }
         is SortBy -> applyBody(head, id, criteria) { a, b, c -> SortBy.cs(a, b, c, ordering) }
         is FlatJoin -> {
