@@ -9,6 +9,8 @@ sealed interface ContainerOfXR {
   // I.e. runtime containers that are used in the expression (if any)
   val runtimes: Runtimes
   val params: Params
+
+  fun rebuild(xr: XR, runtimes: Runtimes, params: Params): ContainerOfXR
 }
 
 // Create a wrapper class for runtimes for easy lifting/unlifting
@@ -64,6 +66,8 @@ data class SqlExpression<T>(override val xr: XR.Expression, override val runtime
   fun determinizeDynamics(): SqlExpression<T> = DeterminizeDynamics().ofExpression(this)
 
   fun show() = PrintMisc().invoke(this)
+  override fun rebuild(xr: XR, runtimes: Runtimes, params: Params): SqlExpression<T> =
+    copy(xr = xr as? XR.Expression ?: xrError("Failed to rebuild SqlExpression with XR of type ${xr::class} which was: ${xr.show()}"), runtimes = runtimes, params = params)
 }
 
 internal class DeterminizeDynamics() {

@@ -3,6 +3,7 @@ package io.exoquery
 import io.exoquery.printing.PrintMisc
 import io.exoquery.sql.SqlIdiom
 import io.exoquery.util.formatQuery
+import io.exoquery.xr.RuntimeQueryBuilder
 import io.exoquery.xr.XR
 
 // TODO value needs to be Token and we need to write a lifter for Token
@@ -31,15 +32,14 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
   @file:ExoLocation("src/main/resources/queries")
    */
 
-  fun buildRuntime(dialect: SqlIdiom, label: String?, pretty: Boolean = false): SqlCompiledQuery<T> {
-    val queryRaw = dialect.translate(xr)
-    val query = if (pretty) formatQuery(queryRaw) else queryRaw
-    return SqlCompiledQuery(query, label)
-  }
+  fun buildRuntime(dialect: SqlIdiom, label: String?, pretty: Boolean = false): SqlCompiledQuery<T> =
+    RuntimeQueryBuilder(this, dialect, label, pretty).invoke()
 
   fun build(dialect: SqlIdiom): SqlCompiledQuery<T> = TODO()
   fun build(dialect: SqlIdiom, label: String): SqlCompiledQuery<T> = TODO()
 
   fun buildPretty(dialect: SqlIdiom): SqlCompiledQuery<T> = TODO()
   fun buildPretty(dialect: SqlIdiom, label: String): SqlCompiledQuery<T> = TODO()
+  override fun rebuild(xr: XR, runtimes: Runtimes, params: Params): SqlQuery<T> =
+    copy(xr = xr as? XR.Query ?: xrError("Failed to rebuild SqlQuery with XR of type ${xr::class} which was: ${xr.show()}"), runtimes = runtimes, params = params)
 }

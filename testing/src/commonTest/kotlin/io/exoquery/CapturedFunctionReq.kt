@@ -10,7 +10,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.string.shouldContain
 
-class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, Mode.ExoGoldenOverride(), {
   @CapturedFunction
   fun joes(people: SqlQuery<Person>) = capture { people.filter { p -> p.name == "Joe" } }
 
@@ -47,13 +47,16 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       shouldBeGolden(capJoes.build(PostgresDialect()), "SQL")
     }
   }
-// Dynamic queries not supported yet
-//  "dynamic function capture - structural tests" - {
-//    "val tbl(Dyn); cap { capFun(tbl) }" {
-//      val tbl = if (foo) capture { Table<Person>() } else capture { Table<Person>() }
-//      val capJoes = capture { joes(tbl) }
-//      shouldBeGolden(capJoes.xr, "XR")
-//      shouldBeGolden(capJoes.build(PostgresDialect()), "SQL")
-//    }
-//  }
+  "dynamic function capture - structural tests" - {
+    "val tbl(Dyn); cap { capFun(tbl) }" {
+      val tbl = if (foo) capture { Table<Person>() } else capture { Table<Person>() }
+      val capJoes = capture { joes(tbl) }
+      val det = capJoes.determinizeDynamics()
+      shouldBeGolden(tbl.xr, "XR-tbl")
+      shouldBeGolden(det.xr, "XR")
+      shouldBeGolden(det.runtimes.runtimes.first().second.xr, "XR->Runimtes.first.XR")
+      shouldBeTrueInGolden { det.runtimes.runtimes.first().second.xr == tbl.xr }
+      shouldBeGolden(capJoes.build(PostgresDialect()), "SQL")
+    }
+  }
 })

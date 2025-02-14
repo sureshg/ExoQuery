@@ -17,7 +17,7 @@ import io.exoquery.xr.id
 fun String.uncapitalize() = replaceFirstChar { it.lowercaseChar() }
 
 class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
-  data class RenderOptions(val showProductConstructorFields: Boolean = true, val showMethodCallSuffixes: Boolean = true)
+  data class RenderOptions(val showProductConstructorFields: Boolean = true, val showMethodCallSuffixes: Boolean = true, val showFullBids: Boolean = false)
 
   val <T: XR> T.tokenScoped: Token get() =
     when (this) {
@@ -129,9 +129,9 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
       is XR.QueryToExpr ->
         stmt("${head.token}.toExpr")
       is XR.TagForParam ->
-        stmt("TagP(${id.value})")
+        stmt("""TagP("${id.value.trimId()}")""")
       is XR.TagForSqlExpression ->
-        stmt("TagE(${id.value})")
+        stmt("""TagE("${id.value.trimId()}")""")
     }
 
 
@@ -178,10 +178,16 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
       is XR.FunctionApply -> this.token
       is XR.Ident -> this.token
       is XR.Infix -> this.token
-      is XR.TagForSqlQuery -> stmt("TagQ(${id.value})")
+      is XR.TagForSqlQuery -> stmt("""TagQ("${id.value.trimId()}")""")
       is XR.GlobalCall -> this.token
       is XR.MethodCall -> this.token
     }
+
+  private fun String.trimId() =
+    if (renderOpts.showFullBids)
+      this
+    else
+      this.takeLast(5)
 
 // Scala:
 //  implicit final def queryTokenizer(implicit externalTokenizer: Tokenizer[External]): Tokenizer[AstQuery] =

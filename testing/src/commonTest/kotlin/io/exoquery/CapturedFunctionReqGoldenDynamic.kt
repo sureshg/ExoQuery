@@ -35,5 +35,17 @@ object CapturedFunctionReqGoldenDynamic: GoldenQueryFile {
     "static function capture - structural tests/val tbl; select { from(tbl); join }/SQL" to cr(
       "SELECT p.id AS id, p.name AS name, p.age AS age, a.ownerId AS ownerId, a.street AS street, a.zip AS zip FROM Person p INNER JOIN Address a ON a.ownerId = p.id"
     ),
+    "dynamic function capture - structural tests/val tbl(Dyn); cap { capFun(tbl) }/XR-tbl" to kt(
+      "Table(Person)"
+    ),
+    "dynamic function capture - structural tests/val tbl(Dyn); cap { capFun(tbl) }/XR" to kt(
+      """{ people -> people.filter { p -> p.name == Joe } }.toQuery.apply(TagQ("0"))"""
+    ),
+    "dynamic function capture - structural tests/val tbl(Dyn); cap { capFun(tbl) }/XR->Runimtes.first.XR" to kt(
+      "Table(Person)"
+    ),
+    "dynamic function capture - structural tests/val tbl(Dyn); cap { capFun(tbl) }/SQL" to cr(
+      "SELECT p.id AS id, p.name AS name, p.age AS age FROM Person p WHERE p.name = 'Joe'"
+    ),
   )
 }

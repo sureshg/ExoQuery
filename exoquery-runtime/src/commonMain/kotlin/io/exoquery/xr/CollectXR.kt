@@ -66,7 +66,7 @@ open class TransformXR(
   val transformExpression: (XR.Expression) -> XR.Expression? = { it },
   val transformQuery: (XR.Query) -> XR.Query? = { it },
   val transformBranch: (XR.Branch) -> XR.Branch? = { it },
-  val transformVariable: (XR.Variable) -> XR.Variable? = { it }
+  val transformVariable: (XR.Variable) -> XR.Variable? = { it },
 ): StatelessTransformer {
 
   // For each transform, if the transform-function actually "captures" the given XR use the result of that,
@@ -74,9 +74,16 @@ open class TransformXR(
   override fun invoke(xr: XR.Expression): XR.Expression = transformExpression(xr) ?: super.invoke(xr)
   override fun invoke(xr: XR.Query): XR.Query = transformQuery(xr) ?: super.invoke(xr)
   override fun invoke(xr: XR.Branch): XR.Branch = transformBranch(xr) ?: super.invoke(xr)
-  override fun invoke(xr: XR.Variable): XR.Variable = transformVariable(xr) ?: super.invoke(xr)
 
   companion object {
+    fun <T: XR> LikeToLike(xr: T, transform: (T) -> T?): T =
+      TransformXR(
+        transformExpression = { if (xr is XR.Expression) transform(xr) as XR.Expression else it as XR.Expression },
+        transformQuery = { if (xr is XR.Query) transform(xr) as XR.Query else it as XR.Query },
+        transformBranch = { if (xr is XR.Branch) transform(xr) as XR.Branch else it as XR.Branch },
+        transformVariable = { if (xr is XR.Variable) transform(xr) as XR.Variable else it as XR.Variable }
+      ).invoke(xr) as T
+
     fun Query(xr: XR.Query, transform: (XR.Query) -> XR.Query?): XR.Query =
       TransformXR(transformQuery = transform).invoke(xr) as XR.Query
 

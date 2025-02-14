@@ -36,6 +36,20 @@ abstract class GoldenSpecDynamic(val goldenQueries: GoldenQueryFile, val mode: M
     rec(this.testCase, listOf(testCase.name.originalName))
   }
 
+  // In golden testing you can do asserts but if ExoGoldenOverride it is important not to run them since we want the new golden file to always be prodcued
+  // this is a conditional check that only runs in ExoGoldenTest mode
+  fun shouldBeTrueInGolden(label: String, cond: () -> Boolean) {
+    if (mode is Mode.ExoGoldenTest) {
+      if (!cond()) errorCap("The condition was not true: ${label}")
+    }
+  }
+
+  fun shouldBeTrueInGolden(cond: () -> Boolean) {
+    if (mode is Mode.ExoGoldenTest) {
+      if (!cond()) errorCap("The condition was not true")
+    }
+  }
+
   fun TestScope.shouldBeGolden(xr: XR, suffix: String = "") = xr.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix")
   fun TestScope.shouldBeGolden(sql: SqlCompiledQuery<*>, suffix: String = "") = sql.value.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix", PrintableValue.Type.SqlQuery)
 
