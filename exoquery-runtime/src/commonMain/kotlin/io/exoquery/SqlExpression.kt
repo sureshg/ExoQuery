@@ -5,7 +5,7 @@ import io.exoquery.xr.XR
 import io.exoquery.xr.swapTags
 
 sealed interface ContainerOfXR {
-  val xr: XR
+  val xr: XR.U.QueryOrExpression
   // I.e. runtime containers that are used in the expression (if any)
   val runtimes: Runtimes
   val params: Params

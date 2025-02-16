@@ -31,7 +31,7 @@ class RuntimeQueryBuilder<T>(val query: SqlQuery<T>, val dialect: SqlIdiom, val 
   // TODO will need to gather the Params from all of the nested query containers when lifting system is introduced
 
   fun spliceQuotations(quoted: SqlQuery<*>): XR.U.QueryOrExpression {
-    fun spliceQuotationsRecurse(quoted: ContainerOfXR): XR {
+    fun spliceQuotationsRecurse(quoted: ContainerOfXR): XR.U.QueryOrExpression {
       val quotationVases = quoted.runtimes.runtimes
       val ast = quoted.xr
       // Get all the quotation tags
@@ -44,7 +44,7 @@ class RuntimeQueryBuilder<T>(val query: SqlQuery<T>, val dialect: SqlIdiom, val 
             ?: throw IllegalArgumentException("Expression-Based vase with UID ${tag.id} could not be found!")
         }.invoke(ast)
     }
-    return BetaReduction(spliceQuotationsRecurse(quoted) as XR.U.QueryOrExpression)
+    return BetaReduction(spliceQuotationsRecurse(quoted))
   }
 
 // Kotlin:

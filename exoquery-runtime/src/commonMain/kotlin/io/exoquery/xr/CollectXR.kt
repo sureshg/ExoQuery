@@ -122,4 +122,5 @@ class TransformerBuilder {
   }
 
   operator fun invoke(xr: XR) = TransformXR(transformExpression ?: { it }, transformQuery ?: { it }).invoke(xr)
+  operator fun invoke(xr: XR.U.QueryOrExpression): XR.U.QueryOrExpression = TransformXR(transformExpression ?: { it }, transformQuery ?: { it }).invoke(xr)
 }
