@@ -35,16 +35,14 @@ class RuntimeQueryBuilder<T>(val query: SqlQuery<T>, val dialect: SqlIdiom, val 
       val quotationVases = quoted.runtimes.runtimes
       val ast = quoted.xr
       // Get all the quotation tags
-      return TransformXR(
-        {expr -> (expr as? XR.TagForSqlExpression)?.let { tag ->
-          quotationVases.find { it.first == tag.id }?.let { (id, vase) -> spliceQuotationsRecurse(vase) as XR.Expression }
-            ?: throw IllegalArgumentException("Expression-Based vase with UID ${tag.id} could not be found!")
-        }},
-        {query -> (query as? XR.TagForSqlQuery)?.let { tag ->
+      return TransformXR.build()
+        .withQueryOf<XR.TagForSqlQuery> { tag ->
           quotationVases.find { it.first == tag.id }?.let { (id, vase) -> spliceQuotationsRecurse(vase) as XR.Query }
             ?: throw IllegalArgumentException("Query-Based vase with UID ${tag.id} could not be found!")
-        }},
-      ).invoke(ast)
+        }.withExpressionOf<XR.TagForSqlExpression> { tag ->
+          quotationVases.find { it.first == tag.id }?.let { (id, vase) -> spliceQuotationsRecurse(vase) as XR.Expression }
+            ?: throw IllegalArgumentException("Expression-Based vase with UID ${tag.id} could not be found!")
+        }.invoke(ast)
     }
     return BetaReduction(spliceQuotationsRecurse(quoted) as XR.Labels.QueryOrExpression)
   }

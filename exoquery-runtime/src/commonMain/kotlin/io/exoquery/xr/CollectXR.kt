@@ -61,7 +61,6 @@ class ContainsXR(private val predicate: (XR) -> Boolean): StatefulTransformer<Bo
   }
 }
 
-
 open class TransformXR(
   val transformExpression: (XR.Expression) -> XR.Expression? = { it },
   val transformQuery: (XR.Query) -> XR.Query? = { it },
@@ -95,5 +94,32 @@ open class TransformXR(
 
     fun Variable(xr: XR.Variable, transform: (XR.Variable) -> XR.Variable?): XR.Variable =
       TransformXR(transformVariable = transform).invoke(xr) as XR.Variable
+
+    fun build() = TransformerBuilder()
   }
+}
+
+class TransformerBuilder {
+  @PublishedApi internal var transformExpression: ((XR.Expression) -> XR.Expression?)? = null
+  @PublishedApi internal var transformQuery: ((XR.Query) -> XR.Query?)? = null
+
+  fun withQuery(transform: (XR.Query) -> XR.Query?) = run {
+    transformQuery = transform
+    this
+  }
+  fun withExpression(transform: (XR.Expression) -> XR.Expression?) = run {
+    transformExpression = transform
+    this
+  }
+
+  internal inline fun <reified XRQ: XR.Query> withQueryOf(crossinline transform: (XRQ) -> XR.Query?) = run {
+    transformQuery = { if (it is XRQ) transform(it) else null /* note if this returns a non-null value the transform recursion will stop so need to return null until an actual match is made */ }
+    this
+  }
+  internal inline fun <reified XRE: XR.Expression> withExpressionOf(crossinline transform: (XRE) -> XR.Expression?) = run {
+    transformExpression = { if (it is XRE) transform(it) else null /* note if this returns a non-null value the transform recursion will stop so need to return null until an actual match is made */ }
+    this
+  }
+
+  operator fun invoke(xr: XR) = TransformXR(transformExpression ?: { it }, transformQuery ?: { it }).invoke(xr)
 }
