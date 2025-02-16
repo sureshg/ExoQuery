@@ -59,7 +59,7 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
       is XR.Const.Null -> stmt("null")
     }
 
-  val XR.Labels.QueryOrExpression.token: Token get() =
+  val XR.U.QueryOrExpression.token: Token get() =
     when (this) {
       is XR.Query -> this.token
       is XR.Expression -> this.token

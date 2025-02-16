@@ -30,7 +30,7 @@ class RuntimeQueryBuilder<T>(val query: SqlQuery<T>, val dialect: SqlIdiom, val 
   // TODO need a test with a dynamic SqlExpression container used in an SqlQuery (and vice-versa)
   // TODO will need to gather the Params from all of the nested query containers when lifting system is introduced
 
-  fun spliceQuotations(quoted: SqlQuery<*>): XR.Labels.QueryOrExpression {
+  fun spliceQuotations(quoted: SqlQuery<*>): XR.U.QueryOrExpression {
     fun spliceQuotationsRecurse(quoted: ContainerOfXR): XR {
       val quotationVases = quoted.runtimes.runtimes
       val ast = quoted.xr
@@ -44,7 +44,7 @@ class RuntimeQueryBuilder<T>(val query: SqlQuery<T>, val dialect: SqlIdiom, val 
             ?: throw IllegalArgumentException("Expression-Based vase with UID ${tag.id} could not be found!")
         }.invoke(ast)
     }
-    return BetaReduction(spliceQuotationsRecurse(quoted) as XR.Labels.QueryOrExpression)
+    return BetaReduction(spliceQuotationsRecurse(quoted) as XR.U.QueryOrExpression)
   }
 
 // Kotlin:

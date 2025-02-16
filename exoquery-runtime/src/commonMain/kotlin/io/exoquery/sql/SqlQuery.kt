@@ -11,7 +11,7 @@ import io.exoquery.util.Tracer
 import io.exoquery.xr.*
 import io.exoquery.xr.XR.FlatMap
 import io.exoquery.xr.XR.Map
-import io.exoquery.xr.XR.Labels.FlatUnit
+import io.exoquery.xr.XR.U.FlatUnit
 import io.exoquery.xr.XR.FlatGroupBy
 import io.exoquery.xr.XR.FlatSortBy
 import io.exoquery.xr.XR.FlatFilter
@@ -264,7 +264,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
     data class Sorting(val sortedBy: XR.Expression, val ordering: XR.Ordering): Layer
     data class Filtering(val where: XR.Expression): Layer
     companion object {
-      fun fromFlatUnit(xr: XR.Labels.FlatUnit): Layer =
+      fun fromFlatUnit(xr: XR.U.FlatUnit): Layer =
         when (xr) {
           is FlatFilter -> Layer.Filtering(xr.by)
           is FlatGroupBy -> Layer.Grouping(xr.by)
@@ -274,7 +274,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
   }
 
 
-  private fun flattenContexts(query: XR.Query): Pair<List<Layer>, XR.Labels.QueryOrExpression> =
+  private fun flattenContexts(query: XR.Query): Pair<List<Layer>, XR.U.QueryOrExpression> =
     with(query) {
       when {
         // A flat-join query with no maps e.g: `qr1.flatMap(e1 => qr1.join(e2 => e1.i == e2.i))`

@@ -9,7 +9,7 @@ import io.exoquery.util.NumbersToWords
 import io.exoquery.util.ShowTree
 import io.exoquery.util.dropLastSegment
 import io.exoquery.util.takeLastSegment
-import io.exoquery.xr.XR.Labels.QueryOrExpression
+import io.exoquery.xr.XR.U.QueryOrExpression
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import io.decomat.Matchable as Mat
@@ -47,8 +47,8 @@ import io.decomat.HasProductClass as PC
 @Serializable
 sealed interface XR {
   // The primary types of XR are Query, Expression, Function, and Action
-  // there are additional values that are useful for pattern matching in various situations
-  object Labels {
+  // there are additional union-types like QueryOrExpression that are used in various things like beta-reduction
+  object U {
     // Things that store their own XRType. Right now this is just an Ident but in the future
     // it will also be a lifted value.
 
@@ -106,10 +106,10 @@ sealed interface XR {
   }
 
   @Serializable
-  sealed interface Expression: XR, Labels.QueryOrExpression
+  sealed interface Expression: XR, U.QueryOrExpression
 
   @Serializable
-  sealed interface Query: XR, Labels.QueryOrExpression
+  sealed interface Query: XR, U.QueryOrExpression
 
   // *******************************************************************************************
   // ****************************************** Query ******************************************
@@ -329,7 +329,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class FlatGroupBy(@Slot val by: XR.Expression, override val loc: Location = Location.Synth): Query, Labels.FlatUnit, PC<FlatGroupBy> {
+  data class FlatGroupBy(@Slot val by: XR.Expression, override val loc: Location = Location.Synth): Query, U.FlatUnit, PC<FlatGroupBy> {
     @Transient override val productComponents = productOf(this, by)
     override val type get() = by.type
     companion object {}
@@ -341,7 +341,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class FlatSortBy(@Slot val by: XR.Expression, @CS val ordering: XR.Ordering, override val loc: Location = Location.Synth): Query, Labels.FlatUnit, PC<FlatSortBy> {
+  data class FlatSortBy(@Slot val by: XR.Expression, @CS val ordering: XR.Ordering, override val loc: Location = Location.Synth): Query, U.FlatUnit, PC<FlatSortBy> {
     @Transient override val productComponents = productOf(this, by)
     override val type get() = by.type
     companion object {}
@@ -353,7 +353,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class FlatFilter(@Slot val by: XR.Expression, override val loc: Location = Location.Synth): Query, Labels.FlatUnit, PC<FlatFilter> {
+  data class FlatFilter(@Slot val by: XR.Expression, override val loc: Location = Location.Synth): Query, U.FlatUnit, PC<FlatFilter> {
     @Transient override val productComponents = productOf(this, by)
     override val type get() = by.type
     companion object {}
@@ -421,7 +421,7 @@ sealed interface XR {
   // I.e. a lambda function. It can be used as an expression in some cases but not a query (although it's body maybe a query or expression)
   @Serializable
   @Mat
-  data class FunctionN(@CS val params: List<Ident>, @Slot val body: XR.Labels.QueryOrExpression, override val loc: Location = Location.Synth): Expression, PC<FunctionN> {
+  data class FunctionN(@CS val params: List<Ident>, @Slot val body: XR.U.QueryOrExpression, override val loc: Location = Location.Synth): Expression, PC<FunctionN> {
     @Transient override val productComponents = productOf(this, body)
     override val type get() = body.type
     companion object {}
@@ -443,7 +443,7 @@ sealed interface XR {
    */
   @Serializable
   @Mat
-  data class FunctionApply(@Slot val function: QueryOrExpression, @Slot val args: List<XR.Labels.QueryOrExpression>, override val loc: Location = Location.Synth): Query, Expression, PC<FunctionApply> {
+  data class FunctionApply(@Slot val function: QueryOrExpression, @Slot val args: List<XR.U.QueryOrExpression>, override val loc: Location = Location.Synth): Query, Expression, PC<FunctionApply> {
     @Transient override val productComponents = productOf(this, function, args)
     override val type get() = function.type
     companion object {}
@@ -540,7 +540,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class MethodCall(@Slot val head: XR.Labels.QueryOrExpression, val name: String, @Slot val args: List<XR.Labels.QueryOrExpression>, val originalHostType: XR.FqName, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<MethodCall> {
+  data class MethodCall(@Slot val head: XR.U.QueryOrExpression, val name: String, @Slot val args: List<XR.U.QueryOrExpression>, val originalHostType: XR.FqName, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<MethodCall> {
     @Transient override val productComponents = productOf(this, head, args)
     companion object {}
     override fun toString() = show()
@@ -551,7 +551,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class GlobalCall(val name: XR.FqName, @Slot val args: List<XR.Labels.QueryOrExpression>, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<GlobalCall> {
+  data class GlobalCall(val name: XR.FqName, @Slot val args: List<XR.U.QueryOrExpression>, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<GlobalCall> {
     @Transient override val productComponents = productOf(this, args)
     companion object {}
     override fun toString() = show()
@@ -581,7 +581,7 @@ sealed interface XR {
   // A identifier. Can either represent an expression or query
   @Serializable
   @Mat
-  data class Ident(@Slot val name: String, override val type: XRType, override val loc: Location = Location.Synth, val visibility: Visibility = Visibility.Visible) : XR, XR.Expression, XR.Query, Labels.Terminal, PC<XR.Ident> {
+  data class Ident(@Slot val name: String, override val type: XRType, override val loc: Location = Location.Synth, val visibility: Visibility = Visibility.Visible) : XR, XR.Expression, XR.Query, U.Terminal, PC<XR.Ident> {
 
     @Transient override val productComponents = productOf(this, name)
     companion object {
@@ -856,12 +856,12 @@ sealed interface XR {
 }
 
 fun XR.isBottomTypedTerminal() =
-  this is XR.Labels.Terminal && (this.type is XRType.Null || this.type is XRType.Generic || this.type is XRType.Unknown)
+  this is XR.U.Terminal && (this.type is XRType.Null || this.type is XRType.Generic || this.type is XRType.Unknown)
 
 fun XR.isTerminal() =
-  this is XR.Labels.Terminal
+  this is XR.U.Terminal
 
-fun XR.Labels.Terminal.withType(type: XRType): XR.Expression =
+fun XR.U.Terminal.withType(type: XRType): XR.Expression =
   when (this) {
     is XR.Ident -> XR.Ident(name, type, loc)
   }

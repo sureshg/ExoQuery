@@ -272,7 +272,7 @@ fun IrFunctionExpression.firstParam() =
 // Parser for GlobalCall and MethodCall
 object CallParser {
   context(ParserContext, CompileLogger)
-  fun parse(expr: IrCall): XR.Labels.QueryOrExpression {
+  fun parse(expr: IrCall): XR.U.QueryOrExpression {
     fun FqName.toFqNameXR() = run {
       this.shortNameOrSpecial()
       XR.FqName(this.pathSegments().joinToString("."), this.shortNameOrSpecial().asString())

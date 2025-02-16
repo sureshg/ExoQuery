@@ -16,7 +16,7 @@ interface StatelessTransformerSingleRoot: StatelessTransformer {
 
 interface StatelessTransformer {
 
-  operator fun invoke(xr: Labels.QueryOrExpression) =
+  operator fun invoke(xr: U.QueryOrExpression) =
     when (xr) {
       is XR.Query -> invoke(xr)
       is XR.Expression -> invoke(xr)

@@ -2,7 +2,7 @@ package io.exoquery.xr
 
 import io.exoquery.xr.copy.*
 import io.exoquery.xrError
-import io.exoquery.xr.XR.Labels.QueryOrExpression
+import io.exoquery.xr.XR.U.QueryOrExpression
 
 sealed interface TypeBehavior {
   object SubstituteSubtypes: TypeBehavior
@@ -29,8 +29,8 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
   private fun correctTheTypeOfReplacement(orig: QueryOrExpression, rep: QueryOrExpression): QueryOrExpression =
     when {
       replaceWithReduction() -> rep
-      rep is XR.Labels.Terminal && rep.isBottomTypedTerminal() -> rep.withType(orig.type)
-      rep is XR.Labels.Terminal -> {
+      rep is XR.U.Terminal && rep.isBottomTypedTerminal() -> rep.withType(orig.type)
+      rep is XR.U.Terminal -> {
         val type = orig.type.leastUpperType(rep.type) ?: run {
           // TODO log warning about the invalid reduction
           XRType.Unknown
@@ -48,7 +48,7 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
       }
     } ?: super.invoke(xr)
 
-  fun replaceAtHead(xr: XR.Labels.QueryOrExpression): XR.Labels.QueryOrExpression? {
+  fun replaceAtHead(xr: XR.U.QueryOrExpression): XR.U.QueryOrExpression? {
     val replacement = map[xr]
     return when {
       // I.e. we have an actual replacement for this element

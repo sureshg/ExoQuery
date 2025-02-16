@@ -235,7 +235,7 @@ interface StatefulTransformer<T> {
       this to this@StatefulTransformer
     }
 
-  operator fun invoke(xr: XR.Labels.QueryOrExpression): Pair<XR.Labels.QueryOrExpression, StatefulTransformer<T>> =
+  operator fun invoke(xr: XR.U.QueryOrExpression): Pair<XR.U.QueryOrExpression, StatefulTransformer<T>> =
     when(xr) {
       is XR.Query -> invoke(xr)
       is XR.Expression -> invoke(xr)
