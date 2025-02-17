@@ -2,6 +2,7 @@ package io.exoquery
 
 import io.exoquery.annotation.Dsl
 import io.exoquery.annotation.DslFunctionCall
+import io.exoquery.annotation.DslFunctionCallType
 import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
 import kotlinx.serialization.decodeFromHexString
@@ -56,23 +57,22 @@ interface CapturedBlock {
 
   // TODO Need to test
   // Use this in the select or map clauses e.g. people.map(p -> min(p.age))
-  @DslFunctionCall fun <T: Comparable<T>> min(value: T): T = errorCap("The `min` expression of the Query was not inlined")
-  @DslFunctionCall fun <T: Comparable<T>> max(value: T): T = errorCap("The `min` expression of the Query was not inlined")
-  @DslFunctionCall fun <T: Comparable<T>> avg(value: T): T = errorCap("The `min` expression of the Query was not inlined")
-  @DslFunctionCall fun <T: Comparable<T>> sum(value: T): T = errorCap("The `min` expression of the Query was not inlined")
-  @DslFunctionCall fun <T> count(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.Aggregator::class) fun <T: Comparable<T>> min(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.Aggregator::class) fun <T: Comparable<T>> max(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.Aggregator::class) fun <T: Comparable<T>> avg(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.Aggregator::class) fun <T: Comparable<T>> sum(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.Aggregator::class) fun <T> count(value: T): T = errorCap("The `min` expression of the Query was not inlined")
 
   // TODO Need to test
   // Use this as an aggregator for a query e.g. people.map(p -> p.age).min()
   // this is useful for co-releated subqueries e.g. events.filter(ev -> people.map(p -> p.age).avg() > ev.minAllowedAge) i.e. events to which the average person can come to
-  @DslFunctionCall fun <T: Comparable<T>> SqlQuery<T>.min(): T = errorCap("The `min` expression of the Query was not inlined")
-  @DslFunctionCall fun <T: Comparable<T>> SqlQuery<T>.max(): T = errorCap("The `min` expression of the Query was not inlined")
-  @DslFunctionCall fun <T: Comparable<T>> SqlQuery<T>.avg(): T = errorCap("The `min` expression of the Query was not inlined")
-  @DslFunctionCall fun <T: Comparable<T>> SqlQuery<T>.sum(): T = errorCap("The `min` expression of the Query was not inlined")
-  @DslFunctionCall fun <T> SqlQuery<T>.count(): T = errorCap("The `min` expression of the Query was not inlined")
-
-  @DslFunctionCall fun <T> SqlQuery<T>.isNotEmpty(): Boolean = errorCap("The `isNotEmpty` expression of the Query was not inlined")
-  @DslFunctionCall fun <T> SqlQuery<T>.isEmpty(): Boolean = errorCap("The `isEmpty` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.QueryAggregator::class) fun <T: Comparable<T>> SqlQuery<T>.min(): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.QueryAggregator::class) fun <T: Comparable<T>> SqlQuery<T>.max(): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.QueryAggregator::class) fun <T: Comparable<T>> SqlQuery<T>.avg(): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.QueryAggregator::class) fun <T: Comparable<T>> SqlQuery<T>.sum(): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.QueryAggregator::class) fun <T> SqlQuery<T>.count(): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.QueryAggregator::class) fun <T> SqlQuery<T>.isNotEmpty(): Boolean = errorCap("The `isNotEmpty` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.QueryAggregator::class) fun <T> SqlQuery<T>.isEmpty(): Boolean = errorCap("The `isEmpty` expression of the Query was not inlined")
 
   @Dsl fun <T> SqlQuery<T>.nested(): SqlQuery<T> = errorCap("The `nested` expression of the Query was not inlined")
   @Dsl fun <T, R> SqlQuery<T>.sortedBy(f: (T) -> R): SqlQuery<T> = errorCap("The sort-by expression of the Query was not inlined")

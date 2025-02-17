@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrFileEntry
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
+import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFile
@@ -221,6 +222,11 @@ inline fun <reified T> IrType.isClass(): Boolean {
   // NOTE memoize these things for performance?
   val className = T::class.qualifiedNameForce
   return className == this.classFqName.toString() || this.superTypes().any { it.classFqName.toString() == className }
+}
+
+inline fun <reified T> IrAnnotationContainer.getAnnotationArgs(): List<IrExpression> {
+  val annotation = annotations.find { it.type.isClass<T>() }
+  return annotation?.valueArguments?.filterNotNull() ?: emptyList()
 }
 
 context(LoggableContext) fun IrExpression.varargValues(): List<IrExpression> =

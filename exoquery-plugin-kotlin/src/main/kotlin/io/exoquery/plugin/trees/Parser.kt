@@ -39,6 +39,7 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classFqName
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -282,7 +283,13 @@ object CallParser {
     val reciever = expr.extensionReceiver ?: expr.dispatchReceiver
 
     return if (reciever == null || reciever.type.isClass<CapturedBlock>()) {
-      XR.GlobalCall(expr.symbol.toFqNameXR(), expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() }, TypeParser.of(expr), expr.loc)
+      XR.GlobalCall(
+        name = expr.symbol.toFqNameXR(),
+        args = expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() },
+        callType = expr.extractCallType(),
+        type = TypeParser.of(expr),
+        loc = expr.loc
+      )
     } else {
       XR.MethodCall(
         head = Parser.parseArg(reciever!!),
@@ -290,10 +297,24 @@ object CallParser {
         args = expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() },
         originalHostType = expr.type.classFqName?.toFqNameXR() ?: XR.FqName("", ""),
         type = TypeParser.of(expr),
-        loc = expr.loc
+        loc = expr.loc,
+        callType = expr.extractCallType()
       )
     }
   }
+
+  context(ParserContext, CompileLogger)
+  private fun IrCall.extractCallType(): XR.CallType {
+    val arg =
+      (this.symbol.owner.getAnnotationArgs<DslFunctionCall>().firstOrNull() ?: parseError("Could not find DslFunctionCall annotation", this))
+        as? IrClassReference ?: parseError("DslFunctionCall annotation must have a single argument that is a class-reference (e.g. PureFunction::class)", this)
+    val argXR =
+      arg.classType.classFqName?.shortName()?.asString()?.let { XR.CallType.fromClassString(it) }
+        ?: parseError("Could not parse CallType from: ${arg.dumpKotlinLike()}", arg)
+    return argXR
+  }
+
+
 
 }
 

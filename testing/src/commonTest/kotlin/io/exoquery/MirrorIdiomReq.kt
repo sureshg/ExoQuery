@@ -73,10 +73,10 @@ class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGol
       shouldBeGolden(XR.Aggregation(OP.`max`, XR.Ident("foo")))
     }
     "XR.MethodCall" {
-      shouldBeGolden(XR.MethodCall(XR.Ident("foo"), "method", listOf(XR.Ident("bar"), XR.Ident("baz")), XR.FqName("com.Stuff"), XRType.Value))
+      shouldBeGolden(XR.MethodCall(XR.Ident("foo"), "method", listOf(XR.Ident("bar"), XR.Ident("baz")), XR.CallType.PureFunction, XR.FqName("com.Stuff"), XRType.Value))
     }
     "XR.GlobalCall" {
-      shouldBeGolden(XR.GlobalCall(XR.FqName("method"), listOf(XR.Ident("bar"), XR.Ident("baz")), XRType.Value))
+      shouldBeGolden(XR.GlobalCall(XR.FqName("method"), listOf(XR.Ident("bar"), XR.Ident("baz")), XR.CallType.PureFunction, XRType.Value))
     }
     "XR.QueryToExpr" {
       shouldBeGolden(XR.QueryToExpr(personEnt))

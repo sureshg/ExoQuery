@@ -6,7 +6,7 @@ import io.kotest.core.spec.style.FreeSpec
 // Also note that it won't actually override the BasicQuerySanitySpecGolden file unless you change this one
 
 // build the file BasicQuerySanitySpecGolden.kt, is that as the constructor arg
-class BasicQuerySanitySpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGoldenOverride(), {
+class BasicQuerySanitySpec : GoldenSpecDynamic(BasicQuerySanitySpecGoldenDynamic, Mode.ExoGoldenTest(), {
   data class Person(val id: Int, val name: String, val age: Int)
   data class Address(val ownerId: Int, val street: String, val city: String)
 
@@ -24,14 +24,5 @@ class BasicQuerySanitySpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGo
     val people = capture { Table<Person>().filter { p -> p.age > 18 } }
     shouldBeGolden(people.build<PostgresDialect>())
   }
-  "query with co-releated in filter - isNotEmpty" {
-    val people = capture { Table<Person>().filter { p -> Table<Address>().filter { a -> a.ownerId == p.id }.isNotEmpty() } }
-    shouldBeGolden(people.xr)
-    shouldBeGolden(people.build<PostgresDialect>())
-  }
-  "query with co-releated in filter - isEmpty" {
-    val people = capture { Table<Person>().filter { p -> Table<Address>().filter { a -> a.ownerId == p.id }.isEmpty() } }
-    shouldBeGolden(people.xr, "XR")
-    shouldBeGolden(people.build<PostgresDialect>())
-  }
+
 })

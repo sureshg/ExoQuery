@@ -329,7 +329,7 @@ abstract class SqlIdiom: HasPhasePrinting {
       //def withLimitOffset: Token = limitOffsetToken(withOrderBy).token((limit, offset))
       val withLimitOffset by lazy { limitOffsetToken(withOrderBy, limit, offset) }
 
-      +"SELECT $withLimitOffset"
+      +"SELECT ${withLimitOffset}"
     }
 
   fun tokenizeGroupBy(values: XR.Expression): Token = values.token

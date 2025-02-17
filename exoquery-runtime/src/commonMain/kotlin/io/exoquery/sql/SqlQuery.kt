@@ -358,7 +358,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         }
         with(query) {
           when {
-            // A map that contains mapped-to aggregations e.g.
+            // A map that contains mapped-to aggregations (i.e. MethodCalls that are typed as ImpureFunction or Aggregation) e.g.
             //   people.map(p=>max(p.name))
             // Could have more complex structures e.g: people.map(p=>SomeCaseClassOrTuple(max(p.name),min(p.age)))
             // so we need to search for the aggregations.
@@ -408,7 +408,8 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
             is Map -> {
               val b = base(head, id, nestNextMap = false)
-              val aggs = b.select.filter { it.expr is XR.Aggregation }
+              // TODO do we really need another nesting level if select-values are aggregations? Haven't we invoked "containsImpurities" above to already do that? Need to look into it.
+              val aggs = b.select.filter { it.expr is XR.MethodCall && it.expr.isAggregation() || it.expr is XR.GlobalCall && it.expr.isAggregation() }
               if (!b.distinct.isDistinct && aggs.isEmpty())
                 trace("Flattening| Map(Ident) [Simple]") andReturn {
                   b.copy(select = selectValues(body), type = type)

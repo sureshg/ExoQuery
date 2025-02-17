@@ -46,7 +46,8 @@ fun XR.Map.containsImpurities(): Boolean =
   CollectXR(this) {
     with(it) {
       when {
-        this is XR.Aggregation -> this
+        this is XR.GlobalCall && !this.isPure() -> this
+        this is XR.MethodCall && !this.isPure() -> this
         this is XR.Infix && !this.pure -> this
         else -> null
       }

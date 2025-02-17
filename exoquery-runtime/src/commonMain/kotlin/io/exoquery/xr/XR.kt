@@ -488,6 +488,21 @@ sealed interface XR {
     override fun equals(other: Any?): Boolean = other is UnaryOp && other.id() == cid
   }
 
+  @Serializable
+  sealed interface CallType {
+    val isPure: Boolean
+    @Serializable data object PureFunction: CallType { override val isPure = true }
+    @Serializable data object ImpureFunction: CallType { override val isPure = false }
+    @Serializable data object Aggregator: CallType { override val isPure = false }
+    @Serializable data object QueryAggregator: CallType { override val isPure = false }
+
+    companion object {
+      val values = listOf(PureFunction, ImpureFunction, Aggregator, QueryAggregator)
+      fun fromClassString(str: String): CallType =
+        values.first { it::class.simpleName == str }
+    }
+  }
+
   /**
    * It is interesting to note that in Quill an aggregation could be both a Query and what we would define
    * in ExoQuery as an expression. This was based on the idea of monadic aggregation which was based on
@@ -540,24 +555,30 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class MethodCall(@Slot val head: XR.U.QueryOrExpression, val name: String, @Slot val args: List<XR.U.QueryOrExpression>, val originalHostType: XR.FqName, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<MethodCall> {
+  data class MethodCall(@Slot val head: XR.U.QueryOrExpression, val name: String, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, val originalHostType: XR.FqName, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<MethodCall> {
     @Transient override val productComponents = productOf(this, head, args)
     companion object {}
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is MethodCall && other.id() == cid
+
+    fun isPure() = callType.isPure
+    fun isAggregation() = callType == CallType.Aggregator
   }
 
   @Serializable
   @Mat
-  data class GlobalCall(val name: XR.FqName, @Slot val args: List<XR.U.QueryOrExpression>, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<GlobalCall> {
+  data class GlobalCall(val name: XR.FqName, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<GlobalCall> {
     @Transient override val productComponents = productOf(this, args)
     companion object {}
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is GlobalCall && other.id() == cid
+
+    fun isPure() = callType.isPure
+    fun isAggregation() = callType == CallType.Aggregator
   }
 
 

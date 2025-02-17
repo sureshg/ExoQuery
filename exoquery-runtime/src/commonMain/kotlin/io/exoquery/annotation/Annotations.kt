@@ -37,6 +37,13 @@ annotation class ExoGoldenOverride
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoExtras
 
+sealed interface DslFunctionCallType {
+  object PureFunction : DslFunctionCallType
+  object ImpureFunction : DslFunctionCallType
+  object Aggregator : DslFunctionCallType
+  object QueryAggregator : DslFunctionCallType
+}
+
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
-annotation class DslFunctionCall
+annotation class DslFunctionCall(val type: KClass<out DslFunctionCallType>)
