@@ -29,7 +29,11 @@ fun <T> captureValue(block: CapturedBlock.() -> T): @Captured SqlExpression<T> =
 fun <T> capture(block: CapturedBlock.() -> SqlQuery<T>): @Captured SqlQuery<T> = errorCap("Compile time plugin did not transform the tree")
 
 
+fun foo() {
+  val p = listOf(1,2,3)
 
+  p.min()
+}
 
 interface CapturedBlock {
   @Dsl fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
@@ -47,6 +51,26 @@ interface CapturedBlock {
   @Dsl fun <T> SqlQuery<T>.distinct(): SqlQuery<T> = errorCap("The `distinct` expression of the Query was not inlined")
   @Dsl fun <T, R> SqlQuery<T>.distinctBy(f: (T) -> R): SqlQuery<T> = errorCap("The `distinctBy` expression of the Query was not inlined")
 
+  // TODO get rid of Aggregation in XR in favor of below
+  // TODO get rid of PostgisOps in operators in favor of MethodCall already implemented
+
+  // TODO Need to test
+  // Use this in the select or map clauses e.g. people.map(p -> min(p.age))
+  @DslFunctionCall fun <T: Comparable<T>> min(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall fun <T: Comparable<T>> max(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall fun <T: Comparable<T>> avg(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall fun <T: Comparable<T>> sum(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall fun <T> count(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+
+  // TODO Need to test
+  // Use this as an aggregator for a query e.g. people.map(p -> p.age).min()
+  // this is useful for co-releated subqueries e.g. events.filter(ev -> people.map(p -> p.age).avg() > ev.minAllowedAge) i.e. events to which the average person can come to
+  @DslFunctionCall fun <T: Comparable<T>> SqlQuery<T>.min(): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall fun <T: Comparable<T>> SqlQuery<T>.max(): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall fun <T: Comparable<T>> SqlQuery<T>.avg(): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall fun <T: Comparable<T>> SqlQuery<T>.sum(): T = errorCap("The `min` expression of the Query was not inlined")
+  @DslFunctionCall fun <T> SqlQuery<T>.count(): T = errorCap("The `min` expression of the Query was not inlined")
+
   @DslFunctionCall fun <T> SqlQuery<T>.isNotEmpty(): Boolean = errorCap("The `isNotEmpty` expression of the Query was not inlined")
   @DslFunctionCall fun <T> SqlQuery<T>.isEmpty(): Boolean = errorCap("The `isEmpty` expression of the Query was not inlined")
 
@@ -58,6 +82,8 @@ interface CapturedBlock {
   @Dsl fun <T> SqlQuery<T>.size(): SqlQuery<Int> = errorCap("The size expression of the Query was not inlined")
 
   // Used in groupBy and various other places to convert query to an expression
+  // e.g. events.filter(ev -> people.map(p -> customFunction(p.age)).value() > ev.minAllowedAge).value()
+  // TODO Need to test
   @Dsl fun <T> SqlQuery<T>.value(): SqlExpression<T> = errorCap("The `value` expression of the Query was not inlined")
 
   @Dsl fun <T> Table(): SqlQuery<T> = errorCap("The `Table<T>` constructor function was not inlined")
