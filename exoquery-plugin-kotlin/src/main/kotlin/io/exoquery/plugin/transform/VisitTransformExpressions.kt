@@ -2,10 +2,10 @@ package io.exoquery.plugin.transform
 
 import io.exoquery.ParseError
 import io.exoquery.TransformXrError
+import io.exoquery.config.ExoCompileOptions
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.CompileLogger.Companion.invoke
-import io.exoquery.plugin.settings.ExoCompileOptions
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation

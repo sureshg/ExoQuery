@@ -14,6 +14,9 @@ import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
+class LiftingError(val msg: String): Exception(msg)
+fun liftingError(msg: String): Nothing = throw LiftingError(msg)
+
 class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) : Exception(msg) {
   companion object {
     fun withFullMsg(msg: String, element: IrElement, file: IrFile, location: CompilerMessageSourceLocation): ParseError {

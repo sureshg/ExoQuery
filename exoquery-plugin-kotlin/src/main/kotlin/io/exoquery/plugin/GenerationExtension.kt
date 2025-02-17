@@ -1,6 +1,6 @@
 package io.exoquery.plugin
 
-import io.exoquery.plugin.settings.ExoCompileOptions
+import io.exoquery.config.ExoCompileOptions
 import io.exoquery.plugin.transform.FileQueryAccum
 import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.plugin.transform.VisitTransformExpressions

@@ -22,7 +22,7 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
 
   /*
   Argument taking the name of a query: (also make buildPretty) to pretty-print it
-  query.build(PostgresDialect(), "GetStuffFromStuff")
+  query.build<PostgresDialect>(, "GetStuffFromStuff")
   ------< GetStuffFromStuff >-----
   select ...
 
@@ -35,11 +35,11 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
   fun buildRuntime(dialect: SqlIdiom, label: String?, pretty: Boolean = false): SqlCompiledQuery<T> =
     RuntimeQueryBuilder(this, dialect, label, pretty).invoke()
 
-  fun build(dialect: SqlIdiom): SqlCompiledQuery<T> = TODO()
-  fun build(dialect: SqlIdiom, label: String): SqlCompiledQuery<T> = TODO()
+  fun <Dialect: SqlIdiom> build(): SqlCompiledQuery<T> = TODO()
+  fun <Dialect: SqlIdiom> build(label: String): SqlCompiledQuery<T> = TODO()
 
-  fun buildPretty(dialect: SqlIdiom): SqlCompiledQuery<T> = TODO()
-  fun buildPretty(dialect: SqlIdiom, label: String): SqlCompiledQuery<T> = TODO()
+  fun <Dialect: SqlIdiom> buildPretty(): SqlCompiledQuery<T> = TODO()
+  fun <Dialect: SqlIdiom> buildPretty(label: String): SqlCompiledQuery<T> = TODO()
   override fun rebuild(xr: XR, runtimes: Runtimes, params: Params): SqlQuery<T> =
     copy(xr = xr as? XR.Query ?: xrError("Failed to rebuild SqlQuery with XR of type ${xr::class} which was: ${xr.show()}"), runtimes = runtimes, params = params)
 }

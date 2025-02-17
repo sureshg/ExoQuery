@@ -20,31 +20,31 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
     "cap { capFun(Table) }" {
       val capJoes = capture { joes(Table<Person>()) }
       shouldBeGolden(capJoes.xr, "XR")
-      shouldBeGolden(capJoes.build(PostgresDialect()), "SQL")
+      shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
     }
     "val tbl; cap { capFun(tbl) }" {
       val tbl = capture { Table<Person>() }
       val capJoes = capture { joes(tbl) }
       shouldBeGolden(capJoes.xr, "XR")
-      shouldBeGolden(capJoes.build(PostgresDialect()), "SQL")
+      shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
     }
     "val tbl; cap { capFun(tbl).filter }" {
       val tbl = capture { Table<Person>() }
       val capJoes = capture { joes(tbl).filter { p -> p.age > 21 } }
       shouldBeGolden(capJoes.xr, "XR")
-      shouldBeGolden(capJoes.build(PostgresDialect()), "SQL")
+      shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
     }
     "val tbl; select { from(tbl) }" {
       val tbl = capture { Table<Person>() }
       val capJoes = select { val p = from(tbl); p }
       shouldBeGolden(capJoes.xr, "XR")
-      shouldBeGolden(capJoes.build(PostgresDialect()), "SQL")
+      shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
     }
     "val tbl; select { from(tbl); join }" {
       val tbl = capture { Table<Person>() }
       val capJoes = select { val p = from(tbl); val a = join(Table<Address>()) { a -> a.ownerId == p.id }; p to a }
       shouldBeGolden(capJoes.xr, "XR")
-      shouldBeGolden(capJoes.build(PostgresDialect()), "SQL")
+      shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
     }
   }
   "dynamic function capture - structural tests" - {
@@ -56,7 +56,7 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       shouldBeGolden(det.xr, "XR")
       shouldBeGolden(det.runtimes.runtimes.first().second.xr, "XR->Runimtes.first.XR")
       shouldBeTrueInGolden { det.runtimes.runtimes.first().second.xr == tbl.xr }
-      shouldBeGolden(capJoes.build(PostgresDialect()), "SQL")
+      shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
     }
   }
 })

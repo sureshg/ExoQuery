@@ -50,7 +50,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         type = XRType.Value
       ).toXrRef()
 
-      people.buildPretty(PostgresDialect(), "from + join -> (p, r)").shouldBeGolden()
+      people.build<PostgresDialect>("from + join -> (p, r)").shouldBeGolden()
     }
 
     "from + join + leftJoin -> Custom(p, r)" {
@@ -69,7 +69,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         type = XRType.Value
       ).toXrRef()
 
-      people.buildPretty(PostgresDialect(), "from + join + leftJoin -> Custom(p, r)").shouldBeGolden()
+      people.build<PostgresDialect>("from + join + leftJoin -> Custom(p, r)").shouldBeGolden()
     }
 
     "from + leftJoin -> Custom(p, r)" {
@@ -87,7 +87,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         type = XRType.Value
       ).toXrRef()
 
-      people.buildPretty(PostgresDialect(), "from + leftJoin -> Custom(p, r)").shouldBeGolden()
+      people.build<PostgresDialect>("from + leftJoin -> Custom(p, r)").shouldBeGolden()
     }
 
     "from + join + where" {
@@ -107,7 +107,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         type = XRType.Value
       ).toXrRef()
 
-      people.buildPretty(PostgresDialect(), "from + join + where").shouldBeGolden()
+      people.build<PostgresDialect>("from + join + where").shouldBeGolden()
     }
     "from + sort(Asc,Desc)" {
       val people =
@@ -124,7 +124,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         type = XRType.Value
       ).toXrRef()
 
-      people.buildPretty(PostgresDialect(), "from + sort(Asc,Desc)").shouldBeGolden()
+      people.build<PostgresDialect>("from + sort(Asc,Desc)").shouldBeGolden()
     }
     "from + sort(Asc)" {
       val people =
@@ -141,7 +141,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         type = XRType.Value
       ).toXrRef()
 
-      people.buildPretty(PostgresDialect(), "from + sort(Asc)").shouldBeGolden()
+      people.build<PostgresDialect>("from + sort(Asc)").shouldBeGolden()
     }
 
     "from + groupBy(a)" {
@@ -159,7 +159,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         type = XRType.Value
       ).toXrRef()
 
-      people.buildPretty(PostgresDialect(), "from + groupBy").shouldBeGolden()
+      people.build<PostgresDialect>("from + groupBy").shouldBeGolden()
     }
   }
 
@@ -178,6 +178,6 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
       type = XRType.Value
     ).toXrRef()
 
-    people.buildPretty(PostgresDialect(), "from + groupBy(a, b)").shouldBeGolden()
+    people.build<PostgresDialect>("from + groupBy(a, b)").shouldBeGolden()
   }
 })

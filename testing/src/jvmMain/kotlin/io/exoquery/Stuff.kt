@@ -62,7 +62,7 @@ fun main() {
   }
   println(result.show())
 
-  println(result.build(PostgresDialect()).value)
+  println(result.build<PostgresDialect>().value)
 
   println("helloooooooooooooo")
 

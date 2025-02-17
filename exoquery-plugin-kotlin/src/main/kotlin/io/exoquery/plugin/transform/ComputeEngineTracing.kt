@@ -4,12 +4,12 @@ import io.exoquery.annotation.TracesEnabled
 import io.exoquery.parseError
 import io.exoquery.plugin.getAnnotation
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.printing.FilePrintOutputSink
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.source
 import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.simpleTypeArgs
 import io.exoquery.plugin.varargValues
+import io.exoquery.util.FilePrintOutputSink
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
 import io.exoquery.util.Tracer
@@ -41,7 +41,7 @@ object ComputeEngineTracing {
     val traceTypesNames = getTraceAnnotations()
     val writeSource =
       if (traceTypesNames.isNotEmpty())
-        FilePrintOutputSink.Companion.open(options)
+        FilePrintOutputSink.open(options)
       else
         null
     val traceConfig = TraceConfig.Companion.empty.copy(traceTypesNames, writeSource ?: Tracer.OutputSink.None)

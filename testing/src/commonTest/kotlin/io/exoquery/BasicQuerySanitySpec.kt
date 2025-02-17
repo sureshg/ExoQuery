@@ -13,19 +13,19 @@ class BasicQuerySanitySpec : GoldenSpec(BasicQuerySanitySpecGolden, {
 
   "basic query" {
     val people = capture { Table<Person>() }
-    people.buildPretty(PostgresDialect(), "basic query").shouldBeGolden()
+    people.buildPretty<PostgresDialect>("basic query").shouldBeGolden()
   }
   "query with map" {
     val people = capture { Table<Person>().map { p -> p.name } }
-    people.buildPretty(PostgresDialect(), "query with map").shouldBeGolden()
+    people.buildPretty<PostgresDialect>("query with map").shouldBeGolden()
   }
   "query with filter" {
     val people = capture { Table<Person>().filter { p -> p.age > 18 } }
-    people.buildPretty(PostgresDialect(), "query with filter").shouldBeGolden()
+    people.buildPretty<PostgresDialect>("query with filter").shouldBeGolden()
   }
   //"query with co-releated in filter" {
   //  val people = capture { Table<Person>().filter { p -> Table<Address>().filter { a -> a.ownerId == p.id }.isNotEmpty() } }
-  //  people.buildPretty(PostgresDialect(), "query with co-releated in filter").shouldBeGolden()
+  //  people.build<PostgresDialect>("query with co-releated in filter").shouldBeGolden()
   //}
   //val x = listOf(1,2,3)
   //x.isNotEmpty()

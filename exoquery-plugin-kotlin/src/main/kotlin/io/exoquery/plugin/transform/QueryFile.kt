@@ -1,7 +1,7 @@
 package io.exoquery.plugin.transform
 
+import io.exoquery.config.ExoCompileOptions
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.settings.ExoCompileOptions
 import io.exoquery.printing.PrintableValue
 import io.exoquery.printing.QueryFileKotlinMaker
 import org.jetbrains.kotlin.config.CompilerConfiguration

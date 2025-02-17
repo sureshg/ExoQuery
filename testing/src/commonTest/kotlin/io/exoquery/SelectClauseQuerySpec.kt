@@ -26,7 +26,7 @@ class SelectClauseQuerySpec : FreeSpec({
         Table<Person>().filter { p -> p.name == "Joe" }
       }
 
-      people.build(PostgresDialect()).value shouldBe "SELECT p.name AS name, p.age AS age FROM Person p WHERE p.name = 'Joe'"
+      people.build<PostgresDialect>().value shouldBe "SELECT p.name AS name, p.age AS age FROM Person p WHERE p.name = 'Joe'"
     }
 
 
@@ -43,7 +43,7 @@ class SelectClauseQuerySpec : FreeSpec({
 //          val r = join(Table<Robot>()) { r -> p.name?.first == r.ownerFirstName }
 //          p to r
 //        }
-//      println("Query:\n${people.build(PostgresDialect())}")
+//      println("Query:\n${people.build<PostgresDialect>()}")
 //    }
 //    "from + join on nullable ?: alternative" {
 //      val people =
@@ -52,7 +52,7 @@ class SelectClauseQuerySpec : FreeSpec({
 //          val r = join(Table<Robot>()) { r -> p.name?.first ?: "defaultName" == r.ownerFirstName }
 //          p to r
 //        }
-//      println("Query:\n${people.build(PostgresDialect())}") //
+//      println("Query:\n${people.build<PostgresDialect>()}") //
 //    }
 
   }

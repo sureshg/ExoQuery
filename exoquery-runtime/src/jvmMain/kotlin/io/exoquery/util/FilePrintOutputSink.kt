@@ -1,6 +1,6 @@
-package io.exoquery.plugin.printing
+package io.exoquery.util
 
-import io.exoquery.plugin.settings.ExoCompileOptions
+import io.exoquery.config.ExoCompileOptions
 import io.exoquery.util.Tracer
 import java.io.BufferedWriter
 import java.nio.charset.StandardCharsets
@@ -22,8 +22,11 @@ class FilePrintOutputSink private constructor(val writer: BufferedWriter): Trace
   }
 
   companion object {
-    fun open(options: ExoCompileOptions): FilePrintOutputSink {
-      val filePath = Path.of(options.projectDir, "ExoQuery.log")
+    fun open(compileOptions: ExoCompileOptions) =
+      open(compileOptions.projectDir)
+
+    fun open(path: String): FilePrintOutputSink {
+      val filePath = Path.of(path, "ExoQuery.log")
       val writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
       return FilePrintOutputSink(writer)
     }
