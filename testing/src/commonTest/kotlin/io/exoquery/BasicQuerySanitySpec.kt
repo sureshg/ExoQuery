@@ -1,4 +1,3 @@
-@file:io.exoquery.annotation.ExoGoldenOverride
 package io.exoquery
 
 import io.kotest.core.spec.style.FreeSpec
@@ -7,26 +6,32 @@ import io.kotest.core.spec.style.FreeSpec
 // Also note that it won't actually override the BasicQuerySanitySpecGolden file unless you change this one
 
 // build the file BasicQuerySanitySpecGolden.kt, is that as the constructor arg
-class BasicQuerySanitySpec : GoldenSpec(BasicQuerySanitySpecGolden, {
+class BasicQuerySanitySpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGoldenOverride(), {
   data class Person(val id: Int, val name: String, val age: Int)
   data class Address(val ownerId: Int, val street: String, val city: String)
 
   "basic query" {
     val people = capture { Table<Person>() }
-    people.buildPretty<PostgresDialect>("basic query").shouldBeGolden()
+    people.build<PostgresDialect>("basic query").shouldBeGolden()
+    // people.buildPretty(PostgresDialect::class)
+
   }
   "query with map" {
     val people = capture { Table<Person>().map { p -> p.name } }
-    people.buildPretty<PostgresDialect>("query with map").shouldBeGolden()
+    shouldBeGolden(people.build<PostgresDialect>())
   }
   "query with filter" {
     val people = capture { Table<Person>().filter { p -> p.age > 18 } }
-    people.buildPretty<PostgresDialect>("query with filter").shouldBeGolden()
+    shouldBeGolden(people.build<PostgresDialect>())
   }
-  //"query with co-releated in filter" {
-  //  val people = capture { Table<Person>().filter { p -> Table<Address>().filter { a -> a.ownerId == p.id }.isNotEmpty() } }
-  //  people.build<PostgresDialect>("query with co-releated in filter").shouldBeGolden()
-  //}
-  //val x = listOf(1,2,3)
-  //x.isNotEmpty()
+  "query with co-releated in filter - isNotEmpty" {
+    val people = capture { Table<Person>().filter { p -> Table<Address>().filter { a -> a.ownerId == p.id }.isNotEmpty() } }
+    shouldBeGolden(people.xr)
+    shouldBeGolden(people.build<PostgresDialect>())
+  }
+  "query with co-releated in filter - isEmpty" {
+    val people = capture { Table<Person>().filter { p -> Table<Address>().filter { a -> a.ownerId == p.id }.isEmpty() } }
+    shouldBeGolden(people.xr, "XR")
+    shouldBeGolden(people.build<PostgresDialect>())
+  }
 })

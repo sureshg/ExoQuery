@@ -14,7 +14,7 @@ import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.annotation.Dsl
-import io.exoquery.annotation.DslCall
+import io.exoquery.annotation.DslFunctionCall
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.parseError
@@ -108,15 +108,15 @@ object QueryParser {
     )
 
   context(ParserContext, CompileLogger)
-  fun IrCall.isDslCall() =
+  fun IrCall.isDslMethod() =
     this.symbol.owner.let { it.hasAnnotation<Dsl>() } ?: false
 
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Query =
     when {
       // We don't want arbitrary functions returning SqlQuery to be treated as dynamic so we make sure they are annotated with @Dsl
       // this processes everything like that.
-      expr is IrCall && expr.hasAnnotation<DslCall>() -> CallParser.parse(expr).asQuery() ?: parseError("Could not parse the DslCall", expr)
-      expr is IrCall && expr.isDslCall() -> parseDslCall(expr) ?: parseError("Could not parse the DSL call", expr)
+      expr is IrCall && expr.ownerHasAnnotation<DslFunctionCall>() -> CallParser.parse(expr).asQuery() ?: parseError("Could not parse the DslCall", expr)
+      expr is IrCall && expr.isDslMethod() -> parseDslCall(expr) ?: parseError("Could not parse the DSL call", expr)
       else -> {
         on(expr).match<XR.Query>(
           // If you find a random identifier hanging around, check if:
@@ -281,7 +281,7 @@ object CallParser {
       this.owner.kotlinFqName.toFqNameXR()
     val reciever = expr.extensionReceiver ?: expr.dispatchReceiver
 
-    return if (reciever != null) {
+    return if (reciever == null || reciever.type.isClass<CapturedBlock>()) {
       XR.GlobalCall(expr.symbol.toFqNameXR(), expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() }, TypeParser.of(expr), expr.loc)
     } else {
       XR.MethodCall(
@@ -444,9 +444,13 @@ object ExpressionParser {
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Expression =
     on(expr).match<XR.Expression>(
 
-      case(Ir.Call[Is()]).thenIf { it.hasAnnotation<DslCall>() }.then { call ->
+      case(Ir.Call[Is()]).thenIf { it.ownerHasAnnotation<DslFunctionCall>() }.then { call ->
         CallParser.parse(call).asExpr()
       },
+
+      //case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<SqlQuery<*>>(), Is("isNotEmpty")]).then { sqlQueryIr, _ ->
+      //  XR.QueryToExpr(QueryParser.parse(sqlQueryIr), sqlQueryIr.loc)
+      //},
 
       case(Ir.Expr.ClassOf<SqlQuery<*>>()).then { expr ->
         XR.QueryToExpr(QueryParser.parse(expr), expr.loc)
@@ -624,7 +628,7 @@ object ExpressionParser {
 //          TypeParser.of(symbol.owner), locationXR()
 //        )
 //      },
-    ) ?: throwParseErrorMsg(expr)
+    ) ?: parseError("Could not parse the expression.", expr)
 
 //  fun IrSimpleFunctionSymbol.fqNameXR() =
 //    XR.FqName(this.owner.parent.kotlinFqName.toString(), this.safeName)

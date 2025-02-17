@@ -1,6 +1,6 @@
 package io.exoquery
 
-import io.exoquery.annotation.DslExt
+import io.exoquery.annotation.ExoExtras
 import io.exoquery.printing.PrintableValue
 import io.exoquery.printing.QueryFileKotlinMaker
 import io.exoquery.xr.XR
@@ -17,10 +17,10 @@ sealed interface Mode {
   data class ExoGoldenOverride(override val fileName: String): Mode
   companion object {
     // TODO add a parameter for package so tests can be in other packages then io.exoquery
-    @DslExt
+    @ExoExtras
     fun ExoGoldenTest(): Mode = ExoGoldenTest(errorCap("No file name provided. This should be overridden by the compiler-plugin to ExoGoldenTestExpr"))
     fun ExoGoldenTestExpr(fileName: String): Mode = ExoGoldenTest(fileName)
-    @DslExt
+    @ExoExtras
     fun ExoGoldenOverride(): Mode = ExoGoldenOverride(errorCap("No file name provided. This should be overridden by the compiler-plugin to ExoGoldenOverrideExpr"))
     fun ExoGoldenOverrideExpr(fileName: String): Mode = ExoGoldenOverride(fileName)
   }

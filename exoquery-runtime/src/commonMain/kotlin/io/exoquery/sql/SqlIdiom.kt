@@ -158,7 +158,11 @@ abstract class SqlIdiom: HasPhasePrinting {
   // TODO needs lots of refinement
   val XR.MethodCall.token get(): Token = run {
     val argsToken = (listOf(head) + args).map { it -> it.token }.mkStmt()
-    +"${head.token}.${name}(${argsToken})"
+    when (name) {
+      "isNotEmpty" -> +"EXISTS (${head.token})"
+      "isEmpty" -> +"NOT EXISTS (${head.token})"
+      else -> xrError("Unknown XR.MethodCall method: ${name}")
+    }
   }
 
   val XR.GlobalCall.token get(): Token = run {

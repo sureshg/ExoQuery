@@ -35,8 +35,8 @@ annotation class ExoGoldenOverride
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
-annotation class DslExt
+annotation class ExoExtras
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
-annotation class DslCall
+annotation class DslFunctionCall

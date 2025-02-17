@@ -185,6 +185,9 @@ inline fun <reified T> fqNameOf(): FqName {
   return FqName(className)
 }
 
+inline fun <reified T> IrCall.ownerHasAnnotation() =
+  this.symbol.owner.hasAnnotation<T>()
+
 inline fun <reified T> IrElement.hasAnnotation() =
   when (this) {
     is IrAnnotationContainer ->

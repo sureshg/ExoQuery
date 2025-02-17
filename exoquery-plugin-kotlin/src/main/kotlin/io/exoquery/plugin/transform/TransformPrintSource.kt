@@ -2,9 +2,8 @@ package io.exoquery.plugin.transform
 
 import io.decomat.Is
 import io.decomat.case
-import io.decomat.match
 import io.decomat.on
-import io.exoquery.annotation.DslExt
+import io.exoquery.annotation.ExoExtras
 import io.exoquery.parseError
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.trees.Ir
@@ -12,21 +11,13 @@ import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.trees.LocationContext
-import io.exoquery.plugin.trees.ParserContext
-import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
-import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
-import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.path
-import org.jetbrains.kotlin.ir.expressions.IrBlock
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -39,7 +30,7 @@ class TransformPrintSource(
 
   context(BuilderContext, CompileLogger)
   override fun matchesBase(expression: IrCall): Boolean =
-    expression.symbol.owner.hasAnnotation<DslExt>()
+    expression.symbol.owner.hasAnnotation<ExoExtras>()
 
   sealed interface MatchedType {
     data class Multi(val irs: IrBlockBody): MatchedType
