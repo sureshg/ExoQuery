@@ -214,9 +214,13 @@ abstract class SqlIdiom: HasPhasePrinting {
         when {
           // Cast strings to numeric types if needed
           name.isConverterFunction() -> head.stringConversionMapping(name)
+          name == "substring" -> +"SUBSTRING(${head.token}, ${args.first().token}, ${args.last().token})"
           name == "startsWith" -> stringStartsWith(head, args.first())
-          name == "toUpperCase" -> +"UPPER(${head.token})"
-          name == "toLowerCase" -> +"LOWER(${head.token})"
+          name == "uppercase" -> +"UPPER(${head.token})"
+          name == "lowercase" -> +"LOWER(${head.token})"
+          name == "left" -> +"LEFT(${head.token}, ${args.first().token})"
+          name == "right" -> +"RIGHT(${head.token}, ${args.first().token})"
+          name == "replace" -> +"REPLACE(${head.token}, ${args.first().token}, ${args.last().token})"
           else -> xrError("Unknown or invalid XR.MethodCall method: ${name} in the expression:\n${this.showRaw()}")
         }
       }

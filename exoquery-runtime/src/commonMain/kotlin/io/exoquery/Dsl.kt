@@ -30,19 +30,13 @@ fun errorCap(message: Any): Nothing = throw MissingCaptureError(message.toString
 fun <T> captureValue(block: CapturedBlock.() -> T): @Captured SqlExpression<T> = errorCap("Compile time plugin did not transform the tree")
 fun <T> capture(block: CapturedBlock.() -> SqlQuery<T>): @Captured SqlQuery<T> = errorCap("Compile time plugin did not transform the tree")
 
-
-fun foo() {
-  val p = listOf(1,2,3)
-
-  p.min()
-}
-
-@DslNestingIgnore
 interface StringSqlDsl {
   @DslFunctionCall(DslFunctionCallType.PureFunction::class) fun left(i: Int): String = errorCap("The `left` expression of the Query was not inlined")
   @DslFunctionCall(DslFunctionCallType.PureFunction::class) fun right(i: Int): String = errorCap("The `right` expression of the Query was not inlined")
   @DslFunctionCall(DslFunctionCallType.PureFunction::class) fun replace(old: String, new: String): String = errorCap("The `replace` expression of the Query was not inlined")
   @DslFunctionCall(DslFunctionCallType.PureFunction::class) fun substring(start: Int, end: Int): String = errorCap("The `substring` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.PureFunction::class) fun uppercase(): String = errorCap("The `upperCase` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.PureFunction::class) fun lowercase(): String = errorCap("The `upperCase` expression of the Query was not inlined")
 }
 
 interface CapturedBlock {
@@ -62,7 +56,7 @@ interface CapturedBlock {
   @Dsl fun <T> SqlQuery<T>.distinct(): SqlQuery<T> = errorCap("The `distinct` expression of the Query was not inlined")
   @Dsl fun <T, R> SqlQuery<T>.distinctBy(f: (T) -> R): SqlQuery<T> = errorCap("The `distinctBy` expression of the Query was not inlined")
 
-  val String.sql get(): StringSqlDsl = errorCap("The `sql-dsl` expression of the Query was not inlined")
+  @DslNestingIgnore val String.sql @DslNestingIgnore get(): StringSqlDsl = errorCap("The `sql-dsl` expression of the Query was not inlined")
 
   // TODO get rid of Aggregation in XR in favor of below
   // TODO get rid of PostgisOps in operators in favor of MethodCall already implemented

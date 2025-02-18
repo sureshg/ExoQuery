@@ -24,6 +24,40 @@ class ExpressionFunctionReq : GoldenSpecDynamic(ExpressionFunctionReqGoldenDynam
       val q = capture { Table<Person>().map { p -> p.name.toBoolean() } }
       shouldBeGolden(q.build<PostgresDialect>())
     }
+    "substr" {
+      val q = capture { Table<Person>().map { p -> p.name.sql.substring(1, 2) } }
+      shouldBeGolden(q.build<PostgresDialect>())
+    }
+    "left" {
+      val q = capture { Table<Person>().map { p -> p.name.sql.left(2) } }
+      shouldBeGolden(q.build<PostgresDialect>())
+    }
+    "right" {
+      val q = capture { Table<Person>().map { p -> p.name.sql.right(2) } }
+      shouldBeGolden(q.build<PostgresDialect>())
+    }
+    "replace" {
+      val q = capture { Table<Person>().map { p -> p.name.sql.replace("a", "b") } }
+      shouldBeGolden(q.build<PostgresDialect>())
+    }
+// TODO method whitelist for this case
+//    "upper" {
+//      val q = capture { Table<Person>().map { p -> p.name.uppercase() } }
+//      shouldBeGolden(q.build<PostgresDialect>())
+//    }
+    "upper - sql" {
+      val q = capture { Table<Person>().map { p -> p.name.sql.uppercase() } }
+      shouldBeGolden(q.build<PostgresDialect>())
+    }
+// TODO method whitelist for this case
+//    "lower" {
+//      val q = capture { Table<Person>().map { p -> p.name.lowercase() } }
+//      shouldBeGolden(q.build<PostgresDialect>())
+//    }
+    "lower - sql" {
+      val q = capture { Table<Person>().map { p -> p.name.sql.lowercase() } }
+      shouldBeGolden(q.build<PostgresDialect>())
+    }
   }
   "Int" - {
     "toLong" {

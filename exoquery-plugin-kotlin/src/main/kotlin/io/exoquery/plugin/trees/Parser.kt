@@ -15,6 +15,7 @@ import io.exoquery.SqlQuery
 import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.annotation.Dsl
 import io.exoquery.annotation.DslFunctionCall
+import io.exoquery.annotation.DslNestingIgnore
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.parseError
@@ -117,8 +118,12 @@ object QueryParser {
     when {
       // We don't want arbitrary functions returning SqlQuery to be treated as dynamic so we make sure they are annotated with @Dsl
       // this processes everything like that.
-      expr is IrCall && expr.ownerHasAnnotation<DslFunctionCall>() -> CallParser.parse(expr).asQuery() ?: parseError("Could not parse the DslCall", expr)
-      expr is IrCall && expr.isDslMethod() -> parseDslCall(expr) ?: parseError("Could not parse the DSL call", expr)
+      expr is IrCall && (expr.ownerHasAnnotation<DslFunctionCall>() || expr.ownerHasAnnotation<DslNestingIgnore>()) ->
+        CallParser.parse(expr).asQuery() ?: parseError("Could not parse the DslCall", expr)
+
+      expr is IrCall && expr.isDslMethod() ->
+        parseDslCall(expr) ?: parseError("Could not parse the DSL call", expr)
+
       else -> {
         on(expr).match<XR.Query>(
           // If you find a random identifier hanging around, check if:
@@ -272,38 +277,48 @@ fun IrValueParameter.makeIdent() =
 fun IrFunctionExpression.firstParam() =
   this.function.simpleValueParams[0]
 
+fun IrCall.extensionOrDispatch() =
+  this.extensionReceiver ?: this.dispatchReceiver
+
 // Parser for GlobalCall and MethodCall
 object CallParser {
   context(ParserContext, CompileLogger)
   fun parse(expr: IrCall): XR.U.QueryOrExpression {
-    fun FqName.toFqNameXR() = run {
-      this.shortNameOrSpecial()
-      XR.FqName(this.pathSegments().joinToString(".") + this.shortNameOrSpecial().asString())
-    }
-    fun IrSimpleFunctionSymbol.toFqNameXR() =
-      this.owner.kotlinFqName.toFqNameXR()
+
+    fun IrSimpleFunctionSymbol.toFqNameXR() = this.owner.kotlinFqName.toXR()
     val reciever = expr.extensionReceiver ?: expr.dispatchReceiver
 
-    return if (reciever == null || reciever.type.isClass<CapturedBlock>()) {
-      XR.GlobalCall(
-        name = expr.symbol.toFqNameXR(),
-        args = expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() },
-        callType = expr.extractCallType(),
-        type = TypeParser.of(expr),
-        loc = expr.loc
-      )
-    } else {
-      XR.MethodCall(
-        head = Parser.parseArg(reciever!!),
-        name = expr.symbol.safeName,
-        args = expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() },
-        originalHostType = expr.type.classId()?.toXR() ?: XR.ClassId.Empty,
-        type = TypeParser.of(expr),
-        loc = expr.loc,
-        callType = expr.extractCallType()
-      )
+    return when {
+      // for things like string.sql.left(...) ignore the "sql" part
+      reciever != null && reciever is IrCall && reciever.ownerHasAnnotation<DslNestingIgnore>() && reciever.extensionOrDispatch() is IrCall -> {
+        parseCall(reciever.extensionOrDispatch(), expr)
+      }
+      else -> parseCall(reciever, expr)
     }
   }
+
+  context(ParserContext, CompileLogger)
+  private fun parseCall(reciever: IrExpression?, expr: IrCall): XR.U.QueryOrExpression =
+    when {
+      reciever == null || reciever.type.isClass<CapturedBlock>() ->
+        XR.GlobalCall(
+          name = expr.symbol.owner.kotlinFqName.toXR(),
+          args = expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() },
+          callType = expr.extractCallType(),
+          type = TypeParser.of(expr),
+          loc = expr.loc
+        )
+      else ->
+        XR.MethodCall(
+          head = Parser.parseArg(reciever!!),
+          name = expr.symbol.safeName,
+          args = expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() },
+          originalHostType = expr.type.classId()?.toXR() ?: XR.ClassId.Empty,
+          type = TypeParser.of(expr),
+          loc = expr.loc,
+          callType = expr.extractCallType()
+        )
+    }
 
   context(ParserContext, CompileLogger)
   private fun IrCall.extractCallType(): XR.CallType {
@@ -466,7 +481,7 @@ object ExpressionParser {
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Expression =
     on(expr).match<XR.Expression>(
 
-      case(Ir.Call[Is()]).thenIf { it.ownerHasAnnotation<DslFunctionCall>() }.then { call ->
+      case(Ir.Call[Is()]).thenIf { it.ownerHasAnnotation<DslFunctionCall>() || it.ownerHasAnnotation<DslNestingIgnore>() }.then { call ->
         CallParser.parse(call).asExpr()
       },
 

@@ -211,6 +211,16 @@ inline fun <reified T> classIdOf(): ClassId? = T::class.classId()
 //  return FqName(className)
 //}
 
+/**
+ * Check annotations on the function of a call.
+ * Note that this will not to up to a field-property symbol for example
+ * if we have:
+ * ```
+ * @Foo val x @Bar get() = stuff
+ * ```
+ * When we call ownerHasAnnotation on the getter symbol, it will find the @Bar annotation but not @Foo
+ * in order to get that we need to go up to `reciever.symbol.owner.correspondingPropertySymbol?.owner?.annotations`
+ */
 inline fun <reified T> IrCall.ownerHasAnnotation() =
   this.symbol.owner.hasAnnotation<T>()
 

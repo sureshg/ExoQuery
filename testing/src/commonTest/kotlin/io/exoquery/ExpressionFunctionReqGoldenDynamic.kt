@@ -14,6 +14,24 @@ object ExpressionFunctionReqGoldenDynamic: GoldenQueryFile {
     "String/toBoolean" to cr(
       "SELECT CAST(p.name AS BOOLEAN) AS value FROM Person p"
     ),
+    "String/substr" to cr(
+      "SELECT SUBSTRING(p.name, 1, 2) AS value FROM Person p"
+    ),
+    "String/left" to cr(
+      "SELECT LEFT(p.name, 2) AS value FROM Person p"
+    ),
+    "String/right" to cr(
+      "SELECT RIGHT(p.name, 2) AS value FROM Person p"
+    ),
+    "String/replace" to cr(
+      "SELECT REPLACE(p.name, 'a', 'b') AS value FROM Person p"
+    ),
+    "String/upper - sql" to cr(
+      "SELECT UPPER(p.name) AS value FROM Person p"
+    ),
+    "String/lower - sql" to cr(
+      "SELECT LOWER(p.name) AS value FROM Person p"
+    ),
     "Int/toLong" to cr(
       "SELECT CAST(p.age AS BIGINT) AS value FROM Person p"
     ),
