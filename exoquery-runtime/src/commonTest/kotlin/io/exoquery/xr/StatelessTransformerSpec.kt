@@ -44,10 +44,20 @@ class StatelessTransformerSpec : FreeSpec({
         Subject(Entity("a") to Entity("a'"), Ident("b") to Ident("b'"), Ident("c") to Ident("c'"))(ast) shouldBe
           SortBy(Entity("a'"), Ident("b"), Ident("c'"), Ordering.AscNullsFirst)
       }
-      "aggregation" {
-        val ast: XR = Aggregation(OP.`max`, Ident("a"))
-        Subject(Ident("a") to Ident("a'"))(ast) shouldBe
-          Aggregation(OP.`max`, Ident("a'"))
+      //"aggregation" {
+      //  val ast: XR = Aggregation(OP.`max`, Ident("a"))
+      //  Subject(Ident("a") to Ident("a'"))(ast) shouldBe
+      //    Aggregation(OP.`max`, Ident("a'"))
+      //}
+      "globalCall" {
+        val ast: XR = GlobalCall(FqName.Empty, listOf(Ident("a"), Ident("b")), CallType.PureFunction, XRType.Value)
+        Subject(Ident("a") to Ident("a'"), Ident("b") to Ident("b'"))(ast) shouldBe
+          GlobalCall(FqName.Empty, listOf(Ident("a'"), Ident("b'")), CallType.PureFunction, XRType.Value)
+      }
+      "methodCall" {
+        val ast: XR = MethodCall(Ident("a"), "b", listOf(Ident("c"), Ident("d")), CallType.PureFunction, FqName.Empty, XRType.Value)
+        Subject(Ident("a") to Ident("a'"), Ident("c") to Ident("c'", XRType.Value), Ident("d") to Ident("d'", XRType.Value))(ast) shouldBe
+          MethodCall(Ident("a'"), "b", listOf(Ident("c'", XRType.Value), Ident("d'", XRType.Value)), CallType.PureFunction, FqName.Empty, XRType.Value)
       }
       "take" {
         val ast: XR = Take(Entity("a"), Ident("b"))

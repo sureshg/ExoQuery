@@ -51,6 +51,11 @@ sealed interface XR {
   object U {
     // Things that store their own XRType. Right now this is just an Ident but in the future
     // it will also be a lifted value.
+    @Serializable
+    sealed interface Call: XR {
+      fun isPure(): Boolean
+      fun isAggregation(): Boolean
+    }
 
     @Serializable
     sealed interface Terminal: Expression, XR
@@ -168,6 +173,8 @@ sealed interface XR {
     companion object {
       operator fun invoke(fullPath: String): FqName =
         FqName(fullPath.dropLastSegment(), fullPath.takeLastSegment())
+
+      val Empty = FqName("", "")
     }
 
     override fun toString(): String = "$path.$name"
@@ -504,58 +511,21 @@ sealed interface XR {
   }
 
   /**
-   * It is interesting to note that in Quill an aggregation could be both a Query and what we would define
-   * in ExoQuery as an expression. This was based on the idea of monadic aggregation which was based on
-   * the API:
-   * ```
-   * people.groupBy(p -> p.name).map { case (name, aggQuery:Query<Person>) -> aggQuery.map(_.age).max }
-   * ```
-   * The problem with this kind of API is that while is works well for monadic-collections, it runs counter
-   * to the grain of how SQL things the expression/query paradigm. If `aggQuery` is a monadic-datastructure
-   * resembling a list, of course it would be operated by a map-function after aggregation. That means
-   * that the IR construct regulating it would also be a Query type
-   * `Map(people.groupBy(...), a, Aggregation(max, Map(aggQuery, x, x.age)))`
+   * Note that now instead of XR.Aggregation we are using MethodCall and GlobalCall to represent
+   * both Query<T>.max (e.g. `people.map {p->p.age}.max` and `people.map {p->max(p.age)}`. Since in some
+   * situations we might want to know the intended usage of the aggregation operator there is a
+   * `callType` parameter that has the values QueryAggregator (to represent the former) and Aggregator
+   * to represent the latter.
    *
-   * However, if the paradigm is more SQL-esque via the use of something like GroupByMap. This would look more like:
-   * ```
-   * people.groupByMap(p -> p.name)(p -> p.age.max)
-   * ```
-   * In additiona to being more intutive, it clearly establishes that the `.max` operation is merely an operation
-   * on a Int type i.e. `p.age.max`. From a type-laws perspective this makes little sense but remember that
-   * our definition of p.age as a Int is merely an emulation. SQL `select x,y,z` clauses are typed as
-   * a coproduct of value-types and operation descriptor types such as aggregations, partitions, etc...
-   *
-   * Therefore, using this paradigm we would like to establish the construct:
-   * ```
-   * Aggregation(max, p.age)
-   * ```
-   * Firmly as an expression type.
-   *
-   * TODO Possibly we don't even need these and can just use GlobalCall instead to do something like GlobalCall("max", p.age)
+   * In addition, it has the values PureFunction and ImpureFunction to represent operators that are known
+   * to SQL like Query.isEmpty/Query.isNotEmpty which the SqlIdiom knows to interpret as `IS EMPTY (query)`
+   * and `IS NOT EMPTY (query)` respectively. The difference between PureFunction and ImpureFunction is
+   * that for the former, we know that various flattening in ApplyMap can be done but for the latter we it cannot.
+   * This is a collorary to Impure-Infixes.
    */
   @Serializable
   @Mat
-  data class Aggregation(@CS val op: AggregationOperator, @Slot val expr: XR.Expression, override val loc: Location = Location.Synth): Expression, PC<Aggregation> {
-    @Transient override val productComponents = productOf(this, expr)
-    override val type by lazy {
-      when (op) {
-        OP.`min` -> expr.type // TODO since they could be BooleanValue? When adding String etc... to XRType should probably make all of them like this? Or maybe they shuold be removed due to the reason above.
-        OP.`max` -> expr.type
-        OP.`avg` -> XRType.Value
-        OP.`sum` -> XRType.Value
-        OP.`size` -> XRType.Value
-      }
-    }
-    companion object {}
-    override fun toString() = show()
-    @Transient private val cid = id()
-    override fun hashCode(): Int = cid.hashCode()
-    override fun equals(other: Any?): Boolean = other is Aggregation && other.id() == cid
-  }
-
-  @Serializable
-  @Mat
-  data class MethodCall(@Slot val head: XR.U.QueryOrExpression, val name: String, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, val originalHostType: XR.FqName, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<MethodCall> {
+  data class MethodCall(@Slot val head: XR.U.QueryOrExpression, val name: String, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, val originalHostType: XR.FqName, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, U.Call, PC<MethodCall> {
     @Transient override val productComponents = productOf(this, head, args)
     companion object {}
     override fun toString() = show()
@@ -563,13 +533,13 @@ sealed interface XR {
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is MethodCall && other.id() == cid
 
-    fun isPure() = callType.isPure
-    fun isAggregation() = callType == CallType.Aggregator
+    override fun isPure() = callType.isPure
+    override fun isAggregation() = callType == CallType.Aggregator
   }
 
   @Serializable
   @Mat
-  data class GlobalCall(val name: XR.FqName, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<GlobalCall> {
+  data class GlobalCall(val name: XR.FqName, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, U.Call, PC<GlobalCall> {
     @Transient override val productComponents = productOf(this, args)
     companion object {}
     override fun toString() = show()
@@ -577,8 +547,8 @@ sealed interface XR {
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is GlobalCall && other.id() == cid
 
-    fun isPure() = callType.isPure
-    fun isAggregation() = callType == CallType.Aggregator
+    override fun isPure() = callType.isPure
+    override fun isAggregation() = callType == CallType.Aggregator
   }
 
 

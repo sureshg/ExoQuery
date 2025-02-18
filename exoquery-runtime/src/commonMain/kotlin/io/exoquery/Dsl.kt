@@ -47,8 +47,9 @@ interface CapturedBlock {
   @Dsl fun <T, R> SqlQuery<T>.flatMap(f: (T) -> SqlQuery<R>): SqlQuery<R> = errorCap("The `flatMap` expression of the Query was not inlined")
   @Dsl fun <T, R> SqlQuery<T>.concatMap(f: (T) -> Iterable<R>): SqlQuery<R> = errorCap("The `concatMap` expression of the Query was not inlined")
   @Dsl fun <T> SqlQuery<T>.filter(f: (T) -> Boolean): SqlQuery<T> = errorCap("The `filter` expression of the Query was not inlined")
-  @Dsl fun <T> SqlQuery<T>.union(other: SqlQuery<T>): SqlQuery<T> = errorCap("The `union` expression of the Query was not inlined")
-  @Dsl fun <T> SqlQuery<T>.unionAll(other: SqlQuery<T>): SqlQuery<T> = errorCap("The `unionAll` expression of the Query was not inlined")
+  @Dsl infix fun <T> SqlQuery<T>.union(other: SqlQuery<T>): SqlQuery<T> = errorCap("The `union` expression of the Query was not inlined")
+  @Dsl infix fun <T> SqlQuery<T>.unionAll(other: SqlQuery<T>): SqlQuery<T> = errorCap("The `unionAll` expression of the Query was not inlined")
+  @Dsl operator fun <T> SqlQuery<T>.plus(other: SqlQuery<T>): SqlQuery<T> = errorCap("The `unionAll` expression of the Query was not inlined")
   @Dsl fun <T> SqlQuery<T>.distinct(): SqlQuery<T> = errorCap("The `distinct` expression of the Query was not inlined")
   @Dsl fun <T, R> SqlQuery<T>.distinctBy(f: (T) -> R): SqlQuery<T> = errorCap("The `distinctBy` expression of the Query was not inlined")
 

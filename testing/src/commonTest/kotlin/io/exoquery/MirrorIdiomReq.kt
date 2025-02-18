@@ -69,9 +69,6 @@ class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGol
     "XR.Infix" {
       shouldBeGolden(XR.Infix(listOf("a", "b", "c"), listOf(XR.Ident("foo"), XR.Ident("bar"), XR.Ident("baz")), true, true, XRType.Value))
     }
-    "XR.Aggregation" {
-      shouldBeGolden(XR.Aggregation(OP.`max`, XR.Ident("foo")))
-    }
     "XR.MethodCall" {
       shouldBeGolden(XR.MethodCall(XR.Ident("foo"), "method", listOf(XR.Ident("bar"), XR.Ident("baz")), XR.CallType.PureFunction, XR.FqName("com.Stuff"), XRType.Value))
     }

@@ -233,22 +233,23 @@ object QueryParser {
         when (symName) {
           "sortedBy" -> XR.SortBy(parse(head), params.first().makeIdent(), ExpressionParser.parseFunctionBlockBody(body), XR.Ordering.Asc, expr.loc)
           "sortedByDescending" -> XR.SortBy(parse(head), params.first().makeIdent(), ExpressionParser.parseFunctionBlockBody(body), XR.Ordering.Desc, expr.loc)
-          else -> parseErrorSym(this)
+          else -> parseError("Invalid sortedBy method: ${symName}", expr)
         }
       },
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("take", "drop"), Is()]).thenThis { head, num ->
         when (symName) {
           "take" -> XR.Take(parse(head), ExpressionParser.parse(num), expr.loc)
           "drop" -> XR.Drop(parse(head), ExpressionParser.parse(num), expr.loc)
-          else -> parseErrorSym(this)
+          else -> parseError("Invalid take/drop method: ${symName}", expr)
         }
       },
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("union", "unionAll"), Is()]).thenThis { head, tail ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("union", "unionAll", "plus"), Is()]).thenThis { head, tail ->
         val tailXR = parse(tail)
         when (symName) {
           "union" -> XR.Union(parse(head), tailXR, expr.loc)
           "unionAll" -> XR.UnionAll(parse(head), tailXR, expr.loc)
-          else -> parseErrorSym(this)
+          "plus" -> XR.UnionAll(parse(head), tailXR, expr.loc)
+          else -> parseError("Invalid union method: ${symName}", expr)
         }
       },
       case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<CapturedBlock>(), Is("Table")]).thenThis { _, _ ->

@@ -14,5 +14,8 @@ object BasicQuerySanitySpecGoldenDynamic: GoldenQueryFile {
     "query with filter" to cr(
       "SELECT p.id AS id, p.name AS name, p.age AS age FROM Person p WHERE p.age > 18"
     ),
+    "query with flatMap" to cr(
+      "SELECT a.ownerId AS ownerId, a.street AS street, a.city AS city FROM Person p, Address a WHERE a.ownerId = p.id"
+    ),
   )
 }

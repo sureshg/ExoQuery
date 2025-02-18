@@ -111,10 +111,6 @@ interface StatefulTransformer<T> {
           val (paramsA, stateA) = applyList(params) { t, v -> t.invoke(v) }
           Infix.cs(parts, paramsA) to stateA
         }
-        is Aggregation -> {
-          val (bodyA, stateA) = invoke(expr)
-          Aggregation.cs(op, bodyA) to stateA
-        }
         is MethodCall -> invoke(this)
         is GlobalCall -> invoke(this)
         is QueryToExpr -> {

@@ -100,7 +100,6 @@ abstract class SqlIdiom: HasPhasePrinting {
 
   val XR.Expression.token get(): Token =
     when (this) {
-      is XR.Aggregation   -> token
       is BinaryOp      -> token
       is XR.UnaryOp       -> token
       is XR.Const         -> token
@@ -360,20 +359,22 @@ abstract class SqlIdiom: HasPhasePrinting {
       else -> xrError("Illegal SelectValue clause: ${this}")
     }
 
-  val XR.Aggregation.token get(): Token =
-    when {
-      // Aggregation(op, Ident(id, _: Quat.Product))
-      expr is Ident && expr.type is XRType.Product -> +"${op.token}(${makeProductAggregationToken(expr.name)})"
-      // Not too many cases of this. Can happen if doing a leaf-level infix inside of a select clause. For example in postgres:
-      // `sql"unnest(array['foo','bar'])".as[Query[Int]].groupBy(p => p).map(ap => ap._2.max)` which should yield:
-      // SELECT MAX(inf) FROM (unnest(array['foo','bar'])) AS inf GROUP BY inf
-      expr is XR.Ident -> +"${op.token}(${expr.token})"
-      expr is XR.Product -> +"${op.token}(*)"
-      // In ExoQuery Distinct is a type of Query so it cannot occur in an aggregation expression
-      //expr is XR.Distinct -> +"${op.token}(DISTINCT ${expr.ast.token})"
-      expr is XR.Query -> scopedQueryTokenizer(expr)
-      else -> +"${op.token}(${expr.token})"
-    }
+  // TODO This represents count(*), Query.min and Query.map(x -> min(x)) need to check that all 3 cases
+  //     (including the one where `count` is called on a product work properly)
+//  val XR.Aggregation.token get(): Token =
+//    when {
+//      // Aggregation(op, Ident(id, _: Quat.Product))
+//      expr is Ident && expr.type is XRType.Product -> +"${op.token}(${makeProductAggregationToken(expr.name)})"
+//      // Not too many cases of this. Can happen if doing a leaf-level infix inside of a select clause. For example in postgres:
+//      // `sql"unnest(array['foo','bar'])".as[Query[Int]].groupBy(p => p).map(ap => ap._2.max)` which should yield:
+//      // SELECT MAX(inf) FROM (unnest(array['foo','bar'])) AS inf GROUP BY inf
+//      expr is XR.Ident -> +"${op.token}(${expr.token})"
+//      expr is XR.Product -> +"${op.token}(*)"
+//      // In ExoQuery Distinct is a type of Query so it cannot occur in an aggregation expression
+//      //expr is XR.Distinct -> +"${op.token}(DISTINCT ${expr.ast.token})"
+//      expr is XR.Query -> scopedQueryTokenizer(expr)
+//      else -> +"${op.token}(${expr.token})"
+//    }
 
 
 //    case Aggregation(op, Ident(id, _: Quat.Product)) => stmt"${op.token}(${makeProductAggregationToken(id)})"

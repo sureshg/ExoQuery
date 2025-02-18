@@ -119,22 +119,6 @@ class BetaReductionSpec : FreeSpec({
       val ast: XR = SortBy(Entity("a"), Ident("b"), Ident("b"), Ordering.AscNullsFirst)
       BetaReduction.ofXR(ast, Ident("b") to Ident("b'")) shouldBe ast
     }
-    "groupByMap" {
-      val ast: XR = GroupByMap(Entity("a"), Ident("b"), Ident("b"), Ident("b"), Ident("b"))
-      BetaReduction.ofXR(ast, Ident("b") to Ident("b'")) shouldBe ast
-    }
-    "groupByMap - replace" {
-      val ast: XR = GroupByMap(Entity("a"), Ident("x"), Ident("b"), Ident("y"), Ident("c"))
-      BetaReduction.ofXR(ast, Ident("b") to Ident("b'"), Ident("c") to Ident("c'")) shouldBe GroupByMap(Entity("a"), Ident("x"), Ident("b'"), Ident("y"), Ident("c'"))
-    }
-    "groupByMap - replace2" {
-      val ast: XR = GroupByMap(Entity("a"), Ident("x"), Ident("b"), Ident("y"), Ident("c"))
-      BetaReduction.ofXR(ast, Ident("b") to Ident("b'")) shouldBe GroupByMap(Entity("a"), Ident("x"), Ident("b'"), Ident("y"), Ident("c"))
-    }
-    "groupByMap - replace3" {
-      val ast: XR = GroupByMap(Entity("a"), Ident("x"), Ident("b"), Ident("y"), Ident("c"))
-      BetaReduction.ofXR(ast, Ident("c") to Ident("c'")) shouldBe GroupByMap(Entity("a"), Ident("x"), Ident("b"), Ident("y"), Ident("c'"))
-    }
     "outer join" {
       val ast: XR =
         FlatJoin(JoinType.Inner, Entity("a"), Ident("b"), Ident("b"))

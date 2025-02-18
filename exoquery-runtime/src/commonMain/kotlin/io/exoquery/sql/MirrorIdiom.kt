@@ -92,8 +92,6 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
 
   val XR.Expression.token: Token get() =
     when (this) {
-      is XR.Aggregation -> stmt("${op::class.simpleName?.token ?: "UNKNOWN_AGG".token}(${expr.token})")
-
       is XR.BinaryOp -> stmt("${a.token} ${op.token} ${b.token}")
 
       is XR.UnaryOp ->
@@ -149,8 +147,6 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
         stmt("${head.token}.concatMap { ${id.token} -> ${body.token} }")
       is XR.SortBy ->
         stmt("${head.token}.sortBy(${ordering.token}) { ${id.token} -> ${criteria.token} }")
-      is XR.Aggregation ->
-        stmt("${expr.tokenScoped}.${op.token}")
       is XR.Take ->
         stmt("${head.token}.take(${num.token})")
       is XR.Drop ->

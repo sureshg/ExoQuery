@@ -57,7 +57,6 @@ interface StatelessTransformer {
         is Product -> Product.csf(fields.map { it.first to invoke(it.second) })(this)
         // Infix can both be Expression and Query
         is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type, loc)
-        is Aggregation -> Aggregation.csf(op, invoke(expr))(this)
         is MethodCall -> invoke(this)
         is GlobalCall -> invoke(this)
         is QueryToExpr -> QueryToExpr.csf(invoke(head))(this)

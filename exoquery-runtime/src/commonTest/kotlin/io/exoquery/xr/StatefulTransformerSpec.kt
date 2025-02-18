@@ -118,11 +118,27 @@ class StatefulTransformerSpec : FreeSpec({
 //        }
 //      }
 
-      "aggregation" {
-        val ast: XR = Aggregation(OP.`max`, Ident("a"))
-        Subject(listOf(), Ident("a") to Ident("a'"))(ast).let { (at, att) ->
-            at shouldBe Aggregation(OP.`max`, Ident("a'"))
-            att.state shouldBe listOf(Ident("a"))
+      //"aggregation" {
+      //  val ast: XR = Aggregation(OP.`max`, Ident("a"))
+      //  Subject(listOf(), Ident("a") to Ident("a'"))(ast).let { (at, att) ->
+      //      at shouldBe Aggregation(OP.`max`, Ident("a'"))
+      //      att.state shouldBe listOf(Ident("a"))
+      //  }
+      //}
+
+      "globalCall" {
+        val ast: XR = GlobalCall(FqName.Empty, listOf(Ident("a"), Ident("b")), CallType.PureFunction, XRType.Value)
+        Subject(listOf(), Ident("a") to Ident("a'"), Ident("b") to Ident("b'"))(ast).let { (at, att) ->
+            at shouldBe GlobalCall(FqName.Empty, listOf(Ident("a'"), Ident("b'")), CallType.PureFunction, XRType.Value)
+            att.state shouldBe listOf(Ident("a"), Ident("b"))
+        }
+      }
+
+      "methodCall" {
+        val ast: XR = MethodCall(Ident("a"), "foo", listOf(Ident("b")), CallType.PureFunction, FqName.Empty, XRType.Value)
+        Subject(listOf(), Ident("a") to Ident("a'"), Ident("b") to Ident("b'"))(ast).let { (at, att) ->
+            at shouldBe MethodCall(Ident("a'"), "foo", listOf(Ident("b'")), CallType.PureFunction, FqName.Empty, XRType.Value)
+            att.state shouldBe listOf(Ident("a"), Ident("b"))
         }
       }
 

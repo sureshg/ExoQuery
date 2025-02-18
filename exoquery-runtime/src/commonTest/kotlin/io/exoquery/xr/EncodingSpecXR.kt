@@ -65,16 +65,12 @@ class EncodingSpecXR: FreeSpec({
       val xr = XR.TagForSqlExpression(BID.Companion.new(), XRType.Value)
       xr.encode().decodeXR() shouldBeXR xr
     }
-    "Aggregation" {
-      val xr = XR.Aggregation(OP.max, XR.Ident("foo", XRType.Value))
-      xr.encode().decodeXR() shouldBeXR xr
-    }
     "MethodCall" {
-      val xr = XR.MethodCall(XR.Ident("one", XRType.Value), "foo", listOf(XR.Ident("two", XRType.Value)), XR.FqName("a", "b"), XRType.Value)
+      val xr = XR.MethodCall(XR.Ident("one", XRType.Value), "foo", listOf(XR.Ident("two", XRType.Value)), XR.CallType.PureFunction, XR.FqName("a", "b"), XRType.Value)
       xr.encode().decodeXR() shouldBeXR xr
     }
     "GlobalCall" {
-      val xr = XR.GlobalCall(XR.FqName("foo", "bar"), listOf(XR.Ident("bar", XRType.Value)), XRType.Value)
+      val xr = XR.GlobalCall(XR.FqName("foo", "bar"), listOf(XR.Ident("bar", XRType.Value)), XR.CallType.PureFunction, XRType.Value)
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Block" {

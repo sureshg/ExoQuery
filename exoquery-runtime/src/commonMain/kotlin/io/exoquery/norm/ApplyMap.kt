@@ -28,7 +28,7 @@ class ApplyMap(val traceConfig: TraceConfig) {
       CollectXR.invoke(this) {
         when {
           this is Infix && this.pure == false -> this
-          this is Aggregation -> this
+          this is XR.U.Call && !this.isPure() -> this
           else -> null
         }
       }.isNotEmpty()

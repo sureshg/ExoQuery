@@ -8,6 +8,9 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.string.shouldContain
 
+/**
+ * This is for CapturedFunction tests involving behavior and deep IR checks. The comprehensive tests are in CapturedFunctionReq.kt.
+ */
 class CapturedFunctionSpec : FreeSpec({
   "static function capture - structural tests" - {
     "proto function-capture i.e. call without capture" {
@@ -16,15 +19,5 @@ class CapturedFunctionSpec : FreeSpec({
       val people = capture { Table<Person>() }
       shouldThrow<MissingCaptureError> { joes(people) }
     }
-
-//    "basic function capture" {
-//      @CapturedFunction
-//      fun joes(people: SqlQuery<Person>) = capture { people.filter { p -> p.name == "Joe" } }
-//      val drivingJoes = capture { joes(Table<Person>()) }
-//      drivingJoes.xr
-//    }
   }
-
-
-
 })
