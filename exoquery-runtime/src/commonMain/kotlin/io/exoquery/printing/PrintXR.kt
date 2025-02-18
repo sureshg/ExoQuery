@@ -104,6 +104,9 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
 
 
 
+  private fun String.toLit() = Tree.Literal(this, null)
+
+
   override fun <R> treeifyValueOrNull(x: R, elementName: String?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree? = run {
     when (x) {
       is XRType ->
@@ -127,6 +130,8 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
       is XR.Const.Short -> Tree.Apply("Short", iteratorOf(Tree.Literal("${x.value}", null)), elementName)
       is XR.Const.Long -> Tree.Apply("Long", iteratorOf(Tree.Literal("${x.value}", null)), elementName)
       is XR.Const.Float -> Tree.Apply("Float", iteratorOf(Tree.Literal("${x.value}", null)), elementName)
+
+      is XR.ClassId -> Tree.Apply("ClassId", iteratorOf(x.packageFqName.path.joinToString(".").toLit(), x.relativeClassName.path.joinToString(".").toLit()), elementName)
 
       //is DistinctKind -> Tree.Literal(x::class.simpleName ?: "BinaryOp?")
       is OP -> Tree.Literal(x.symbol, elementName)

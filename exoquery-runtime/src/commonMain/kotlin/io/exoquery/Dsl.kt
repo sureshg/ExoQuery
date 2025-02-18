@@ -3,6 +3,7 @@ package io.exoquery
 import io.exoquery.annotation.Dsl
 import io.exoquery.annotation.DslFunctionCall
 import io.exoquery.annotation.DslFunctionCallType
+import io.exoquery.annotation.DslNestingIgnore
 import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
 import kotlinx.serialization.decodeFromHexString
@@ -36,6 +37,14 @@ fun foo() {
   p.min()
 }
 
+@DslNestingIgnore
+interface StringSqlDsl {
+  @DslFunctionCall(DslFunctionCallType.PureFunction::class) fun left(i: Int): String = errorCap("The `left` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.PureFunction::class) fun right(i: Int): String = errorCap("The `right` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.PureFunction::class) fun replace(old: String, new: String): String = errorCap("The `replace` expression of the Query was not inlined")
+  @DslFunctionCall(DslFunctionCallType.PureFunction::class) fun substring(start: Int, end: Int): String = errorCap("The `substring` expression of the Query was not inlined")
+}
+
 interface CapturedBlock {
   @Dsl fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
 
@@ -52,6 +61,8 @@ interface CapturedBlock {
   @Dsl operator fun <T> SqlQuery<T>.plus(other: SqlQuery<T>): SqlQuery<T> = errorCap("The `unionAll` expression of the Query was not inlined")
   @Dsl fun <T> SqlQuery<T>.distinct(): SqlQuery<T> = errorCap("The `distinct` expression of the Query was not inlined")
   @Dsl fun <T, R> SqlQuery<T>.distinctBy(f: (T) -> R): SqlQuery<T> = errorCap("The `distinctBy` expression of the Query was not inlined")
+
+  val String.sql get(): StringSqlDsl = errorCap("The `sql-dsl` expression of the Query was not inlined")
 
   // TODO get rid of Aggregation in XR in favor of below
   // TODO get rid of PostgisOps in operators in favor of MethodCall already implemented

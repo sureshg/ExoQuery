@@ -1,6 +1,7 @@
 package io.exoquery.plugin.trees
 
 import io.exoquery.liftingError
+import io.exoquery.parseError
 import io.exoquery.plugin.classId
 import io.exoquery.plugin.transform.BuilderContext
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -16,10 +17,11 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
+context(BuilderContext)
 fun KType.fullPathOfBasic(): ClassId =
   when(val cls = this.classifier) {
-    is KClass<*> -> cls.classId()
-    else -> throw RuntimeException("Invalid list class: $cls")
+    is KClass<*> -> cls.classId() ?: parseError("Could not find the class id for the class: $cls")
+    else -> parseError("Invalid list class: $cls")
   }
 
 // TODO this can probably make both objects and types if we check the attributes of the reified type T

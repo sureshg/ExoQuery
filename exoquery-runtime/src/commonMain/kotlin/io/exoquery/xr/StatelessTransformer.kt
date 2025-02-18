@@ -38,8 +38,8 @@ interface StatelessTransformer {
   operator fun invoke(xr: XR.Branch): XR.Branch = with(xr) { XR.Branch.csf(invoke(cond), invoke(then))(this) }
   operator fun invoke(xr: XR.Block): XR.Block = with(xr) { Block.csf(stmts.map { invoke(it) }, invoke(output))(this) }
   operator fun invoke(xr: XR.FunctionN): XR.FunctionN = with(xr) { FunctionN.csf(params.map { invokeIdent(it) }, invoke(body))(this) }
-  operator fun invoke(xr: GlobalCall): GlobalCall = with(xr) { GlobalCall.csf(args.map { invoke(it) })(this) }
-  operator fun invoke(xr: MethodCall): MethodCall = with(xr) { MethodCall.csf(invoke(head), args.map { invoke(it) })(this) }
+  operator fun invoke(xr: GlobalCall): GlobalCall = with(xr) { GlobalCall.csf(name, args.map { invoke(it) })(this) }
+  operator fun invoke(xr: MethodCall): MethodCall = with(xr) { MethodCall.csf(invoke(head), name, args.map { invoke(it) })(this) }
 
   operator fun invoke(xr: XR.Expression): XR.Expression =
     with(xr) {

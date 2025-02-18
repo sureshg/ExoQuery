@@ -43,6 +43,7 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.js.parser.parse
 import org.jetbrains.kotlin.name.FqName
 
 data class LocationContext(val internalVars: TransformerScope, override val currentFile: IrFile): LocateableContext {
@@ -277,7 +278,7 @@ object CallParser {
   fun parse(expr: IrCall): XR.U.QueryOrExpression {
     fun FqName.toFqNameXR() = run {
       this.shortNameOrSpecial()
-      XR.FqName(this.pathSegments().joinToString("."), this.shortNameOrSpecial().asString())
+      XR.FqName(this.pathSegments().joinToString(".") + this.shortNameOrSpecial().asString())
     }
     fun IrSimpleFunctionSymbol.toFqNameXR() =
       this.owner.kotlinFqName.toFqNameXR()
@@ -296,7 +297,7 @@ object CallParser {
         head = Parser.parseArg(reciever!!),
         name = expr.symbol.safeName,
         args = expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() },
-        originalHostType = expr.type.classFqName?.toFqNameXR() ?: XR.FqName("", ""),
+        originalHostType = expr.type.classId()?.toXR() ?: XR.ClassId.Empty,
         type = TypeParser.of(expr),
         loc = expr.loc,
         callType = expr.extractCallType()
@@ -462,7 +463,6 @@ object ExpressionParser {
         }
     ) ?: parseError("Could not parse IrBlockBody:\n${blockBody.dumpKotlinLike()}")
 
-
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Expression =
     on(expr).match<XR.Expression>(
 
@@ -473,6 +473,18 @@ object ExpressionParser {
       //case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<SqlQuery<*>>(), Is("isNotEmpty")]).then { sqlQueryIr, _ ->
       //  XR.QueryToExpr(QueryParser.parse(sqlQueryIr), sqlQueryIr.loc)
       //},
+
+      // Converter functions for string e.g. toInt, toLong, etc.
+      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<String>(), Is { it.isConverterFunction() }]).then { head, method ->
+        XR.MethodCall(parse(head), method, emptyList(), XR.CallType.PureFunction, CID.kotlin_String, XRType.Value, expr.loc)
+      },
+
+      // Numeric conversion functions toInt, toString, etc... on numeric types Int, Long, etc...
+      case(Ir.Call.FunctionMem0[Is(), Is { it.isConverterFunction() }])
+        .thenIf { head, _ -> head.type.classId()?.toXR()?.isNumeric() ?: false }
+        .then { head, method ->
+          XR.MethodCall(parse(head), method, emptyList(), XR.CallType.PureFunction, CID.kotlin_String, XRType.Value, expr.loc)
+        },
 
       case(Ir.Expr.ClassOf<SqlQuery<*>>()).then { expr ->
         XR.QueryToExpr(QueryParser.parse(expr), expr.loc)

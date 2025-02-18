@@ -83,12 +83,14 @@ object Ir {
   }
 
   object Expr {
-    class ClassOf<R>(val className: ClassId): Pattern0<IrExpression>(Typed<IrExpression>()) {
+    class ClassOf<R>(val classNameRaw: ClassId?): Pattern0<IrExpression>(Typed<IrExpression>()) {
       override fun matches(r: ProductClass<IrExpression>): Boolean =
-        Typed<IrExpression>().typecheck(r.productClassValueUntyped) &&
-          r.productClassValue.type.let { tpe ->
-            className == tpe.classId() || tpe.superTypes().any { it.classId() == className }
-          }
+        classNameRaw?.let { className ->
+          Typed<IrExpression>().typecheck(r.productClassValueUntyped) &&
+            r.productClassValue.type.let { tpe ->
+              className == tpe.classId() || tpe.superTypes().any { it.classId() == className }
+            }
+        } ?: false
 
       companion object {
         inline operator fun <reified T> invoke() =
@@ -96,14 +98,16 @@ object Ir {
       }
     }
 
-    class HasAnnotation(val annotationName: FqName): Pattern0<IrExpression>(Typed<IrExpression>()) {
+    class HasAnnotation(val annotationNameRaw: FqName?): Pattern0<IrExpression>(Typed<IrExpression>()) {
       override fun matches(r: ProductClass<IrExpression>): Boolean =
-        Typed<IrExpression>().typecheck(r.productClassValueUntyped) &&
-          r.productClassValue.hasAnnotation(annotationName)
+        annotationNameRaw?.let { annotationName ->
+          Typed<IrExpression>().typecheck(r.productClassValueUntyped) &&
+            r.productClassValue.hasAnnotation(annotationName)
+        } ?: false
 
       companion object {
         inline operator fun <reified T> invoke() =
-          HasAnnotation(classIdOf<T>().packageFqName)
+          HasAnnotation(classIdOf<T>()?.packageFqName)
       }
     }
   }
@@ -160,12 +164,14 @@ object Ir {
         }
     }
 
-    class ClassOfType<R>(val className: ClassId): Pattern0<IrType>(Typed<IrType>()) {
+    class ClassOfType<R>(val classNameRaw: ClassId?): Pattern0<IrType>(Typed<IrType>()) {
       override fun matches(r: ProductClass<IrType>): Boolean =
-        Typed<IrType>().typecheck(r.productClassValueUntyped) &&
-          r.productClassValue.let { tpe ->
-            className == tpe.classId() || tpe.superTypes().any { it.classId() == className }
-          }
+        classNameRaw?.let { className ->
+          Typed<IrType>().typecheck(r.productClassValueUntyped) &&
+            r.productClassValue.let { tpe ->
+              className == tpe.classId() || tpe.superTypes().any { it.classId() == className }
+            }
+        } ?: false
 
       companion object {
         inline operator fun <reified T> invoke() =

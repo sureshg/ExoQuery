@@ -169,15 +169,45 @@ sealed interface XR {
   }
 
   @Serializable
-  data class FqName(val path: String, val name: String) {
+  data class FqName(val path: List<String>) {
+    val name by lazy { path.last() }
+
     companion object {
       operator fun invoke(fullPath: String): FqName =
-        FqName(fullPath.dropLastSegment(), fullPath.takeLastSegment())
+        FqName(fullPath.split('.'))
 
-      val Empty = FqName("", "")
+      val Empty = FqName(listOf())
     }
 
-    override fun toString(): String = "$path.$name"
+    private val str by lazy { path.joinToString(".") }
+    override fun toString(): String = str
+  }
+
+  @Serializable
+  data class ClassId(val packageFqName: FqName, val relativeClassName: FqName) {
+    companion object {
+      /**
+       * Assumes the last in a path segment is the class name e.g. in foo.bar.baz assumes class is baz and package is foo.bar
+       */
+      operator fun invoke(str: String): ClassId {
+        val split = str.split(".")
+        return when {
+          split.size == 0 -> ClassId(FqName.Empty, FqName.Empty)
+          split.size == 1 -> ClassId(FqName.Empty, FqName(split))
+          split.size > 1 -> ClassId(FqName(split.dropLast(1)), FqName(split.takeLast(1)))
+          else -> error("Unreachable")
+        }
+      }
+
+      /**
+       * Use this to define classes for enums and other things that have an object in their path
+       * e.g. foo.bar.Color.Red would be called with ClassId("foo.bar", "Color.Red")
+       */
+      operator fun invoke(packagePath: String, relativePath: String) =
+        ClassId(FqName(packagePath), FqName(relativePath))
+
+      val Empty = ClassId(FqName.Empty, FqName.Empty)
+    }
   }
 
   /**
@@ -525,8 +555,8 @@ sealed interface XR {
    */
   @Serializable
   @Mat
-  data class MethodCall(@Slot val head: XR.U.QueryOrExpression, val name: String, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, val originalHostType: XR.FqName, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, U.Call, PC<MethodCall> {
-    @Transient override val productComponents = productOf(this, head, args)
+  data class MethodCall(@Slot val head: XR.U.QueryOrExpression, @MSlot val name: String, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, val originalHostType: XR.ClassId, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, U.Call, PC<MethodCall> {
+    @Transient override val productComponents = productOf(this, head, name, args)
     companion object {}
     override fun toString() = show()
     @Transient private val cid = id()
@@ -539,8 +569,8 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class GlobalCall(val name: XR.FqName, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, U.Call, PC<GlobalCall> {
-    @Transient override val productComponents = productOf(this, args)
+  data class GlobalCall(@Slot val name: XR.FqName, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, U.Call, PC<GlobalCall> {
+    @Transient override val productComponents = productOf(this, name, args)
     companion object {
       // using this when translating from Query-level aggs to Expression-level aggs in the SqlQuery
       fun Agg(name: String, vararg args: XR.U.QueryOrExpression) = GlobalCall(FqName(name), args.toList(), CallType.Aggregator, XRType.Value)

@@ -62,7 +62,7 @@ class Lifter(val builderCtx: BuilderContext) {
     } else {
       // We go throught the bruhaha of finding the constructor for the element type because we need to know it in order to create the varags list i.e. the `...` argument to `listOf(...)`
       // otherwise we could just call the list constructor and ignore the element type and rely on the compiler's type inference
-      val classId = elementType.fullPathOfBasic()
+      val classId = with(builderCtx) { elementType.fullPathOfBasic() }
       val classSymbol = builderCtx.pluginCtx.referenceClass(classId) ?: throw IllegalStateException("Cannot find a class for: ${classId} for the element type: ${elementType}")
       val varargType = classSymbol.owner.defaultType
 
@@ -78,7 +78,7 @@ class Lifter(val builderCtx: BuilderContext) {
 
   inline fun <reified T> List<IrExpression>.liftExpr(): IrExpression {
     val elementType = typeOf<T>()
-    val classId = elementType.fullPathOfBasic()
+    val classId = with(builderCtx) { elementType.fullPathOfBasic() }
     val expressionType = context.referenceConstructors(classId).firstOrNull()?.owner?.returnType ?: throw IllegalStateException("Cannot find a constructor for: ${classId} for the element type: ${elementType}")
     val variadics = irBuilder.irVararg(expressionType, this)
     //builderCtx.logger.error("--------------- Expression Type -------------: ${expressionType.dumpKotlinLike()}")

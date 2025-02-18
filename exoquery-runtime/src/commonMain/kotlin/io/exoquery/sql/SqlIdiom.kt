@@ -154,10 +154,72 @@ abstract class SqlIdiom: HasPhasePrinting {
       else -> throw IllegalArgumentException("Unknown global method: ${name.toString()}")
     }
 
+  fun stringStartsWith(str: XR.U.QueryOrExpression, prefix: XR.U.QueryOrExpression): Token =
+    +"starts_with(${str.token}, ${prefix.token})"
+
+  fun XR.U.QueryOrExpression.stringConversionMapping(name: String): Token = run {
+    val head = this
+    when (name) {
+      "toLong" -> "CAST(${head.token} AS BIGINT)"
+      "toInt" -> "CAST(${head.token} AS INTEGER)"
+      "toShort" -> "CAST(${head.token} AS SMALLINT)"
+      "toDouble" -> "CAST(${head.token} AS DOUBLE PRECISION)"
+      "toFloat" -> "CAST(${head.token} AS REAL)"
+      "toBoolean" -> "CAST(${head.token} AS BOOLEAN)"
+      "toString" -> "${head.token}"
+      else -> throw IllegalArgumentException("Unknown conversion function: ${name}")
+    }.token
+  }
+
+  fun XR.U.QueryOrExpression.wholeNumberConversionMapping(name: String): Token = run {
+    val head = this
+    when (name) {
+      "toDouble" -> "CAST(${head.token} AS DOUBLE PRECISION)"
+      "toFloat" -> "CAST(${head.token} AS REAL)"
+      "toBoolean" -> "CAST(${head.token} AS BOOLEAN)"
+      "toString" -> "CAST(${head.token} AS ${varcharType()})"
+      // toInt, toLong, toShort reply in implicit casting
+      else -> "${head.token}"
+    }.token
+  }
+
+  fun XR.U.QueryOrExpression.floatConversionMapping(name: String): Token = run {
+    val head = this
+    when (name) {
+      "toLong" -> "CAST(${head.token} AS BIGINT)"
+      "toInt" -> "CAST(${head.token} AS INTEGER)"
+      "toShort" -> "CAST(${head.token} AS SMALLINT)"
+      "toBoolean" -> "CAST(${head.token} AS BOOLEAN)"
+      "toString" -> "CAST(${head.token} AS ${varcharType()})"
+      // toFloat, toDouble reply in implicit casting
+      else -> "${head.token}"
+    }.token
+  }
+
+  // Certain dialects require varchar sizes so allow this to be overridden
+  fun varcharType(): Token = "VARCHAR".token
+
   // TODO needs lots of refinement
   val XR.MethodCall.token get(): Token = run {
     val argsToken = (listOf(head) + args).map { it -> it.token }.mkStmt()
     when {
+      // rely on implicit-casts for numeric conversion
+      originalHostType.isWholeNumber() && name.isConverterFunction() ->
+        head.wholeNumberConversionMapping(name)
+
+      originalHostType.isFloatingPoint() && name.isConverterFunction() ->
+        head.floatConversionMapping(name)
+
+      originalHostType == CID.kotlin_String -> {
+        when {
+          // Cast strings to numeric types if needed
+          name.isConverterFunction() -> head.stringConversionMapping(name)
+          name == "startsWith" -> stringStartsWith(head, args.first())
+          name == "toUpperCase" -> +"UPPER(${head.token})"
+          name == "toLowerCase" -> +"LOWER(${head.token})"
+          else -> xrError("Unknown or invalid XR.MethodCall method: ${name} in the expression:\n${this.showRaw()}")
+        }
+      }
       head is XR.Query && name == "isNotEmpty" -> +"EXISTS (${head.token})"
       head is XR.Query && name == "isEmpty" -> +"NOT EXISTS (${head.token})"
       // in correlated-query situations where we have an Query-level aggregator inside of a filter e.g.
@@ -169,6 +231,8 @@ abstract class SqlIdiom: HasPhasePrinting {
       head is XR.Query && callType == XR.CallType.QueryAggregator -> {
         scopedQueryTokenizer(this as XR.Query)
       }
+      // Need to think about situations where it is a CallType.PureFunction/ImpureFunction and see how it needs to be expanded. Something with sub-expansion
+      // might be necessary e.g. sub-expading the XR.Query with SqlQuery if needed
 
       else -> xrError("Unknown or invalid XR.MethodCall method: ${name} in the expression:\n${this.showRaw()}")
     }

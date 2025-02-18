@@ -45,30 +45,34 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import kotlin.reflect.KClass
 
-fun KClass<*>.classId(): ClassId = run {
+fun KClass<*>.classId(): ClassId? = run {
   val cls = this
-  val fullPath = cls.qualifiedName ?: liftingError("Could not get qualified name of class $cls")
+  cls.qualifiedName?.let { fullPath ->
+    // a bunch of things like the kotlin classpath e.g. kotlin.Boolean etc... actuall resolve to java.lang.Boolean
+    // on the JVM so the JVM package path is diefferent that the kotlin package path. Need to do an early-return in such cases
+    if (fullPath.startsWith("kotlin."))
+      ClassId.topLevel(FqName(fullPath))
+    else {
 
-  // a bunch of things like the kotlin classpath e.g. kotlin.Boolean etc... actuall resolve to java.lang.Boolean
-  // on the JVM so the JVM package path is diefferent that the kotlin package path. Need to do an early-return in such cases
-  if (fullPath.startsWith("kotlin."))
-    ClassId.topLevel(FqName(fullPath))
-  else {
+      // foo.bar in foo.bar.Baz.Blin
+      val packageName = cls.java.packageName
+      // the full path foo.bar.Baz.Blin
 
-    // foo.bar in foo.bar.Baz.Blin
-    val packageName = cls.java.packageName
-    // the full path foo.bar.Baz.Blin
+      if (!fullPath.startsWith(packageName))
+        liftingError("Qualified name of class $fullPath did not start with package name $packageName")
 
-    if (!fullPath.startsWith(packageName))
-      liftingError("Qualified name of class $fullPath did not start with package name $packageName")
-
-    // the Baz.Blin part
-    val className = fullPath.replace(packageName, "").dropWhile { it == '.' } // after we replaced foo.bar with "" there's still a leading "." that wee need to remove
-    ClassId(FqName(packageName), FqName(className), false)
+      // the Baz.Blin part
+      val className = fullPath.replace(packageName, "").dropWhile { it == '.' } // after we replaced foo.bar with "" there's still a leading "." that wee need to remove
+      ClassId(FqName(packageName), FqName(className), false)
+    }
   }
 }
 
+fun KClass<*>.classIdOrEmpty(): ClassId =
+  this.classId() ?: ClassId.topLevel(FqName.topLevel(Name.identifier("Empty")))
 
+fun KClass<*>.classIdOrDefault(default: ClassId): ClassId =
+  this.classId() ?: default
 
 sealed interface MethodType {
   data class Getter(val sym: IrSimpleFunctionSymbol): MethodType
@@ -200,7 +204,7 @@ inline fun <reified T> IrExpression.isClass(): Boolean {
   return className == this.type.classId() || type.superTypes().any { it.classId() == className }
 }
 
-inline fun <reified T> classIdOf(): ClassId = T::class.classId()
+inline fun <reified T> classIdOf(): ClassId? = T::class.classId()
 
 //inline fun <reified T> fqNameOf(): FqName {
 //  val className = T::class.qualifiedNameForce
@@ -254,6 +258,8 @@ inline fun <reified T> IrType.isClass(): Boolean {
 }
 
 fun IrType.classId(): ClassId? = this.classOrNull?.owner?.classId
+fun ClassId.toXR(): XR.ClassId = XR.ClassId(this.packageFqName.toXR(), this.relativeClassName.toXR())
+fun FqName.toXR(): XR.FqName = XR.FqName(this.pathSegments().map { it.identifier })
 
 inline fun <reified T> IrAnnotationContainer.getAnnotationArgs(): List<IrExpression> {
   val annotation = annotations.find { it.type.isClass<T>() }

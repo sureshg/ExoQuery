@@ -89,3 +89,38 @@ class DistinctHeadMatchSortBy() {
       }
     }
 }
+
+
+object CID {
+  val kotlin_String = XR.ClassId("kotlin.String")
+  val kotlin_Int = XR.ClassId("kotlin.Int")
+  val kotlin_Long = XR.ClassId("kotlin.Long")
+  val kotlin_Short = XR.ClassId("kotlin.Short")
+  val kotlin_Double = XR.ClassId("kotlin.Double")
+  val kotlin_Float = XR.ClassId("kotlin.Float")
+  val kotlin_Boolean = XR.ClassId("kotlin.Boolean")
+}
+
+fun XR.ClassId.isWholeNumber(): Boolean =
+  when(this) {
+    CID.kotlin_Int, CID.kotlin_Long, CID.kotlin_Short -> true
+    else -> false
+  }
+
+fun XR.ClassId.isFloatingPoint(): Boolean =
+  when(this) {
+    CID.kotlin_Double, CID.kotlin_Float -> true
+    else -> false
+  }
+
+fun XR.ClassId.isNumeric(): Boolean =
+  when(this) {
+    CID.kotlin_Int, CID.kotlin_Long, CID.kotlin_Short, CID.kotlin_Double, CID.kotlin_Float -> true
+    else -> false
+  }
+
+fun String.isConverterFunction(): Boolean =
+  when(this) {
+    "toLong", "toInt", "toShort", "toDouble", "toFloat", "toBoolean" -> true
+    else -> false
+  }

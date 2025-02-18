@@ -5,7 +5,7 @@ import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.name.FqName
 import kotlin.reflect.KClass
 
-// TODO fix up this whitelist and make tests for the methods
+// Possible implementation for a dynamic method-whitelist
 //object Whitelist {
 //  data class MethodCallEntry(val cls: FqName, val methods: String, val args: List<FqName>) {
 //    companion object {

@@ -116,10 +116,10 @@ val UnaryOp.UnaryOp get() = this
 fun UnaryOp.cs(op: UnaryOperator, expr: XR.Expression) = io.exoquery.xr.XR.UnaryOp.csf(op, expr)(this)
 
 val MethodCall.MethodCall get() = this
-fun MethodCall.cs(head: XR.U.QueryOrExpression, args: List<XR.U.QueryOrExpression>) = io.exoquery.xr.XR.MethodCall.csf(head, args)(this)
+fun MethodCall.cs(head: XR.U.QueryOrExpression, args: List<XR.U.QueryOrExpression>) = io.exoquery.xr.XR.MethodCall.csf(head, name, args)(this)
 
 val GlobalCall.GlobalCall get() = this
-fun GlobalCall.cs(args: List<XR.U.QueryOrExpression>) = io.exoquery.xr.XR.GlobalCall.csf(args)(this)
+fun GlobalCall.cs(args: List<XR.U.QueryOrExpression>) = io.exoquery.xr.XR.GlobalCall.csf(name, args)(this)
 
 val Ident.Ident get() = this
 fun Ident.cs(name: String) = io.exoquery.xr.XR.Ident.csf(name)(this)
