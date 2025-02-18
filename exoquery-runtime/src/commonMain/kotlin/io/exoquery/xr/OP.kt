@@ -17,6 +17,10 @@ import kotlinx.serialization.Serializable
 @Serializable sealed interface BooleanOperator: OP
 @Serializable sealed interface EqualityOperator: OP
 
+/**
+ * Just operators used for symbolic expression in SQL dialects. The Quill Operators object had operators
+ * like Query.isEmpty, Query.contains, etc... This is handled by XR.MethodCall and XR.GlobalCall in ExoQuery
+ */
 @Serializable
 sealed interface OP {
   val symbol: String
@@ -40,21 +44,4 @@ sealed interface OP {
   @Serializable data object mod : NumericOperator, BinaryOperator { override val symbol = "%" }
 
   @Serializable data object strPlus          : StringOperator, BinaryOperator { override val symbol = "+" }
-// TODO implement these as GlobalCall and MethodCall
-//  @Serializable data object `startsWith` : BinaryOperator, YieldsBool { override val symbol = "startsWith" }
-//  @Serializable data object `split`      : BinaryOperator { override val symbol = "split" }
-//  @Serializable data object `toUpperCase`: PostfixUnaryOperator { override val symbol = "toUpperCase" }
-//  @Serializable data object `toLowerCase`: PostfixUnaryOperator { override val symbol = "toLowerCase" }
-//  @Serializable data object `toLong`     : PostfixUnaryOperator { override val symbol = "toLong" }
-//  @Serializable data object `toInt`      : PostfixUnaryOperator { override val symbol = "toInt" }
-
-  @Serializable data object `contains`: SetOperator, BinaryOperator, YieldsBool { override val symbol = "contains" }
-  @Serializable data object `nonEmpty`: SetOperator, PostfixUnaryOperator, YieldsBool { override val symbol = "nonEmpty" }
-  @Serializable data object `isEmpty` : SetOperator, PostfixUnaryOperator, YieldsBool { override val symbol = "isEmpty" }
-
-  @Serializable data object `min` : AggregationOperator { override val symbol = "min" }
-  @Serializable data object `max` : AggregationOperator { override val symbol = "max" }
-  @Serializable data object `avg` : AggregationOperator { override val symbol = "avg" }
-  @Serializable data object `sum` : AggregationOperator { override val symbol = "sum" }
-  @Serializable data object `size`: AggregationOperator { override val symbol = "size" }
 }

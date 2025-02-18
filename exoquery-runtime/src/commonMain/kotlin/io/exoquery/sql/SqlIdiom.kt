@@ -157,12 +157,40 @@ abstract class SqlIdiom: HasPhasePrinting {
   // TODO needs lots of refinement
   val XR.MethodCall.token get(): Token = run {
     val argsToken = (listOf(head) + args).map { it -> it.token }.mkStmt()
-    when (name) {
-      "isNotEmpty" -> +"EXISTS (${head.token})"
-      "isEmpty" -> +"NOT EXISTS (${head.token})"
-      else -> xrError("Unknown XR.MethodCall method: ${name}")
+    when {
+      head is XR.Query && name == "isNotEmpty" -> +"EXISTS (${head.token})"
+      head is XR.Query && name == "isEmpty" -> +"NOT EXISTS (${head.token})"
+      // in correlated-query situations where we have an Query-level aggregator inside of a filter e.g.
+      // `people.filter(p => addresses.map(a => a.ownerId).min == p.id)`. In that case we need ot go back
+      // to the top-level with the inner-query and run the SqlQuery expasion on the head XR.Query object
+      // This will go into XR.Query.token and which will call the Query expansion into SqlQuery.
+      // Doing all of this runs the potential risk of recursing forever if SqlQuery returns a SelectValue with the full
+      // query expression so need make sure that doesn't happen there in SqlQuery.
+      head is XR.Query && callType == XR.CallType.QueryAggregator -> {
+        scopedQueryTokenizer(this as XR.Query)
+      }
+
+      else -> xrError("Unknown or invalid XR.MethodCall method: ${name} in the expression:\n${this.showRaw()}")
     }
   }
+
+  fun tokenizeSelectAggregator(call: XR.MethodCall): Statement {
+    val op = call.name
+    val expr = call.head
+    return when {
+      // Aggregation(op, Ident(id, _: Quat.Product))
+      expr is Ident && expr.type is XRType.Product -> +"${op.token}(${makeProductAggregationToken(expr.name)})"
+      // Not too many cases of this. Can happen if doing a leaf-level infix inside of a select clause. For example in postgres:
+      // `sql"unnest(array['foo','bar'])".as[Query[Int]].groupBy(p => p).map(ap => ap._2.max)` which should yield:
+      // SELECT MAX(inf) FROM (unnest(array['foo','bar'])) AS inf GROUP BY inf
+      expr is XR.Ident -> +"${op.token}(${expr.token})"
+      expr is XR.Product -> +"${op.token}(*)"
+      // In ExoQuery Distinct is a type of Query so it cannot occur in an aggregation expression
+      //expr is XR.Distinct -> +"${op.token}(DISTINCT ${expr.ast.token})"
+      else -> +"${op.token}(${expr.token})"
+    }
+  }
+
 
   val XR.GlobalCall.token get(): Token = run {
     val argsToken = args.map { it -> it.token }.mkStmt()
@@ -359,34 +387,6 @@ abstract class SqlIdiom: HasPhasePrinting {
       else -> xrError("Illegal SelectValue clause: ${this}")
     }
 
-  // TODO This represents count(*), Query.min and Query.map(x -> min(x)) need to check that all 3 cases
-  //     (including the one where `count` is called on a product work properly)
-//  val XR.Aggregation.token get(): Token =
-//    when {
-//      // Aggregation(op, Ident(id, _: Quat.Product))
-//      expr is Ident && expr.type is XRType.Product -> +"${op.token}(${makeProductAggregationToken(expr.name)})"
-//      // Not too many cases of this. Can happen if doing a leaf-level infix inside of a select clause. For example in postgres:
-//      // `sql"unnest(array['foo','bar'])".as[Query[Int]].groupBy(p => p).map(ap => ap._2.max)` which should yield:
-//      // SELECT MAX(inf) FROM (unnest(array['foo','bar'])) AS inf GROUP BY inf
-//      expr is XR.Ident -> +"${op.token}(${expr.token})"
-//      expr is XR.Product -> +"${op.token}(*)"
-//      // In ExoQuery Distinct is a type of Query so it cannot occur in an aggregation expression
-//      //expr is XR.Distinct -> +"${op.token}(DISTINCT ${expr.ast.token})"
-//      expr is XR.Query -> scopedQueryTokenizer(expr)
-//      else -> +"${op.token}(${expr.token})"
-//    }
-
-
-//    case Aggregation(op, Ident(id, _: Quat.Product)) => stmt"${op.token}(${makeProductAggregationToken(id)})"
-//    // Not too many cases of this. Can happen if doing a leaf-level infix inside of a select clause. For example in postgres:
-//    // `sql"unnest(array['foo','bar'])".as[Query[Int]].groupBy(p => p).map(ap => ap._2.max)` which should yield:
-//    // SELECT MAX(inf) FROM (unnest(array['foo','bar'])) AS inf GROUP BY inf
-//    case Aggregation(op, Ident(id, _))   => stmt"${op.token}(${id.token})"
-//    case Aggregation(op, Tuple(_))       => stmt"${op.token}(*)"
-//    case Aggregation(op, Distinct(ast))  => stmt"${op.token}(DISTINCT ${ast.token})"
-//    case ast @ Aggregation(op, _: Query) => scopedTokenizer(ast)
-//    case Aggregation(op, ast)            => stmt"${op.token}(${ast.token})"
-
 
   fun makeProductAggregationToken(id: String) =
     when(productAggregationToken) {
@@ -405,12 +405,6 @@ abstract class SqlIdiom: HasPhasePrinting {
       a is Any  && op is `!=` && b is Null -> +"${scopedTokenizer(a)} IS NOT NULL"
       a is Null && op is `!=` && b is Any  -> +"${scopedTokenizer(b)} IS NOT NULL"
 
-//      a is Any  && op is StringOperator.`startsWith` && b is Any ->
-//        +"${scopedTokenizer(a)} LIKE (${BinaryOp(b, StringOperator.`+`, XR.Const.String("%", Synth), Synth).token})" // In Quill there was an upcast here, not sure if this is needed
-//      a is Any && op is StringOperator.`split` && b is Any ->
-//        +"${op.token}(${scopedTokenizer(a)}, ${scopedTokenizer(b)})"
-
-      a is Any && op is OP.`contains` && b is Any -> SetContainsToken(scopedTokenizer(b), op.token, a.token)
       a is Any && op is `and` && b is Any ->
         when {
           // (a1 || a2) && (b1 || b2) i.e. need parens around the a and b
@@ -437,38 +431,7 @@ abstract class SqlIdiom: HasPhasePrinting {
     when(this) {
       is OP.minus -> +"-"
       is OP.not -> +"NOT"
-//      is StringOperator.toUpperCase -> +"UPPER"
-//      is StringOperator.toLowerCase -> +"LOWER"
-//      is StringOperator.toLong -> emptyStatement // cast is implicit
-//      is StringOperator.toInt -> emptyStatement // cast is implicit
-      is OP.isEmpty -> +"NOT EXISTS"
-      is OP.nonEmpty -> +"EXISTS"
     }
-
-
-//  case NumericOperator.`-`          => stmt"-"
-//  case BooleanOperator.`!`          => stmt"NOT"
-//  case StringOperator.`toUpperCase` => stmt"UPPER"
-//  case StringOperator.`toLowerCase` => stmt"LOWER"
-//  case StringOperator.`toLong`      => emptyStatement // cast is implicit
-//  case StringOperator.`toInt`       => emptyStatement // cast is implicit
-//  case SetOperator.`isEmpty`        => stmt"NOT EXISTS"
-//  case SetOperator.`nonEmpty`       => stmt"EXISTS"
-
-  val AggregationOperator.token get(): Token =
-    when(this) {
-      is OP.`min`  -> +"MIN"
-      is OP.`max`  -> +"MAX"
-      is OP.`avg`  -> +"AVG"
-      is OP.`sum`  -> +"SUM"
-      is OP.`size` -> +"COUNT"
-    }
-
-//  case AggregationOperator.`min`  => stmt"MIN"
-//  case AggregationOperator.`max`  => stmt"MAX"
-//  case AggregationOperator.`avg`  => stmt"AVG"
-//  case AggregationOperator.`sum`  => stmt"SUM"
-//  case AggregationOperator.`size` => stmt"COUNT"
 
   val BinaryOperator.token get(): Token =
     when(this) {
@@ -477,8 +440,6 @@ abstract class SqlIdiom: HasPhasePrinting {
       is OP.and -> +"AND"
       is OP.or -> +"OR"
       is OP.strPlus -> +"||" // String concat is `||` is most dialects (SQL Server uses + and MySQL only has the `CONCAT` function)
-//      is StringOperator.startsWith -> xrError("bug: this code should be unreachable")
-//      is StringOperator.split -> +"SPLIT"
       is OP.minus -> +"-"
       is OP.plus -> +"+"
       is OP.mult -> +"*"
@@ -488,7 +449,7 @@ abstract class SqlIdiom: HasPhasePrinting {
       is OP.lte -> +"<="
       is OP.div -> +"/"
       is OP.mod -> +"%"
-      is OP.contains -> +"IN"
+
     }
 
 

@@ -5,7 +5,7 @@ import io.exoquery.printing.kt
 
 object QuerySpecCorrelatedGoldenDynamic: GoldenQueryFile {
   override val queries = mapOf<String, String>(
-    "query with co-releated in filter - isNotEmpty" to kt(
+    "query with co-releated in filter - isNotEmpty/XR" to kt(
       "Table(Person).filter { p -> Table(Address).filter { a -> a.ownerId == p.id }.isNotEmpty_MC() }"
     ),
     "query with co-releated in filter - isNotEmpty" to cr(
@@ -16,6 +16,12 @@ object QuerySpecCorrelatedGoldenDynamic: GoldenQueryFile {
     ),
     "query with co-releated in filter - isEmpty" to cr(
       "SELECT p.id AS id, p.name AS name, p.age AS age FROM Person p WHERE NOT EXISTS (SELECT a.ownerId AS ownerId, a.street AS street, a.city AS city FROM Address a WHERE a.ownerId = p.id)"
+    ),
+    "query aggregation/min/XR" to kt(
+      "Table(Person).filter { p -> Table(Address).map { a -> a.ownerId }.min_MC() == p.id }"
+    ),
+    "query aggregation/min" to cr(
+      "SELECT p.id AS id, p.name AS name, p.age AS age FROM Person p WHERE (SELECT min(a.ownerId) FROM Address a) = p.id"
     ),
     "select aggregation/min/XR" to kt(
       "Table(Address).map { a -> min_GC(a.ownerId) }"

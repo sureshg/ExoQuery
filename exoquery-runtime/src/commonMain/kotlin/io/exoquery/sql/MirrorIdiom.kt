@@ -97,9 +97,6 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
       is XR.UnaryOp ->
         when (op) {
           is PrefixUnaryOperator -> stmt("${op.symbol.token}${expr.token}")
-          // TODO these are not supposed to be on Expr, they're supposed to be on Query. Replace them with MethodCall/GlobalCall
-          is OP.isEmpty -> stmt("${expr.token}.isEmpty")
-          is OP.nonEmpty -> stmt("${expr.token}.nonEmpty")
         }
 
       is XR.Block -> stmt("{ ${stmts.map { it.token }.mkStmt("; ").token}; ${output.token} }")

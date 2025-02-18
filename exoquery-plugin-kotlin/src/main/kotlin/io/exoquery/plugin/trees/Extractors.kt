@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isTypeParameter
 import org.jetbrains.kotlin.ir.util.superTypes
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 
 fun <T> List0() = Is(listOf<T>())
@@ -82,16 +83,16 @@ object Ir {
   }
 
   object Expr {
-    class ClassOf<R>(val className: String): Pattern0<IrExpression>(Typed<IrExpression>()) {
+    class ClassOf<R>(val className: ClassId): Pattern0<IrExpression>(Typed<IrExpression>()) {
       override fun matches(r: ProductClass<IrExpression>): Boolean =
         Typed<IrExpression>().typecheck(r.productClassValueUntyped) &&
           r.productClassValue.type.let { tpe ->
-            className == tpe.classFqName.toString() || tpe.superTypes().any { it.classFqName.toString() == className }
+            className == tpe.classId() || tpe.superTypes().any { it.classId() == className }
           }
 
       companion object {
         inline operator fun <reified T> invoke() =
-          ClassOf<T>(T::class.qualifiedNameForce)
+          ClassOf<T>(T::class.classId())
       }
     }
 
@@ -159,16 +160,16 @@ object Ir {
         }
     }
 
-    class ClassOfType<R>(val className: String): Pattern0<IrType>(Typed<IrType>()) {
+    class ClassOfType<R>(val className: ClassId): Pattern0<IrType>(Typed<IrType>()) {
       override fun matches(r: ProductClass<IrType>): Boolean =
         Typed<IrType>().typecheck(r.productClassValueUntyped) &&
           r.productClassValue.let { tpe ->
-            className == tpe.classFqName.toString() || tpe.superTypes().any { it.classFqName.toString() == className }
+            className == tpe.classId() || tpe.superTypes().any { it.classId() == className }
           }
 
       companion object {
         inline operator fun <reified T> invoke() =
-          ClassOfType<T>(T::class.qualifiedNameForce)
+          ClassOfType<T>(T::class.classId())
       }
     }
 

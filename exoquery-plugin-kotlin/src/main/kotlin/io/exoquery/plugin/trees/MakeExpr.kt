@@ -1,6 +1,7 @@
 package io.exoquery.plugin.trees
 
 import io.exoquery.liftingError
+import io.exoquery.plugin.classId
 import io.exoquery.plugin.transform.BuilderContext
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irGetObjectValue
@@ -17,18 +18,7 @@ import kotlin.reflect.typeOf
 
 fun KType.fullPathOfBasic(): ClassId =
   when(val cls = this.classifier) {
-    is KClass<*> -> {
-      // foo.bar in foo.bar.Baz.Blin
-      val packageName = cls.java.packageName
-      // the full path foo.bar.Baz.Blin
-      val fullPath = cls.qualifiedName ?: liftingError("Could not get qualified name of class $cls")
-      if (!fullPath.startsWith(packageName))
-        liftingError("Qualified name of class $fullPath did not start with package name $packageName")
-
-      // the Baz.Blin part
-      val className = fullPath.replace(packageName, "").dropWhile { it == '.' } // after we replaced foo.bar with "" there's still a leading "." that wee need to remove
-      ClassId(FqName(packageName), FqName(className), false)
-    }
+    is KClass<*> -> cls.classId()
     else -> throw RuntimeException("Invalid list class: $cls")
   }
 

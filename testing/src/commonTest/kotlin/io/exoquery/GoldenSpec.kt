@@ -50,6 +50,7 @@ abstract class GoldenSpecDynamic(val goldenQueries: GoldenQueryFile, val mode: M
     }
   }
 
+  // TODO change default-suffix to XR and fix up the tests
   fun TestScope.shouldBeGolden(xr: XR, suffix: String = "") = xr.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix")
   fun TestScope.shouldBeGolden(sql: SqlCompiledQuery<*>, suffix: String = "") = sql.value.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix", PrintableValue.Type.SqlQuery)
 

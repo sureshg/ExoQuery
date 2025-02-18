@@ -326,10 +326,12 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
       val queryRaw =
         when (finalFlatMapBody) {
-          is XR.Expression ->
-            FlattenSqlQuery(from = contexts, select = selectValues(finalFlatMapBody), type = query.type)
+          // Certain things like Ident, FunctionApply, and GlobalCall/MethodCall are BOTH query and expression so BE SURE to flatten them if possible
+          // e.g. otherwise things like Query-level aggregations will cycle forever because SqlQuery.flatten will not remove them
           is XR.Query ->
             flatten(contexts, finalFlatMapBody, alias, nestNextMap = false)
+          is XR.Expression ->
+            FlattenSqlQuery(from = contexts, select = selectValues(finalFlatMapBody), type = query.type)
         }
       val query =
         queryRaw
@@ -422,6 +424,60 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                     type = type
                   )
                 }
+            }
+
+            /*
+            case Aggregation(op, q: Query) =>
+              val b = flatten(q, alias)
+              b.select match {
+                case head :: Nil if !b.distinct.isDistinct =>
+                  trace"Flattening| Aggregation(Query) [Simple]" andReturn
+                    b.copy(select = List(head.copy(ast = Aggregation(op, head.ast))))(quat)
+                case other =>
+                  trace"Flattening| Aggregation(Query) [Complex]" andReturn
+                    FlattenSqlQuery(
+                      from = QueryContext(build(q), alias) :: Nil,
+                      select = List(
+                        SelectValue(Aggregation(op, Ident("*", quat)))
+                      ) // Quat of a * aggregation is same as for the entire query
+                    )(quat)
+              }
+             */
+
+            // Handle Query-level aggregations e.g. `people.map(p => p.age).max`
+            is XR.MethodCall if callType == XR.CallType.QueryAggregator -> {
+              if (this.head !is XR.Query) xrError("QueryAggregator must have a query as the head but this condition was not met in: ${this.showRaw()}")
+              if (this.args.size != 0) xrError("QueryAggregator must have zero arguments but this condition was not met in: ${this.showRaw()}")
+              // Kotlin:
+              //val b = flatten(q, alias)
+              //b.select match {
+              //  case head :: Nil if !b.distinct.isDistinct =>
+              //    trace"Flattening| Aggregation(Query) [Simple]" andReturn
+              //      b.copy(select = List(head.copy(ast = Aggregation(op, head.ast))))(quat)
+              //  case other =>
+              //    trace"Flattening| Aggregation(Query) [Complex]" andReturn
+              //      FlattenSqlQuery(
+              //        from = QueryContext(build(q), alias) :: Nil,
+              //        select = List(
+              //          SelectValue(Aggregation(op, Ident("*", quat)))
+              //        ) // Quat of a * aggregation is same as for the entire query
+              //      )(quat)
+              val b = flatten(head, alias)
+              when {
+                b.select.size == 1 && !b.distinct.isDistinct ->
+                  trace("Flattening| Aggregation(Query) [Simple]") andReturn {
+                    b.copy(select = listOf(b.select.first().copy(expr = XR.GlobalCall.Agg(name, b.select.first().expr))))
+                  }
+                else ->
+                  trace("Flattening| Aggregation(Query) [Complex]") andReturn {
+                    FlattenSqlQuery(
+                      from = listOf(QueryContext(invoke(head), alias.name)),
+                      select = listOf(SelectValue(XR.GlobalCall.Agg(name, XR.Ident("*", type, XR.Location.Synth)))),
+                      type = type
+                    )
+                  }
+              }
+
             }
 
             is XR.Filter -> {

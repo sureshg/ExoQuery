@@ -3,6 +3,7 @@ package io.exoquery.plugin
 import io.decomat.*
 import io.decomat.fail.fail
 import io.exoquery.annotation.*
+import io.exoquery.liftingError
 import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.LocateableContext
@@ -36,6 +37,7 @@ import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.types.isSubtypeOfClass
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -43,12 +45,30 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import kotlin.reflect.KClass
 
-val KClass<*>.qualifiedNameForce get(): String =
-  if (this.qualifiedName == null) fail("Qualified name of the class ${this} was null")
-  else this.qualifiedName!!
+fun KClass<*>.classId(): ClassId = run {
+  val cls = this
+  val fullPath = cls.qualifiedName ?: liftingError("Could not get qualified name of class $cls")
 
-val KClass<*>.fqNameForce get() =
-  FqName(this.qualifiedNameForce)
+  // a bunch of things like the kotlin classpath e.g. kotlin.Boolean etc... actuall resolve to java.lang.Boolean
+  // on the JVM so the JVM package path is diefferent that the kotlin package path. Need to do an early-return in such cases
+  if (fullPath.startsWith("kotlin."))
+    ClassId.topLevel(FqName(fullPath))
+  else {
+
+    // foo.bar in foo.bar.Baz.Blin
+    val packageName = cls.java.packageName
+    // the full path foo.bar.Baz.Blin
+
+    if (!fullPath.startsWith(packageName))
+      liftingError("Qualified name of class $fullPath did not start with package name $packageName")
+
+    // the Baz.Blin part
+    val className = fullPath.replace(packageName, "").dropWhile { it == '.' } // after we replaced foo.bar with "" there's still a leading "." that wee need to remove
+    ClassId(FqName(packageName), FqName(className), false)
+  }
+}
+
+
 
 sealed interface MethodType {
   data class Getter(val sym: IrSimpleFunctionSymbol): MethodType
@@ -170,21 +190,22 @@ context(BuilderContext) fun IrElement.buildLocationXR(): XR.Location =
 fun CompilerMessageSourceLocation.toLocationXR(): XR.Location =
   XR.Location.File(path, line, column)
 
+inline fun <reified T> IrExpression.isClassStrict(): Boolean {
+  val className = T::class.classId()
+  return className == this.type.classId()
+}
 
 inline fun <reified T> IrExpression.isClass(): Boolean {
-  val className = T::class.qualifiedNameForce
-  return className == this.type.classFqName.toString() || type.superTypes().any { it.classFqName.toString() == className }
+  val className = T::class.classId()
+  return className == this.type.classId() || type.superTypes().any { it.classId() == className }
 }
 
-inline fun <reified T> classIdOf(): ClassId {
-  val className = T::class.qualifiedNameForce
-  return ClassId.topLevel(FqName(className))
-}
+inline fun <reified T> classIdOf(): ClassId = T::class.classId()
 
-inline fun <reified T> fqNameOf(): FqName {
-  val className = T::class.qualifiedNameForce
-  return FqName(className)
-}
+//inline fun <reified T> fqNameOf(): FqName {
+//  val className = T::class.qualifiedNameForce
+//  return FqName(className)
+//}
 
 inline fun <reified T> IrCall.ownerHasAnnotation() =
   this.symbol.owner.hasAnnotation<T>()
@@ -192,9 +213,9 @@ inline fun <reified T> IrCall.ownerHasAnnotation() =
 inline fun <reified T> IrElement.hasAnnotation() =
   when (this) {
     is IrAnnotationContainer ->
-      this.annotations.any { it.type.classFqName == fqNameOf<T>() }
+      this.annotations.any { it.type.isClassStrict<T>() }
     is IrSimpleFunction ->
-      this.annotations.any { it.type.classFqName == fqNameOf<T>() }
+      this.annotations.any { it.type.isClassStrict<T>() }
     else -> false
   }
 
@@ -208,21 +229,31 @@ inline fun IrElement.hasAnnotation(fqName: FqName) =
   }
 
 inline fun <reified T> IrType.hasAnnotation() =
-  this.annotations.any { it.type.classFqName == fqNameOf<T>() }
+  this.annotations.any { it.type.isClassStrict<T>() }
 
 // IrFile is both a IrSymbolOwner and a IrAnnotationContainer so
 // have a override specifically for. Otherwise would need to use a @this for it
 inline fun <reified T> IrFile.fileHasAnnotation() =
-  this.annotations.any { it.type.classFqName == fqNameOf<T>() }
+  this.annotations.any { it.type.isClassStrict<T>() }
 
 inline fun <reified T> IrFile.getAnnotation() =
   this.let { it.annotations.find { ctor -> ctor.type.isClass<T>() } }
 
+// Cheaper that isClass because doesn't check subclasses
+inline fun <reified T> IrType.isClassStrict(): Boolean {
+  // NOTE memoize these things for performance?
+  val className = T::class.classId()
+  return className == this.classOrNull?.owner?.classId
+}
+
+// TODO use builderCtx.pluginCtx.referenceClass(classId) instead of this, this means pluginCtx needs to be passed into here
 inline fun <reified T> IrType.isClass(): Boolean {
   // NOTE memoize these things for performance?
-  val className = T::class.qualifiedNameForce
-  return className == this.classFqName.toString() || this.superTypes().any { it.classFqName.toString() == className }
+  val className = T::class.classId()
+  return className == this.classOrNull?.owner?.classId || this.superTypes().any { it.classOrNull?.owner?.classId == className }
 }
+
+fun IrType.classId(): ClassId? = this.classOrNull?.owner?.classId
 
 inline fun <reified T> IrAnnotationContainer.getAnnotationArgs(): List<IrExpression> {
   val annotation = annotations.find { it.type.isClass<T>() }

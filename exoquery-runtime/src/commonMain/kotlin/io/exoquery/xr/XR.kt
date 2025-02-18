@@ -541,7 +541,10 @@ sealed interface XR {
   @Mat
   data class GlobalCall(val name: XR.FqName, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, U.Call, PC<GlobalCall> {
     @Transient override val productComponents = productOf(this, args)
-    companion object {}
+    companion object {
+      // using this when translating from Query-level aggs to Expression-level aggs in the SqlQuery
+      fun Agg(name: String, vararg args: XR.U.QueryOrExpression) = GlobalCall(FqName(name), args.toList(), CallType.Aggregator, XRType.Value)
+    }
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
