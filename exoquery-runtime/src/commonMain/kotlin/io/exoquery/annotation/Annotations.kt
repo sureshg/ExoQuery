@@ -1,5 +1,6 @@
 package io.exoquery.annotation
 
+import io.exoquery.serial.ParamSerializer
 import io.exoquery.util.TraceType
 import kotlin.reflect.KClass
 
@@ -51,3 +52,19 @@ annotation class DslFunctionCall(val type: KClass<out DslFunctionCallType>)
 @Target(AnnotationTarget.CLASS, AnnotationTarget.PROPERTY, AnnotationTarget.PROPERTY_GETTER)
 @Retention(AnnotationRetention.BINARY)
 annotation class DslNestingIgnore
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
+annotation class ParamStatic(val type: KClass<out ParamSerializer<out Any>>)
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
+annotation class ParamCtx
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
+annotation class ParamCustom
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
+annotation class ParamCustomValue

@@ -11,7 +11,7 @@ class DynamicsAccum {
   private val allRuntimesCollect = mutableListOf<IrExpression>()
 
   // instances of Params (maybe think about something more typed here, or check that the IrExpresssion is a Params when adding)
-  private val paramsCollect = mutableListOf<Pair<BID, IrExpression>>()
+  private val paramsCollect = mutableListOf<ParamBind>()
   // Other instances of SqlExpression or SqlQuery (i.e. from other uprootable SqlExpression instances that we need to compose)
   private val allParamsCollect = mutableListOf<IrExpression>()
 
@@ -32,8 +32,8 @@ class DynamicsAccum {
   fun addAllParams(sqlExpressionInstance: IrExpression) {
     allParamsCollect.add(sqlExpressionInstance)
   }
-  fun addParam(bindId: BID, bind: IrExpression) {
-    paramsCollect.add(bindId to bind)
+  fun addParam(bindId: BID, value: IrExpression, paramType: ParamBind.Type) {
+    paramsCollect.add(ParamBind(bindId, value, paramType))
   }
 
   operator fun plus(other: DynamicsAccum): DynamicsAccum {

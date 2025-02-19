@@ -23,10 +23,7 @@ plugins {
 
 dependencies {
     add("kspCommonMainMetadata", "io.exoquery:decomat-ksp:0.4.0")
-}
-
-dependencies {
-    add("kspCommonMainMetadata", "io.exoquery:decomat-ksp:0.4.0")
+    commonMainApi("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
 }
 
 kotlin {

@@ -4,9 +4,17 @@ import io.exoquery.annotation.Dsl
 import io.exoquery.annotation.DslFunctionCall
 import io.exoquery.annotation.DslFunctionCallType
 import io.exoquery.annotation.DslNestingIgnore
+import io.exoquery.annotation.ParamCtx
+import io.exoquery.annotation.ParamCustom
+import io.exoquery.annotation.ParamCustomValue
+import io.exoquery.annotation.ParamStatic
+import io.exoquery.serial.ParamSerializer
 import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
+import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.decodeFromHexString
+import kotlinx.serialization.serializer
+import kotlin.reflect.KClass
 
 fun unpackExpr(expr: String): XR.Expression =
   EncodingXR.protoBuf.decodeFromHexString<XR.Expression>(expr)
@@ -39,10 +47,37 @@ interface StringSqlDsl {
   @DslFunctionCall(DslFunctionCallType.PureFunction::class) fun lowercase(): String = errorCap("The `upperCase` expression of the Query was not inlined")
 }
 
+
+
 interface CapturedBlock {
   @Dsl fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
 
-  @Dsl fun <T> param(value: T): T = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.String::class) fun param(value: String): String = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Char::class) fun param(value: Char): Char = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Int::class) fun param(value: Int): Int = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Short::class) fun param(value: Short): Short = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Long::class) fun param(value: Long): Long = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Float::class) fun param(value: Float): Float = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Double::class) fun param(value: Double): Double = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Boolean::class) fun param(value: Boolean): Boolean = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.LocalDate::class) fun param(value: kotlinx.datetime.LocalDate): kotlinx.datetime.LocalDate = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.LocalTime::class) fun param(value: kotlinx.datetime.LocalTime): kotlinx.datetime.LocalTime = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.LocalDateTime::class) fun param(value: kotlinx.datetime.LocalDateTime): kotlinx.datetime.LocalDateTime = errorCap("Compile time plugin did not transform the tree")
+
+  @Dsl @ParamCtx fun <T> paramCtx(value: T): T = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamCustom fun <T: Any> paramCustom(value: T, serializer: SerializationStrategy<T>): T = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamCustomValue fun <T: Any> param(value: ValueWithSerializer<T>): T = errorCap("Compile time plugin did not transform the tree")
+
+  // I.e. the the list is lifted but as individual elements
+  //fun <T: Any> params(values: List<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")
+  //fun <T: Any> paramsCtx(values: List<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")
+  //fun <T: Any> paramsCustom(values: List<T>, serializer: SerializationStrategy<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")
+  //fun <T: Any> paramsCustomValue(values: List<ValueWithSerializer<T>>): Params<T> = errorCap("Compile time plugin did not transform the tree")
+  //fun <T: Any> params(vararg values: T): Params<T> = errorCap("Compile time plugin did not transform the tree")
+  //fun <T: Any> paramsCtx(vararg values: T): Params<T> = errorCap("Compile time plugin did not transform the tree")
+  //// Maybe multiple args list?
+  //fun <T: Any> paramsCustom(serializer: SerializationStrategy<T>, vararg values: T): Params<T> = errorCap("Compile time plugin did not transform the tree")
+
   val <T> SqlExpression<T>.use: T get() = throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context")
 
   // Extension recivers for SqlQuery<T>
@@ -120,21 +155,19 @@ interface SelectClauseCapturedBlock: CapturedBlock {
   @Dsl fun sortBy(vararg orderings: Pair<*, Ord>): Unit = errorCap("The `sortBy` expression of the Query was not inlined")
 }
 
+// TODO play around with having multiple from-clauses
 fun <T> select(block: SelectClauseCapturedBlock.() -> T): @Captured SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
 
-// TODO Dsl functions for grouping
+data class ValueWithSerializer<T: Any>(val value: T, val serializer: SerializationStrategy<T>, val cls: KClass<T>) {
+  fun asParam(): ParamSerializer<T> = ParamSerializer.Custom(serializer, cls)
+  companion object {
+    operator inline fun <reified T: Any> invoke(value: T, serializer: SerializationStrategy<T>): ValueWithSerializer<T> =
+      ValueWithSerializer(value, serializer, T::class)
+  }
+}
 
-// TODO play around with having multiple from-clauses
-
-
-//fun example() {
-//  data class Person(val id: String, val name: String, val age: Int)
-//  data class Address(val id: String, val personId: String, val street: String)
-//  val myQuery: SqlQuery<Pair<Person, Address?>> =
-//    select {
-//      val p = from(Table<Person>())
-//      val a = joinLeft(Table<Address>()) { it.personId == p.id } // note, when `it` is being used as a variable want to try to get it from the `val` part so it doesn't beta reduce to `it`
-//      where(p.age > 18) // maybe `where { p.age > 18 }` would be better? Also need to think about multiple groupBy clauses, maybe we need tupleOf(...), possibly even directly in the signature (with overlods for pair/triple as well)
-//      p to a
-//    }
+// Problem! Conflicts with Params in SqlExpression.kt. Need to rename that first. Or maybe call this ParamsList
+// the point it is to use it in the dsl like so: `x in params(1, 2, 3)`
+//interface Params<T> {
+//  operator fun contains(value: T): Boolean
 //}

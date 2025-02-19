@@ -1,6 +1,7 @@
 package io.exoquery
 
 import io.exoquery.printing.PrintMisc
+import io.exoquery.serial.ParamSerializer
 import io.exoquery.xr.XR
 import io.exoquery.xr.swapTags
 
@@ -46,7 +47,7 @@ data class Runtimes(val runtimes: List<Pair<BID, ContainerOfXR>>) {
  * }}}
  */
 
-data class Param<T>(val id: BID, val value: T)
+data class Param<T: Any>(val id: BID, val value: T, val serial: ParamSerializer<T>)
 
 data class Params(val lifts: List<Param<*>>) {
   operator fun plus(other: Params): Params = Params(lifts + other.lifts)

@@ -4,6 +4,7 @@ import io.exoquery.plugin.location
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.source
 import io.exoquery.plugin.symName
+import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.transform.LocateableContext
 import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.ParserContext
@@ -43,6 +44,7 @@ class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) 
 fun parseError(msg: String, location: CompilerMessageSourceLocation? = null): Nothing = throw ParseError(msg, location)
 
 context(LocateableContext) fun parseError(msg: String, expr: IrElement): Nothing = throw ParseError.withFullMsg(msg, expr, currentFile, expr.location())
+context(BuilderContext) fun builderParseError(msg: String, expr: IrElement): Nothing = throw ParseError.withFullMsg(msg, expr, currentFile, expr.location(currentFile.fileEntry))
 
 context(LocateableContext) fun parseErrorSym(expr: IrCall): Nothing =
   throw ParseError.withFullMsg("Invalid function name or symbol: ${expr.symName}", expr, currentFile, expr.location())

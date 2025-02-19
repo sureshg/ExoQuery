@@ -16,6 +16,10 @@ import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.annotation.Dsl
 import io.exoquery.annotation.DslFunctionCall
 import io.exoquery.annotation.DslNestingIgnore
+import io.exoquery.annotation.ParamCtx
+import io.exoquery.annotation.ParamCustom
+import io.exoquery.annotation.ParamCustomValue
+import io.exoquery.annotation.ParamStatic
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.parseError
@@ -518,9 +522,30 @@ object ExpressionParser {
         XR.FunctionApply(parse(hostFunction), args.map { parse(it) }, expr.loc)
       },
 
-      case(Ir.Call.FunctionMem1.WithCaller[Is(), Is("param"), Is()]).thenThis { _, paramValue ->
+      case(Ir.Call.FunctionMemN[Is(), Is.of("param", "paramCtx", "paramCustom"), Is()]).thenThis { _, args ->
+        val paramValue = args.first()
+        val paramBindType =
+          when {
+            this.ownerHasAnnotation<ParamStatic>() -> {
+              val staticRef = this.symbol.owner.getAnnotationArgs<ParamStatic>().firstOrNull()?.let { param -> param as? IrClassReference ?: parseError("ParamStatic annotation must have a single argument that is a class-reference (e.g. PureFunction::class)", this) } ?: parseError("Could not find ParamStatic annotation", this)
+              val classId = staticRef.classType.classId() ?: parseError("Could not find classId for ParamStatic annotation", this)
+              ParamBind.Type.ParamStatic(classId)
+            }
+            this.ownerHasAnnotation<ParamCustom>() -> {
+              // serializer should be the 2nd arg i.e. paramCustom(value, serializer)
+              ParamBind.Type.ParamCustom(args.lastOrNull() ?: parseError("ParamCustom annotation must have a second argument that is a class-reference (e.g. PureFunction::class)", this), paramValue.type)
+            }
+            this.ownerHasAnnotation<ParamCustomValue>() -> {
+              ParamBind.Type.ParamCustomValue(paramValue)
+            }
+            this.ownerHasAnnotation<ParamCtx>() -> {
+              ParamBind.Type.ParamCtx(paramValue.type)
+            }
+            else -> parseError("Could not find Param annotation on the param function of the call", this)
+          }
+
         val bid = BID.new()
-        binds.addParam(bid, paramValue)
+        binds.addParam(bid, paramValue, paramBindType)
         XR.TagForParam(bid, TypeParser.of(paramValue), paramValue.loc)
       },
 
