@@ -13,7 +13,7 @@ import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.decodeFromHexString
-import kotlinx.serialization.serializer
+import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlin.reflect.KClass
 
 fun unpackExpr(expr: String): XR.Expression =
@@ -158,16 +158,18 @@ interface SelectClauseCapturedBlock: CapturedBlock {
 // TODO play around with having multiple from-clauses
 fun <T> select(block: SelectClauseCapturedBlock.() -> T): @Captured SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
 
-data class ValueWithSerializer<T: Any>(val value: T, val serializer: SerializationStrategy<T>, val cls: KClass<T>) {
+interface ValueWithSerializer<T: Any> {
+  val value: T
+  val serializer: SerializationStrategy<T>
+  val cls: KClass<T>
+
   fun asParam(): ParamSerializer<T> = ParamSerializer.Custom(serializer, cls)
+
   companion object {
     operator inline fun <reified T: Any> invoke(value: T, serializer: SerializationStrategy<T>): ValueWithSerializer<T> =
-      ValueWithSerializer(value, serializer, T::class)
+      ConcreteValueWithSerializer<T>(value, serializer, T::class)
   }
 }
 
-// Problem! Conflicts with Params in SqlExpression.kt. Need to rename that first. Or maybe call this ParamsList
-// the point it is to use it in the dsl like so: `x in params(1, 2, 3)`
-//interface Params<T> {
-//  operator fun contains(value: T): Boolean
-//}
+@PublishedApi
+internal data class ConcreteValueWithSerializer<T: Any>(override val value: T, override val serializer: SerializationStrategy<T>, override val cls: KClass<T>): ValueWithSerializer<T>

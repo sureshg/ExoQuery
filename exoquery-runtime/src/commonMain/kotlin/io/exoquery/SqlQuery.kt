@@ -2,7 +2,6 @@ package io.exoquery
 
 import io.exoquery.printing.PrintMisc
 import io.exoquery.sql.SqlIdiom
-import io.exoquery.util.formatQuery
 import io.exoquery.xr.RuntimeQueryBuilder
 import io.exoquery.xr.XR
 
@@ -12,7 +11,7 @@ import io.exoquery.xr.XR
 //      (actually come to think of it, we can probably implement the dynamic path directly and have the staic path replace the build() method if it's possible)
 data class SqlCompiledQuery<T>(val value: String, val label: String?)
 
-data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtimes, override val params: Params): ContainerOfXR {
+data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfXR {
   fun determinizeDynamics(): SqlQuery<T> = DeterminizeDynamics().ofQuery(this)
 
   fun show() = PrintMisc().invoke(this)
@@ -40,6 +39,8 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
 
   fun <Dialect: SqlIdiom> buildPretty(): SqlCompiledQuery<T> = TODO()
   fun <Dialect: SqlIdiom> buildPretty(label: String): SqlCompiledQuery<T> = TODO()
-  override fun rebuild(xr: XR, runtimes: Runtimes, params: Params): SqlQuery<T> =
+  override fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): SqlQuery<T> =
     copy(xr = xr as? XR.Query ?: xrError("Failed to rebuild SqlQuery with XR of type ${xr::class} which was: ${xr.show()}"), runtimes = runtimes, params = params)
+
+  override fun withNonStrictEquality(): SqlQuery<T> = copy(params = params.withNonStrictEquality())
 }

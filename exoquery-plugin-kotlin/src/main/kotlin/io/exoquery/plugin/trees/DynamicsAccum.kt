@@ -33,6 +33,8 @@ class DynamicsAccum {
     allParamsCollect.add(sqlExpressionInstance)
   }
   fun addParam(bindId: BID, value: IrExpression, paramType: ParamBind.Type) {
+    // Note that the bind-expression is the same as the value of the parameter is all cases except for a ValueWithSerializer
+    // where the .value field is taken out of it first
     paramsCollect.add(ParamBind(bindId, value, paramType))
   }
 

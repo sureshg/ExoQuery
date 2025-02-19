@@ -6,6 +6,8 @@ import io.decomat.on
 import io.exoquery.ParseError
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.parseError
+import io.exoquery.parseErrorFromType
+import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.Location
 import io.exoquery.plugin.show
@@ -15,6 +17,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrGetField
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isBoolean
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -36,19 +39,18 @@ object TypeParser {
     try {
       parse(type)
     } catch (e: Exception) {
-      parseError("""(${loc.show()}) ERROR Could not parse type: ${type.dumpKotlinLike()}""")
+      parseErrorFromType("ERROR Could not parse type: ${type.dumpKotlinLike()}", loc)
     }
 
   context(ParserContext, CompileLogger) private fun ofElementWithType(expr: IrElement, type: IrType) =
     try {
-      parse(type)
+      when {
+        // If this is a field from a class that is marked @Contextaul then we know immediately it is a value type
+        expr is IrGetField && expr.symbol.owner.hasAnnotation<kotlinx.serialization.Contextual>() -> XRType.Value
+        else -> parse(type)
+      }
     } catch (e: Exception) {
-      val loc = expr.location()
-      parseError(
-        """|(${loc.show()}) ERROR Could not parse type: ${type.dumpKotlinLike()} (${type.toString()}) 
-           |====== from the statement ======
-           |${expr.dumpKotlinLike()}
-           |""".trimMargin())
+      parseErrorFromType("ERROR Could not parse the type: ${type.dumpKotlinLike()} (${type.toString()}", expr)
     }
 
   context(ParserContext, CompileLogger) private fun parse(expr: IrType): XRType =
@@ -103,9 +105,6 @@ object TypeParser {
       }
     ) ?: run {
       val loc = currentLocation()
-      parseError(
-        """|(${loc.path}:${loc.line}:${loc.column}) ERROR Could not parse type from: ${expr.dumpKotlinLike()}
-           |""".trimMargin())
+      parseErrorFromType("ERROR Could not parse type from: ${expr.dumpKotlinLike()}", loc)
     }
-
 }

@@ -3,6 +3,7 @@
 package io.exoquery.plugin.trees
 
 import io.decomat.*
+import io.exoquery.ValueWithSerializer
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.parseError
 import io.exoquery.plugin.*
@@ -190,7 +191,7 @@ object Ir {
     }
 
     object Value {
-      private fun isValue(it: IrType) =
+      private fun isValueType(it: IrType) =
         it.isString() ||
           it.isLong() ||
           it.isShort() ||
@@ -199,11 +200,33 @@ object Ir {
           it.isBoolean() ||
           it.isFloat() ||
           it.isDouble() ||
-          it.isNullableNothing()
+          it.isLongArray() ||
+          it.isShortArray() ||
+          it.isIntArray() ||
+          it.isByteArray() ||
+          it.isBooleanArray() ||
+          it.isFloatArray() ||
+          it.isDoubleArray() ||
+          it.isNullableNothing() ||
+          it.isClassStrict<kotlinx.datetime.LocalDate>() ||
+          it.isClassStrict<kotlinx.datetime.LocalTime>() ||
+          it.isClassStrict<kotlinx.datetime.LocalDateTime>() ||
+          it.isClassStrict<kotlinx.datetime.Instant>() ||
+          it.isClassStrict<java.time.LocalDate>() ||
+          it.isClassStrict<java.time.LocalTime>() ||
+          it.isClassStrict<java.time.LocalDateTime>() ||
+          it.isClassStrict<java.time.ZonedDateTime>() ||
+          it.isClassStrict<java.time.Instant>() ||
+          it.isClassStrict<java.time.OffsetTime>() ||
+          it.isClassStrict<java.time.OffsetDateTime>() ||
+          it.isClassStrict<java.sql.Date>() ||
+          it.isClassStrict<java.sql.Time>() ||
+          it.isClassStrict<java.sql.Timestamp>() ||
+          it.isClass<ValueWithSerializer<*>>()
 
       context(CompileLogger) operator fun get(type: Pattern0<IrType>) =
         customPattern1("Ir.Call.Value", type) { it: IrType ->
-          if (isValue(it)) {
+          if (isValueType(it) || it.hasAnnotation<kotlinx.serialization.Contextual>()) {
             // If mistake is made in the Components-returning section, the match will not be successful
             // but the compiler will not tell us we are returing something incorrect
             Components1(it)

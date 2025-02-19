@@ -16,14 +16,6 @@ class BasicQueryQuotationSpec : FreeSpec({
   val pIdent = XR.Ident("p", personTpe)
   val rIdent = XR.Ident("r", robotTpe)
 
-  "map compile" {
-    val cap0 = capture { Table<Person>() }
-    val cap = capture { cap0.map { p -> p.name } }
-
-    val dialect = PostgresDialect()
-    println("---------------- Sql ----------------\n"+dialect.translate(cap.xr))
-  }
-
 
   // Testing of the query DSL note that the quotation mechanics are mostly testing in BasicExpressionQuotationSpec,
   // here we are largely testing the DSL mechanics
@@ -32,8 +24,8 @@ class BasicQueryQuotationSpec : FreeSpec({
       val cap = capture { Table<Person>() }
       cap.determinizeDynamics() shouldBeEqual SqlQuery(
         personEnt,
-        Runtimes.Empty,
-        Params.Empty
+        RuntimeSet.Empty,
+        ParamSet.Empty
       )
       // Some XR check omit the types so want to explicitly check this just in case
       cap.xr.type shouldBeEqual personTpe
@@ -43,8 +35,8 @@ class BasicQueryQuotationSpec : FreeSpec({
       val cap = capture { cap0.map { p -> p.name } }
       cap.determinizeDynamics() shouldBeEqual SqlQuery(
         XR.Map(personEnt, pIdent, XR.Property(pIdent, "name")),
-        Runtimes.Empty,
-        Params.Empty
+        RuntimeSet.Empty,
+        ParamSet.Empty
       )
     }
     "flatMap" {
@@ -52,8 +44,8 @@ class BasicQueryQuotationSpec : FreeSpec({
       val cap = capture { cap0.flatMap { r -> Table<Person>() } }
       cap.determinizeDynamics() shouldBeEqual SqlQuery(
         XR.FlatMap(robotEnt, rIdent, personEnt),
-        Runtimes.Empty,
-        Params.Empty
+        RuntimeSet.Empty,
+        ParamSet.Empty
       )
     }
     "filter" {
@@ -61,8 +53,8 @@ class BasicQueryQuotationSpec : FreeSpec({
       val cap = capture { cap0.filter { p -> p.age > 18 } }
       cap.determinizeDynamics() shouldBeEqual SqlQuery(
         XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "age"), OP.gt, XR.Const.Int(18))),
-        Runtimes.Empty,
-        Params.Empty
+        RuntimeSet.Empty,
+        ParamSet.Empty
       )
     }
     // TODO need to build special logic for converting name.toList into "unnest(name)" and probably need to have a custom parseable unnest in the DSL or something like that
@@ -87,8 +79,8 @@ class BasicQueryQuotationSpec : FreeSpec({
             XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const.String("A"))),
             XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const.String("B")))
           ),
-          Runtimes.Empty,
-          Params.Empty
+          RuntimeSet.Empty,
+          ParamSet.Empty
         )
       }
       "unionAll" {
@@ -98,8 +90,8 @@ class BasicQueryQuotationSpec : FreeSpec({
             XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const.String("A"))),
             XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const.String("B")))
           ),
-          Runtimes.Empty,
-          Params.Empty
+          RuntimeSet.Empty,
+          ParamSet.Empty
         )
       }
     }
@@ -118,8 +110,8 @@ class BasicQueryQuotationSpec : FreeSpec({
       }
       cap.determinizeDynamics() shouldBeEqual SqlQuery(
         XR.Map(XR.TagForSqlQuery(BID("0"), personTpe), pIdent, XR.Property(pIdent, "name")),
-        Runtimes.of(BID("0") to SqlQuery<Person>(personEnt, Runtimes.Empty, Params.Empty)),
-        Params.Empty
+        RuntimeSet.of(BID("0") to SqlQuery<Person>(personEnt, RuntimeSet.Empty, ParamSet.Empty)),
+        ParamSet.Empty
       )
     }
   }

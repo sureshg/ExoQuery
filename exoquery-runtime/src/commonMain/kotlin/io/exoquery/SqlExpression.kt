@@ -8,21 +8,22 @@ import io.exoquery.xr.swapTags
 sealed interface ContainerOfXR {
   val xr: XR.U.QueryOrExpression
   // I.e. runtime containers that are used in the expression (if any)
-  val runtimes: Runtimes
-  val params: Params
+  val runtimes: RuntimeSet
+  val params: ParamSet
 
-  fun rebuild(xr: XR, runtimes: Runtimes, params: Params): ContainerOfXR
+  fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): ContainerOfXR
+  fun withNonStrictEquality(): ContainerOfXR
 }
 
 // Create a wrapper class for runtimes for easy lifting/unlifting
-data class Runtimes(val runtimes: List<Pair<BID, ContainerOfXR>>) {
+data class RuntimeSet(val runtimes: List<Pair<BID, ContainerOfXR>>) {
   companion object {
     // When this container is spliced, the ExprModel will look for this actual value in the Ir to tell if there are
     // runtime XR Containers (hence the dynamic-path needs to be followed).
-    val Empty = Runtimes(emptyList())
-    fun of(vararg runtimes: Pair<BID, ContainerOfXR>) = Runtimes(runtimes.toList())
+    val Empty = RuntimeSet(emptyList())
+    fun of(vararg runtimes: Pair<BID, ContainerOfXR>) = RuntimeSet(runtimes.toList())
   }
-  operator fun plus(other: Runtimes): Runtimes = Runtimes(runtimes + other.runtimes)
+  operator fun plus(other: RuntimeSet): RuntimeSet = RuntimeSet(runtimes + other.runtimes)
 }
 // TODO similar class for lifts
 
@@ -47,28 +48,35 @@ data class Runtimes(val runtimes: List<Pair<BID, ContainerOfXR>>) {
  * }}}
  */
 
-data class Param<T: Any>(val id: BID, val value: T, val serial: ParamSerializer<T>)
+data class Param<T: Any>(val id: BID, val value: T, val serial: ParamSerializer<T>) {
+  fun withNonStrictEquality(): Param<T> =
+    copy(serial = serial.withNonStrictEquality())
+}
 
-data class Params(val lifts: List<Param<*>>) {
-  operator fun plus(other: Params): Params = Params(lifts + other.lifts)
+data class ParamSet(val lifts: List<Param<*>>) {
+  operator fun plus(other: ParamSet): ParamSet = ParamSet(lifts + other.lifts)
+  fun withNonStrictEquality(): ParamSet = ParamSet(lifts.map { it.withNonStrictEquality() })
 
   companion object {
-    fun of(vararg lifts: Param<*>) = Params(lifts.toList())
+    fun of(vararg lifts: Param<*>) = ParamSet(lifts.toList())
     // Added this here to be consistent with Runtimes.Empty but unlike Runtimes.Empty it has no
     // special usage (i.e. the parser does not look for this value directly in the IR)
-    val Empty = Params(emptyList())
+    val Empty = ParamSet(emptyList())
   }
 }
 
 // TODO add lifts which will be BID -> ContainerOfEx
 // (also need a way to get them easily from the IrContainer)
 
-data class SqlExpression<T>(override val xr: XR.Expression, override val runtimes: Runtimes, override val params: Params): ContainerOfXR {
+data class SqlExpression<T>(override val xr: XR.Expression, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfXR {
   fun determinizeDynamics(): SqlExpression<T> = DeterminizeDynamics().ofExpression(this)
 
   fun show() = PrintMisc().invoke(this)
-  override fun rebuild(xr: XR, runtimes: Runtimes, params: Params): SqlExpression<T> =
+  override fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): SqlExpression<T> =
     copy(xr = xr as? XR.Expression ?: xrError("Failed to rebuild SqlExpression with XR of type ${xr::class} which was: ${xr.show()}"), runtimes = runtimes, params = params)
+
+  override fun withNonStrictEquality(): SqlExpression<T> =
+    copy(params = params.withNonStrictEquality())
 }
 
 internal class DeterminizeDynamics() {
@@ -101,7 +109,7 @@ internal class DeterminizeDynamics() {
     val newXR = expr.xr.swapTags(
       (newParams.map { it.first to it.second } + newRuntimes.map { it.first to it.second }).toMap()
     )
-    return SqlExpression(newXR, Runtimes(newRuntimes.map { it.second to it.third }), Params(newParams.map { it.third }))
+    return SqlExpression(newXR, RuntimeSet(newRuntimes.map { it.second to it.third }), ParamSet(newParams.map { it.third }))
   }
 
   private fun <T> recQuery(query: SqlQuery<T>): SqlQuery<T> {
@@ -110,7 +118,7 @@ internal class DeterminizeDynamics() {
     val newXR = query.xr.swapTags(
       (newParams.map { it.first to it.second } + newRuntimes.map { it.first to it.second }).toMap()
     )
-    return SqlQuery(newXR, Runtimes(newRuntimes.map { it.second to it.third }), Params(newParams.map { it.third }))
+    return SqlQuery(newXR, RuntimeSet(newRuntimes.map { it.second to it.third }), ParamSet(newParams.map { it.third }))
   }
 
   fun <T> ofExpression(expr: SqlExpression<T>): SqlExpression<T> = recExpr(expr)

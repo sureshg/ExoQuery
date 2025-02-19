@@ -654,6 +654,9 @@ sealed interface XR {
   @Mat
   data class TagForParam(@Slot val id: BID, override val type: XRType, override val loc: Location = Location.Synth): XR.Expression, PC<XR.TagForParam> {
     @Transient override val productComponents = productOf(this, id)
+    companion object {
+      fun valueTag(id: String) = TagForParam(BID(id), XRType.Value)
+    }
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode(): Int = cid.hashCode()

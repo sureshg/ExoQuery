@@ -3,6 +3,7 @@ package io.exoquery.serial
 import io.exoquery.ValueWithSerializer
 import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.SerializationStrategy
+import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.serializer
 import kotlin.reflect.KClass
 
@@ -19,7 +20,23 @@ interface ParamSerializer<T: Any> {
   val serializer: SerializationStrategy<T>
   val cls: KClass<T>
 
-  data class Custom<T: Any>(override val serializer: SerializationStrategy<T>, override val cls: KClass<T>) : ParamSerializer<T>
+  fun withNonStrictEquality() = this
+
+  class Custom<T: Any>(override val serializer: SerializationStrategy<T>, override val cls: KClass<T>) : ParamSerializer<T> {
+    override fun withNonStrictEquality(): ParamSerializer<T> = CustomCompareable(serializer, cls)
+  }
+
+  /** For testing purposes, we need to be able to compare two instances of Custom. */
+  class CustomCompareable<T: Any>(override val serializer: SerializationStrategy<T>, override val cls: KClass<T>) : ParamSerializer<T> {
+    private val id by lazy { Id(cls, serializer.descriptor) }
+    companion object {
+      // We can't compare two instances of Custom directly because the ParamSerializer instances don't compare. The best that we can do is to compare the class and kind of the serializer.
+      private data class Id(val cls: KClass<*>, val descriptor: SerialDescriptor)
+    }
+    override fun equals(other: Any?): kotlin.Boolean = other is CustomCompareable<*> && other.id == id
+    override fun hashCode(): kotlin.Int = id.hashCode()
+    override fun toString(): kotlin.String = "CustomCompareable(${id.toString()})"
+  }
 
 
   object LocalDate : ParamSerializer<kotlinx.datetime.LocalDate> {

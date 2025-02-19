@@ -1,6 +1,7 @@
 package io.exoquery
 
 import io.exoquery.plugin.location
+import io.exoquery.plugin.printing.Messages
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.source
 import io.exoquery.plugin.symName
@@ -42,6 +43,11 @@ class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) 
 }
 
 fun parseError(msg: String, location: CompilerMessageSourceLocation? = null): Nothing = throw ParseError(msg, location)
+
+fun parseErrorFromType(msg: String, location: CompilerMessageSourceLocation): Nothing = throw ParseError(io.exoquery.plugin.logging.Messages.TypeParseErrorMsg(msg), location)
+
+context(LocateableContext)
+fun parseErrorFromType(msg: String, expr: IrElement): Nothing = throw throw ParseError.withFullMsg(io.exoquery.plugin.logging.Messages.TypeParseErrorMsg(msg), expr, currentFile, expr.location())
 
 context(LocateableContext) fun parseError(msg: String, expr: IrElement): Nothing = throw ParseError.withFullMsg(msg, expr, currentFile, expr.location())
 context(BuilderContext) fun builderParseError(msg: String, expr: IrElement): Nothing = throw ParseError.withFullMsg(msg, expr, currentFile, expr.location(currentFile.fileEntry))

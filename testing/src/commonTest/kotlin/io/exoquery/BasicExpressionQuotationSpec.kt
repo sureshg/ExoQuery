@@ -6,7 +6,6 @@ import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.equals.shouldBeEqual
-import kotlinx.serialization.serializer
 
 class BasicExpressionQuotationSpec : FreeSpec({
   "static quotation mechanics" - {
@@ -14,8 +13,8 @@ class BasicExpressionQuotationSpec : FreeSpec({
       val cap0 = captureValue { 123 + param(456) }
       cap0.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(123) `+++` XR.TagForParam(BID("0"), XRType.Value, XR.Location.Synth),
-        Runtimes.Empty,
-        Params(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+        RuntimeSet.Empty,
+        ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
       )
 
       val cap1 = cap0
@@ -24,8 +23,8 @@ class BasicExpressionQuotationSpec : FreeSpec({
       // Note that loc properties are different but those are not used in XR equals functions
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(789) `+++` (XR.Const.Int(123) `+++` XR.TagForParam(BID("0"), XRType.Value, XR.Location.Synth)),
-        Runtimes.Empty,
-        Params(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+        RuntimeSet.Empty,
+        ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
       )
     }
     "c0()={n0+lift}, c={n1+c0()} -> {n1+(n0+lift)}" {
@@ -33,8 +32,8 @@ class BasicExpressionQuotationSpec : FreeSpec({
       val cap = captureValue { 789 + cap0().use }
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(789) `+++` (XR.Const.Int(123) `+++` XR.TagForParam(BID("0"), XRType.Value, XR.Location.Synth)),
-        Runtimes.Empty,
-        Params(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+        RuntimeSet.Empty,
+        ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
       )
     }
     "c0(i)={n0+i}, c={n1+c0(nn)} -> {n1+(n0+nn)}" {
@@ -42,8 +41,8 @@ class BasicExpressionQuotationSpec : FreeSpec({
       val cap = captureValue { 789 + cap0(456).use }
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(789) `+++` (XR.Const.Int(123) `+++` XR.TagForParam(BID("0"), XRType.Value, XR.Location.Synth)),
-        Runtimes.Empty,
-        Params(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+        RuntimeSet.Empty,
+        ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
       )
     }
 
@@ -55,8 +54,8 @@ class BasicExpressionQuotationSpec : FreeSpec({
       val cap = captureValue { 789 + f.cap0.use }
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(789) `+++` (XR.Const.Int(456) `+++` XR.TagForParam(BID("0"), XRType.Value)),
-        Runtimes.Empty,
-        Params(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+        RuntimeSet.Empty,
+        ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
       )
     }
     "cls Foo{c0()=nA}, f=Foo, c={nB+f.c0()} -> {nB+(nA)}" {
@@ -67,8 +66,8 @@ class BasicExpressionQuotationSpec : FreeSpec({
       val cap = captureValue { 789 + f.cap0().use }
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(789) `+++` XR.Const.Int(456),
-        Runtimes.Empty,
-        Params.of()
+        RuntimeSet.Empty,
+        ParamSet.of()
       )
     }
   }
@@ -84,8 +83,8 @@ class BasicExpressionQuotationSpec : FreeSpec({
 
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(789) `+++` XR.TagForSqlExpression(BID("0"), XRType.Value),
-        Runtimes.of(BID("0") to SqlExpression<Any>(XR.Const.Int(123), Runtimes.of(), Params.of())),
-        Params.of()
+        RuntimeSet.of(BID("0") to SqlExpression<Any>(XR.Const.Int(123), RuntimeSet.of(), ParamSet.of())),
+        ParamSet.of()
       )
     }
     "cls Foo{c0D=dyn{nA+lift}}, f=Foo, c={nB+f.c0D} -> {nB+T(B0),R={B0,nA+lift}}" {
@@ -100,15 +99,15 @@ class BasicExpressionQuotationSpec : FreeSpec({
       println(cap.determinizeDynamics().show())
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(789) `+++` XR.TagForSqlExpression(BID("1"), XRType.Value),
-        Runtimes.of(
+        RuntimeSet.of(
           BID("1") to
           SqlExpression<Any>(
             XR.Const.Int(456) `+++` XR.TagForParam(BID("0"), XRType.Value),
-            Runtimes.of(),
-            Params(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+            RuntimeSet.of(),
+            ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
           )
         ),
-        Params.of()
+        ParamSet.of()
       )
     }
     "cls Foo{c0D(i)=dyn{nA+lift(i)}}, f=Foo, c={nB+f.c0D(nn)} -> {nB+T(B0),R={B0,nA+lift(nn)}}" {
@@ -122,15 +121,15 @@ class BasicExpressionQuotationSpec : FreeSpec({
 
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(789) `+++` XR.TagForSqlExpression(BID("1"), XRType.Value),
-        Runtimes.of(
+        RuntimeSet.of(
           BID("1") to
           SqlExpression<Any>(
             XR.Const.Int(456) `+++` XR.TagForParam(BID("0"), XRType.Value),
-            Runtimes.of(),
-            Params(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+            RuntimeSet.of(),
+            ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
           )
         ),
-        Params.of()
+        ParamSet.of()
       )
     }
   }

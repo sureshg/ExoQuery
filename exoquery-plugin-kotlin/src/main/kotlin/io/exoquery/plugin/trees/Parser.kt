@@ -51,6 +51,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.js.parser.parse
 import org.jetbrains.kotlin.name.FqName
 
+
 data class LocationContext(val internalVars: TransformerScope, override val currentFile: IrFile): LocateableContext {
   fun newParserCtx() = ParserContext(this)
   fun withCapturedFunctionParameters(capturedFunctionParameters: List<IrValueParameter>) =
@@ -622,6 +623,9 @@ object ExpressionParser {
       case(Ir.Const[Is()]).thenThis {
         parseConst(this)
       },
+
+      // TODO need to check for @SerialName("name_override") annotations from the Kotlin seriazation API and override the name
+      //      (the parser also needs to be able to generated these based on a mapping)
       case(Ir.Call.Property[Is(), Is()]).then { expr, name ->
         XR.Property(parse(expr), name, XR.Visibility.Visible, expr.loc)
       },

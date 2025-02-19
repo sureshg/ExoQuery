@@ -22,6 +22,19 @@ else, annotate it as @CapturedFunction and you can then use it to build compile-
 """.trimIndent()
 
 
+fun TypeParseErrorMsg(msg: String) =
+"""
+$msg
+If this is a custom type defined on a data-class e.g. `data class Customer(lastTransacted: MyCustomDate)` make sure to either:
+
+1) Annotate the type (or field) with @kotlinx.serialization.Contextual e.g. `data class Customer(lastTransacted: @Contextual MyCustomDate)`.
+   When decoding the `Customer` instance you will need to give it a custom encoder for MyCustomDate.
+   
+2) Annotate the type with @ExoValue e.g. `data class Customer(lastTransacted: @ExoValue MyCustomDate)`. This will treat the type as a value type
+   in ExoQuery independently of how it is serialized i.e. there could be other Serialization-related annotations on the field for example:
+   `@Serializable(with=Something::class) class MyCustomDate(...); data class Customer(lastTransacted: @ExoValue MyCustomDate)`.
+""".trimIndent()
+
 context(LocateableContext)
 fun CapturedFunctionFormWrong(msg: String) =
 """
