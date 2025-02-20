@@ -31,7 +31,7 @@ class PrintMisc(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Any?>
       is io.exoquery.sql.SqlQuery -> PrintXR(io.exoquery.sql.SqlQuery.serializer(), config).treeifyThis(x, elementName)
       is SqlExpression<*> -> Tree.Apply("SqlExpression", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
       is SqlQuery<*> -> Tree.Apply("SqlQuery", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
-      is ParamSet -> Tree.Apply("ParamSet", x.lifts.map { l -> Tree.KeyValue(l.id.value, Tree.Literal(l.value.toString())) }.iterator())
+      is ParamSet -> Tree.Apply("ParamSet", x.lifts.map { l -> Tree.KeyValue(l.id.value, Tree.Literal(l.showValue().toString())) }.iterator())
       is RuntimeSet -> Tree.Apply("RuntimeSet", x.runtimes.map { (id, xr) -> Tree.KeyValue(id.value, treeifyThis(xr, null)) }.iterator())
       is ShowTree -> x.showTree(config)
       else -> super.treeify(x, elementName, escapeUnicode, showFieldNames)

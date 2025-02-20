@@ -7,6 +7,7 @@ import io.exoquery.annotation.DslNestingIgnore
 import io.exoquery.annotation.ParamCtx
 import io.exoquery.annotation.ParamCustom
 import io.exoquery.annotation.ParamCustomValue
+import io.exoquery.annotation.ParamPrimitive
 import io.exoquery.annotation.ParamStatic
 import io.exoquery.serial.ParamSerializer
 import io.exoquery.xr.EncodingXR
@@ -14,6 +15,7 @@ import io.exoquery.xr.XR
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.decodeFromHexString
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlin.jvm.JvmName
 import kotlin.reflect.KClass
 
 fun unpackExpr(expr: String): XR.Expression =
@@ -69,17 +71,20 @@ interface CapturedBlock {
   @Dsl @ParamCustomValue fun <T: Any> param(value: ValueWithSerializer<T>): T = errorCap("Compile time plugin did not transform the tree")
 
   // I.e. the the list is lifted but as individual elements
-  @Dsl @ParamStatic(ParamSerializer.String::class) fun <T: Any> params(values: List<String>): Params<String> = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamStatic(ParamSerializer.Char::class) fun <T: Any> params(values: List<Char>): Params<Char> = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamStatic(ParamSerializer.Int::class) fun <T: Any> params(values: List<Int>): Params<Int> = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamStatic(ParamSerializer.Short::class) fun <T: Any> params(values: List<Short>): Params<Short> = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamStatic(ParamSerializer.Long::class) fun <T: Any> params(values: List<Long>): Params<Long> = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamStatic(ParamSerializer.Float::class) fun <T: Any> params(values: List<Float>): Params<Float> = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamStatic(ParamSerializer.Double::class) fun <T: Any> params(values: List<Double>): Params<Double> = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamStatic(ParamSerializer.Boolean::class) fun <T: Any> params(values: List<Boolean>): Params<Boolean> = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamStatic(ParamSerializer.LocalDate::class) fun <T: Any> params(values: List<kotlinx.datetime.LocalDate>): Params<kotlinx.datetime.LocalDate> = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamStatic(ParamSerializer.LocalTime::class) fun <T: Any> params(values: List<kotlinx.datetime.LocalTime>): Params<kotlinx.datetime.LocalTime> = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamStatic(ParamSerializer.LocalDateTime::class) fun <T: Any> params(values: List<kotlinx.datetime.LocalDateTime>): Params<kotlinx.datetime.LocalDateTime> = errorCap("Compile time plugin did not transform the tree")
+  //@Dsl @ParamStatic(ParamSerializer.String::class) fun params(values: List<String>): Params<String> = errorCap("Compile time plugin did not transform the tree")
+  //@Dsl @ParamStatic(ParamSerializer.Char::class) fun params(values: List<Char>): Params<Char> = errorCap("Compile time plugin did not transform the tree")
+  //@Dsl @ParamStatic(ParamSerializer.Int::class) fun params(values: List<Int>): Params<Int> = errorCap("Compile time plugin did not transform the tree")
+  //@Dsl @ParamStatic(ParamSerializer.Short::class) fun params(values: List<Short>): Params<Short> = errorCap("Compile time plugin did not transform the tree")
+  //@Dsl @ParamStatic(ParamSerializer.Long::class) fun params(values: List<Long>): Params<Long> = errorCap("Compile time plugin did not transform the tree")
+  //@Dsl @ParamStatic(ParamSerializer.Float::class) fun params(values: List<Float>): Params<Float> = errorCap("Compile time plugin did not transform the tree")
+  //@Dsl @ParamStatic(ParamSerializer.Double::class) fun params(values: List<Double>): Params<Double> = errorCap("Compile time plugin did not transform the tree")
+  //@Dsl @ParamStatic(ParamSerializer.Boolean::class) fun params(values: List<Boolean>): Params<Boolean> = errorCap("Compile time plugin did not transform the tree")
+  //@Dsl @ParamStatic(ParamSerializer.LocalDate::class) fun params(values: List<kotlinx.datetime.LocalDate>): Params<kotlinx.datetime.LocalDate> = errorCap("Compile time plugin did not transform the tree")
+  //@Dsl @ParamStatic(ParamSerializer.LocalTime::class) fun params(values: List<kotlinx.datetime.LocalTime>): Params<kotlinx.datetime.LocalTime> = errorCap("Compile time plugin did not transform the tree")
+  //@Dsl @ParamStatic(ParamSerializer.LocalDateTime::class) fun params(values: List<kotlinx.datetime.LocalDateTime>): Params<kotlinx.datetime.LocalDateTime> = errorCap("Compile time plugin did not transform the tree")
+
+  // TODO remove this and introduce the ones above when @SignatureName is available in KMP: https://youtrack.jetbrains.com/issue/KT-52009/Kotlin-binary-signature-name
+  @Dsl @ParamPrimitive fun <T: Any> params(values: List<T>): Params<String> = errorCap("Compile time plugin did not transform the tree")
 
   @Dsl @ParamCtx fun <T: Any> paramsCtx(values: List<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")
   @Dsl @ParamCustom fun <T: Any> paramsCustom(values: List<T>, serializer: SerializationStrategy<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")

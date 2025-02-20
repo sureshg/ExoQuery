@@ -3,6 +3,7 @@ package io.exoquery.xr
 import io.exoquery.ContainerOfXR
 import io.exoquery.SqlCompiledQuery
 import io.exoquery.SqlQuery
+import io.exoquery.sql.Shower
 import io.exoquery.sql.SqlIdiom
 import io.exoquery.util.formatQuery
 
@@ -22,9 +23,10 @@ class RuntimeQueryBuilder<T>(val query: SqlQuery<T>, val dialect: SqlIdiom, val 
     val quoted = query.rekeyRuntimeBinds()
     val splicedAst = spliceQuotations(quoted) as XR.Query
 
-    val queryRaw = dialect.translate(splicedAst)
+    val queryTokenized = dialect.processQuery(splicedAst)
+    val queryRaw = queryTokenized.build()
     val query = if (pretty) formatQuery(queryRaw) else queryRaw
-    return SqlCompiledQuery(query, label)
+    return SqlCompiledQuery(queryRaw, queryTokenized, false, label)
   }
 
   // TODO need a test with a dynamic SqlExpression container used in an SqlQuery (and vice-versa)

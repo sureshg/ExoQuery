@@ -79,7 +79,7 @@ class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGol
       shouldBeGolden(XR.QueryToExpr(personEnt))
     }
     "XR.TagForParam" {
-      shouldBeGolden(XR.TagForParam(BID("foo"), XRType.Value))
+      shouldBeGolden(XR.TagForParam(BID("foo"), XR.ParamType.Single, XRType.Value))
     }
     "XR.TagForSqlExpression" {
       shouldBeGolden(XR.TagForSqlExpression(BID("foo"), XRType.Value))

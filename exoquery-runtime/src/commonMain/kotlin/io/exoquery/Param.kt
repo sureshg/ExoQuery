@@ -28,6 +28,10 @@ sealed interface Param<T: Any> {
   val serial: ParamSerializer<*>
   fun withNonStrictEquality(): Param<T>
   fun showValue(): String
+  fun withNewBid(newBid: BID): Param<T> = when (this) {
+    is ParamSingle -> copy(id = newBid)
+    is ParamMulti -> copy(id = newBid)
+  }
 }
 
 

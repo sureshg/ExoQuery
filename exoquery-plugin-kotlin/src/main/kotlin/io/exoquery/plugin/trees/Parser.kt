@@ -19,6 +19,7 @@ import io.exoquery.annotation.DslNestingIgnore
 import io.exoquery.annotation.ParamCtx
 import io.exoquery.annotation.ParamCustom
 import io.exoquery.annotation.ParamCustomValue
+import io.exoquery.annotation.ParamPrimitive
 import io.exoquery.annotation.ParamStatic
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.TransformerScope
@@ -32,6 +33,7 @@ import io.exoquery.plugin.trees.ExtractorsDomain.Call.`(op)x`
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`x to y`
 import io.exoquery.plugin.trees.ExtractorsDomain.IsSelectFunction
 import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
+import io.exoquery.serial.ParamSerializer
 import io.exoquery.xr.*
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
@@ -43,12 +45,22 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.types.isBoolean
+import org.jetbrains.kotlin.ir.types.isChar
+import org.jetbrains.kotlin.ir.types.isDouble
+import org.jetbrains.kotlin.ir.types.isFloat
+import org.jetbrains.kotlin.ir.types.isInt
+import org.jetbrains.kotlin.ir.types.isLong
+import org.jetbrains.kotlin.ir.types.isShort
+import org.jetbrains.kotlin.ir.types.isString
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.js.parser.parse
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 
 
@@ -554,10 +566,17 @@ object ExpressionParser {
         val paramValue = args.first()
         val paramBindType =
           when {
+            // currently not used because the specific ones have been commented out. Waiting for @SignatureName in KMP
             this.ownerHasAnnotation<ParamStatic>() -> {
               val staticRef = this.symbol.owner.getAnnotationArgs<ParamStatic>().firstOrNull()?.let { param -> param as? IrClassReference ?: parseError("ParamStatic annotation must have a single argument that is a class-reference (e.g. PureFunction::class)", this) } ?: parseError("Could not find ParamStatic annotation", this)
               val classId = staticRef.classType.classId() ?: parseError("Could not find classId for ParamStatic annotation", this)
               ParamBind.Type.ParamListStatic(classId)
+            }
+            this.ownerHasAnnotation<ParamPrimitive>() -> {
+              val irType = this.typeArguments.firstOrNull() ?: parseError("ParamPrimitive annotation must have a single type argument", this)
+              val paramSerializerClassId = getSerializerForType(irType)
+                ?: parseError("Could not find primitive-serializer for type: ${irType.dumpKotlinLike()}. Primitive serializers are only defined for: Int, Long, Float, Double, String, Boolean, and the kotlinx LocalDate, LocalTime, LocalDateTime, and Instant", this)
+              ParamBind.Type.ParamListStatic(paramSerializerClassId)
             }
             this.ownerHasAnnotation<ParamCustom>() -> {
               // serializer should be the 2nd arg i.e. paramCustom(value, serializer)
@@ -597,7 +616,6 @@ object ExpressionParser {
           XR.TagForSqlExpression(bid, TypeParser.of(sqlExprIr), sqlExprIr.loc)
         }
       },
-
 
       /*
       case(Ir.Call.FunctionMem0[Is(), Is("use")]).thenIf { calledFrom, _ -> calledFrom is IrCall && calledFrom.type.isClass<io.exoquery.SqlExpression<*>>() }.thenThis { calledFrom, _ ->
@@ -706,7 +724,6 @@ object ExpressionParser {
       //},
 
 
-
       // Need to allow possibility of nulls here because even simple things like String.split can have nulls (i.e. for the 2nd/3rd args)
 //      case(Ir.Call.FunctionMemAllowNulls[Is(), Is()]).thenIfThis { caller, args ->
 //        methodWhitelist.containsMethod(symbol.safeName)
@@ -734,6 +751,24 @@ object ExpressionParser {
 //        )
 //      },
     ) ?: parseError("Could not parse the expression.", expr)
+
+
+
+  private fun getSerializerForType(type: IrType): ClassId? =
+    when {
+      type.isString() -> classIdOf<ParamSerializer.String>()
+      type.isChar() -> classIdOf<ParamSerializer.Char>()
+      type.isInt() -> classIdOf<ParamSerializer.Int>()
+      type.isShort() -> classIdOf<ParamSerializer.Short>()
+      type.isLong() -> classIdOf<ParamSerializer.Long>()
+      type.isFloat() -> classIdOf<ParamSerializer.Float>()
+      type.isDouble() -> classIdOf<ParamSerializer.Double>()
+      type.isBoolean() -> classIdOf<ParamSerializer.Boolean>()
+      type.isClassStrict<kotlinx.datetime.LocalDate>() -> classIdOf<kotlinx.datetime.LocalDate>()
+      type.isClassStrict<kotlinx.datetime.LocalTime>() -> classIdOf<kotlinx.datetime.LocalTime>()
+      type.isClassStrict<kotlinx.datetime.LocalDateTime>() -> classIdOf<kotlinx.datetime.LocalDateTime>()
+      else -> null
+    }
 
 //  fun IrSimpleFunctionSymbol.fqNameXR() =
 //    XR.FqName(this.owner.parent.kotlinFqName.toString(), this.safeName)

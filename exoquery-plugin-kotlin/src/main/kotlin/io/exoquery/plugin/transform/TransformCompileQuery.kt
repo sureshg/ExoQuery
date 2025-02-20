@@ -129,6 +129,7 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
             // i.e. this is the SqlQuery.params call
             val callParamsFromSqlQuery = sqlQueryExpr.callDispatch("params").invoke()
 
+            // TODO also need to add filtered ParamSet (i.e. making sure we have everything we need from the Token params, filtered and in the right order) to the SqlCompiledQuery
             with (lifter) {
               val labelExpr = if (label != null) label.lift() else irBuilder.irNull()
               makeWithTypes<SqlCompiledQuery<*>>(
@@ -140,7 +141,7 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
                   // Now we can't check what the values in ParamSet are but we have this value in the TagForParam.paramType field
                   // which shows us if the Param is a ParamSingle or ParamMulti. We need to check that in the AST in order to know that this
                   // value is supposed to be.
-                  irBuilder.irBoolean(true), // needsTokenization (todo need to determine this from the tokenized value i.e. only `true` if there are no ParamMulti values)
+                  irBuilder.irBoolean(false), // needsTokenization (todo need to determine this from the tokenized value i.e. only `true` if there are no ParamMulti values)
                   labelExpr
                 )
               )

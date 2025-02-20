@@ -63,6 +63,10 @@ annotation class ParamCtx
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
+annotation class ParamPrimitive
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
 annotation class ParamCustom
 
 @Target(AnnotationTarget.FUNCTION)

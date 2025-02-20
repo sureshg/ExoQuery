@@ -44,7 +44,7 @@ fun <CXR: ContainerOfXR> CXR.rekeyRuntimeBinds(): CXR {
   fun rekeyLeafBinds(quoted: ContainerOfXR): ContainerOfXR {
     val (liftIdMap, newPlanters) = quoted.params.lifts.map { lift ->
       val newId = BID.new()
-      val newLift = lift.copy(id = newId)
+      val newLift = lift.withNewBid(newId)
       Pair(lift.id, newId) to newLift
     }.unzip()
     val newAst = rekeyLeafBinds(quoted.xr, liftIdMap.toMap())

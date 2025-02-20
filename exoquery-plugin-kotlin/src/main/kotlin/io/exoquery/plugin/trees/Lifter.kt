@@ -88,11 +88,16 @@ class Lifter(val builderCtx: BuilderContext) {
   inline fun <reified T> List<IrExpression>.liftExpr(): IrExpression {
     val elementType = typeOf<T>()
     val classId = with(builderCtx) { elementType.fullPathOfBasic() }
-    val expressionType = context.referenceConstructors(classId).firstOrNull()?.owner?.returnType ?: throw IllegalStateException("Cannot find a constructor for: ${classId} for the element type: ${elementType}")
-    val variadics = irBuilder.irVararg(expressionType, this)
+    val classSymbol = builderCtx.pluginCtx.referenceClass(classId) ?: throw IllegalStateException("Cannot find a class for: ${classId} for the element type: ${elementType}")
+
+    // Another way to get the IrType from the FqName is to get the constructor of the class. However it's not possible to do this if the type here is an interface or abstract class so not using this method
+    //val expressionType = context.referenceConstructors(classId).firstOrNull()?.owner?.returnType ?: throw IllegalStateException("Cannot find a constructor for: ${classId} for the element type: ${elementType}")
+
+    val varargType = classSymbol.owner.defaultType
+    val variadics = irBuilder.irVararg(varargType, this)
     //builderCtx.logger.error("--------------- Expression Type -------------: ${expressionType.dumpKotlinLike()}")
-    val listOfCall = irBuilder.irCall(listOfRef, context.symbols.list.typeWith(expressionType)).apply {
-      putTypeArgument(0, expressionType)
+    val listOfCall = irBuilder.irCall(listOfRef, context.symbols.list.typeWith(varargType)).apply {
+      putTypeArgument(0, varargType)
       putValueArgument(0, variadics)
     }
     //builderCtx.logger.error("--------------- List Expression Type -------------: ${listOfCall.type.dumpKotlinLike()}\n=== ${builderCtx.currentFile.path} ===")
@@ -164,7 +169,7 @@ class Lifter(val builderCtx: BuilderContext) {
       is ParamMultiTokenRealized -> xrError("Attempting to lift an already realized ParamMulti. This should be impossible: ${this}")
       is SetContainsToken -> make<SetContainsToken>(this.a.lift(paramSetExpr), this.op.lift(paramSetExpr), this.b.lift(paramSetExpr))
       is Statement -> make<Statement>(this.tokens.lift { it.lift(paramSetExpr) })
-      is StringToken -> make<Token>(string.lift())
+      is StringToken -> make<StringToken>(string.lift())
     }
 }
 

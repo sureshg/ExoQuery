@@ -46,7 +46,7 @@ context(BuilderContext) fun makeClassFromString(fullPath: String, args: List<IrE
   makeClassFromId(ClassId.topLevel(FqName(fullPath)), args, types, overrideType)
 
 context(BuilderContext) fun makeClassFromId(fullPath: ClassId, args: List<IrExpression>, types: List<IrType> = listOf(), overrideType: IrType? = null) =
-  pluginCtx.referenceConstructors(fullPath).first()
+  (pluginCtx.referenceConstructors(fullPath).firstOrNull() ?: liftingError("Could not find a constructor for a class in the context: $fullPath"))
     .let { ctor ->
       overrideType?.let { builder.irCall(ctor, it) } ?: builder.irCall(ctor)
     }
