@@ -14,7 +14,7 @@ class BasicExpressionQuotationSpec : FreeSpec({
       cap0.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(123) `+++` XR.TagForParam(BID("0"), XRType.Value, XR.Location.Synth),
         RuntimeSet.Empty,
-        ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+        ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
       )
 
       val cap1 = cap0
@@ -24,7 +24,7 @@ class BasicExpressionQuotationSpec : FreeSpec({
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(789) `+++` (XR.Const.Int(123) `+++` XR.TagForParam(BID("0"), XRType.Value, XR.Location.Synth)),
         RuntimeSet.Empty,
-        ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+        ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
       )
     }
     "c0()={n0+lift}, c={n1+c0()} -> {n1+(n0+lift)}" {
@@ -33,7 +33,7 @@ class BasicExpressionQuotationSpec : FreeSpec({
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(789) `+++` (XR.Const.Int(123) `+++` XR.TagForParam(BID("0"), XRType.Value, XR.Location.Synth)),
         RuntimeSet.Empty,
-        ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+        ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
       )
     }
     "c0(i)={n0+i}, c={n1+c0(nn)} -> {n1+(n0+nn)}" {
@@ -42,7 +42,7 @@ class BasicExpressionQuotationSpec : FreeSpec({
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(789) `+++` (XR.Const.Int(123) `+++` XR.TagForParam(BID("0"), XRType.Value, XR.Location.Synth)),
         RuntimeSet.Empty,
-        ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+        ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
       )
     }
 
@@ -55,7 +55,7 @@ class BasicExpressionQuotationSpec : FreeSpec({
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
         XR.Const.Int(789) `+++` (XR.Const.Int(456) `+++` XR.TagForParam(BID("0"), XRType.Value)),
         RuntimeSet.Empty,
-        ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+        ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
       )
     }
     "cls Foo{c0()=nA}, f=Foo, c={nB+f.c0()} -> {nB+(nA)}" {
@@ -104,7 +104,7 @@ class BasicExpressionQuotationSpec : FreeSpec({
           SqlExpression<Any>(
             XR.Const.Int(456) `+++` XR.TagForParam(BID("0"), XRType.Value),
             RuntimeSet.of(),
-            ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+            ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
           )
         ),
         ParamSet.of()
@@ -126,7 +126,7 @@ class BasicExpressionQuotationSpec : FreeSpec({
           SqlExpression<Any>(
             XR.Const.Int(456) `+++` XR.TagForParam(BID("0"), XRType.Value),
             RuntimeSet.of(),
-            ParamSet(listOf(Param(BID("0"), 456, ParamSerializer.Int)))
+            ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
           )
         ),
         ParamSet.of()

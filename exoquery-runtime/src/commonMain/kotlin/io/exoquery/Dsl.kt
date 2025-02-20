@@ -69,16 +69,27 @@ interface CapturedBlock {
   @Dsl @ParamCustomValue fun <T: Any> param(value: ValueWithSerializer<T>): T = errorCap("Compile time plugin did not transform the tree")
 
   // I.e. the the list is lifted but as individual elements
-  //fun <T: Any> params(values: List<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")
-  //fun <T: Any> paramsCtx(values: List<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")
-  //fun <T: Any> paramsCustom(values: List<T>, serializer: SerializationStrategy<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")
-  //fun <T: Any> paramsCustomValue(values: List<ValueWithSerializer<T>>): Params<T> = errorCap("Compile time plugin did not transform the tree")
-  //fun <T: Any> params(vararg values: T): Params<T> = errorCap("Compile time plugin did not transform the tree")
-  //fun <T: Any> paramsCtx(vararg values: T): Params<T> = errorCap("Compile time plugin did not transform the tree")
-  //// Maybe multiple args list?
-  //fun <T: Any> paramsCustom(serializer: SerializationStrategy<T>, vararg values: T): Params<T> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.String::class) fun <T: Any> params(values: List<String>): Params<String> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Char::class) fun <T: Any> params(values: List<Char>): Params<Char> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Int::class) fun <T: Any> params(values: List<Int>): Params<Int> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Short::class) fun <T: Any> params(values: List<Short>): Params<Short> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Long::class) fun <T: Any> params(values: List<Long>): Params<Long> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Float::class) fun <T: Any> params(values: List<Float>): Params<Float> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Double::class) fun <T: Any> params(values: List<Double>): Params<Double> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.Boolean::class) fun <T: Any> params(values: List<Boolean>): Params<Boolean> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.LocalDate::class) fun <T: Any> params(values: List<kotlinx.datetime.LocalDate>): Params<kotlinx.datetime.LocalDate> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.LocalTime::class) fun <T: Any> params(values: List<kotlinx.datetime.LocalTime>): Params<kotlinx.datetime.LocalTime> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamStatic(ParamSerializer.LocalDateTime::class) fun <T: Any> params(values: List<kotlinx.datetime.LocalDateTime>): Params<kotlinx.datetime.LocalDateTime> = errorCap("Compile time plugin did not transform the tree")
 
-  val <T> SqlExpression<T>.use: T get() = throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context")
+  @Dsl @ParamCtx fun <T: Any> paramsCtx(values: List<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamCustom fun <T: Any> paramsCustom(values: List<T>, serializer: SerializationStrategy<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamCustomValue fun <T: Any> params(values: ValuesWithSerializer<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")
+
+  // Render this as an in-set, if any of them are actually params need to use param(...) inside
+  //fun <T: Any> values(vararg values: T): Values<T> = errorCap("Compile time plugin did not transform the tree")
+
+
+  @Dsl val <T> SqlExpression<T>.use: T @Dsl get() = throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context")
 
   // Extension recivers for SqlQuery<T>
   @Dsl fun <T, R> SqlQuery<T>.map(f: (T) -> R): SqlQuery<R> = errorCap("The `map` expression of the Query was not inlined")
@@ -93,10 +104,6 @@ interface CapturedBlock {
 
   @DslNestingIgnore val String.sql @DslNestingIgnore get(): StringSqlDsl = errorCap("The `sql-dsl` expression of the Query was not inlined")
 
-  // TODO get rid of Aggregation in XR in favor of below
-  // TODO get rid of PostgisOps in operators in favor of MethodCall already implemented
-
-  // TODO Need to test
   // Use this in the select or map clauses e.g. people.map(p -> min(p.age))
   @DslFunctionCall(DslFunctionCallType.Aggregator::class) fun <T: Comparable<T>> min(value: T): T = errorCap("The `min` expression of the Query was not inlined")
   @DslFunctionCall(DslFunctionCallType.Aggregator::class) fun <T: Comparable<T>> max(value: T): T = errorCap("The `min` expression of the Query was not inlined")
@@ -104,7 +111,6 @@ interface CapturedBlock {
   @DslFunctionCall(DslFunctionCallType.Aggregator::class) fun <T: Comparable<T>> sum(value: T): T = errorCap("The `min` expression of the Query was not inlined")
   @DslFunctionCall(DslFunctionCallType.Aggregator::class) fun <T> count(value: T): T = errorCap("The `min` expression of the Query was not inlined")
 
-  // TODO Need to test
   // Use this as an aggregator for a query e.g. people.map(p -> p.age).min()
   // this is useful for co-releated subqueries e.g. events.filter(ev -> people.map(p -> p.age).avg() > ev.minAllowedAge) i.e. events to which the average person can come to
   @DslFunctionCall(DslFunctionCallType.QueryAggregator::class) fun <T: Comparable<T>> SqlQuery<T>.min(): T = errorCap("The `min` expression of the Query was not inlined")
@@ -124,10 +130,12 @@ interface CapturedBlock {
 
   // Used in groupBy and various other places to convert query to an expression
   // e.g. events.filter(ev -> people.map(p -> customFunction(p.age)).value() > ev.minAllowedAge).value()
-  // TODO Need to test
   @Dsl fun <T> SqlQuery<T>.value(): SqlExpression<T> = errorCap("The `value` expression of the Query was not inlined")
-
   @Dsl fun <T> Table(): SqlQuery<T> = errorCap("The `Table<T>` constructor function was not inlined")
+}
+
+interface Params<T> {
+  operator fun contains(value: T): Boolean = errorCap("The `contains` expression of the Query was not inlined")
 }
 
 sealed interface Ord {
@@ -170,6 +178,20 @@ interface ValueWithSerializer<T: Any> {
       ConcreteValueWithSerializer<T>(value, serializer, T::class)
   }
 }
-
 @PublishedApi
 internal data class ConcreteValueWithSerializer<T: Any>(override val value: T, override val serializer: SerializationStrategy<T>, override val cls: KClass<T>): ValueWithSerializer<T>
+
+interface ValuesWithSerializer<T: Any> {
+  val values: List<T>
+  val serializer: SerializationStrategy<T>
+  val cls: KClass<T>
+
+  fun asParam(): ParamSerializer<T> = ParamSerializer.Custom(serializer, cls)
+
+  companion object {
+    operator inline fun <reified T: Any> invoke(values: List<T>, serializer: SerializationStrategy<T>): ValuesWithSerializer<T> =
+      ConcreteValuesWithSerializer<T>(values, serializer, T::class)
+  }
+}
+@PublishedApi
+internal data class ConcreteValuesWithSerializer<T: Any>(override val values: List<T>, override val serializer: SerializationStrategy<T>, override val cls: KClass<T>): ValuesWithSerializer<T>

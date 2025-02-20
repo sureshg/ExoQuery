@@ -19,8 +19,10 @@ import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.SqlQueryExpr
 import io.exoquery.plugin.trees.simpleTypeArgs
 import io.exoquery.sql.SqlIdiom
+import io.exoquery.sql.token
 import io.exoquery.util.TraceConfig
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
+import org.jetbrains.kotlin.ir.builders.irBoolean
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.expressions.*
@@ -91,9 +93,9 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
             val xr = uprootable.xr // deserialize the XR, TODO need to handle deserialization failures here
             val dialect = ConstructCompiletimeDialect.of(clsPackageName, traceConfig) // TODO compiler-arg or file-annotation to add a trace config to trace phases during compile-time?
 
-            val (queryStringRaw, compileTime) = measureTimedValue {
+            val (queryTokenized, compileTime) = measureTimedValue {
               try {
-                dialect.translate(xr) // TODO catch any potential errors coming from the query compiler
+                dialect.processQuery(xr) // TODO catch any potential errors coming from the query compiler
               } finally {
                 // close file writing if it was happening
                 writeSource?.close()
@@ -101,11 +103,20 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
             }
 
             // Can include the sql-formatting library here since the compiler is always on the JVM!
+            val queryStringRaw =
+              try {
+                queryTokenized.build()
+              } catch (e: Exception) {
+                parseError("The query could not be compiled: ${e.message}\n------------------\n${xr.showRaw()}", expr)
+              }
+
             val queryString =
               if (isPretty)
                 SqlFormatter.format(queryStringRaw)
               else
                 queryStringRaw
+
+
 
             ctx.transformerScope.addQuery(PrintableQuery(queryString, expr.location(ctx.currentFile.fileEntry), label))
 
@@ -115,9 +126,24 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
             // Gete the type T of the SqlQuery<T> that .build is called on
             val queryOutputType = sqlQueryExpr.type.simpleTypeArgs[0]
 
+            // i.e. this is the SqlQuery.params call
+            val callParamsFromSqlQuery = sqlQueryExpr.callDispatch("params").invoke()
+
             with (lifter) {
               val labelExpr = if (label != null) label.lift() else irBuilder.irNull()
-              makeWithTypes<SqlCompiledQuery<*>>(listOf(queryOutputType), listOf(queryString.lift(), labelExpr))
+              makeWithTypes<SqlCompiledQuery<*>>(
+                listOf(queryOutputType),
+                listOf(
+                  queryString.lift(), // value
+                  queryTokenized.token.lift(callParamsFromSqlQuery), // token
+                  // If there are no ParamMulti values then we know that we can use the original query built with the .build function.
+                  // Now we can't check what the values in ParamSet are but we have this value in the TagForParam.paramType field
+                  // which shows us if the Param is a ParamSingle or ParamMulti. We need to check that in the AST in order to know that this
+                  // value is supposed to be.
+                  irBuilder.irBoolean(true), // needsTokenization (todo need to determine this from the tokenized value i.e. only `true` if there are no ParamMulti values)
+                  labelExpr
+                )
+              )
             }
           }
         ) ?: run {

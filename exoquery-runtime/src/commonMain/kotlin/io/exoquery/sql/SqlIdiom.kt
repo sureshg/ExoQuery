@@ -12,6 +12,7 @@ import io.exoquery.xr.XR.Visibility.*
 import io.exoquery.xr.XR.JoinType.*
 import io.exoquery.xr.XR.Ident
 import io.exoquery.xr.XR.Const.Null
+import io.exoquery.xr.XR.ParamType
 import io.exoquery.xrError
 
 abstract class SqlIdiom: HasPhasePrinting {
@@ -49,6 +50,12 @@ abstract class SqlIdiom: HasPhasePrinting {
         .invoke(sqlQuery)
 
     return output
+  }
+
+  // TODO also return the params from there
+  fun processQuery(xr: XR.Query): Token {
+    val q = prepareQuery(xr)
+    return q.token
   }
 
   fun translate(xr: XR.Query) =
@@ -113,7 +120,11 @@ abstract class SqlIdiom: HasPhasePrinting {
       is XR.QueryToExpr       -> token
       is XR.FunctionN, is XR.FunctionApply, is XR.Block ->
         xrError("Malformed or unsupported construct: $this.")
-      is XR.TagForParam -> +"?" // TODO this should be a dialect-dependent placeholder
+      is XR.TagForParam ->
+        when (this.paramType) {
+          is ParamType.Single -> ParamSingleToken(this.id)
+          is ParamType.Multi  -> ParamMultiToken(this.id)
+        }
       is XR.TagForSqlExpression ->
         xrError("Internal error. All instance of TagFOrSqlExpressio should have been spliced earlier.")
     }

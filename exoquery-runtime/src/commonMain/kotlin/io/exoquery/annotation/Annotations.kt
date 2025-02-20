@@ -18,7 +18,7 @@ annotation class CapturedFunction
 @Retention(AnnotationRetention.BINARY)
 annotation class CapturedDynamic
 
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS, AnnotationTarget.FIELD, AnnotationTarget.PROPERTY, AnnotationTarget.PROPERTY_GETTER)
 @Retention(AnnotationRetention.BINARY)
 annotation class Dsl
 

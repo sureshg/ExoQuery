@@ -547,7 +547,34 @@ object ExpressionParser {
 
         val bid = BID.new()
         binds.addParam(bid, paramValue, paramBindType)
-        XR.TagForParam(bid, TypeParser.of(paramValue), paramValue.loc)
+        XR.TagForParam(bid, XR.ParamType.Single, TypeParser.of(paramValue), paramValue.loc)
+      },
+
+      case(Ir.Call.FunctionMemN[Is(), Is.of("params", "paramsCtx", "paramsCustom"), Is()]).thenThis { _, args ->
+        val paramValue = args.first()
+        val paramBindType =
+          when {
+            this.ownerHasAnnotation<ParamStatic>() -> {
+              val staticRef = this.symbol.owner.getAnnotationArgs<ParamStatic>().firstOrNull()?.let { param -> param as? IrClassReference ?: parseError("ParamStatic annotation must have a single argument that is a class-reference (e.g. PureFunction::class)", this) } ?: parseError("Could not find ParamStatic annotation", this)
+              val classId = staticRef.classType.classId() ?: parseError("Could not find classId for ParamStatic annotation", this)
+              ParamBind.Type.ParamListStatic(classId)
+            }
+            this.ownerHasAnnotation<ParamCustom>() -> {
+              // serializer should be the 2nd arg i.e. paramCustom(value, serializer)
+              ParamBind.Type.ParamListCustom(args.lastOrNull() ?: parseError("ParamCustom annotation must have a second argument that is a class-reference (e.g. PureFunction::class)", this), paramValue.type)
+            }
+            this.ownerHasAnnotation<ParamCustomValue>() -> {
+              ParamBind.Type.ParamListCustomValue(paramValue)
+            }
+            this.ownerHasAnnotation<ParamCtx>() -> {
+              ParamBind.Type.ParamListCtx(paramValue.type)
+            }
+            else -> parseError("Could not find Param annotation on the params function of the call", this)
+          }
+
+        val bid = BID.new()
+        binds.addParam(bid, paramValue, paramBindType)
+        XR.TagForParam(bid, XR.ParamType.Single, TypeParser.of(paramValue), paramValue.loc)
       },
 
       case(Ir.Call.FunctionMem0[Is(), Is("value")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlQuery<*>>() }.then { sqlQueryIr, _ ->

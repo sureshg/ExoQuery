@@ -3,6 +3,15 @@ package io.exoquery.plugin.trees
 import io.exoquery.*
 import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.transform.call
+import io.exoquery.plugin.transform.callDispatch
+import io.exoquery.sql.ParamMultiToken
+import io.exoquery.sql.ParamMultiTokenRealized
+import io.exoquery.sql.ParamSingleToken
+import io.exoquery.sql.ParamSingleTokenRealized
+import io.exoquery.sql.SetContainsToken
+import io.exoquery.sql.Statement
+import io.exoquery.sql.StringToken
+import io.exoquery.sql.Token
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
 //import io.exoquery.xr.XR.Query
@@ -138,6 +147,25 @@ class Lifter(val builderCtx: BuilderContext) {
 
   fun BID.lift(): IrExpression =
     make<BID>(irBuilder.irString(this.component1()))
+
+  fun Token.lift(paramSetExpr: IrExpression): IrExpression =
+    when (this) {
+      is ParamSingleToken -> {
+        with (builderCtx) {
+          make<ParamSingleToken>(this@lift.bid.lift()).callDispatch("realize")(paramSetExpr)
+        }
+      }
+      is ParamMultiToken -> {
+        with (builderCtx) {
+          make<ParamMultiToken>(this@lift.bid.lift()).callDispatch("realize")(paramSetExpr)
+        }
+      }
+      is ParamSingleTokenRealized -> xrError("Attempting to lift an already realized ParamSingle. This should be impossible: ${this}")
+      is ParamMultiTokenRealized -> xrError("Attempting to lift an already realized ParamMulti. This should be impossible: ${this}")
+      is SetContainsToken -> make<SetContainsToken>(this.a.lift(paramSetExpr), this.op.lift(paramSetExpr), this.b.lift(paramSetExpr))
+      is Statement -> make<Statement>(this.tokens.lift { it.lift(paramSetExpr) })
+      is StringToken -> make<Token>(string.lift())
+    }
 }
 
 // Some top-level lift functions to use outside of the lifter

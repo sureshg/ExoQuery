@@ -2,6 +2,7 @@ package io.exoquery
 
 import io.exoquery.printing.PrintMisc
 import io.exoquery.sql.SqlIdiom
+import io.exoquery.sql.Token
 import io.exoquery.xr.RuntimeQueryBuilder
 import io.exoquery.xr.XR
 
@@ -9,7 +10,11 @@ import io.exoquery.xr.XR
 //      This probably needs to be something like SqlCompiledQuery<T> which has constructors
 //      SqlCompiledQuery.compileTime<T>(String|Token,Params,serialier<T>=some-default-value) and SqlCompiledQuery.runtime(query:SqlQuery,serialier<T>=some-default-value)
 //      (actually come to think of it, we can probably implement the dynamic path directly and have the staic path replace the build() method if it's possible)
-data class SqlCompiledQuery<T>(val value: String, val label: String?)
+// needsTokenization is a flag indicating whether we need to call token.build to get the query or if we
+// can just use the value-string. Typically we cannot use the value-string because there is a paramList (since we don't know how many instances of "?" to use)
+// This needs to be checked from the Token at compile-time (also if the dialect requires numbered parameters
+// it is also useful to use Token)
+data class SqlCompiledQuery<T>(val value: String, val token: Token, val needsTokenization: Boolean, val label: String?)
 
 data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfXR {
   fun determinizeDynamics(): SqlQuery<T> = DeterminizeDynamics().ofQuery(this)

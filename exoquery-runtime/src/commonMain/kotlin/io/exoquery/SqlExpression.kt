@@ -1,7 +1,6 @@
 package io.exoquery
 
 import io.exoquery.printing.PrintMisc
-import io.exoquery.serial.ParamSerializer
 import io.exoquery.xr.XR
 import io.exoquery.xr.swapTags
 
@@ -14,59 +13,6 @@ sealed interface ContainerOfXR {
   fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): ContainerOfXR
   fun withNonStrictEquality(): ContainerOfXR
 }
-
-// Create a wrapper class for runtimes for easy lifting/unlifting
-data class RuntimeSet(val runtimes: List<Pair<BID, ContainerOfXR>>) {
-  companion object {
-    // When this container is spliced, the ExprModel will look for this actual value in the Ir to tell if there are
-    // runtime XR Containers (hence the dynamic-path needs to be followed).
-    val Empty = RuntimeSet(emptyList())
-    fun of(vararg runtimes: Pair<BID, ContainerOfXR>) = RuntimeSet(runtimes.toList())
-  }
-  operator fun plus(other: RuntimeSet): RuntimeSet = RuntimeSet(runtimes + other.runtimes)
-}
-// TODO similar class for lifts
-
-/*
- * val expr: @Captured SqlExpression<Int> = capture { foo + bar }
- * val query: SqlQuery<Person> = capture { Table<Person>() }
- * val query2: SqlQuery<Int> = capture { query.map { p -> p.age } }
- *
- * so:
- * // Capturing a generic expression returns a SqlExpression
- * fun <T> capture(block: () -> T): SqlExpression<T>
- * for example:
- * {{{
- * val combo: SqlExpression<Int> = capture { foo + bar }
- * }}}
- *
- * // Capturing a SqlQuery returns a SqlQuery
- * fun <T> capture(block: () -> SqlQuery<T>): SqlQuery<T>
- * for example:
- * {{{
- * val query: SqlQuery<Person> = capture { Table<Person>() }
- * }}}
- */
-
-data class Param<T: Any>(val id: BID, val value: T, val serial: ParamSerializer<T>) {
-  fun withNonStrictEquality(): Param<T> =
-    copy(serial = serial.withNonStrictEquality())
-}
-
-data class ParamSet(val lifts: List<Param<*>>) {
-  operator fun plus(other: ParamSet): ParamSet = ParamSet(lifts + other.lifts)
-  fun withNonStrictEquality(): ParamSet = ParamSet(lifts.map { it.withNonStrictEquality() })
-
-  companion object {
-    fun of(vararg lifts: Param<*>) = ParamSet(lifts.toList())
-    // Added this here to be consistent with Runtimes.Empty but unlike Runtimes.Empty it has no
-    // special usage (i.e. the parser does not look for this value directly in the IR)
-    val Empty = ParamSet(emptyList())
-  }
-}
-
-// TODO add lifts which will be BID -> ContainerOfEx
-// (also need a way to get them easily from the IrContainer)
 
 data class SqlExpression<T>(override val xr: XR.Expression, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfXR {
   fun determinizeDynamics(): SqlExpression<T> = DeterminizeDynamics().ofExpression(this)
@@ -92,7 +38,10 @@ internal class DeterminizeDynamics() {
   fun ContainerOfXR.walkParams() =
     params.lifts.map { param ->
       val newBid = BID(nextId())
-      val newParam = param.copy(id = newBid)
+      val newParam = when (param) {
+        is ParamSingle<*> -> param.copy(id = newBid)
+        is ParamMulti<*> -> param.copy(id = newBid)
+      }
       Triple(param.id, newBid, newParam)
     }
 

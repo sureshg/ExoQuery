@@ -651,11 +651,18 @@ sealed interface XR {
   }
 
   @Serializable
+  sealed interface ParamType {
+    @Serializable data object Single: ParamType
+    @Serializable data object Multi: ParamType
+  }
+
+  @Serializable
   @Mat
-  data class TagForParam(@Slot val id: BID, override val type: XRType, override val loc: Location = Location.Synth): XR.Expression, PC<XR.TagForParam> {
+  data class TagForParam(@Slot val id: BID, val paramType: ParamType, override val type: XRType, override val loc: Location = Location.Synth): XR.Expression, PC<XR.TagForParam> {
     @Transient override val productComponents = productOf(this, id)
     companion object {
-      fun valueTag(id: String) = TagForParam(BID(id), XRType.Value)
+      fun valueTag(id: String) = TagForParam(BID(id), ParamType.Single, XRType.Value)
+      fun valueTagMulti(id: String) = TagForParam(BID(id), ParamType.Multi, XRType.Value)
     }
     override fun toString() = show()
     @Transient private val cid = id()

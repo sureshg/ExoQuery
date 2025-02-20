@@ -1,6 +1,7 @@
 package io.exoquery.serial
 
 import io.exoquery.ValueWithSerializer
+import io.exoquery.ValuesWithSerializer
 import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -13,7 +14,12 @@ inline fun <reified T: Any> contextualSerializer(): ParamSerializer<T> =
 inline fun <reified T: Any> customSerializer(serializer: SerializationStrategy<T>): ParamSerializer<T> =
   ParamSerializer.Custom(serializer, T::class)
 
+// Called externally by the expr model when creating a ParamSingle from a param(ValueWithSerializer) call
 inline fun <reified T: Any> customValueSerializer(customValue: ValueWithSerializer<T>): ParamSerializer<T> =
+  customValue.asParam()
+
+// Called externally by the expr model when creating a ParamMulti from a param(ValuesWithSerializer) call
+inline fun <reified T: Any> customValueListSerializer(customValue: ValuesWithSerializer<T>): ParamSerializer<T> =
   customValue.asParam()
 
 interface ParamSerializer<T: Any> {
