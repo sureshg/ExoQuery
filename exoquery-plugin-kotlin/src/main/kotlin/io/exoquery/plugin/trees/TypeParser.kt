@@ -13,9 +13,11 @@ import io.exoquery.plugin.logging.Location
 import io.exoquery.plugin.show
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetField
 import org.jetbrains.kotlin.ir.types.IrType
@@ -25,6 +27,19 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 object TypeParser {
   context(ParserContext, CompileLogger) fun of(expr: IrExpression) =
     ofElementWithType(expr, expr.type)
+
+  context(ParserContext, CompileLogger) fun ofTypeArgOf(expr: IrCall) =
+    ofElementWithType(expr, expr.typeArguments.firstOrNull() ?: run {
+      val loc = currentLocation()
+      parseErrorFromType("ERROR Could not parse type-argument", expr)
+    })
+
+  // E.g. for a function-call that returns `Param<String>` get `String`
+  context(ParserContext, CompileLogger) fun ofFirstArgOfReturnTypeOf(expr: IrCall) =
+    ofElementWithType(expr, expr.type.simpleTypeArgs.firstOrNull() ?: run {
+      val loc = currentLocation()
+      parseErrorFromType("ERROR Could get the first type-argument of: ${expr.type}", expr)
+    })
 
   context(ParserContext, CompileLogger) fun of(expr: IrVariable) =
     ofElementWithType(expr, expr.type)
@@ -61,6 +76,18 @@ object TypeParser {
       //  parse(realType)
       //},
 
+      // Need to check this before checking the isDataClass clause because for things like custom types e.g. data class MyCustomDate(year: Int, month: Int, day: Int)
+      // it could be a data-class but still needs to be interpreted as a value (usually this will be because the type itself is annotated with @Contextual or @ExoValue
+      // when it is coming out of a param(...)/paramCtx(...) call or it is a dereferenced property of a data-class that has @Contextual or @ExoValue marked on the type
+      // of the member itself e.g. `data class Person(bornOn: @Contextual LocalDate)`, `capture { Table<Person>().map { p -> p.bornOn <- type: @Contextual MyCustomDate } }`.
+      case(Ir.Type.Value[Is()]).then { type ->
+        //error("----------- Got here: ${type} ----------")
+        if (type.isBoolean())
+          XRType.BooleanValue
+        else
+          XRType.Value
+      },
+
       case(Ir.Type.NullableOf[Is()]).then { realType ->
         parse(realType)
       },
@@ -89,14 +116,6 @@ object TypeParser {
         val fieldTypeXRs = props.map { (fieldName, fieldType) -> fieldName to parse(fieldType) }
         //warn("------------- Parsed Class props of: ${name}: ${fieldTypeXRs.map { (a, b) -> "$a -> $b" }} -------------------")
         XRType.Product(name, fieldTypeXRs)
-      },
-
-      case(Ir.Type.Value[Is()]).then { type ->
-        //error("----------- Got here: ${type} ----------")
-        if (type.isBoolean())
-          XRType.BooleanValue
-        else
-          XRType.Value
       },
 
       case(Ir.Type.Generic[Is()]).then { type ->

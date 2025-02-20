@@ -559,7 +559,7 @@ object ExpressionParser {
 
         val bid = BID.new()
         binds.addParam(bid, paramValue, paramBindType)
-        XR.TagForParam(bid, XR.ParamType.Single, TypeParser.of(paramValue), paramValue.loc)
+        XR.TagForParam(bid, XR.ParamType.Single, TypeParser.of(this), paramValue.loc)
       },
 
       case(Ir.Call.FunctionMemN[Is(), Is.of("params", "paramsCtx", "paramsCustom"), Is()]).thenThis { _, args ->
@@ -593,7 +593,7 @@ object ExpressionParser {
 
         val bid = BID.new()
         binds.addParam(bid, paramValue, paramBindType)
-        XR.TagForParam(bid, XR.ParamType.Single, TypeParser.of(paramValue), paramValue.loc)
+        XR.TagForParam(bid, XR.ParamType.Single, TypeParser.ofFirstArgOfReturnTypeOf(this), paramValue.loc)
       },
 
       case(Ir.Call.FunctionMem0[Is(), Is("value")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlQuery<*>>() }.then { sqlQueryIr, _ ->

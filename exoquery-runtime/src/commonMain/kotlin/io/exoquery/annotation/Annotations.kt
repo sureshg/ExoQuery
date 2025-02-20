@@ -72,3 +72,7 @@ annotation class ParamCustom
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
 annotation class ParamCustomValue
+
+@Target(AnnotationTarget.TYPE)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoValue

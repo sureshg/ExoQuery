@@ -39,7 +39,7 @@ interface ParamSerializer<T: Any> {
       // We can't compare two instances of Custom directly because the ParamSerializer instances don't compare. The best that we can do is to compare the class and kind of the serializer.
       private data class Id(val cls: KClass<*>, val descriptor: SerialDescriptor)
     }
-    override fun equals(other: Any?): kotlin.Boolean = other is CustomCompareable<*> && other.id == id
+    override fun equals(other: Any?): kotlin.Boolean = other is CustomCompareable<*> && other.id == id && other.cls == cls
     override fun hashCode(): kotlin.Int = id.hashCode()
     override fun toString(): kotlin.String = "CustomCompareable(${id.toString()})"
   }

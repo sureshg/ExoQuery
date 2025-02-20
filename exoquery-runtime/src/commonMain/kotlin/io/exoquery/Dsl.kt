@@ -4,6 +4,7 @@ import io.exoquery.annotation.Dsl
 import io.exoquery.annotation.DslFunctionCall
 import io.exoquery.annotation.DslFunctionCallType
 import io.exoquery.annotation.DslNestingIgnore
+import io.exoquery.annotation.ExoValue
 import io.exoquery.annotation.ParamCtx
 import io.exoquery.annotation.ParamCustom
 import io.exoquery.annotation.ParamCustomValue
@@ -12,6 +13,7 @@ import io.exoquery.annotation.ParamStatic
 import io.exoquery.serial.ParamSerializer
 import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.decodeFromHexString
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -66,9 +68,9 @@ interface CapturedBlock {
   @Dsl @ParamStatic(ParamSerializer.LocalTime::class) fun param(value: kotlinx.datetime.LocalTime): kotlinx.datetime.LocalTime = errorCap("Compile time plugin did not transform the tree")
   @Dsl @ParamStatic(ParamSerializer.LocalDateTime::class) fun param(value: kotlinx.datetime.LocalDateTime): kotlinx.datetime.LocalDateTime = errorCap("Compile time plugin did not transform the tree")
 
-  @Dsl @ParamCtx fun <T> paramCtx(value: T): T = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamCustom fun <T: Any> paramCustom(value: T, serializer: SerializationStrategy<T>): T = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamCustomValue fun <T: Any> param(value: ValueWithSerializer<T>): T = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamCtx fun <T> paramCtx(value: T): @Contextual T = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamCustom fun <T: Any> paramCustom(value: T, serializer: SerializationStrategy<T>): @ExoValue T = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamCustomValue fun <T: Any> param(value: ValueWithSerializer<T>): @ExoValue T = errorCap("Compile time plugin did not transform the tree")
 
   // I.e. the the list is lifted but as individual elements
   //@Dsl @ParamStatic(ParamSerializer.String::class) fun params(values: List<String>): Params<String> = errorCap("Compile time plugin did not transform the tree")
@@ -84,11 +86,11 @@ interface CapturedBlock {
   //@Dsl @ParamStatic(ParamSerializer.LocalDateTime::class) fun params(values: List<kotlinx.datetime.LocalDateTime>): Params<kotlinx.datetime.LocalDateTime> = errorCap("Compile time plugin did not transform the tree")
 
   // TODO remove this and introduce the ones above when @SignatureName is available in KMP: https://youtrack.jetbrains.com/issue/KT-52009/Kotlin-binary-signature-name
-  @Dsl @ParamPrimitive fun <T: Any> params(values: List<T>): Params<String> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamPrimitive fun <T: Any> params(values: List<T>): Params<@ExoValue T> = errorCap("Compile time plugin did not transform the tree")
 
-  @Dsl @ParamCtx fun <T: Any> paramsCtx(values: List<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamCustom fun <T: Any> paramsCustom(values: List<T>, serializer: SerializationStrategy<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")
-  @Dsl @ParamCustomValue fun <T: Any> params(values: ValuesWithSerializer<T>): Params<T> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamCtx fun <T: Any> paramsCtx(values: List<T>): Params<@Contextual T> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamCustom fun <T: Any> paramsCustom(values: List<T>, serializer: SerializationStrategy<T>): Params<@ExoValue T> = errorCap("Compile time plugin did not transform the tree")
+  @Dsl @ParamCustomValue fun <T: Any> params(values: ValuesWithSerializer<T>): Params<@ExoValue T> = errorCap("Compile time plugin did not transform the tree")
 
   // Render this as an in-set, if any of them are actually params need to use param(...) inside
   //fun <T: Any> values(vararg values: T): Values<T> = errorCap("Compile time plugin did not transform the tree")

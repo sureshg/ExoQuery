@@ -226,7 +226,7 @@ object Ir {
 
       context(CompileLogger) operator fun get(type: Pattern0<IrType>) =
         customPattern1("Ir.Call.Value", type) { it: IrType ->
-          if (isValueType(it) || it.hasAnnotation<kotlinx.serialization.Contextual>()) {
+          if (isValueType(it) || it.hasAnnotation<kotlinx.serialization.Contextual>() || it.hasAnnotation<io.exoquery.annotation.ExoValue>()) {
             // If mistake is made in the Components-returning section, the match will not be successful
             // but the compiler will not tell us we are returing something incorrect
             Components1(it)

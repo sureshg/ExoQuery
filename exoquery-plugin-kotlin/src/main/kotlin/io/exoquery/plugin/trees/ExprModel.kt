@@ -126,7 +126,7 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
       context(BuilderContext) override fun build(bid: BID, originalValue: IrExpression, lifter: Lifter) = run {
         val paramSerializer = constructValueListSerializer(valueWithSerializer)
         with (lifter) {
-          make<ParamSingle<*>>(bid.lift(), originalValue.callDispatch("value")(), paramSerializer)
+          make<ParamSingle<*>>(bid.lift(), originalValue.callDispatch("values")(), paramSerializer)
         }
       }
     }
