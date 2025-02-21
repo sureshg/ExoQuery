@@ -11,6 +11,15 @@ import kotlin.reflect.KClass
 inline fun <reified T: Any> contextualSerializer(): ParamSerializer<T> =
   ParamSerializer.Custom(ContextualSerializer(T::class), T::class)
 
+// SqlExpression(xr=Statement(tokens=[StringToken(string=TagP("0"))]), runtimes=RuntimeSet(runtimes=[]), params=ParamSet(lifts=[ParamMulti(id=BID(value=0), value=[2021-01-01, 2021-01-01], serial=CustomCompareable(Id(cls=class kotlinx.datetime.LocalDate,
+// descriptor=ContextDescriptor(kClass: class kotlinx.datetime.LocalDate, original: kotlinx.serialization.ContextualSerializer()))))]))
+
+// SqlExpression(xr=Statement(tokens=[StringToken(string=TagP("0"))]), runtimes=RuntimeSet(runtimes=[]), params=ParamSet(lifts=[ParamMulti(id=BID(value=0), value=[2021-01-01, 2021-01-01], serial=CustomCompareable(Id(cls=class kotlin.collections.List,
+// descriptor=ContextDescriptor(kClass: class kotlinx.datetime.LocalDate, original: kotlinx.serialization.ContextualSerializer()))))]))
+
+
+
+
 inline fun <reified T: Any> customSerializer(serializer: SerializationStrategy<T>): ParamSerializer<T> =
   ParamSerializer.Custom(serializer, T::class)
 

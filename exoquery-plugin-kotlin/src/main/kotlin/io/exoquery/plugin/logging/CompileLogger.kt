@@ -2,6 +2,7 @@ package io.exoquery.plugin.logging
 
 import io.exoquery.plugin.Diagnostics.SQL
 import io.exoquery.plugin.location
+import io.exoquery.plugin.transform.BuilderContext
 import io.exoquery.plugin.transform.LocateableContext
 import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.ParserContext
@@ -83,6 +84,9 @@ data class CompileLogger(val messageCollector: MessageCollector, val currentFile
   // TODO need a "lesser thing" here than parser context, just need to know the current file so need to make a context with that
   context(ParserContext) fun warn(msg: String, elem: IrElement) =
     messageCollector.report(CompilerMessageSeverity.WARNING, msg, elem.location())
+
+  context(BuilderContext) fun warn(msg: String, elem: IrElement) =
+    messageCollector.report(CompilerMessageSeverity.WARNING, msg, elem.location(this.currentFile))
 
   fun error(msg: String) =
     messageCollector.report(CompilerMessageSeverity.ERROR, msg, macroInvokeSite.location(currentFile))

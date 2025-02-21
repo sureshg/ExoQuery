@@ -573,27 +573,29 @@ object ExpressionParser {
               ParamBind.Type.ParamListStatic(classId)
             }
             this.ownerHasAnnotation<ParamPrimitive>() -> {
-              val irType = this.typeArguments.firstOrNull() ?: parseError("ParamPrimitive annotation must have a single type argument", this)
+              val irType = this.typeArguments.firstOrNull() ?: parseError("params-call must have a single type argument", this)
               val paramSerializerClassId = getSerializerForType(irType)
                 ?: parseError("Could not find primitive-serializer for type: ${irType.dumpKotlinLike()}. Primitive serializers are only defined for: Int, Long, Float, Double, String, Boolean, and the kotlinx LocalDate, LocalTime, LocalDateTime, and Instant", this)
               ParamBind.Type.ParamListStatic(paramSerializerClassId)
             }
             this.ownerHasAnnotation<ParamCustom>() -> {
               // serializer should be the 2nd arg i.e. paramCustom(value, serializer)
-              ParamBind.Type.ParamListCustom(args.lastOrNull() ?: parseError("ParamCustom annotation must have a second argument that is a class-reference (e.g. PureFunction::class)", this), paramValue.type)
+              val irType = this.typeArguments.firstOrNull() ?: parseError("params-call must have a single type argument", this)
+              ParamBind.Type.ParamListCustom(args.lastOrNull() ?: parseError("ParamCustom annotation must have a second argument that is a class-reference (e.g. PureFunction::class)", this), irType)
             }
             this.ownerHasAnnotation<ParamCustomValue>() -> {
               ParamBind.Type.ParamListCustomValue(paramValue)
             }
             this.ownerHasAnnotation<ParamCtx>() -> {
-              ParamBind.Type.ParamListCtx(paramValue.type)
+              val irType = this.typeArguments.firstOrNull() ?: parseError("params-call must have a single type argument", this)
+              ParamBind.Type.ParamListCtx(irType)
             }
             else -> parseError("Could not find Param annotation on the params function of the call", this)
           }
 
         val bid = BID.new()
         binds.addParam(bid, paramValue, paramBindType)
-        XR.TagForParam(bid, XR.ParamType.Single, TypeParser.ofFirstArgOfReturnTypeOf(this), paramValue.loc)
+        XR.TagForParam(bid, XR.ParamType.Multi, TypeParser.ofFirstArgOfReturnTypeOf(this), paramValue.loc)
       },
 
       case(Ir.Call.FunctionMem0[Is(), Is("value")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlQuery<*>>() }.then { sqlQueryIr, _ ->

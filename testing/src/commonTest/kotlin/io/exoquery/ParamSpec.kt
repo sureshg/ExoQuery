@@ -125,7 +125,7 @@ class ParamSpec : FreeSpec({
       val cap = captureValue { paramsCustom(myList, ContextualSerializer(MyCustomDate::class)) }
 
 
-      println("--------------------- Type ee: ---------------\n${cap.xr.type}")
+      println("--------------------- Type exeee: ---------------\n${cap.xr.type}")
 
       // TODO need to check this for the other tests as well
       cap.xr.type shouldBe XRType.Value

@@ -9,6 +9,7 @@ import io.exoquery.ParamSet
 import io.exoquery.RuntimeSet
 import io.exoquery.builderParseError
 import io.exoquery.plugin.classIdOf
+import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.transform.*
 import io.exoquery.xr.EncodingXR
@@ -57,23 +58,33 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
   sealed interface Type {
     context(BuilderContext) fun build(bid: BID, originalValue: IrExpression, lifter: Lifter): IrExpression
 
-    /** classId is the classId of the static ParamSerializer object */
+    /**
+     * This comes out of `param(value: String/Char/Int/Short/...)` serializers.
+     * classId is the classId of the static ParamSerializer object
+     */
     data class ParamStatic(val classId: ClassId) : Type {
       context(BuilderContext) override fun build(bid: BID, originalValue: IrExpression, lifter: Lifter) =
         with (lifter) {
           make<ParamSingle<*>>(bid.lift(), originalValue, makeObjectFromId(classId))
         }
     }
-    /** type is the type to use when calling io.exoquery.serial.contextualSerializer() */
+    /**
+     * This comes out of paramCtx(value: T)
+     * `type` is the type to use when calling io.exoquery.serial.contextualSerializer()
+     * originalValue is the `value` arg
+     */
     data class ParamCtx(val type: IrType) : Type {
       context(BuilderContext) override fun build(bid: BID, originalValue: IrExpression, lifter: Lifter) =
         with (lifter) {
           make<ParamSingle<*>>(bid.lift(), originalValue, callWithParams("io.exoquery.serial", "contextualSerializer", listOf(type)).invoke())
         }
     }
-    /** ktSerializer is the SerializationStrategy instance passed into ParamSerializer.Custom,
-     * which is create via `io.exoquery.serial.customSerializer`
-     * complete with the serializer to pass in and the type to use when calling it
+    /**
+     * This comes out of paramCustom(value: T, serializer: SerializationStrategy<T>)
+     * ktSerializer is the SerializationStrategy (serializer arg) instance to be passed into ParamSerializer.Custom,
+     * which is created via `io.exoquery.serial.customSerializer` call below
+     * complete with the serializer to pass in and the type to use when calling it.
+     * originalValue is `value: T`.
      */
     data class ParamCustom(val ktSerializer: IrExpression, val type: IrType): Type {
       context(BuilderContext) override fun build(bid: BID, originalValue: IrExpression, lifter: Lifter) =
@@ -116,9 +127,15 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
           make<ParamMulti<*>>(bid.lift(), originalValues, callWithParams("io.exoquery.serial", "contextualSerializer", listOf(type)).invoke())
         }
     }
+    /**
+     * Comes out of paramsCustom(values: List<T>, serializer: SerializationStrategy<T>)
+     * ktSerializer is the SerializationStrategy (serializer arg) instance to be passed into ParamSerializer.Custom,
+     * which is created via `io.exoquery.serial.customSerializer` below. The type is the type to use when calling it.
+     * originalValues is the `values` arg of the params call above.
+     */
     data class ParamListCustom(val ktSerializer: IrExpression, val type: IrType): Type {
       context(BuilderContext) override fun build(bid: BID, originalValues: IrExpression, lifter: Lifter) =
-        with (lifter) {
+        with(lifter) {
           make<ParamMulti<*>>(bid.lift(), originalValues, callWithParams("io.exoquery.serial", "customSerializer", listOf(type)).invoke(ktSerializer))
         }
     }
@@ -126,14 +143,14 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
       context(BuilderContext) override fun build(bid: BID, originalValue: IrExpression, lifter: Lifter) = run {
         val paramSerializer = constructValueListSerializer(valueWithSerializer)
         with (lifter) {
-          make<ParamSingle<*>>(bid.lift(), originalValue.callDispatch("values")(), paramSerializer)
+          make<ParamMulti<*>>(bid.lift(), originalValue.callDispatch("values")(), paramSerializer)
         }
       }
     }
 
     context(BuilderContext)
     fun constructValueListSerializer(valueListWithSerializer: IrExpression) = run {
-      // Get the type-argument of the ValueWithSerializer<T> instance which is the actual type to be serialized e.g. ValueWithSerializer<MyCustomDateType>
+      // Get the type-argument of the ValuesWithSerializer<T> instance which is the actual type to be serialized e.g. ValueWithSerializer<MyCustomDateType>
       val type = valueListWithSerializer.type.simpleTypeArgs.firstOrNull() ?: builderParseError("Could not get the type of the ValuesWithSerializer instance", valueListWithSerializer)
       val constructSerializer = callWithParams("io.exoquery.serial", "customValueListSerializer", listOf(type)).invoke(valueListWithSerializer)
       constructSerializer
