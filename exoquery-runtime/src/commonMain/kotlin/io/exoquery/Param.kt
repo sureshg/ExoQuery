@@ -28,10 +28,7 @@ sealed interface Param<T: Any> {
   val serial: ParamSerializer<*>
   fun withNonStrictEquality(): Param<T>
   fun showValue(): String
-  fun withNewBid(newBid: BID): Param<T> = when (this) {
-    is ParamSingle -> copy(id = newBid)
-    is ParamMulti -> copy(id = newBid)
-  }
+  fun withNewBid(newBid: BID): Param<T>
 }
 
 
@@ -42,12 +39,14 @@ data class ParamMulti<T: Any>(override val id: BID, val value: List<T>, override
   override fun withNonStrictEquality(): ParamMulti<T> =
     copy(serial = serial.withNonStrictEquality())
   override fun showValue() = value.toString()
+  override fun withNewBid(newBid: BID): ParamMulti<T> = copy(id = newBid)
 }
 
 data class ParamSingle<T: Any>(override val id: BID, val value: T, override val serial: ParamSerializer<T>): Param<T> {
   override fun withNonStrictEquality(): ParamSingle<T> =
     copy(serial = serial.withNonStrictEquality())
   override fun showValue() = value.toString()
+  override fun withNewBid(newBid: BID): ParamSingle<T> = copy(id = newBid)
 }
 
 data class ParamSet(val lifts: List<Param<*>>) {

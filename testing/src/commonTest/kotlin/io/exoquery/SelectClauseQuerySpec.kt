@@ -26,7 +26,7 @@ class SelectClauseQuerySpec : FreeSpec({
         Table<Person>().filter { p -> p.name == "Joe" }
       }
 
-      people.build<PostgresDialect>().value shouldBe "SELECT p.name AS name, p.age AS age FROM Person p WHERE p.name = 'Joe'"
+      people.build<PostgresDialect>().value shouldBe "SELECT p.name, p.age FROM Person p WHERE p.name = 'Joe'"
     }
 
 

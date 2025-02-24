@@ -46,7 +46,7 @@ abstract class SqlIdiom: HasPhasePrinting {
         .andThen("SqlQueryApply") { it -> it }
         .andThen("ValueizeSingleSelects") { ValueizeSingleLeafSelects()(it, q.type) }
         .andThen("ExpandNestedQueries") { ExpandNestedQueries(::joinAlias)(it) }
-        //.andThen("RemoveExtraAlias") { RemoveExtraAlias()(it) }
+        .andThen("RemoveExtraAlias") { RemoveExtraAlias()(it) }
         .invoke(sqlQuery)
 
     return output
@@ -59,7 +59,7 @@ abstract class SqlIdiom: HasPhasePrinting {
   }
 
   fun translate(xr: XR.Query) =
-    prepareQuery(xr).token.toString()
+    prepareQuery(xr).token.show(Renderer(true, true, null))
 
   private fun translateBasic(xr: XR): Token {
     // TODO caching
@@ -171,40 +171,40 @@ abstract class SqlIdiom: HasPhasePrinting {
   fun XR.U.QueryOrExpression.stringConversionMapping(name: String): Token = run {
     val head = this
     when (name) {
-      "toLong" -> "CAST(${head.token} AS BIGINT)"
-      "toInt" -> "CAST(${head.token} AS INTEGER)"
-      "toShort" -> "CAST(${head.token} AS SMALLINT)"
-      "toDouble" -> "CAST(${head.token} AS DOUBLE PRECISION)"
-      "toFloat" -> "CAST(${head.token} AS REAL)"
-      "toBoolean" -> "CAST(${head.token} AS BOOLEAN)"
-      "toString" -> "${head.token}"
+      "toLong" -> +"CAST(${head.token} AS BIGINT)"
+      "toInt" -> +"CAST(${head.token} AS INTEGER)"
+      "toShort" -> +"CAST(${head.token} AS SMALLINT)"
+      "toDouble" -> +"CAST(${head.token} AS DOUBLE PRECISION)"
+      "toFloat" -> +"CAST(${head.token} AS REAL)"
+      "toBoolean" -> +"CAST(${head.token} AS BOOLEAN)"
+      "toString" -> +"${head.token}"
       else -> throw IllegalArgumentException("Unknown conversion function: ${name}")
-    }.token
+    }
   }
 
   fun XR.U.QueryOrExpression.wholeNumberConversionMapping(name: String): Token = run {
     val head = this
     when (name) {
-      "toDouble" -> "CAST(${head.token} AS DOUBLE PRECISION)"
-      "toFloat" -> "CAST(${head.token} AS REAL)"
-      "toBoolean" -> "CAST(${head.token} AS BOOLEAN)"
-      "toString" -> "CAST(${head.token} AS ${varcharType()})"
+      "toDouble" -> +"CAST(${head.token} AS DOUBLE PRECISION)"
+      "toFloat" -> +"CAST(${head.token} AS REAL)"
+      "toBoolean" -> +"CAST(${head.token} AS BOOLEAN)"
+      "toString" -> +"CAST(${head.token} AS ${varcharType()})"
       // toInt, toLong, toShort reply in implicit casting
-      else -> "${head.token}"
-    }.token
+      else -> +"${head.token}"
+    }
   }
 
   fun XR.U.QueryOrExpression.floatConversionMapping(name: String): Token = run {
     val head = this
     when (name) {
-      "toLong" -> "CAST(${head.token} AS BIGINT)"
-      "toInt" -> "CAST(${head.token} AS INTEGER)"
-      "toShort" -> "CAST(${head.token} AS SMALLINT)"
-      "toBoolean" -> "CAST(${head.token} AS BOOLEAN)"
-      "toString" -> "CAST(${head.token} AS ${varcharType()})"
+      "toLong" -> +"CAST(${head.token} AS BIGINT)"
+      "toInt" -> +"CAST(${head.token} AS INTEGER)"
+      "toShort" -> +"CAST(${head.token} AS SMALLINT)"
+      "toBoolean" -> +"CAST(${head.token} AS BOOLEAN)"
+      "toString" -> +"CAST(${head.token} AS ${varcharType()})"
       // toFloat, toDouble reply in implicit casting
-      else -> "${head.token}"
-    }.token
+      else -> +"${head.token}"
+    }
   }
 
   // Certain dialects require varchar sizes so allow this to be overridden
@@ -214,6 +214,9 @@ abstract class SqlIdiom: HasPhasePrinting {
   val XR.MethodCall.token get(): Token = run {
     val argsToken = (listOf(head) + args).map { it -> it.token }.mkStmt()
     when {
+      // NOTE: Perhaps we should check that io.exoquery.Params is the host-type? Need to think about various implications of being more strict
+      name == "contains" -> +"${args.first().token} ${"IN".token} (${head.token})"
+
       // rely on implicit-casts for numeric conversion
       originalHostType.isWholeNumber() && name.isConverterFunction() ->
         head.wholeNumberConversionMapping(name)

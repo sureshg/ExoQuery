@@ -2,22 +2,14 @@ package io.exoquery
 
 import io.exoquery.printing.PrintMisc
 import io.exoquery.sql.SqlIdiom
-import io.exoquery.sql.Token
 import io.exoquery.xr.RuntimeQueryBuilder
 import io.exoquery.xr.XR
 
-// TODO value needs to be Token and we need to write a lifter for Token
-//      This probably needs to be something like SqlCompiledQuery<T> which has constructors
-//      SqlCompiledQuery.compileTime<T>(String|Token,Params,serialier<T>=some-default-value) and SqlCompiledQuery.runtime(query:SqlQuery,serialier<T>=some-default-value)
-//      (actually come to think of it, we can probably implement the dynamic path directly and have the staic path replace the build() method if it's possible)
-// needsTokenization is a flag indicating whether we need to call token.build to get the query or if we
-// can just use the value-string. Typically we cannot use the value-string because there is a paramList (since we don't know how many instances of "?" to use)
-// This needs to be checked from the Token at compile-time (also if the dialect requires numbered parameters
-// it is also useful to use Token)
-data class SqlCompiledQuery<T>(val value: String, val token: Token, val needsTokenization: Boolean, val label: String?)
-
 data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfXR {
   fun determinizeDynamics(): SqlQuery<T> = DeterminizeDynamics().ofQuery(this)
+
+  // Don't need to do anything special in order to convert runtime, just call a function that the TransformProjectCapture can't see through
+  fun dyanmic(): SqlQuery<T> = this
 
   fun show() = PrintMisc().invoke(this)
   // TODO We can build the dynamic path here directly!... and have the static path replace the logic here

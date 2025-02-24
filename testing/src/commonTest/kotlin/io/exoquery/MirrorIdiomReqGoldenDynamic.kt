@@ -74,9 +74,6 @@ object MirrorIdiomReqGoldenDynamic: GoldenQueryFile {
     "XR.Expression/XR.Infix" to kt(
       """sql("a, ${'$'}foo, b, ${'$'}bar, c, ${'$'}baz")"""
     ),
-    "XR.Expression/XR.Aggregation" to kt(
-      "max(foo)"
-    ),
     "XR.Expression/XR.MethodCall" to kt(
       "foo.method_MC(bar, baz)"
     ),
@@ -87,10 +84,10 @@ object MirrorIdiomReqGoldenDynamic: GoldenQueryFile {
       "Table(Person).toExpr"
     ),
     "XR.Expression/XR.TagForParam" to kt(
-      "TagP(foo)"
+      """TagP("foo")"""
     ),
     "XR.Expression/XR.TagForSqlExpression" to kt(
-      "TagE(foo)"
+      """TagE("foo")"""
     ),
     "XR.Query/XR.Map" to kt(
       "Table(Person).map { p -> p.name }"
@@ -150,7 +147,7 @@ object MirrorIdiomReqGoldenDynamic: GoldenQueryFile {
       """sql("a, ${'$'}foo, b, ${'$'}bar, c, ${'$'}baz")"""
     ),
     "XR.Query/XR.TagForSqlQuery" to kt(
-      "TagQ(foo)"
+      """TagQ("foo")"""
     ),
     "XR.Query/XR.CustomQueryRef - SelectValue" to kt(
       "select { val p = from(Table(Person)); val p = join(Table(Address)) { p.name == a.street }; where(p.age == 42); groupBy(p.name); sortBy(Asc)(p.name) }"

@@ -135,9 +135,9 @@ class StatefulTransformerSpec : FreeSpec({
       }
 
       "methodCall" {
-        val ast: XR = MethodCall(Ident("a"), "foo", listOf(Ident("b")), CallType.PureFunction, FqName.Empty, XRType.Value)
+        val ast: XR = MethodCall(Ident("a"), "foo", listOf(Ident("b")), CallType.PureFunction, ClassId("a", "b"), XRType.Value)
         Subject(listOf(), Ident("a") to Ident("a'"), Ident("b") to Ident("b'"))(ast).let { (at, att) ->
-            at shouldBe MethodCall(Ident("a'"), "foo", listOf(Ident("b'")), CallType.PureFunction, FqName.Empty, XRType.Value)
+            at shouldBe MethodCall(Ident("a'"), "foo", listOf(Ident("b'")), CallType.PureFunction, ClassId("a", "b"), XRType.Value)
             att.state shouldBe listOf(Ident("a"), Ident("b"))
         }
       }

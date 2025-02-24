@@ -58,7 +58,7 @@ class EncodingSpecXR: FreeSpec({
       XR.UnaryOp(OP.minus, one).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
     }
     "TagForParam" {
-      val xr = XR.TagForParam(BID.Companion.new(), XRType.Value)
+      val xr = XR.TagForParam(BID.Companion.new(), XR.ParamType.Single, XRType.Value)
       xr.encode().decodeXR() shouldBeXR xr
     }
     "TagForSqlExpression" {
@@ -66,11 +66,11 @@ class EncodingSpecXR: FreeSpec({
       xr.encode().decodeXR() shouldBeXR xr
     }
     "MethodCall" {
-      val xr = XR.MethodCall(XR.Ident("one", XRType.Value), "foo", listOf(XR.Ident("two", XRType.Value)), XR.CallType.PureFunction, XR.FqName("a", "b"), XRType.Value)
+      val xr = XR.MethodCall(XR.Ident("one", XRType.Value), "foo", listOf(XR.Ident("two", XRType.Value)), XR.CallType.PureFunction, XR.ClassId("a", "b"), XRType.Value)
       xr.encode().decodeXR() shouldBeXR xr
     }
     "GlobalCall" {
-      val xr = XR.GlobalCall(XR.FqName("foo", "bar"), listOf(XR.Ident("bar", XRType.Value)), XR.CallType.PureFunction, XRType.Value)
+      val xr = XR.GlobalCall(XR.FqName("foo.bar"), listOf(XR.Ident("baz", XRType.Value)), XR.CallType.PureFunction, XRType.Value)
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Block" {

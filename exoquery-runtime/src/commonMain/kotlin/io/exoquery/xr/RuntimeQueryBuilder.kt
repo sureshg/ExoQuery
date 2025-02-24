@@ -1,10 +1,14 @@
 package io.exoquery.xr
 
 import io.exoquery.ContainerOfXR
+import io.exoquery.ParamSet
 import io.exoquery.SqlCompiledQuery
 import io.exoquery.SqlQuery
-import io.exoquery.sql.Shower
+import io.exoquery.sql.ParamMultiToken
+import io.exoquery.sql.ParamSingleToken
 import io.exoquery.sql.SqlIdiom
+import io.exoquery.sql.StatelessTokenTransformer
+import io.exoquery.sql.Token
 import io.exoquery.util.formatQuery
 
 class RuntimeQueryBuilder<T>(val query: SqlQuery<T>, val dialect: SqlIdiom, val label: String?, val pretty: Boolean) {
@@ -23,10 +27,18 @@ class RuntimeQueryBuilder<T>(val query: SqlQuery<T>, val dialect: SqlIdiom, val 
     val quoted = query.rekeyRuntimeBinds()
     val splicedAst = spliceQuotations(quoted) as XR.Query
 
-    val queryTokenized = dialect.processQuery(splicedAst)
+    val queryTokenizedRaw = dialect.processQuery(splicedAst)
+    // "realize" the tokens converting params clauses to actual list-values
+    val queryTokenized = TokenRealizer(query.params).invoke(queryTokenizedRaw)
+
     val queryRaw = queryTokenized.build()
     val query = if (pretty) formatQuery(queryRaw) else queryRaw
     return SqlCompiledQuery(queryRaw, queryTokenized, false, label)
+  }
+
+  class TokenRealizer(val paramSet: ParamSet): StatelessTokenTransformer {
+    override fun invoke(token: ParamMultiToken): Token = token.realize(paramSet)
+    override fun invoke(token: ParamSingleToken): Token = token.realize(paramSet)
   }
 
   // TODO need a test with a dynamic SqlExpression container used in an SqlQuery (and vice-versa)

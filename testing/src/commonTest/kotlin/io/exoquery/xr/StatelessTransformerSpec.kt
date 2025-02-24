@@ -55,9 +55,9 @@ class StatelessTransformerSpec : FreeSpec({
           GlobalCall(FqName.Empty, listOf(Ident("a'"), Ident("b'")), CallType.PureFunction, XRType.Value)
       }
       "methodCall" {
-        val ast: XR = MethodCall(Ident("a"), "b", listOf(Ident("c"), Ident("d")), CallType.PureFunction, FqName.Empty, XRType.Value)
+        val ast: XR = MethodCall(Ident("a"), "b", listOf(Ident("c"), Ident("d")), CallType.PureFunction, ClassId("a", "b"), XRType.Value)
         Subject(Ident("a") to Ident("a'"), Ident("c") to Ident("c'", XRType.Value), Ident("d") to Ident("d'", XRType.Value))(ast) shouldBe
-          MethodCall(Ident("a'"), "b", listOf(Ident("c'", XRType.Value), Ident("d'", XRType.Value)), CallType.PureFunction, FqName.Empty, XRType.Value)
+          MethodCall(Ident("a'"), "b", listOf(Ident("c'", XRType.Value), Ident("d'", XRType.Value)), CallType.PureFunction, ClassId("a", "b"), XRType.Value)
       }
       "take" {
         val ast: XR = Take(Entity("a"), Ident("b"))

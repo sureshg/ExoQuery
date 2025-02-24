@@ -4,6 +4,7 @@ import io.exoquery.xr.id
 import io.exoquery.BID
 import io.exoquery.printing.PrintXR
 import io.exoquery.sql.MirrorIdiom
+import io.exoquery.sql.Renderer
 import io.exoquery.sql.Token
 import io.exoquery.util.NumbersToWords
 import io.exoquery.util.ShowTree
@@ -84,7 +85,7 @@ sealed interface XR {
   fun show(pretty: Boolean = false, renderOptions: MirrorIdiom.RenderOptions = MirrorIdiom.RenderOptions()): String {
     val xr: XR = this
     return with(MirrorIdiom(renderOptions)) {
-      xr.token.toString()
+      xr.token.show(Renderer())
     }
   }
 
@@ -534,8 +535,8 @@ sealed interface XR {
     @Serializable data object QueryAggregator: CallType { override val isPure = false }
 
     companion object {
-      val values = listOf(PureFunction, ImpureFunction, Aggregator, QueryAggregator)
-      fun fromClassString(str: String): CallType =
+      val values: List<XR.CallType> = listOf(PureFunction, ImpureFunction, Aggregator, QueryAggregator)
+      fun fromClassString(str: String): XR.CallType =
         values.first { it::class.simpleName == str }
     }
   }

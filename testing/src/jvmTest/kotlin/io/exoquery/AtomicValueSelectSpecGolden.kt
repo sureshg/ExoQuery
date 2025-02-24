@@ -1,15 +1,16 @@
 package io.exoquery
 
 import io.exoquery.printing.cr
+import io.exoquery.printing.kt
 
 object AtomicValueSelectSpecGolden: GoldenQueryFile {
-  override val queries = mapOf(
+  override val queries = mapOf<String, String>(
     "from(atom.nested) + join -> (p, r)" to cr(
       """
       SELECT
         n.value AS first,
-        r.ownerId AS ownerId,
-        r.model AS model
+        r.ownerId,
+        r.model
       FROM
         (
           SELECT
@@ -24,12 +25,12 @@ object AtomicValueSelectSpecGolden: GoldenQueryFile {
       """
       SELECT
         n.value AS first,
-        r.ownerId AS ownerId,
-        r.model AS model
+        r.ownerId,
+        r.model
       FROM
         (
           SELECT
-            x.value AS value
+            x.value
           FROM
             (
               SELECT
@@ -45,9 +46,9 @@ object AtomicValueSelectSpecGolden: GoldenQueryFile {
       """
       SELECT
         n.value AS first,
-        a.ownerId AS ownerId,
-        a.street AS street,
-        a.zip AS zip
+        a.ownerId,
+        a.street,
+        a.zip
       FROM
         (
           SELECT

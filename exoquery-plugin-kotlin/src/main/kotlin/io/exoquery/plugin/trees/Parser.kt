@@ -7,6 +7,7 @@ import io.decomat.on
 import io.exoquery.BID
 import io.exoquery.CapturedBlock
 import io.exoquery.Ord
+import io.exoquery.Params
 import io.exoquery.xr.SX
 import io.exoquery.SelectClauseCapturedBlock
 import io.exoquery.xr.SelectClause
@@ -596,6 +597,11 @@ object ExpressionParser {
         val bid = BID.new()
         binds.addParam(bid, paramValue, paramBindType)
         XR.TagForParam(bid, XR.ParamType.Multi, TypeParser.ofFirstArgOfReturnTypeOf(this), paramValue.loc)
+      },
+
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<Params<*>>(), Is("contains"), Is()]).thenThis { head, params ->
+        val cid = head.type.classId()?.toXR() ?: parseError("Could not find classId for the head of the contains call", head)
+        XR.MethodCall(parse(head), "contains", listOf(parse(params)), XR.CallType.PureFunction, cid, XRType.Value, expr.loc)
       },
 
       case(Ir.Call.FunctionMem0[Is(), Is("value")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlQuery<*>>() }.then { sqlQueryIr, _ ->

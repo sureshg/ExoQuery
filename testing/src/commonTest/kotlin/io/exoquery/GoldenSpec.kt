@@ -53,6 +53,16 @@ abstract class GoldenSpecDynamic(val goldenQueries: GoldenQueryFile, val mode: M
   // TODO change default-suffix to XR and fix up the tests
   fun TestScope.shouldBeGolden(xr: XR, suffix: String = "") = xr.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix")
   fun TestScope.shouldBeGolden(sql: SqlCompiledQuery<*>, suffix: String = "") = sql.value.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix", PrintableValue.Type.SqlQuery)
+  fun TestScope.shouldBeGolden(value: String, suffix: String = "") = value.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix", PrintableValue.Type.SqlQuery)
+
+  // A simple test that does an assert only when in ExoGoldenTest mode
+  fun <T> TestScope.shouldBeGoldenValue(expected: T, actual: T, suffix: String = "") =
+    when (mode) {
+      is Mode.ExoGoldenTest ->
+        assertEquals(expected, actual, "The values were not equal: ${testPath() + if (suffix.isEmpty()) "" else "/$suffix"}")
+      is Mode.ExoGoldenOverride ->
+        {}
+    }
 
   // TODO the show() function should use the mirror idiom once that is complete
   fun XR.shouldBeGolden(label: String) = this.show().shouldBeGolden(label, PrintableValue.Type.KotlinCode)

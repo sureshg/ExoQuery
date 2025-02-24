@@ -6,13 +6,10 @@ import io.exoquery.PostgresDialect
 import io.exoquery.SqlCompiledQuery
 import io.exoquery.SqlQuery
 import io.exoquery.parseError
-import io.exoquery.plugin.findMethodOrFail
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.safeName
-import io.exoquery.plugin.transform.BuilderContext
-import io.exoquery.plugin.transform.ConstructCompiletimeDialect
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.Lifter
 import io.exoquery.plugin.trees.LocationContext
@@ -32,8 +29,6 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.packageFqName
-import org.jetbrains.kotlin.types.model.typeConstructor
 import kotlin.reflect.full.isSuperclassOf
 import kotlin.time.measureTimedValue
 

@@ -9,7 +9,7 @@ object QueryReqGoldenDynamic: GoldenQueryFile {
       "Table(Person)"
     ),
     "basic query" to cr(
-      "SELECT x.id AS id, x.name AS name, x.age AS age FROM Person x"
+      "SELECT x.id, x.name, x.age FROM Person x"
     ),
     "query with map/XR" to kt(
       "Table(Person).map { p -> p.name }"
@@ -21,31 +21,31 @@ object QueryReqGoldenDynamic: GoldenQueryFile {
       "Table(Person).filter { p -> p.age > 18 }"
     ),
     "query with filter" to cr(
-      "SELECT p.id AS id, p.name AS name, p.age AS age FROM Person p WHERE p.age > 18"
+      "SELECT p.id, p.name, p.age FROM Person p WHERE p.age > 18"
     ),
     "query with flatMap/XR" to kt(
       "Table(Person).flatMap { p -> Table(Address).filter { a -> a.ownerId == p.id } }"
     ),
     "query with flatMap" to cr(
-      "SELECT a.ownerId AS ownerId, a.street AS street, a.city AS city FROM Person p, Address a WHERE a.ownerId = p.id"
+      "SELECT a.ownerId, a.street, a.city FROM Person p, Address a WHERE a.ownerId = p.id"
     ),
     "query with union/XR" to kt(
       "Table(Person).filter { p -> p.age > 18 }.union(Table(Person).filter { p -> p.age < 18 })"
     ),
     "query with union" to cr(
-      "(SELECT p.id AS id, p.name AS name, p.age AS age FROM Person p WHERE p.age > 18) UNION (SELECT p1.id AS id, p1.name AS name, p1.age AS age FROM Person p1 WHERE p1.age < 18)"
+      "(SELECT p.id, p.name, p.age FROM Person p WHERE p.age > 18) UNION (SELECT p1.id, p1.name, p1.age FROM Person p1 WHERE p1.age < 18)"
     ),
     "query with unionAll/XR" to kt(
       "Table(Person).filter { p -> p.age > 18 }.unionAll(Table(Person).filter { p -> p.age < 18 })"
     ),
     "query with unionAll" to cr(
-      "(SELECT p.id AS id, p.name AS name, p.age AS age FROM Person p WHERE p.age > 18) UNION ALL (SELECT p1.id AS id, p1.name AS name, p1.age AS age FROM Person p1 WHERE p1.age < 18)"
+      "(SELECT p.id, p.name, p.age FROM Person p WHERE p.age > 18) UNION ALL (SELECT p1.id, p1.name, p1.age FROM Person p1 WHERE p1.age < 18)"
     ),
     "query with unionAll - symbolic/XR" to kt(
       "Table(Person).filter { p -> p.age > 18 }.unionAll(Table(Person).filter { p -> p.age < 18 })"
     ),
     "query with unionAll - symbolic" to cr(
-      "(SELECT p.id AS id, p.name AS name, p.age AS age FROM Person p WHERE p.age > 18) UNION ALL (SELECT p1.id AS id, p1.name AS name, p1.age AS age FROM Person p1 WHERE p1.age < 18)"
+      "(SELECT p.id, p.name, p.age FROM Person p WHERE p.age > 18) UNION ALL (SELECT p1.id, p1.name, p1.age FROM Person p1 WHERE p1.age < 18)"
     ),
   )
 }

@@ -22,7 +22,7 @@ class RemoveExtraAlias: StatelessQueryTransformer() {
   // Note that in certain situations this will happen anyway (e.g. if the user overwrites the tokenizeFixedColumn method
   // in SqlIdiom. In those kinds of situations we allow specifying the -Dquill.query.alwaysAlias
 
-  private fun remvoeUnneededAlias(value: SelectValue): SelectValue =
+  private fun removeUnneededAlias(value: SelectValue): SelectValue =
     when {
       //case sv @ SelectValue(p: Property, alias :: Nil, _) && p.name == alias =>
       value.expr is XR.Property && value.alias.size == 1 && value.expr.name == value.alias.first() -> {
@@ -33,7 +33,7 @@ class RemoveExtraAlias: StatelessQueryTransformer() {
 
   override fun expandNested(q: FlattenSqlQuery, level: QueryLevel): FlattenSqlQuery {
     val from = q.from.map { expandContext(it) }
-    val select = q.select.map { remvoeUnneededAlias(it) }
+    val select = q.select.map { removeUnneededAlias(it) }
     return q.copy(select = select, from = from)
   }
 

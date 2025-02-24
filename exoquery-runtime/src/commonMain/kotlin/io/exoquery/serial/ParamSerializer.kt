@@ -54,56 +54,56 @@ interface ParamSerializer<T: Any> {
   }
 
 
-  object LocalDate : ParamSerializer<kotlinx.datetime.LocalDate> {
+  data object LocalDate : ParamSerializer<kotlinx.datetime.LocalDate> {
     override val serializer = ContextualSerializer(kotlinx.datetime.LocalDate::class)
     override val cls = kotlinx.datetime.LocalDate::class
   }
-  object LocalTime : ParamSerializer<kotlinx.datetime.LocalTime> {
+  data object LocalTime : ParamSerializer<kotlinx.datetime.LocalTime> {
     override val serializer = ContextualSerializer(kotlinx.datetime.LocalTime::class)
     override val cls = kotlinx.datetime.LocalTime::class
   }
-  object LocalDateTime : ParamSerializer<kotlinx.datetime.LocalDateTime> {
+  data object LocalDateTime : ParamSerializer<kotlinx.datetime.LocalDateTime> {
     override val serializer = ContextualSerializer(kotlinx.datetime.LocalDateTime::class)
     override val cls = kotlinx.datetime.LocalDateTime::class
   }
-  object Instant : ParamSerializer<kotlinx.datetime.Instant> {
+  data object Instant : ParamSerializer<kotlinx.datetime.Instant> {
     override val serializer = ContextualSerializer(kotlinx.datetime.Instant::class)
     override val cls = kotlinx.datetime.Instant::class
   }
 
-  object String : ParamSerializer<kotlin.String> {
+  data object String : ParamSerializer<kotlin.String> {
     override val serializer = serializer<kotlin.String>()
     override val cls = kotlin.String::class
   }
-  object Char : ParamSerializer<kotlin.Char> {
+  data object Char : ParamSerializer<kotlin.Char> {
     override val serializer = serializer<kotlin.Char>()
     override val cls = kotlin.Char::class
   }
-  object Int : ParamSerializer<kotlin.Int> {
+  data object Int : ParamSerializer<kotlin.Int> {
     override val serializer = serializer<kotlin.Int>()
     override val cls = kotlin.Int::class
   }
-  object Long : ParamSerializer<kotlin.Long> {
+  data object Long : ParamSerializer<kotlin.Long> {
     override val serializer = serializer<kotlin.Long>()
     override val cls = kotlin.Long::class
   }
-  object Short : ParamSerializer<kotlin.Short> {
+  data object Short : ParamSerializer<kotlin.Short> {
     override val serializer = serializer<kotlin.Short>()
     override val cls = kotlin.Short::class
   }
-  object Byte : ParamSerializer<kotlin.Byte> {
+  data object Byte : ParamSerializer<kotlin.Byte> {
     override val serializer = serializer<kotlin.Byte>()
     override val cls = kotlin.Byte::class
   }
-  object Float : ParamSerializer<kotlin.Float> {
+  data object Float : ParamSerializer<kotlin.Float> {
     override val serializer = serializer<kotlin.Float>()
     override val cls = kotlin.Float::class
   }
-  object Double : ParamSerializer<kotlin.Double> {
+  data object Double : ParamSerializer<kotlin.Double> {
     override val serializer = serializer<kotlin.Double>()
     override val cls = kotlin.Double::class
   }
-  object Boolean : ParamSerializer<kotlin.Boolean> {
+  data object Boolean : ParamSerializer<kotlin.Boolean> {
     override val serializer = serializer<kotlin.Boolean>()
     override val cls = kotlin.Boolean::class
   }
