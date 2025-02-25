@@ -40,14 +40,14 @@ object ComputeEngineTracing {
   }
 
   context(LocationContext, BuilderContext, CompileLogger)
-  operator fun invoke() = run {
+  operator fun invoke(queryLabel: String?) = run {
     val traceTypesNames = getTraceAnnotations()
     val writeSource =
       if (traceTypesNames.isNotEmpty())
         FilePrintOutputSink.open(options)
       else
         null
-    val traceConfig = TraceConfig.Companion.empty.copy(traceTypesNames, writeSource ?: Tracer.OutputSink.None)
+    val traceConfig = TraceConfig.empty.copy(traceTypesNames, writeSource ?: Tracer.OutputSink.None, queryLabel)
     traceConfig to writeSource
   }
 }

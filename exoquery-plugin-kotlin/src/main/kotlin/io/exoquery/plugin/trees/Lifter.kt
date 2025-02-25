@@ -144,7 +144,7 @@ class Lifter(val builderCtx: BuilderContext) {
       with (builderCtx) {
         call("io.exoquery.util.defaultTraceOutputSink")(fileSinkOutputPath.lift())
       }
-    return make<TraceConfig>(this.enabledTraces.lift { it.lift() }, liftOutputSink)
+    return make<TraceConfig>(this.enabledTraces.lift { it.lift() }, liftOutputSink, if (this.phaseLabel != null) this.phaseLabel!!.lift() else irBuilder.irNull())
   }
 
   fun <A, B> Pair<A, B>.lift(aLifter: (A) -> IrExpression, bLifter: (B) -> IrExpression): IrExpression =

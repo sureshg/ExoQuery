@@ -1,4 +1,3 @@
-@file:io.exoquery.annotation.TracesEnabled(TraceType.Normalizations::class, TraceType.SqlNormalizations::class)
 package io.exoquery
 
 import io.exoquery.annotation.CapturedFunction

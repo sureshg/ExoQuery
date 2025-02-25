@@ -64,8 +64,8 @@ sealed interface TraceType {
   }
 }
 
-data class TraceConfig(val enabledTraces: List<TraceType>, val outputSink: Tracer.OutputSink) {
+data class TraceConfig(val enabledTraces: List<TraceType>, val outputSink: Tracer.OutputSink, val phaseLabel: String? = null) {
   companion object {
-    val empty = TraceConfig(listOf(), Tracer.OutputSink.None)
+    val empty = TraceConfig(listOf(), Tracer.OutputSink.None, null)
   }
 }

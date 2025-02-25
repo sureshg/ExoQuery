@@ -32,7 +32,8 @@ abstract class SqlIdiom: HasPhasePrinting {
   inline fun ((SqlQuery) -> SqlQuery).andThen(phaseTitle: String, crossinline f: (SqlQuery) -> SqlQuery): (SqlQuery) -> SqlQuery  =
     { qRaw ->
       val q = this(qRaw)
-      demarcate("Phase: ${phaseTitle}", q)
+      val label = traceConf.phaseLabel?.let { " (${it})" } ?: ""
+      demarcate("Phase: ${phaseTitle}${label}", q)
       val output = f(q)
       output
     }

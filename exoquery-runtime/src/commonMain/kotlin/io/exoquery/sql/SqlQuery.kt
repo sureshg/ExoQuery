@@ -634,16 +634,16 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             is XR.CustomQueryRef -> xrError("already took care of this case")
 
 
-            is FlatFilter -> xrError("FlatUnit functions should have already been handled in the `base` phase: ${this}")
-            is FlatGroupBy -> xrError("FlatUnit functions should have already been handled in the `base` phase: ${this}")
-            is FlatJoin -> xrError("FlatUnit functions should have already been handled in the `base` phase: ${this}")
-            is FlatMap -> xrError("FlatUnit functions should have already been handled in the `base` phase: ${this}")
-            is FlatSortBy -> xrError("FlatUnit functions should have already been handled in the `base` phase: ${this}")
+            is FlatFilter -> xrError("FlatFilter (and all FlatUnit) functions should have already been handled in the `base` phase: ${this}")
+            is FlatGroupBy -> xrError("FlatGroupBy (and all FlatUnit) functions should have already been handled in the `base` phase: ${this}")
+            is FlatMap -> xrError("FlatMap (and all FlatUnit) functions should have already been handled in the `base` phase: ${this}")
+            is FlatSortBy -> xrError("FlatSortBy (and all FlatUnit) functions should have already been handled in the `base` phase: ${this}")
 
             // The following have special handling in source function
             is XR.ExprToQuery -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
             is XR.Infix -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
             is XR.Nested -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
+            is FlatJoin -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
 
             is XR.TagForSqlQuery ->
               xrError("Invalid flattening, XR.TagForSqlQuery should have been reduced-out of the query construction already: ${this.showRaw()}")

@@ -52,7 +52,9 @@ class SqlNormalize(
     //demarcate(phaseTitle, q)
     val q = this(qRaw)
     val output = f(q)
-    demarcate("${phaseTitle}", output)
+    val label = traceConf.phaseLabel
+    val labelText = if (label != null) " (${label})" else ""
+    demarcate("${phaseTitle}${labelText}", output)
     output
   }
 

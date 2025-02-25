@@ -10,6 +10,7 @@ import io.exoquery.plugin.isClass
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.safeName
+import io.exoquery.plugin.show
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.Lifter
 import io.exoquery.plugin.trees.LocationContext
@@ -69,17 +70,19 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
       case(Ir.Call.FunctionMemN[Is(), Is.invoke { isNamedBuild(it) }, Is(/*TODO this is the dialect*/)]).thenThis { sqlQueryExprRaw, args ->
         val isPretty = expr.symbol.safeName == "buildPretty"
 
-        val (traceConfig, writeSource) = ComputeEngineTracing.invoke()
-        val dialectType = this.typeArguments.first() ?: parseError("Need to pass a constructable dialect to the build method but no argument was provided", expr)
-        val (construct, clsPackageName) = extractDialectConstructor(dialectType)
-
-        val label =
+        val queryLabel =
           if (args.size > 0) {
             (args.first() as? IrConst)?.let { constVal -> constVal.value.toString() }
               ?: parseError("A query-label must be a constant compile-time string but found: ${args[1].dumpKotlinLike()}", args[1])
           } else {
             null
           }
+
+        val compileLocation = expr.location(ctx.currentFile.fileEntry)
+        val fileLabel = (queryLabel?.let {it + " - "} ?: "") + "file:${compileLocation.show()}"
+        val (traceConfig, writeSource) = ComputeEngineTracing.invoke(fileLabel)
+        val dialectType = this.typeArguments.first() ?: parseError("Need to pass a constructable dialect to the build method but no argument was provided", expr)
+        val (construct, clsPackageName) = extractDialectConstructor(dialectType)
 
         val sqlQueryExpr = superTransformer.visitExpression(sqlQueryExprRaw)
         sqlQueryExpr.match(
@@ -113,7 +116,7 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
 
 
 
-            ctx.transformerScope.addQuery(PrintableQuery(queryString, expr.location(ctx.currentFile.fileEntry), label))
+            ctx.transformerScope.addQuery(PrintableQuery(queryString, compileLocation, queryLabel))
 
             report("Compiled query in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)
 
@@ -126,7 +129,7 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
 
             // TODO also need to add filtered ParamSet (i.e. making sure we have everything we need from the Token params, filtered and in the right order) to the SqlCompiledQuery
             with (lifter) {
-              val labelExpr = if (label != null) label.lift() else irBuilder.irNull()
+              val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
               makeWithTypes<SqlCompiledQuery<*>>(
                 listOf(queryOutputType),
                 listOf(
@@ -145,7 +148,7 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
         ) ?: run {
           warn("The query could not be transformed at compile-time", expr.location(ctx.currentFile.fileEntry))
           with (Lifter(ctx)) {
-            val labelExpr = if (label != null) label.lift() else irBuilder.irNull()
+            val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
             // we still know it's x.build or x.buildPretty so just use that (for now ignore formatting if it is at runtime)
             val dialect = buildRuntimeDialect(construct, traceConfig)
             // TODO find a way to lift TraceTypes so can pass file:TraceTypes to the runtime configs

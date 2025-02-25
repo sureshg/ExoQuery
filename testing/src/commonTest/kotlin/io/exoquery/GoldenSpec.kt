@@ -8,6 +8,7 @@ import io.kotest.core.spec.DslDrivenSpec
 import io.kotest.core.spec.style.scopes.FreeSpecRootScope
 import io.kotest.core.test.TestCase
 import io.kotest.core.test.TestScope
+import kotlin.collections.get
 import kotlin.test.assertEquals
 
 sealed interface Mode {
@@ -50,7 +51,6 @@ abstract class GoldenSpecDynamic(val goldenQueries: GoldenQueryFile, val mode: M
     }
   }
 
-  // TODO change default-suffix to XR and fix up the tests
   fun TestScope.shouldBeGolden(xr: XR, suffix: String = "") = xr.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix")
   fun TestScope.shouldBeGolden(sql: SqlCompiledQuery<*>, suffix: String = "") = sql.value.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix", PrintableValue.Type.SqlQuery)
   fun TestScope.shouldBeGolden(value: String, suffix: String = "") = value.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix", PrintableValue.Type.SqlQuery)
@@ -103,19 +103,23 @@ abstract class GoldenSpecDynamic(val goldenQueries: GoldenQueryFile, val mode: M
 // whenever I try to extend FreeSpec I get the following error:
 // kotlin.native.internal.IrLinkageError: Constructor 'GoldenSpec.<init>' can not be called: Can not instantiate abstract class 'GoldenSpec'
 abstract class GoldenSpec(val goldenQueries: GoldenQueryFile, body: GoldenSpec.() -> Unit): DslDrivenSpec(), FreeSpecRootScope {
-  // TODO put the label directly in the SqlCompiledQuery so we can just compare the queries directly
-  // TODO make better error message output (see the shouldBeEqual for strings to see how to do this)
 
-  // TODO modify compiler add something to golden file so intellij will identify it as such perhaps Sql(...) prefix or something like that,
-  //      see how I did this in terpal-sql (and the issue they resolved). Maybe I can just add '.sql' after the query
-  // TODO add support for multiline queries, they should print out as """... bunch of lines...""" and should be compared as such
-  fun SqlCompiledQuery<*>.shouldBeGolden() =
+  fun TestScope.testPath() = run {
+    tailrec fun rec(case: TestCase, acc: List<String>): String =
+      case.parent?.let { rec(it, acc + it.name.originalName) } ?: acc.reversed().joinToString("/")
+    rec(this.testCase, listOf(testCase.name.originalName))
+  }
+
+  private fun String.shouldBeGolden(label: String?, printType: PrintableValue.Type) =
     goldenQueries.queries[label]?.let {
       assertEquals(
-        it.trimIndent().trim(), this.value.trimIndent().trim(),
+        it.trimIndent().trim(), this.trimIndent().trim(),
         "Golden query for label: \"$label\" did not match"
       )
     } ?: errorCap("""No golden query found for label: "$label"""")
+
+  fun SqlCompiledQuery<*>.shouldBeGolden() =
+    this.value.shouldBeGolden(label ?: errorCap("""The following query did not have a label: "$value""""), PrintableValue.Type.SqlQuery)
 
   init {
     body()
