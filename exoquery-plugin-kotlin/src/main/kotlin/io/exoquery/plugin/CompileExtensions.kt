@@ -292,6 +292,8 @@ inline fun <reified T> IrCall.reciverIs() =
 inline fun <reified T> IrCall.reciverIs(methodName: String) =
   (this.extensionReceiver ?: this.dispatchReceiver)?.isClass<T>() ?: false && this.symbol.safeName == methodName
 
+context(ParserContext) val IrElement.loc get() = this.locationXR()
+
 data class ReplacementMethodToCall(val methodToCall: String, val callerType: ChangeReciever = ChangeReciever.DoNothing) {
   companion object {
     fun from(call: IrConstructorCall) =

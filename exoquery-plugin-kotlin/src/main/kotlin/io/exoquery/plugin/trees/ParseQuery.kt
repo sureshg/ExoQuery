@@ -1,0 +1,209 @@
+package io.exoquery.plugin.trees
+
+import io.decomat.Is
+import io.decomat.case
+import io.decomat.match
+import io.decomat.on
+import io.exoquery.BID
+import io.exoquery.CapturedBlock
+import io.exoquery.SqlQuery
+import io.exoquery.annotation.CapturedDynamic
+import io.exoquery.annotation.Dsl
+import io.exoquery.annotation.DslFunctionCall
+import io.exoquery.annotation.DslNestingIgnore
+import io.exoquery.parseError
+import io.exoquery.parseErrorSym
+import io.exoquery.plugin.hasAnnotation
+import io.exoquery.plugin.loc
+import io.exoquery.plugin.location
+import io.exoquery.plugin.locationXR
+import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.logging.Messages
+import io.exoquery.plugin.ownerFunName
+import io.exoquery.plugin.ownerHasAnnotation
+import io.exoquery.plugin.printing.dumpSimple
+import io.exoquery.plugin.safeName
+import io.exoquery.plugin.symName
+import io.exoquery.xr.XR
+import io.exoquery.xr.XRType
+import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
+import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrGetValue
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.name.FqName
+
+object ParseQuery {
+
+  context(ParserContext, CompileLogger)
+  private fun processQueryLambda(head: IrExpression, lambda: IrExpression) =
+    lambda.match(
+      case(Ir.FunctionExpression.withBlock[Is.Companion(), Is.Companion()]).thenThis { _, blockBody ->
+        val headXR = parse(head)
+        val firstParam = firstParam().makeIdent()
+        val tailExpr = ParseExpression.parseFunctionBlockBody(blockBody)
+        Triple(headXR, firstParam, tailExpr)
+      }
+    )
+
+  context(ParserContext, CompileLogger)
+  fun IrCall.isDslMethod() =
+    this.symbol.owner.let { it.hasAnnotation<Dsl>() } ?: false
+
+  context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Query =
+    when {
+      // We don't want arbitrary functions returning SqlQuery to be treated as dynamic so we make sure they are annotated with @Dsl
+      // this processes everything like that.
+      expr is IrCall && (expr.ownerHasAnnotation<DslFunctionCall>() || expr.ownerHasAnnotation<DslNestingIgnore>()) ->
+        CallParser.parse(expr).asQuery() ?: parseError("Could not parse the DslCall", expr)
+
+      expr is IrCall && expr.isDslMethod() ->
+        parseDslCall(expr) ?: parseError("Could not parse the DSL call", expr)
+
+      else -> {
+        on(expr).match<XR.Query>(
+          // If you find a random identifier hanging around, check if:
+          // 1. It is coming from a scope outside of the inside of the current function e.g. `capture { val x = Table<Person>; x/*<- we are here*/.map(...) }`
+          //    (if it isn't then we know it needs to be a dynamic)
+          // 2. It is a captured variable or function argument
+//          case(Ir.GetValue[Is()]).thenThis { sym->
+//            error("----------- GetValue Owner ---------\n${this.symbol.owner}")
+//            XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR())
+//          },
+
+          // TODO need to make sure 1st arg is SqlQuery instance and also the owner function has a @CapturedFunction annotate
+          //     (also parser should check for any IrFunction that has a @CapturedFunction annotation that doesn't have scaffolding and immediately report an error on that)
+          case(Ir.Call.FunctionUntethered2[Is.Companion(PT.io_exoquery_util_scaffoldCapFunctionQuery), Is.Companion(), Ir.Vararg[Is.Companion()]]).thenThis { sqlQueryArg, (args) ->
+            val callExpr = this
+            val sqlQueryExpr = sqlQueryArg
+            val warppedQueryCall =
+              sqlQueryExpr.match(
+                case(SqlQueryExpr.Uprootable[Is.Companion()]).thenThis { uprootable ->
+                  val sqlQueryIr = this
+                  // Add all binds from the found SqlQuery instance, this will be truned into something like `currLifts + SqlQuery.lifts` late
+                  binds.addAllParams(sqlQueryIr)
+                  // Then unpack and return the XR
+                  uprootable.xr // TODO catch errors here?
+                },
+                case(ExtractorsDomain.DynamicQueryCall[Is.Companion()]).then { _ ->
+                  val bid = BID.Companion.new()
+                  binds.addRuntime(bid, sqlQueryExpr)
+                  // need to type the parse
+                  XR.TagForSqlQuery(bid, TypeParser.of(sqlQueryExpr), expr.loc)
+                }
+              ) ?: parseError("Could not parse the SqlQuery from the scaffold call", sqlQueryExpr)
+            val parsedArgs = args.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null(callExpr.loc) }
+            XR.FunctionApply(warppedQueryCall, parsedArgs, expr.loc)
+          },
+
+          case(Ir.GetValue[Is.Companion()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym->
+            XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR())
+          },
+          // If we couldn't parse the expression treat (and it is indeed a SqlQuery<*> treat it as dynamic i.e. non-uprootable
+          // Since there's no splice-operator for SqlQuery like there is .use for SqlExpression (i.e. the variable/function-call is used directly)
+          // if nothing else matches the expression, we need to look at it in a couple of different ways and then find out if it is a dynamic query
+          // TODO When QueryMethodCall and QueryGlobalCall are introduced need to revisit this to see what happens if there is a dynamic call on a query
+          //      and how to differentitate it from something that we want to capture. Perhaps we would need some kind of "query-method whitelist"
+          case(SqlQueryExpr.Uprootable[Is.Companion()]).thenThis { uprootable ->
+            val sqlQueryIr = this
+            // Add all binds from the found SqlQuery instance, this will be truned into something like `currLifts + SqlQuery.lifts` late
+            binds.addAllParams(sqlQueryIr)
+            // Then unpack and return the XR
+            uprootable.xr // TODO catch errors here?
+          },
+          // TODO check that the output is a SqlQuery and pass to this parser instead of expression parser?
+          case(Ir.Call.FunctionMemN[Ir.Expr.ClassOf<Function<*>>(), Is.Companion("invoke"), Is.Companion()]).thenThis { hostFunction, args ->
+            XR.FunctionApply(ParseExpression.parse(hostFunction), args.map { ParseExpression.parse(it) }, expr.loc)
+          },
+          case(ExtractorsDomain.DynamicQueryCall[Is.Companion()])
+            .thenIf {
+              // TODO should disable this Strict-Model by default (when the entire DSL is built out) and make this just a warning by default
+              // We don't want arbitrary functions returning SqlQuery to be treated as dynamic (e.g. right now I am working on parsing for .nested
+              // and since it doesn't exist yet this case is being hit). Make the user either annotate the type or the function with @CapturedReturn
+              // in order to know we shuold actually be doing this. Should use a similar strategy for QueryMethodCall and QueryGlobalCall
+              it.type.hasAnnotation<CapturedDynamic>() || it.type.hasAnnotation(FqName("io.exoquery.Captured"))
+            }.then { _ ->
+              val bid = BID.Companion.new()
+              binds.addRuntime(bid, expr)
+              XR.TagForSqlQuery(bid, TypeParser.of(expr), expr.loc)
+          }
+        ) ?: run {
+          val additionalHelp =
+            when {
+              expr is IrGetValue && expr.symbol.owner is IrFunction ->
+                Messages.VariableComingFromNonCapturedFunction(expr.ownerFunName ?: "<???>")
+
+              expr is IrGetValue ->
+                "Lineage: ${expr.showLineage()}"
+              else -> ""
+            }
+
+          parseError("Could not parse the Query." + (if (additionalHelp.isNotEmpty()) "\n${additionalHelp}" else ""), expr)
+        }
+      }
+    }
+
+  // Assuming everything that gets into here is already annotated with @Dsl
+  context(ParserContext, CompileLogger) private fun parseDslCall(expr: IrExpression): XR.Query? =
+    // Note, every single instance being parsed here shuold be of SqlQuery<*>, should check for that as an entry sanity-check
+    on(expr).match<XR.Query>(
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.Companion.of("map", "concatMap", "filter"), Is.Companion()]).thenThis { head, lambda ->
+        val (head, id, body) = processQueryLambda(head, lambda) ?: parseError("Could not parse XR.Map/ConcatMap/Filter", expr)
+        when (symName) {
+          "map" -> XR.Map(head, id, body, expr.loc)
+          "concatMap" -> XR.ConcatMap(head, id, body, expr.loc)
+          "filter" -> XR.Filter(head, id, body, expr.loc)
+          else -> parseError("Unknown SqlQuery method call: ${symName} in: ${expr.dumpKotlinLike()}", expr)
+        }
+      },
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.Companion("flatMap"), Is.Companion()]).thenThis { head, lambda ->
+          lambda.match(
+            case(Ir.FunctionExpression.withReturnOnlyBlock[Is.Companion()]).thenThis { tail ->
+              XR.FlatMap(parse(head), firstParam().makeIdent(), parse(tail), expr.loc)
+            }
+            // TODO for this error message need to have a advanced "mode" that will print out the RAW IR
+          ) ?: parseError("SqlQuery.flatMap(...) lambdas can only be single-statement expressions, they cannot be block-lambdas like:\n${lambda.dumpKotlinLike()}\n-----------------------------------\n${lambda.dumpSimple()}", lambda)
+      },
+      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.Companion.of("distinct", "nested")]).thenThis { head, _ ->
+        when (symName) {
+          "distinct" -> XR.Distinct(parse(head), expr.loc)
+          "nested" -> XR.Nested(parse(head), expr.loc)
+          else -> parseErrorSym(this)
+        }
+      },
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.Companion.of("sortedBy", "sortedByDescending"), Ir.FunctionExpression.withBlock[Is.Companion(), Is.Companion()]]).thenThis { head, (params, body) ->
+        when (symName) {
+          "sortedBy" -> XR.SortBy(parse(head), params.first().makeIdent(), ParseExpression.parseFunctionBlockBody(body), XR.Ordering.Asc, expr.loc)
+          "sortedByDescending" -> XR.SortBy(parse(head), params.first().makeIdent(), ParseExpression.parseFunctionBlockBody(body), XR.Ordering.Desc, expr.loc)
+          else -> parseError("Invalid sortedBy method: ${symName}", expr)
+        }
+      },
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.Companion.of("take", "drop"), Is.Companion()]).thenThis { head, num ->
+        when (symName) {
+          "take" -> XR.Take(parse(head), ParseExpression.parse(num), expr.loc)
+          "drop" -> XR.Drop(parse(head), ParseExpression.parse(num), expr.loc)
+          else -> parseError("Invalid take/drop method: ${symName}", expr)
+        }
+      },
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.Companion.of("union", "unionAll", "plus"), Is.Companion()]).thenThis { head, tail ->
+        val tailXR = parse(tail)
+        when (symName) {
+          "union" -> XR.Union(parse(head), tailXR, expr.loc)
+          "unionAll" -> XR.UnionAll(parse(head), tailXR, expr.loc)
+          "plus" -> XR.UnionAll(parse(head), tailXR, expr.loc)
+          else -> parseError("Invalid union method: ${symName}", expr)
+        }
+      },
+      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<CapturedBlock>(), Is.Companion("Table")]).thenThis { _, _ ->
+        val tpe = TypeParser.ofTypeAt(this.typeArguments[0] ?: parseError("Type arguemnt of Table() call was not found>"), this.location())
+        val tpeProd = tpe as? XRType.Product ?: parseError("Table<???>() call argument type must be a data-class, but was: ${tpe}", expr)
+        XR.Entity(tpeProd.name, tpeProd, expr.locationXR())
+      },
+      // This is the select defined in the capture-block (that returns SqlQuery<T> as opposed to the top-level one which returns @Captured SqlQuery<T>.
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is.Companion("select"), Ir.FunctionExpression[Is.Companion()]]).thenThis { _, (selectLambda) ->
+        XR.CustomQueryRef(ParseSelectClause.parseSelectLambda(selectLambda))
+      },
+    )
+}

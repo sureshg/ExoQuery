@@ -253,6 +253,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
         else ->
           trace("Construct SqlQuery from: Query").andReturn {
+  // TODO need to parse interpolations
             flatten(this, XR.Ident("x", type, XR.Location.Synth))
           }
       }
