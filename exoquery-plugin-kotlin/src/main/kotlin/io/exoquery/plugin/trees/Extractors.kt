@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isTypeParameter
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.superTypes
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -366,6 +367,18 @@ object Ir {
 
 
   object Call {
+
+    object NamedExtensionFunctionZeroArg {
+      context (CompileLogger) operator fun <AP : Pattern<String>, BP : Pattern<E>, E: IrExpression> get(name: AP, reciever: BP): Pattern2<AP, BP, String, E, IrCall> =
+        customPattern2("NamedExtensionFunctionZeroArg", name, reciever) { it: IrCall ->
+          val reciever = it.extensionReceiver
+          if (reciever != null && it.simpleValueArgs.size == 0) {
+            Components2(it.symbol.owner.kotlinFqName.asString(), reciever)
+          } else {
+            null
+          }
+        }
+    }
 
     context (CompileLogger) operator fun <AP : Pattern<IrCall>> get(x: AP): Pattern1<AP, IrCall, IrCall> =
       customPattern1("Ir.Call", x) { it: IrCall ->

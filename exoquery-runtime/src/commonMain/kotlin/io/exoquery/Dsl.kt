@@ -11,6 +11,7 @@ import io.exoquery.annotation.ParamCustomValue
 import io.exoquery.annotation.ParamPrimitive
 import io.exoquery.annotation.ParamStatic
 import io.exoquery.serial.ParamSerializer
+import io.exoquery.terpal.Interpolator
 import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
 import kotlinx.serialization.Contextual
@@ -53,8 +54,31 @@ interface StringSqlDsl {
 
 
 
+// !"foo bar".asValueOf<String>()
+// sql("foo bar").asValueOf<String>()
+// sql("foo bar").asPureValueOf<String>()
+// sql("foo bar").asPurePredicate()
+
+interface Interpolated {
+  fun <T> asValueOf(): T = errorCap("The `asPure` expression of the Query was not inlined")
+  fun <T> asPureValueOf(): T = errorCap("The `asPure` expression of the Query was not inlined")
+  fun asPredicate(): Boolean = errorCap("The `asPurePredicate` expression of the Query was not inlined")
+
+}
+
+// Use for interpolate blocks e.g. free("foo bar").<String>() where free("foo bar") is a FreeBlock instance
+// no values of this should ever be created (that is called a "phantom type" in various circles)
+sealed interface FreeBlock
+
 interface CapturedBlock {
   @Dsl fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
+
+  @Dsl fun free(block: String): FreeBlock = errorCap("Compile time plugin did not transform the tree")
+
+  operator fun <T> invoke(): T = errorCap("The `invoke` expression of the Query was not inlined")
+  fun <T> asPure(): T = errorCap("The `invoke` expression of the Query was not inlined")
+  fun asConditon(): Boolean = errorCap("The `invoke` expression of the Query was not inlined")
+  fun asPureConditon(): Boolean = errorCap("The `invoke` expression of the Query was not inlined")
 
   @Dsl @ParamStatic(ParamSerializer.String::class) fun param(value: String): String = errorCap("Compile time plugin did not transform the tree")
   @Dsl @ParamStatic(ParamSerializer.Char::class) fun param(value: Char): Char = errorCap("Compile time plugin did not transform the tree")

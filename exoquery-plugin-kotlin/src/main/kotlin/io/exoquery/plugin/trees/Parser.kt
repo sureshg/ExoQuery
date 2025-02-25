@@ -31,15 +31,18 @@ import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.transform.LocateableContext
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`(op)x`
+import io.exoquery.plugin.trees.ExtractorsDomain.Call.InterpolateInvoke
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`x to y`
 import io.exoquery.plugin.trees.ExtractorsDomain.IsSelectFunction
 import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
 import io.exoquery.serial.ParamSerializer
+import io.exoquery.terpal.UnzipPartsParams
 import io.exoquery.xr.*
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
+import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -469,6 +472,32 @@ object OrderParser {
 object ExpressionParser {
   // TODO need to parse interpolations
 
+  internal sealed interface Seg {
+    data class Const(val value: String) : Seg {
+      fun mergeWith(other: Const): Const = Const(value + other.value)
+    }
+    data class Expr(val expr: IrExpression) : Seg
+    companion object {
+      fun parse(expr: IrExpression): Seg =
+        when {
+          expr.isClassStrict<String>() && expr is IrConst && expr.kind == IrConstKind.String -> Const(expr.value as String)
+          else -> Expr(expr)
+        }
+    }
+    context(ParserContext, CompileLogger)
+    fun constOrFail(): Const =
+      when (this) {
+        is Const -> this
+        is Expr -> parseError("Expected a constant segment, but found an expression segment: Seg.Expr(${expr.dumpKotlinLike()})", this.expr)
+      }
+    context(ParserContext, CompileLogger)
+    fun exprOrFail(): Expr =
+      when (this) {
+        is Const -> parseError("Expected an expression segment, but found a constant segment: Seg.Const(${value})", this)
+        is Expr -> this
+      }
+  }
+
   context(ParserContext, CompileLogger) fun parseBlockStatement(expr: IrStatement): XR.Variable =
     on(expr).match(
       case(Ir.Variable[Is(), Is()]).thenThis { name, rhs ->
@@ -602,6 +631,23 @@ object ExpressionParser {
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<Params<*>>(), Is("contains"), Is()]).thenThis { head, params ->
         val cid = head.type.classId()?.toXR() ?: parseError("Could not find classId for the head of the contains call", head)
         XR.MethodCall(parse(head), "contains", listOf(parse(params)), XR.CallType.PureFunction, cid, XRType.Value, expr.loc)
+      },
+
+      case(Ir.Call.FunctionMem0[InterpolateInvoke[Is()], Is.of("invoke", "asPure", "asConditon", "asPureConditon")]).thenThis { (components), _ ->
+        val segs = components.map { Seg.parse(it) }
+        val (partsRaw, paramsRaw) =
+          UnzipPartsParams<Seg>({ it is Seg.Const }, { a, b -> (a.constOrFail()).mergeWith(a.constOrFail()) }, { Seg.Const("") })
+            .invoke(segs)
+        val parts = partsRaw.map { it.constOrFail().value }
+        val paramsExprs = paramsRaw.map { it.exprOrFail() }
+        val paramsIrs = paramsExprs.map { parse(it.expr) }
+        when (this.funName) {
+          "invoke" -> XR.Infix(parts, paramsIrs, false, false, TypeParser.of(this), expr.loc)
+          "asPure" -> XR.Infix(parts, paramsIrs, true, false, TypeParser.of(this), expr.loc)
+          "asConditon" -> XR.Infix(parts, paramsIrs, false, false, XRType.BooleanExpression, expr.loc)
+          "asPureConditon" -> XR.Infix(parts, paramsIrs, true, false, XRType.BooleanExpression, expr.loc)
+          else -> parseError("Unknown Interpolate function: ${this.funName}", expr)
+        }
       },
 
       case(Ir.Call.FunctionMem0[Is(), Is("value")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlQuery<*>>() }.then { sqlQueryIr, _ ->

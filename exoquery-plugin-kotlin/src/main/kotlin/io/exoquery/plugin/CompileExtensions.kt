@@ -287,10 +287,10 @@ context(LoggableContext) fun IrExpression.varargValues(): List<IrExpression> =
   } ?: emptyList()
 
 inline fun <reified T> IrCall.reciverIs() =
-  this.dispatchReceiver?.isClass<T>() ?: false
+  (this.extensionReceiver ?: this.dispatchReceiver)?.isClass<T>() ?: false
 
 inline fun <reified T> IrCall.reciverIs(methodName: String) =
-  this.dispatchReceiver?.isClass<T>() ?: false && this.symbol.safeName == methodName
+  (this.extensionReceiver ?: this.dispatchReceiver)?.isClass<T>() ?: false && this.symbol.safeName == methodName
 
 data class ReplacementMethodToCall(val methodToCall: String, val callerType: ChangeReciever = ChangeReciever.DoNothing) {
   companion object {

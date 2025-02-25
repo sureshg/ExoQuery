@@ -7,6 +7,7 @@ import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.transform.BinaryOperators
 import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.plugin.transform.UnaryOperators
+import io.exoquery.terpal.Interpolator
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.UnaryOperator
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
@@ -15,13 +16,8 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.classFqName
-
-// TODO Need to change all instances of FunctionMem... to return Caller as the reciver type
-//      so that we can support things like Query<Int>.avg because that inherently needs to
-//      be defined as an extension method and the BuilderExtensions.callMethod... needs to know
-//      whether it's a dispatch or extension reciver.
-//      Probably in the transforms when calling recursive transformations it will be used
-//      so it will be necessary to define ReciverCaller.transformWith as well
+import kotlin.collections.get
+import kotlin.comparisons.then
 
 object ExtractorsDomain {
 
@@ -141,10 +137,30 @@ object ExtractorsDomain {
         }
     }
 
-
-    // (SqlExpression<*>.asQuery)
-    // (SqlExpression<*>.asValue)
-    // (SqlExpression<*>.invoke)
+    object InterpolateInvoke {
+      context (CompileLogger) operator fun <BP: Pattern<List<IrExpression>>> get(terpComps: BP) =
+        customPattern1("InterpolateInvoke", terpComps) { call: IrCall ->
+          call.match(
+            // I.e. (CapturedBlock).free("foo, bar"):FreeBlock
+            // which will be part of something like:
+            // ((CapturedBlock).free("foo, bar"):FreeBlock).asPure<String>()
+            case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is("free"), Is()]).thenIfThis { _, _ -> type.isClassStrict<FreeBlock>() }.thenThis { _, arg ->
+              arg.match(
+                case(Ir.StringConcatenation[Is()]).then { components ->
+                  Components1(components)
+                },
+                case(Ir.Call.NamedExtensionFunctionZeroArg[Is("kotlin.text.trimIndent"), Ir.StringConcatenation[Is()]]).then { str, (components) ->
+                  Components1(components)
+                },
+                // it's a single string-const in this case
+                case(Ir.Const[Is()]).then { const ->
+                  Components1(listOf(const))
+                }
+              )
+            }
+          )
+        }
+      }
 
     object `x op y` {
       context (CompileLogger) operator fun <AP: Pattern<OperatorCall>> get(x: AP) =
