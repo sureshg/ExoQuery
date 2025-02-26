@@ -35,7 +35,7 @@ class TransformShowAnnotations(override val ctx: BuilderContext, val superTransf
   // parent symbols are collected in the parent context
   context(LocationContext, BuilderContext, CompileLogger)
   override fun transformBase(expression: IrCall): IrExpression {
-    val newExpression = superTransformer.visitExpression(expression)
+    val newExpression = superTransformer.recurse(expression)
     val sqlExpressionType = newExpression.type
 
     val capturedAnnot = sqlExpressionType.getAnnotation(FqName("io.exoquery.Captured")) ?:

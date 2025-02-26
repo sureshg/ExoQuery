@@ -40,7 +40,7 @@ object ParseQuery {
   context(ParserContext, CompileLogger)
   private fun processQueryLambda(head: IrExpression, lambda: IrExpression) =
     lambda.match(
-      case(Ir.FunctionExpression.withBlock[Is.Companion(), Is.Companion()]).thenThis { _, blockBody ->
+      case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { _, blockBody ->
         val headXR = parse(head)
         val firstParam = firstParam().makeIdent()
         val tailExpr = ParseExpression.parseFunctionBlockBody(blockBody)
@@ -75,19 +75,19 @@ object ParseQuery {
 
           // TODO need to make sure 1st arg is SqlQuery instance and also the owner function has a @CapturedFunction annotate
           //     (also parser should check for any IrFunction that has a @CapturedFunction annotation that doesn't have scaffolding and immediately report an error on that)
-          case(Ir.Call.FunctionUntethered2[Is.Companion(PT.io_exoquery_util_scaffoldCapFunctionQuery), Is.Companion(), Ir.Vararg[Is.Companion()]]).thenThis { sqlQueryArg, (args) ->
+          case(Ir.Call.FunctionUntethered2[Is(PT.io_exoquery_util_scaffoldCapFunctionQuery), Is(), Ir.Vararg[Is()]]).thenThis { sqlQueryArg, (args) ->
             val callExpr = this
             val sqlQueryExpr = sqlQueryArg
             val warppedQueryCall =
               sqlQueryExpr.match(
-                case(SqlQueryExpr.Uprootable[Is.Companion()]).thenThis { uprootable ->
+                case(SqlQueryExpr.Uprootable[Is()]).thenThis { uprootable ->
                   val sqlQueryIr = this
                   // Add all binds from the found SqlQuery instance, this will be truned into something like `currLifts + SqlQuery.lifts` late
                   binds.addAllParams(sqlQueryIr)
                   // Then unpack and return the XR
                   uprootable.xr // TODO catch errors here?
                 },
-                case(ExtractorsDomain.DynamicQueryCall[Is.Companion()]).then { _ ->
+                case(ExtractorsDomain.DynamicQueryCall[Is()]).then { _ ->
                   val bid = BID.Companion.new()
                   binds.addRuntime(bid, sqlQueryExpr)
                   // need to type the parse
@@ -98,7 +98,7 @@ object ParseQuery {
             XR.FunctionApply(warppedQueryCall, parsedArgs, expr.loc)
           },
 
-          case(Ir.GetValue[Is.Companion()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym->
+          case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym->
             XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR())
           },
           // If we couldn't parse the expression treat (and it is indeed a SqlQuery<*> treat it as dynamic i.e. non-uprootable
@@ -106,7 +106,7 @@ object ParseQuery {
           // if nothing else matches the expression, we need to look at it in a couple of different ways and then find out if it is a dynamic query
           // TODO When QueryMethodCall and QueryGlobalCall are introduced need to revisit this to see what happens if there is a dynamic call on a query
           //      and how to differentitate it from something that we want to capture. Perhaps we would need some kind of "query-method whitelist"
-          case(SqlQueryExpr.Uprootable[Is.Companion()]).thenThis { uprootable ->
+          case(SqlQueryExpr.Uprootable[Is()]).thenThis { uprootable ->
             val sqlQueryIr = this
             // Add all binds from the found SqlQuery instance, this will be truned into something like `currLifts + SqlQuery.lifts` late
             binds.addAllParams(sqlQueryIr)
@@ -114,10 +114,10 @@ object ParseQuery {
             uprootable.xr // TODO catch errors here?
           },
           // TODO check that the output is a SqlQuery and pass to this parser instead of expression parser?
-          case(Ir.Call.FunctionMemN[Ir.Expr.ClassOf<Function<*>>(), Is.Companion("invoke"), Is.Companion()]).thenThis { hostFunction, args ->
+          case(Ir.Call.FunctionMemN[Ir.Expr.ClassOf<Function<*>>(), Is("invoke"), Is()]).thenThis { hostFunction, args ->
             XR.FunctionApply(ParseExpression.parse(hostFunction), args.map { ParseExpression.parse(it) }, expr.loc)
           },
-          case(ExtractorsDomain.DynamicQueryCall[Is.Companion()])
+          case(ExtractorsDomain.DynamicQueryCall[Is()])
             .thenIf {
               // TODO should disable this Strict-Model by default (when the entire DSL is built out) and make this just a warning by default
               // We don't want arbitrary functions returning SqlQuery to be treated as dynamic (e.g. right now I am working on parsing for .nested
@@ -149,7 +149,7 @@ object ParseQuery {
   context(ParserContext, CompileLogger) private fun parseDslCall(expr: IrExpression): XR.Query? =
     // Note, every single instance being parsed here shuold be of SqlQuery<*>, should check for that as an entry sanity-check
     on(expr).match<XR.Query>(
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.Companion.of("map", "concatMap", "filter"), Is.Companion()]).thenThis { head, lambda ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("map", "concatMap", "filter"), Is()]).thenThis { head, lambda ->
         val (head, id, body) = processQueryLambda(head, lambda) ?: parseError("Could not parse XR.Map/ConcatMap/Filter", expr)
         when (symName) {
           "map" -> XR.Map(head, id, body, expr.loc)
@@ -158,36 +158,36 @@ object ParseQuery {
           else -> parseError("Unknown SqlQuery method call: ${symName} in: ${expr.dumpKotlinLike()}", expr)
         }
       },
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.Companion("flatMap"), Is.Companion()]).thenThis { head, lambda ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is("flatMap"), Is()]).thenThis { head, lambda ->
           lambda.match(
-            case(Ir.FunctionExpression.withReturnOnlyBlock[Is.Companion()]).thenThis { tail ->
+            case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { tail ->
               XR.FlatMap(parse(head), firstParam().makeIdent(), parse(tail), expr.loc)
             }
             // TODO for this error message need to have a advanced "mode" that will print out the RAW IR
           ) ?: parseError("SqlQuery.flatMap(...) lambdas can only be single-statement expressions, they cannot be block-lambdas like:\n${lambda.dumpKotlinLike()}\n-----------------------------------\n${lambda.dumpSimple()}", lambda)
       },
-      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.Companion.of("distinct", "nested")]).thenThis { head, _ ->
+      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("distinct", "nested")]).thenThis { head, _ ->
         when (symName) {
           "distinct" -> XR.Distinct(parse(head), expr.loc)
           "nested" -> XR.Nested(parse(head), expr.loc)
           else -> parseErrorSym(this)
         }
       },
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.Companion.of("sortedBy", "sortedByDescending"), Ir.FunctionExpression.withBlock[Is.Companion(), Is.Companion()]]).thenThis { head, (params, body) ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("sortedBy", "sortedByDescending"), Ir.FunctionExpression.withBlock[Is(), Is()]]).thenThis { head, (params, body) ->
         when (symName) {
           "sortedBy" -> XR.SortBy(parse(head), params.first().makeIdent(), ParseExpression.parseFunctionBlockBody(body), XR.Ordering.Asc, expr.loc)
           "sortedByDescending" -> XR.SortBy(parse(head), params.first().makeIdent(), ParseExpression.parseFunctionBlockBody(body), XR.Ordering.Desc, expr.loc)
           else -> parseError("Invalid sortedBy method: ${symName}", expr)
         }
       },
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.Companion.of("take", "drop"), Is.Companion()]).thenThis { head, num ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("take", "drop"), Is()]).thenThis { head, num ->
         when (symName) {
           "take" -> XR.Take(parse(head), ParseExpression.parse(num), expr.loc)
           "drop" -> XR.Drop(parse(head), ParseExpression.parse(num), expr.loc)
           else -> parseError("Invalid take/drop method: ${symName}", expr)
         }
       },
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.Companion.of("union", "unionAll", "plus"), Is.Companion()]).thenThis { head, tail ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("union", "unionAll", "plus"), Is()]).thenThis { head, tail ->
         val tailXR = parse(tail)
         when (symName) {
           "union" -> XR.Union(parse(head), tailXR, expr.loc)
@@ -196,13 +196,13 @@ object ParseQuery {
           else -> parseError("Invalid union method: ${symName}", expr)
         }
       },
-      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<CapturedBlock>(), Is.Companion("Table")]).thenThis { _, _ ->
+      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<CapturedBlock>(), Is("Table")]).thenThis { _, _ ->
         val tpe = TypeParser.ofTypeAt(this.typeArguments[0] ?: parseError("Type arguemnt of Table() call was not found>"), this.location())
         val tpeProd = tpe as? XRType.Product ?: parseError("Table<???>() call argument type must be a data-class, but was: ${tpe}", expr)
         XR.Entity(tpeProd.name, tpeProd, expr.locationXR())
       },
       // This is the select defined in the capture-block (that returns SqlQuery<T> as opposed to the top-level one which returns @Captured SqlQuery<T>.
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is.Companion("select"), Ir.FunctionExpression[Is.Companion()]]).thenThis { _, (selectLambda) ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is("select"), Ir.FunctionExpression[Is()]]).thenThis { _, (selectLambda) ->
         XR.CustomQueryRef(ParseSelectClause.parseSelectLambda(selectLambda))
       },
     )

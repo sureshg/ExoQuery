@@ -75,10 +75,10 @@ interface CapturedBlock {
 
   @Dsl fun free(block: String): FreeBlock = errorCap("Compile time plugin did not transform the tree")
 
-  operator fun <T> invoke(): T = errorCap("The `invoke` expression of the Query was not inlined")
-  fun <T> asPure(): T = errorCap("The `invoke` expression of the Query was not inlined")
-  fun asConditon(): Boolean = errorCap("The `invoke` expression of the Query was not inlined")
-  fun asPureConditon(): Boolean = errorCap("The `invoke` expression of the Query was not inlined")
+  operator fun <T> FreeBlock.invoke(): T = errorCap("The `invoke` expression of the Query was not inlined")
+  fun <T> FreeBlock.asPure(): T = errorCap("The `invoke` expression of the Query was not inlined")
+  fun FreeBlock.asConditon(): Boolean = errorCap("The `invoke` expression of the Query was not inlined")
+  fun FreeBlock.asPureConditon(): Boolean = errorCap("The `invoke` expression of the Query was not inlined")
 
   @Dsl @ParamStatic(ParamSerializer.String::class) fun param(value: String): String = errorCap("Compile time plugin did not transform the tree")
   @Dsl @ParamStatic(ParamSerializer.Char::class) fun param(value: Char): Char = errorCap("Compile time plugin did not transform the tree")

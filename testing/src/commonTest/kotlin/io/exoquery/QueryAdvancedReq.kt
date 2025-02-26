@@ -1,5 +1,4 @@
-@file:TracesEnabled(TraceType.SqlQueryConstruct::class, TraceType.SqlNormalizations::class, TraceType.Normalizations::class)
-@file:io.exoquery.annotation.ExoGoldenOverride
+@file:io.exoquery.annotation.ExoGoldenTest
 
 package io.exoquery
 

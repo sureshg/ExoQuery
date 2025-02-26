@@ -84,7 +84,14 @@ class TransformCompileQuery(override val ctx: BuilderContext, val superTransform
         val dialectType = this.typeArguments.first() ?: parseError("Need to pass a constructable dialect to the build method but no argument was provided", expr)
         val (construct, clsPackageName) = extractDialectConstructor(dialectType)
 
-        val sqlQueryExpr = superTransformer.visitExpression(sqlQueryExprRaw)
+        // If sqlQueryExprRaw is an Uprootable then we need to do superTransformer.visitCall on that which typically will happen if you call .build on a capture directly
+        // e.g. in `capture { Table<Person>() }.build<PostgresDialect>()` sqlQueryExprRaw will be the IrCall `capture { Table<Person>() }` on which we need to call the superTransformer.visitCall.
+        // In the case that sqlQueryExprRaw is some kind of expression e.g.
+        // val cap = capture { Table<Person>() }; cap.build<PostgresDialect>() then the uprootable has already been created by the variable declaration
+        // and is something like `val cap = SqlQuery(xr=...)`. That means that we need to do a TransformProjectCapture on the `cap` varaible that is being called
+        // which is invoked by the `superTransformer.visitExpression`.
+        // In both of these cases superTransformer.recurse delegates-out to the correct transformer based on the type-match of the expression.
+        val sqlQueryExpr = superTransformer.recurse(sqlQueryExprRaw)
         sqlQueryExpr.match(
           // .thenIf { _ -> false }
           case(SqlQueryExpr.Uprootable[Is()]).then { uprootable ->

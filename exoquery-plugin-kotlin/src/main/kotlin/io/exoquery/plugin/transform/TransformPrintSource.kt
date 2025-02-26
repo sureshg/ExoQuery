@@ -66,7 +66,7 @@ class TransformPrintSource(
   fun transformPrintSource(argsRaw: MatchedType) = run {
     val args = when(argsRaw) {
       is MatchedType.Single ->
-        argsRaw.copy(superTransformer.visitExpression(argsRaw.ir))
+        argsRaw.copy(superTransformer.recurse(argsRaw.ir))
       is MatchedType.Multi ->
         argsRaw.copy(superTransformer.visitBlockBody(argsRaw.irs) as IrBlockBody)
     }

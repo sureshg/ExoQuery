@@ -56,7 +56,7 @@ class TransformCapturedQuery(override val ctx: BuilderContext, val superTransfor
       // Then the `val y` needs to first be transformed into:
       // val y = capture { SqlExpression(XR.Int(123), ...).use + 1 } which will be done by TransformProjectCapture
       // which is called by the superTransformer.visitBlockBody
-      val body = superTransformer.visitExpression(bodyExpr)
+      val body = superTransformer.recurse(bodyExpr)
 
       // TODO Needs to convey SourceLocation coordinates, think I did this in terpal-sql somehow
       val p = Parser.parseQuery(body)

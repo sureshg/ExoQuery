@@ -36,11 +36,11 @@ object ParseSelectClause {
   context(ParserContext, CompileLogger) fun parseSelectLambda(lambda: IrStatement): SelectClause =
     lambda.match(
       // this typically happens when the top-level select is called
-      case(Ir.FunctionExpression.withBlockStatements[Is.Companion(), Is.Companion()]).thenThis { _, statementsFromRet ->
+      case(Ir.FunctionExpression.withBlockStatements[Is(), Is()]).thenThis { _, statementsFromRet ->
         processSelectLambda(statementsFromRet, lambda.location())
       },
       // this typiclally happens when select inside of a CapturedBlock
-      case(Ir.SimpleFunction[Is.Companion(), Is.Companion()]).thenThis { _, body ->
+      case(Ir.SimpleFunction[Is(), Is()]).thenThis { _, body ->
         processSelectLambda(body.statements, lambda.location())
       }
     ) ?: parseError("Could not parse Select Clause from: ${lambda.dumpSimple()}", lambda)
@@ -49,11 +49,11 @@ object ParseSelectClause {
   // also test case of `select { from(select { ... } }` to see how nested recursion works
   context(ParserContext, CompileLogger) fun parseSubClause(expr: IrStatement): SX =
     on(expr).match<SX>(
-      case(Ir.Variable[Is.Companion(), Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SelectClauseCapturedBlock>(), Is.Companion("from"), Is.Companion()]]).thenThis { varName, (_, table) ->
+      case(Ir.Variable[Is(), Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SelectClauseCapturedBlock>(), Is("from"), Is()]]).thenThis { varName, (_, table) ->
         val id = XR.Ident(varName, TypeParser.of(this), this.loc)
         SX.From(id, ParseQuery.parse(table))
       },
-      case(Ir.Variable[Is.Companion(), Ir.Call.FunctionMem2[ExtractorsDomain.IsSelectFunction(), Is.Companion.invoke { it == "join" || it == "joinLeft" }, Is.Companion()]]).then { varName, (_, args) ->
+      case(Ir.Variable[Is(), Ir.Call.FunctionMem2[ExtractorsDomain.IsSelectFunction(), Is { it == "join" || it == "joinLeft" }, Is()]]).then { varName, (_, args) ->
         val joinFunc = compRight
         val (onTable, joinCondLambda) = args
         val varNameIdent = XR.Ident(varName, TypeParser.of(this.comp), this.comp.loc)
@@ -64,7 +64,7 @@ object ParseSelectClause {
             else -> parseError("Unknown Join Type: ${joinFunc.symbol.safeName}", expr)
           }
         joinCondLambda.match(
-          case(Ir.FunctionExpression.withBlock[Is.Companion(), Is.Companion()]).then { lambdaParams, stmtsAndReturn ->
+          case(Ir.FunctionExpression.withBlock[Is(), Is()]).then { lambdaParams, stmtsAndReturn ->
             val lambdaParam = lambdaParams.first()
             val lambdaVarName = lambdaParam.name.asString() /* join lambda should have only one element e.g. join(Table<Addresses>()){addressesLambdaVar ->addressesLambdaVar == 123} */
             val lambdaVarIdent = XR.Ident(lambdaVarName, TypeParser.of(lambdaParam), lambdaParam.loc)
@@ -75,16 +75,16 @@ object ParseSelectClause {
         ) ?: parseError("Could not parse Join Lambda from: ${joinCondLambda.dumpSimple()}", joinCondLambda)
       },
       // where(() -> Boolean)
-      case(Ir.Call.FunctionMem1[ExtractorsDomain.IsSelectFunction(), Is.Companion("where"), Ir.FunctionExpression.withBlock[Is.Companion(), Is.Companion()]]).thenThis { _, (_, body) ->
+      case(Ir.Call.FunctionMem1[ExtractorsDomain.IsSelectFunction(), Is("where"), Ir.FunctionExpression.withBlock[Is(), Is()]]).thenThis { _, (_, body) ->
         val whereCond = ParseExpression.parseFunctionBlockBody(body)
         SX.Where(whereCond, this.loc)
       },
       // where(Boolean)
-      case(Ir.Call.FunctionMem1[ExtractorsDomain.IsSelectFunction(), Is.Companion("where"), Ir.Expr.ClassOf<Boolean>()]).thenThis { _, argValue ->
+      case(Ir.Call.FunctionMem1[ExtractorsDomain.IsSelectFunction(), Is("where"), Ir.Expr.ClassOf<Boolean>()]).thenThis { _, argValue ->
         SX.Where(ParseExpression.parse(argValue), this.loc)
       },
       // groupBy(...Any)
-      case(Ir.Call.FunctionMemVararg[ExtractorsDomain.IsSelectFunction(), Is.Companion("groupBy"), Is.Companion(), Is.Companion()]).thenThis { _, argValues ->
+      case(Ir.Call.FunctionMemVararg[ExtractorsDomain.IsSelectFunction(), Is("groupBy"), Is(), Is()]).thenThis { _, argValues ->
         val groupings = argValues.map { ParseExpression.parse(it) }
         if (groupings.size == 1) {
           SX.GroupBy(groupings.first(), this.loc)
@@ -94,7 +94,7 @@ object ParseSelectClause {
         }
       },
       // sortBy(...Pair<*, Ord>)
-      case(Ir.Call.FunctionMemVararg[ExtractorsDomain.IsSelectFunction(), Is.Companion("sortBy"), Ir.Type.ClassOfType<Pair<*, *>>(), Is.Companion()]).thenThis { _, argValues ->
+      case(Ir.Call.FunctionMemVararg[ExtractorsDomain.IsSelectFunction(), Is("sortBy"), Ir.Type.ClassOfType<Pair<*, *>>(), Is()]).thenThis { _, argValues ->
         val clausesRaw = argValues.map { ParseOrder.parseOrdTuple(it) }
         if (clausesRaw.size == 1) {
           val (expr, ord) = clausesRaw.first()

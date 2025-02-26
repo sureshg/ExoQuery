@@ -24,6 +24,18 @@ class VisitTransformExpressions(
   private val exoOptions: ExoCompileOptions
 ) : IrElementTransformerWithContext<TransformerScope>() {
 
+  context (BuilderContext)
+  fun recurse(expression: IrExpression): IrExpression =
+    when (expression) {
+      is IrCall -> visitCall(expression, transformerScope) as IrExpression
+      else -> visitExpression(expression, transformerScope) as IrExpression
+    }
+
+  fun recurse(expression: IrExpression, data: TransformerScope): IrExpression =
+    when (expression) {
+      is IrCall -> visitCall(expression, data) as IrExpression
+      else -> visitExpression(expression, data) as IrExpression
+    }
 
   // currentFile is not initialized here yet or something???
   //val sourceFinder: FindSource = FindSource(this.currentFile, exoOptions.projectDir)

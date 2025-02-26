@@ -98,7 +98,7 @@ object ParseExpression {
 
   context(ParserContext, CompileLogger) fun parseBlockStatement(expr: IrStatement): XR.Variable =
     on(expr).match(
-      case(Ir.Variable[Is.Companion(), Is.Companion()]).thenThis { name, rhs ->
+      case(Ir.Variable[Is(), Is()]).thenThis { name, rhs ->
         val irType = TypeParser.of(this)
         XR.Variable(XR.Ident(name, irType, rhs.locationXR()), parse(rhs), expr.loc)
       }
@@ -106,17 +106,17 @@ object ParseExpression {
 
   context(ParserContext, CompileLogger) fun parseBranch(expr: IrBranch): XR.Branch =
     on(expr).match(
-      case(Ir.Branch[Is.Companion(), Is.Companion()]).then { cond, then ->
+      case(Ir.Branch[Is(), Is()]).then { cond, then ->
         XR.Branch(parse(cond), parse(then), expr.loc)
       }
     ) ?: parseError("Could not parse Branch from: ${expr.dumpSimple()}")
 
   context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): XR.Expression =
     blockBody.match(
-      case(Ir.BlockBody.ReturnOnly[Is.Companion()]).then { irReturnValue ->
+      case(Ir.BlockBody.ReturnOnly[Is()]).then { irReturnValue ->
         parse(irReturnValue)
       },
-      case(Ir.BlockBody.StatementsWithReturn[Is.Companion(), Is.Companion()]).then { stmts, ret ->
+      case(Ir.BlockBody.StatementsWithReturn[Is(), Is()]).then { stmts, ret ->
           val vars = stmts.map { parseBlockStatement(it) }
           val retExpr = parse(ret)
           XR.Block(vars, retExpr, blockBody.locationXR())
@@ -126,7 +126,7 @@ object ParseExpression {
   context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Expression =
     on(expr).match<XR.Expression>(
 
-      case(Ir.Call[Is.Companion()]).thenIf { it.ownerHasAnnotation<DslFunctionCall>() || it.ownerHasAnnotation<DslNestingIgnore>() }.then { call ->
+      case(Ir.Call[Is()]).thenIf { it.ownerHasAnnotation<DslFunctionCall>() || it.ownerHasAnnotation<DslNestingIgnore>() }.then { call ->
         CallParser.parse(call).asExpr()
       },
 
@@ -135,12 +135,12 @@ object ParseExpression {
       //},
 
       // Converter functions for string e.g. toInt, toLong, etc.
-      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<String>(), Is.Companion { it.isConverterFunction() }]).then { head, method ->
+      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<String>(), Is { it.isConverterFunction() }]).then { head, method ->
         XR.MethodCall(parse(head), method, emptyList(), XR.CallType.PureFunction, CID.kotlin_String, XRType.Value, expr.loc)
       },
 
       // Numeric conversion functions toInt, toString, etc... on numeric types Int, Long, etc...
-      case(Ir.Call.FunctionMem0[Is.Companion(), Is.Companion { it.isConverterFunction() }])
+      case(Ir.Call.FunctionMem0[Is(), Is { it.isConverterFunction() }])
         .thenIf { head, _ -> head.type.classId()?.toXR()?.isNumeric() ?: false }
         .then { head, method ->
           XR.MethodCall(parse(head), method, emptyList(), XR.CallType.PureFunction, CID.kotlin_String, XRType.Value, expr.loc)
@@ -150,20 +150,20 @@ object ParseExpression {
         XR.QueryToExpr(ParseQuery.parse(expr), expr.loc)
       },
 
-      case(ExtractorsDomain.CaseClassConstructorCall[Is.Companion()]).then { data ->
+      case(ExtractorsDomain.CaseClassConstructorCall[Is()]).then { data ->
         XR.Product(data.className, data.fields.map { (name, valueOpt) -> name to (valueOpt?.let { parse(it) } ?: XR.Const.Null(expr.loc)) }, expr.loc)
       },
 
       // parse lambda in a capture block
-      case(Ir.FunctionExpression.withBlock[Is.Companion(), Is.Companion()]).thenThis { params, blockBody ->
+      case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
         XR.FunctionN(params.map { it.makeIdent() }, parseFunctionBlockBody(blockBody), expr.loc)
       },
 
-      case(Ir.Call.FunctionMemN[Ir.Expr.ClassOf<Function<*>>(), Is.Companion("invoke"), Is.Companion()]).thenThis { hostFunction, args ->
+      case(Ir.Call.FunctionMemN[Ir.Expr.ClassOf<Function<*>>(), Is("invoke"), Is()]).thenThis { hostFunction, args ->
         XR.FunctionApply(parse(hostFunction), args.map { parse(it) }, expr.loc)
       },
 
-      case(Ir.Call.FunctionMemN[Is.Companion(), Is.Companion.of("param", "paramCtx", "paramCustom"), Is.Companion()]).thenThis { _, args ->
+      case(Ir.Call.FunctionMemN[Is(), Is.of("param", "paramCtx", "paramCustom"), Is()]).thenThis { _, args ->
         val paramValue = args.first()
         val paramBindType =
           when {
@@ -192,7 +192,7 @@ object ParseExpression {
         XR.TagForParam(bid, XR.ParamType.Single, TypeParser.of(this), paramValue.loc)
       },
 
-      case(Ir.Call.FunctionMemN[Is.Companion(), Is.Companion.of("params", "paramsCtx", "paramsCustom"), Is.Companion()]).thenThis { _, args ->
+      case(Ir.Call.FunctionMemN[Is(), Is.of("params", "paramsCtx", "paramsCustom"), Is()]).thenThis { _, args ->
         val paramValue = args.first()
         val paramBindType =
           when {
@@ -233,12 +233,12 @@ object ParseExpression {
         XR.TagForParam(bid, XR.ParamType.Multi, TypeParser.ofFirstArgOfReturnTypeOf(this), paramValue.loc)
       },
 
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<Params<*>>(), Is.Companion("contains"), Is.Companion()]).thenThis { head, params ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<Params<*>>(), Is("contains"), Is()]).thenThis { head, params ->
         val cid = head.type.classId()?.toXR() ?: parseError("Could not find classId for the head of the contains call", head)
         XR.MethodCall(parse(head), "contains", listOf(parse(params)), XR.CallType.PureFunction, cid, XRType.Value, expr.loc)
       },
 
-      case(Ir.Call.FunctionMem0[ExtractorsDomain.Call.InterpolateInvoke[Is.Companion()], Is.Companion.of("invoke", "asPure", "asConditon", "asPureConditon")]).thenThis { (components), _ ->
+      case(Ir.Call.FunctionMem0[ExtractorsDomain.Call.InterpolateInvoke[Is()], Is.of("invoke", "asPure", "asConditon", "asPureConditon")]).thenThis { (components), _ ->
         val segs = components.map { Seg.parse(it) }
         val (partsRaw, paramsRaw) =
           UnzipPartsParams<Seg>({ it is Seg.Const }, { a, b -> (a.constOrFail()).mergeWith(a.constOrFail()) }, { Seg.Const("") })
@@ -255,14 +255,14 @@ object ParseExpression {
         }
       },
 
-      case(Ir.Call.FunctionMem0[Is.Companion(), Is.Companion("value")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlQuery<*>>() }.then { sqlQueryIr, _ ->
+      case(Ir.Call.FunctionMem0[Is(), Is("value")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlQuery<*>>() }.then { sqlQueryIr, _ ->
         XR.QueryToExpr(ParseQuery.parse(sqlQueryIr), sqlQueryIr.loc)
       },
       // Now the same for SqlExpression
       // TODO check that the extension reciever is Ir.Expr.ClassOf<SqlExpression<*>> (and the dispatch method is CapturedBlock)
-      case(Ir.Call.FunctionMem0[Is.Companion(), Is.Companion("use")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlExpression<*>>() }.then { sqlExprIr, _ ->
+      case(Ir.Call.FunctionMem0[Is(), Is("use")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlExpression<*>>() }.then { sqlExprIr, _ ->
         sqlExprIr.match(
-          case(SqlExpressionExpr.Uprootable[Is.Companion()]).then { uprootable ->
+          case(SqlExpressionExpr.Uprootable[Is()]).then { uprootable ->
             // Add all binds from the found SqlExpression instance, this will be truned into something like `currLifts + SqlExpression.lifts` late
             binds.addAllParams(sqlExprIr)
             // Then unpack and return the XR
@@ -306,31 +306,31 @@ object ParseExpression {
       //},
 
       // Binary Operators
-      case(ExtractorsDomain.Call.`x op y`[Is.Companion()]).thenThis { opCall ->
+      case(ExtractorsDomain.Call.`x op y`[Is()]).thenThis { opCall ->
         val (x, op, y) = opCall
         XR.BinaryOp(parse(x), op, parse(y), expr.loc)
       },
       // Unary Operators
-      case(ExtractorsDomain.Call.`(op)x`[Is.Companion()]).thenThis { opCall ->
+      case(ExtractorsDomain.Call.`(op)x`[Is()]).thenThis { opCall ->
         val (x, op) = opCall
         XR.UnaryOp(op, parse(x), expr.loc)
       },
 
-      case(ExtractorsDomain.Call.`x to y`[Is.Companion(), Is.Companion()]).thenThis { x, y ->
+      case(ExtractorsDomain.Call.`x to y`[Is(), Is()]).thenThis { x, y ->
         XR.Product.Tuple(parse(x), parse(y), expr.loc)
       },
 
       // Other situations where you might have an identifier which is not an SqlVar e.g. with variable bindings in a Block (inside an expression)
-      case(Ir.GetValue[Is.Companion()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym ->
+      case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym ->
         XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR()) // this.symbol.owner.type
       },
-      case(Ir.Const[Is.Companion()]).thenThis {
+      case(Ir.Const[Is()]).thenThis {
         parseConst(this)
       },
 
       // TODO need to check for @SerialName("name_override") annotations from the Kotlin seriazation API and override the name
       //      (the parser also needs to be able to generated these based on a mapping)
-      case(Ir.Call.Property[Is.Companion(), Is.Companion()]).then { expr, name ->
+      case(Ir.Call.Property[Is(), Is()]).then { expr, name ->
         XR.Property(parse(expr), name, XR.Visibility.Visible, expr.loc)
       },
 
@@ -341,10 +341,10 @@ object ParseExpression {
       //   XR.BinaryOp(parse(a), parseSymbol(this.symbol), parse(b))
       // }
       // ,
-      case(Ir.Block[Is.Companion(), Is.Companion()]).then { stmts, ret ->
+      case(Ir.Block[Is(), Is()]).then { stmts, ret ->
         XR.Block(stmts.map { parseBlockStatement(it) }, parse(ret), expr.loc)
       },
-      case(Ir.When[Is.Companion()]).thenThis { cases ->
+      case(Ir.When[Is()]).thenThis { cases ->
         val elseBranch = cases.find { it is IrElseBranch }?.let { parseBranch(it) }
         val casesAst = cases.filterNot { it is IrElseBranch }.map { parseBranch(it) }
         val allReturnsAreBoolean = cases.all { it.result.type.isClass<Boolean>() }
