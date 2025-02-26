@@ -95,7 +95,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         select {
           val p = from(people)
           val r = join(Table<Robot>()) { r -> p.id == r.ownerId }
-          where(p.name == "Joe")
+          where { p.name == "Joe" }
           p.name
         }
 

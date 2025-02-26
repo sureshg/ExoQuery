@@ -188,7 +188,6 @@ interface SelectClauseCapturedBlock: CapturedBlock {
   // TODO play around with this variant in the future
   // fun <T?> joinRight(onTable: SqlQuery<T>, condition: (T?) -> Boolean): T? = error("The `joinRight` expression of the Query was not inlined")
 
-  @Dsl fun where(condition: Boolean): Unit = errorCap("The `where` expression of the Query was not inlined")
   @Dsl fun where(condition: () -> Boolean): Unit = errorCap("The `where` expression of the Query was not inlined")
   @Dsl fun groupBy(vararg groupings: Any): Unit = errorCap("The `groupBy` expression of the Query was not inlined")
   @Dsl fun sortBy(vararg orderings: Pair<*, Ord>): Unit = errorCap("The `sortBy` expression of the Query was not inlined")

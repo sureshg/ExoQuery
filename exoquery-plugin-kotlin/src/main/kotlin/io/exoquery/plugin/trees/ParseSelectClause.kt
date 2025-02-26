@@ -27,7 +27,7 @@ object ParseSelectClause {
     val retXR = ParseExpression.parse((ret as IrReturn).value)
     if (ret !is IrReturn) parseError("The last statement in a select-clause must be a return statement", ret) // TODO provide example in the error
     val statementsFrom = statementsFromRet.dropLast(1)
-    if (statementsFrom.isEmpty()) SelectClause.Companion.justSelect(retXR, loc.toLocationXR())
+    if (statementsFrom.isEmpty()) SelectClause.justSelect(retXR, loc.toLocationXR())
 
     val statementsToParsed = statementsFrom.map { parseSubClause(it) to it }
     return ValidateAndOrganize(statementsToParsed, retXR)

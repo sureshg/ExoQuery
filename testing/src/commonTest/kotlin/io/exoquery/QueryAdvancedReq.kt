@@ -1,5 +1,5 @@
 @file:TracesEnabled(TraceType.SqlQueryConstruct::class, TraceType.SqlNormalizations::class, TraceType.Normalizations::class)
-@file:io.exoquery.annotation.ExoGoldenTest
+@file:io.exoquery.annotation.ExoGoldenOverride
 
 package io.exoquery
 
@@ -41,14 +41,112 @@ class QueryAdvancedReq : GoldenSpec(QueryAdvancedReqGolden, {
       }
     people.buildPretty<PostgresDialect>("select clauses from(nested)").shouldBeGolden()
   }
-  "select clauses join(nested)" {
-
+  "select clauses with join(select-clause)" {
+    val people =
+      select {
+        val p = from(Table<Person>())
+        val ar = join(
+          select {
+            val a = from(Table<Address>())
+            val r = join(Table<Robot>()) { r -> r.ownerId == p.id && r.ownerId == a.ownerId }
+            a to r
+          }
+        ) { a -> a.first.ownerId == p.id }
+        p to ar
+      }
+    people.buildPretty<PostgresDialect>("select clauses with join(select-clause)").shouldBeGolden()
   }
-  "capture + select-clause + filters" {
-
+  "select clauses from(select-clause) + join(select-clause)" {
+    // select from(person(name == "Joe").join(robot)), join(person(name == "Jim").join(address))
+    val people =
+      select {
+        val pr = from(
+          select {
+            val p = from(Table<Person>().filter { p -> p.name == "Joe" })
+            val r = join(Table<Robot>()) { r -> r.ownerId == p.id }
+            p to r
+          }
+        )
+        val pa = join(
+          select {
+            val p = from(Table<Person>().filter { p -> p.name == "Jim" })
+            val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+            p to a
+          }
+        ) { a -> a.first.id == pr.first.id }
+        pr to pa
+      }
+    people.buildPretty<PostgresDialect>("select clauses from(select-clause) + join(select-clause)").shouldBeGolden()
   }
-  "multiple from-clauses" {
-
+  "select clauses from(person.map(Robot)) + join" {
+    val people =
+      select {
+        val p = from(Table<Person>().map { p -> Robot(p.id, p.name, p.name) })
+        val r = join(Table<Address>()) { a -> a.ownerId == p.ownerId }
+        p to r
+      }
+    people.buildPretty<PostgresDialect>("select clauses from(person.map(Robot)) + join").shouldBeGolden()
+  }
+  "select clauses join(capture+map)" {
+    val people =
+      select {
+        val p = from(Table<Person>())
+        val r = join(capture { Table<Robot>().map { r -> r.ownerId } }) { r -> r == p.id }
+        p to r
+      }
+    people.buildPretty<PostgresDialect>("select clauses join(capture+map)").shouldBeGolden()
+  }
+  "capture + select-clause + filters afterward" {
+    val people = capture {
+      Table<Person>().flatMap { p ->
+        select {
+          val a = from(Table<Address>().filter { a -> a.ownerId == p.id })
+          val r = join(Table<Robot>()) { r -> r.ownerId == p.id }
+          Triple(p, a, r)
+        }
+      }
+    }
+    people.buildPretty<PostgresDialect>("capture + select-clause + filters afterward").shouldBeGolden()
+  }
+  "capture + select-clause (+nested) + filters afterward" {
+    val people = capture {
+      Table<Person>().flatMap { p ->
+        select {
+          val a = from(Table<Address>().filter { a -> a.ownerId == p.id }.nested())
+          val r = join(Table<Robot>()) { r -> r.ownerId == p.id }
+          Triple(p, a, r)
+        }
+      }
+    }
+    people.buildPretty<PostgresDialect>("capture + select-clause (+nested) + filters afterward").shouldBeGolden()
+  }
+  "multiple from-clauses - no filters" {
+    val people =
+      select {
+        val p = from(Table<Person>())
+        val a = from(Table<Address>())
+        p to a
+      }
+    people.buildPretty<PostgresDialect>("multiple from-clauses - no filters").shouldBeGolden()
+  }
+  "multiple from-clauses - filter on 2nd" {
+    val people =
+      select {
+        val p = from(Table<Person>())
+        val a = from(Table<Address>().filter { a -> a.ownerId == p.id })
+        p to a
+      }
+    people.buildPretty<PostgresDialect>("multiple from-clauses - filter on 2nd").shouldBeGolden()
+  }
+  "multiple from-clauses - filter on where" {
+    val people =
+      select {
+        val p = from(Table<Person>())
+        val a = from(Table<Address>())
+        where { p.id == a.ownerId }
+        p to a
+      }
+    people.buildPretty<PostgresDialect>("multiple from-clauses - filter on where").shouldBeGolden()
   }
 
 
