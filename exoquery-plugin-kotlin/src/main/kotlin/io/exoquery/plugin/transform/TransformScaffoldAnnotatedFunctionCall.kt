@@ -3,7 +3,6 @@ package io.exoquery.plugin.transform
 import io.exoquery.annotation.CapturedFunction
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
 import io.exoquery.plugin.trees.simpleValueArgs
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
@@ -18,7 +17,7 @@ import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.makeNullable
 
 
-context(LocationContext, BuilderContext, CompileLogger)
+context(CX.Scope, CX.Builder)
 fun IrCall.zeroisedArgs(): IrCall {
   val call = this
   return with (builder) {
@@ -31,7 +30,7 @@ fun IrCall.zeroisedArgs(): IrCall {
   }
 }
 
-context(LocationContext, BuilderContext, CompileLogger)
+context(CX.Scope, CX.Builder)
 fun buildScaffolding(zeroisedCall: IrExpression, scaffoldType: IrType, originalArgs: List<IrExpression?>): IrExpression {
   var argsAsVararg = builder.irVararg(pluginCtx.symbols.any.defaultType.makeNullable(), originalArgs.map { it ?: builder.irNull() })
   val args = listOf(zeroisedCall) + argsAsVararg
@@ -39,14 +38,14 @@ fun buildScaffolding(zeroisedCall: IrExpression, scaffoldType: IrType, originalA
 }
 
 
-class TransformScaffoldAnnotatedFunctionCall(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
-  context(BuilderContext, CompileLogger)
-  override fun matchesBase(call: IrCall): Boolean =
+class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun matches(call: IrCall): Boolean =
     call.symbol.owner is IrSimpleFunction && call.symbol.owner.hasAnnotation<CapturedFunction>()
 
 
-  context(LocationContext, BuilderContext, CompileLogger)
-  override fun transformBase(call: IrCall): IrExpression {
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun transform(call: IrCall): IrExpression {
     val originalArgs = call.simpleValueArgs
     val zeroizedCallRaw = call.zeroisedArgs()
 
@@ -82,7 +81,7 @@ class TransformScaffoldAnnotatedFunctionCall(override val ctx: BuilderContext, v
     // And the parser will know that `joes` is a pluckable function and create the following:
     //   val drivingJoes = SqlQuery(Apply(Tag(123), listOf(People.filterAge)), runtimes={Tag(123)->joes})
 
-    val zeroizedCall = (TransformProjectCapture(ctx, superTransformer).transform(zeroizedCallRaw) ?: zeroizedCallRaw)
+    val zeroizedCall = (TransformProjectCapture(superTransformer).transform(zeroizedCallRaw) ?: zeroizedCallRaw)
 
     // Note that the one case that we haven't considered aboive is where the argument to the function call i.e. People.filterAge
     // itself is a uprootable variable for example:
@@ -96,7 +95,7 @@ class TransformScaffoldAnnotatedFunctionCall(override val ctx: BuilderContext, v
     //   val drivingJoes = scaffoldCapFunctionQuery(SqlQuery((people)=>people.filterJoe <- i.e. `joes`), args=[SqlQuery(xr=People.filterAge)])
     //   (and if there are any parameters it it the argument becomes:
     //    args=[SqlQuery(xr=People.filterAge), params=drivingPeople.params])
-    val projectedArgs = originalArgs.map { arg -> arg?.let{ TransformProjectCapture(ctx, superTransformer).transform(it) ?: it } }
+    val projectedArgs = originalArgs.map { arg -> arg?.let{ TransformProjectCapture(superTransformer).transform(it) ?: it } }
 
     //val zeroizedCall = zeroizedCallRaw as IrCall
 

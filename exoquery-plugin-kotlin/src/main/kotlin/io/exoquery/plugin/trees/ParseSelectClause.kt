@@ -10,6 +10,7 @@ import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.toLocationXR
+import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`x to y`
 import io.exoquery.xr.SX
 import io.exoquery.xr.SelectClause
@@ -20,7 +21,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrReturn
 
 object ParseSelectClause {
-  context(ParserContext, CompileLogger) fun processSelectLambda(statementsFromRet: List<IrStatement>, loc: CompilerMessageSourceLocation): SelectClause {
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun processSelectLambda(statementsFromRet: List<IrStatement>, loc: CompilerMessageSourceLocation): SelectClause {
     if (statementsFromRet.isEmpty()) parseError("A select-clause usually should have two statements, a from(query) and an output. This one has neither", loc) // TODO provide example in the error
     if (statementsFromRet.last() !is IrReturn) parseError("A select-clause must return a plain (i.e. not SqlQuery) value.", loc)
     val ret = statementsFromRet.last()
@@ -33,7 +34,7 @@ object ParseSelectClause {
     return ValidateAndOrganize(statementsToParsed, retXR)
   }
 
-  context(ParserContext, CompileLogger) fun parseSelectLambda(lambda: IrStatement): SelectClause =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun parseSelectLambda(lambda: IrStatement): SelectClause =
     lambda.match(
       // this typically happens when the top-level select is called
       case(Ir.FunctionExpression.withBlockStatements[Is(), Is()]).thenThis { _, statementsFromRet ->
@@ -47,7 +48,7 @@ object ParseSelectClause {
 
   // need to test case of `select { from(x.map(select { ... })) }` to see how nested recursion works
   // also test case of `select { from(select { ... } }` to see how nested recursion works
-  context(ParserContext, CompileLogger) fun parseSubClause(expr: IrStatement): SX =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun parseSubClause(expr: IrStatement): SX =
     on(expr).match<SX>(
       case(Ir.Variable[Is(), Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SelectClauseCapturedBlock>(), Is("from"), Is()]]).thenThis { varName, (_, table) ->
         val id = XR.Ident(varName, TypeParser.of(this), this.loc)
@@ -110,14 +111,14 @@ object ParseSelectClause {
 
   object ParseOrder {
     // Can either be `x to Ord` or Pair(x, Ord)
-    context(ParserContext, CompileLogger) fun parseOrdTuple(expr: IrExpression): Pair<XR.Expression, XR.Ordering> =
+    context(CX.Scope, CX.Parsing, CX.Symbology) fun parseOrdTuple(expr: IrExpression): Pair<XR.Expression, XR.Ordering> =
       expr.match(
         case(`x to y`[Is(), Is()]).thenThis { property, ord ->
           ParseExpression.parse(property) to parseOrd(ord)
         }
       ) ?: parseError("Could not parse a proper ordering from the expression: ${expr.dumpSimple()}. Orderings must always come in the form `property to Ord` for example `person.name to Desc`.", expr)
 
-    context(ParserContext, CompileLogger) fun parseOrd(expr: IrExpression): XR.Ordering =
+    context(CX.Scope, CX.Parsing, CX.Symbology) fun parseOrd(expr: IrExpression): XR.Ordering =
       expr.match(
         case(Ir.Expr.ClassOf<Ord.Asc>()).then { XR.Ordering.Asc },
         case(Ir.Expr.ClassOf<Ord.Desc>()).then { XR.Ordering.Desc },

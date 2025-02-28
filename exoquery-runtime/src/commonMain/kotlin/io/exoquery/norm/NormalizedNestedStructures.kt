@@ -66,7 +66,7 @@ class NormalizeNestedStructures(val normalize: StatelessTransformer) {
         is FlatGroupBy -> FlatGroupBy.cs(normalize(by)).nullIfSameAs(q)
         is FlatSortBy -> FlatSortBy.cs(normalize(by), ordering).nullIfSameAs(q)
         // Not sure why Quill didn't normalize Infixes (maybe it didn't matter because normalization is mainly for XR.Query)
-        is Infix -> Infix.cs(parts, params.map { normalize(it) }).nullIfSameAs(q)
+        is Free -> Free.cs(parts, params.map { normalize(it) }).nullIfSameAs(q)
         is ExprToQuery -> null
         is TagForSqlQuery -> null
         is CustomQueryRef -> CustomQueryRef.cs(customQuery.handleStatelessTransform(normalize)).nullIfSameAs(q)

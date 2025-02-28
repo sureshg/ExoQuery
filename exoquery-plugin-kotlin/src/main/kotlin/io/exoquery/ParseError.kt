@@ -5,10 +5,7 @@ import io.exoquery.plugin.printing.Messages
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.source
 import io.exoquery.plugin.symName
-import io.exoquery.plugin.transform.BuilderContext
-import io.exoquery.plugin.transform.LocateableContext
-import io.exoquery.plugin.trees.LocationContext
-import io.exoquery.plugin.trees.ParserContext
+import io.exoquery.plugin.transform.CX
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFile
@@ -21,8 +18,9 @@ fun liftingError(msg: String): Nothing = throw LiftingError(msg)
 
 class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) : Exception(msg) {
   companion object {
+    context(CX.Scope)
     fun withFullMsg(msg: String, element: IrElement, file: IrFile, location: CompilerMessageSourceLocation): ParseError {
-      val fullMsg: String = with (LocateableContext.makeLite(file)) {
+      val fullMsg: String = run {
         val expressionPart =
           element.source()?.let { src ->
             """|
@@ -46,11 +44,10 @@ fun parseError(msg: String, location: CompilerMessageSourceLocation? = null): No
 
 fun parseErrorFromType(msg: String, location: CompilerMessageSourceLocation): Nothing = throw ParseError(io.exoquery.plugin.logging.Messages.TypeParseErrorMsg(msg), location)
 
-context(LocateableContext)
+context(CX.Scope)
 fun parseErrorFromType(msg: String, expr: IrElement): Nothing = throw throw ParseError.withFullMsg(io.exoquery.plugin.logging.Messages.TypeParseErrorMsg(msg), expr, currentFile, expr.location())
 
-context(LocateableContext) fun parseError(msg: String, expr: IrElement): Nothing = throw ParseError.withFullMsg(msg, expr, currentFile, expr.location())
-context(BuilderContext) fun builderParseError(msg: String, expr: IrElement): Nothing = throw ParseError.withFullMsg(msg, expr, currentFile, expr.location(currentFile.fileEntry))
+context(CX.Scope) fun parseError(msg: String, expr: IrElement): Nothing = throw ParseError.withFullMsg(msg, expr, currentFile, expr.location())
 
-context(LocateableContext) fun parseErrorSym(expr: IrCall): Nothing =
+context(CX.Scope) fun parseErrorSym(expr: IrCall): Nothing =
   throw ParseError.withFullMsg("Invalid function name or symbol: ${expr.symName}", expr, currentFile, expr.location())

@@ -5,23 +5,22 @@ import io.decomat.case
 import io.decomat.on
 import io.exoquery.parseError
 import io.exoquery.plugin.trees.*
-import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 
-class TransformCapturedQuery(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+class TransformCapturedQuery(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
   private val fqn: String = "io.exoquery.capture"
 
-  context(BuilderContext, CompileLogger)
-  override fun matchesBase(expression: IrCall): Boolean =
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun matches(expression: IrCall): Boolean =
     expression.symbol.owner.kotlinFqName.asString().let { it == fqn }
 
   // parent symbols are collected in the parent context
-  context(LocationContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrCall): IrExpression {
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun transform(expression: IrCall): IrExpression {
     val (xr, dynamics) = parseCapturedQuery(expression, superTransformer)
 
     val paramsExprModel = dynamics.makeParams()
@@ -38,7 +37,7 @@ class TransformCapturedQuery(override val ctx: BuilderContext, val superTransfor
   }
 
   companion object {
-    context(LocationContext, BuilderContext, CompileLogger)
+    context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
     fun parseCapturedQuery(expression: IrCall, superTransformer: VisitTransformExpressions)  = run {
       val bodyExpr =
         on(expression).match(

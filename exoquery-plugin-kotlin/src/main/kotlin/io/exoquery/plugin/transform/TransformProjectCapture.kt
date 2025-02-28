@@ -10,7 +10,6 @@ import io.exoquery.plugin.isClass
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.trees.Ir
-import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.SqlExpressionExpr
 import io.exoquery.plugin.trees.SqlQueryExpr
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
@@ -20,8 +19,9 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
-class TransformProjectCapture(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): FalliableTransformer<IrExpression>() {
+class TransformProjectCapture(val superTransformer: VisitTransformExpressions): FalliableTransformer<IrExpression>() {
 
+  context(CX.Scope, CX.Builder)
   private fun IrExpression.isContainerOfXR(): Boolean =
     this.type.isClass<SqlExpression<*>>() || this.type.isClass<SqlQuery<*>>()
 
@@ -30,6 +30,7 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
     data object Query: ExprType
   }
 
+  context(CX.Scope, CX.Builder, CX.Symbology)
   private fun IrExpression.exprTypeOf(): ExprType =
     when {
       this.type.isClass<SqlExpression<*>>() -> ExprType.Expr
@@ -38,12 +39,12 @@ class TransformProjectCapture(override val ctx: BuilderContext, val superTransfo
       else -> throw IllegalStateException("The expression is not a SqlExpression or SqlQuery")
     }
 
-  context(BuilderContext, CompileLogger)
-  override fun matchesBase(expression: IrExpression): Boolean =
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun matches(expression: IrExpression): Boolean =
     expression.isContainerOfXR()
 
-  context(LocationContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrExpression): IrExpression? {
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun transform(expression: IrExpression): IrExpression? {
     val exprType = expression.exprTypeOf()
     return expression.match(
       // Transform calls to @CapturedFunction so:

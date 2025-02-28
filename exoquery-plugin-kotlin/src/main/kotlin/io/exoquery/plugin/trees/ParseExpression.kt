@@ -26,11 +26,13 @@ import io.exoquery.plugin.loc
 import io.exoquery.plugin.location
 import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.logging.Messages.ValueLookupComingFromExternalInExpression
 import io.exoquery.plugin.ownerHasAnnotation
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.show
 import io.exoquery.plugin.toXR
+import io.exoquery.plugin.transform.CX
 import io.exoquery.serial.ParamSerializer
 import io.exoquery.terpal.UnzipPartsParams
 import io.exoquery.xr.`+and+`
@@ -53,6 +55,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrElseBranch
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isBoolean
 import org.jetbrains.kotlin.ir.types.isChar
@@ -82,13 +85,13 @@ object ParseExpression {
           else -> Expr(expr)
         }
     }
-    context(ParserContext, CompileLogger)
+    context(CX.Scope, CX.Parsing, CX.Symbology)
     fun constOrFail(): Const =
       when (this) {
         is Const -> this
         is Expr -> parseError("Expected a constant segment, but found an expression segment: Seg.Expr(${expr.dumpKotlinLike()})", this.expr)
       }
-    context(ParserContext, CompileLogger)
+    context(CX.Scope, CX.Parsing, CX.Symbology)
     fun exprOrFail(): Expr =
       when (this) {
         is Const -> parseError("Expected an expression segment, but found a constant segment: Seg.Const(${value})")
@@ -96,7 +99,7 @@ object ParseExpression {
       }
   }
 
-  context(ParserContext, CompileLogger) fun parseBlockStatement(expr: IrStatement): XR.Variable =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun parseBlockStatement(expr: IrStatement): XR.Variable =
     on(expr).match(
       case(Ir.Variable[Is(), Is()]).thenThis { name, rhs ->
         val irType = TypeParser.of(this)
@@ -104,14 +107,14 @@ object ParseExpression {
       }
     ) ?: parseError("Could not parse Ir Variable statement from:\n${expr.dumpSimple()}")
 
-  context(ParserContext, CompileLogger) fun parseBranch(expr: IrBranch): XR.Branch =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun parseBranch(expr: IrBranch): XR.Branch =
     on(expr).match(
       case(Ir.Branch[Is(), Is()]).then { cond, then ->
         XR.Branch(parse(cond), parse(then), expr.loc)
       }
     ) ?: parseError("Could not parse Branch from: ${expr.dumpSimple()}")
 
-  context(ParserContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): XR.Expression =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun parseFunctionBlockBody(blockBody: IrBlockBody): XR.Expression =
     blockBody.match(
       case(Ir.BlockBody.ReturnOnly[Is()]).then { irReturnValue ->
         parse(irReturnValue)
@@ -123,7 +126,7 @@ object ParseExpression {
         }
     ) ?: parseError("Could not parse IrBlockBody:\n${blockBody.dumpKotlinLike()}")
 
-  context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Expression =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun parse(expr: IrExpression): XR.Expression =
     on(expr).match<XR.Expression>(
 
       case(Ir.Call[Is()]).thenIf { it.ownerHasAnnotation<DslFunctionCall>() || it.ownerHasAnnotation<DslNestingIgnore>() }.then { call ->
@@ -247,10 +250,10 @@ object ParseExpression {
         val paramsExprs = paramsRaw.map { it.exprOrFail() }
         val paramsIrs = paramsExprs.map { parse(it.expr) }
         when (this.funName) {
-          "invoke" -> XR.Infix(parts, paramsIrs, false, false, TypeParser.of(this), expr.loc)
-          "asPure" -> XR.Infix(parts, paramsIrs, true, false, TypeParser.of(this), expr.loc)
-          "asConditon" -> XR.Infix(parts, paramsIrs, false, false, XRType.BooleanExpression, expr.loc)
-          "asPureConditon" -> XR.Infix(parts, paramsIrs, true, false, XRType.BooleanExpression, expr.loc)
+          "invoke" -> XR.Free(parts, paramsIrs, false, false, TypeParser.of(this), expr.loc)
+          "asPure" -> XR.Free(parts, paramsIrs, true, false, TypeParser.of(this), expr.loc)
+          "asConditon" -> XR.Free(parts, paramsIrs, false, false, XRType.BooleanExpression, expr.loc)
+          "asPureConditon" -> XR.Free(parts, paramsIrs, true, false, XRType.BooleanExpression, expr.loc)
           else -> parseError("Unknown Interpolate function: ${this.funName}", expr)
         }
       },
@@ -275,36 +278,6 @@ object ParseExpression {
           XR.TagForSqlExpression(bid, TypeParser.of(sqlExprIr), sqlExprIr.loc)
         }
       },
-
-      /*
-      case(Ir.Call.FunctionMem0[Is(), Is("use")]).thenIf { calledFrom, _ -> calledFrom is IrCall && calledFrom.type.isClass<io.exoquery.SqlExpression<*>>() }.thenThis { calledFrom, _ ->
-        //sym.owner.match(
-        //  case(Ir.Variable[Is(), SqlExpressionExpr.Uprootable[Is()]]).thenThis { varName, (uprootable) ->
-        //    error("----------------- Got to Owner of ------------\n${uprootable.xr.show()}")
-        //    uprootable.xr
-        //  }
-        //)
-
-        error("""
-          |------------- Get of SqlExpression -------------
-          |${calledFrom.dumpKotlinLike()}
-          |------- with IR: --------
-          |${calledFrom.dumpSimple()}
-          |-----------------------------------------------
-          |with Owner :
-          |${(calledFrom as IrCall).symbol.owner.dumpKotlinLike()}
-          |------- with Owner IR: --------
-          |${(calledFrom as IrCall).symbol.owner.dumpSimple()}
-          """.trimMargin())
-        XR.Const.String("foo")
-      },
-       */
-
-      //case(Ir.Call.FunctionMem0[Is(), Is("use")]).then { v, _ ->
-      //  error("------------ Calling Use Function ---------\n${v.dumpKotlinLike()}")
-      //  XR.Const.String("foo")
-      //},
-
       // Binary Operators
       case(ExtractorsDomain.Call.`x op y`[Is()]).thenThis { opCall ->
         val (x, op, y) = opCall
@@ -376,42 +349,15 @@ object ParseExpression {
           XR.When(casesAst, elseBranchOrLast.then, expr.loc)
         }
       },
-      // I.e. a physical lambda applied in an expression e.g:
-      // captureValue { { x: Int -> x + 1 } }
-      //case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, blockBody ->
-      //  XR.FunctionN(params.map { it.makeIdent() }, parseFunctionBlockBody(blockBody), expr.loc)
-      //},
+    ) ?: run {
+      val additionalHelp =
+        when (expr) {
+          is IrGetValue -> ValueLookupComingFromExternalInExpression(expr)
+          else -> ""
+        }
 
-
-      // Need to allow possibility of nulls here because even simple things like String.split can have nulls (i.e. for the 2nd/3rd args)
-//      case(Ir.Call.FunctionMemAllowNulls[Is(), Is()]).thenIfThis { caller, args ->
-//        methodWhitelist.containsMethod(symbol.safeName)
-//      }.thenThis { caller, args ->
-//        val methodCallName = XR.MethodCallName(symbol.fqNameXR(), caller.reciver.type.fqNameXR())
-//        if (!methodWhitelist.contains(methodCallName))
-//          throwParseErrorMsg(expr, "The expression was not in the whitelist.", "The expression was: \n${methodCallName}")
-//
-//        fun parseArg(expr: IrExpression): List<XR.Expression> =
-//          when (expr) {
-//            is IrVararg -> {
-//              expr.elements.toList().map { elem ->
-//                when (elem) {
-//                  is IrExpression -> parse(elem)
-//                  else -> throwParseErrorMsg(elem, "Invalid Variadic Element")
-//                }
-//              }
-//            }
-//            else -> listOf(parse(expr))
-//          }
-//
-//        XR.MethodCall(
-//          parse(caller.reciver), methodCallName, args.flatMap { arg -> arg?.let { parseArg(it) } ?: listOf(XR.Const.Null(locationXR())) },
-//          TypeParser.of(symbol.owner), locationXR()
-//        )
-//      },
-    ) ?: parseError("Could not parse the expression.", expr)
-
-
+      parseError("Could not parse the expression." + (if (additionalHelp.isNotEmpty()) "\n${additionalHelp}" else ""), expr)
+    }
 
   private fun getSerializerForType(type: IrType): ClassId? =
     when {
@@ -429,27 +375,7 @@ object ParseExpression {
       else -> null
     }
 
-//  fun IrSimpleFunctionSymbol.fqNameXR() =
-//    XR.FqName(this.owner.parent.kotlinFqName.toString(), this.safeName)
-//
-//  fun IrType.fqNameXR() =
-//    this.classFqName?.let { name ->
-//      XR.FqName(name.parent().toString(), name.shortName().asString())
-//    } ?: parseError("Could not get the classFqName for the type: ${this.dumpKotlinLike()}")
-
-
-  context (CompileLogger, ParserContext) fun throwParseErrorMsg(expr: IrElement, heading: String = "Could not parse expression from", additionalMsg: String = ""): Nothing {
-    parseError(
-      """|${expr.location().show()}}
-         |======= ${heading}: =======
-         |${expr.dumpKotlinLike()}
-         |--------- With the Tree ---------
-         |${expr.dumpSimple()}
-      """.trimMargin() + if (additionalMsg != "") "\n" + "--------- Additional Data ---------\n" + additionalMsg else ""
-    )
-  }
-
-  context (ParserContext, CompileLogger) fun parseConst(irConst: IrConst): XR.Expression =
+  context(CX.Scope) fun parseConst(irConst: IrConst): XR.Expression =
     if (irConst.value == null) XR.Const.Null(irConst.loc)
     else when (irConst.kind) {
       IrConstKind.Null -> XR.Const.Null(irConst.loc)

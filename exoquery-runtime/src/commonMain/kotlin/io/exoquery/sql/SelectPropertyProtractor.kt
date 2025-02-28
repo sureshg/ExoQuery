@@ -112,7 +112,7 @@ data class SelectPropertyProtractor(val from: List<FromContext>) {
           else              -> listOf(id to listOf())
         }
       },
-      // Assuming a property contains only an Ident, Infix or Constant at this point
+      // Assuming a property contains only an Ident, Free or Constant at this point
       // and all situations where there is a case-class, tuple, etc... inside have already been beta-reduced
       case(PropertyMatryoshka[Core(), Is()]).thenThis { id, _ ->
         val prop = this

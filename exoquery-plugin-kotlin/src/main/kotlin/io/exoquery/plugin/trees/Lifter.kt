@@ -1,7 +1,7 @@
 package io.exoquery.plugin.trees
 
 import io.exoquery.*
-import io.exoquery.plugin.transform.BuilderContext
+import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.call
 import io.exoquery.plugin.transform.callDispatch
 import io.exoquery.sql.ParamMultiToken
@@ -31,19 +31,22 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import kotlin.reflect.typeOf
 
-class Lifter(val builderCtx: BuilderContext) {
+class Lifter(val builderCtx: CX.Builder) {
   val irBuilder = builderCtx.builder
-  val context = builderCtx.pluginCtx
+  val scopeCtx = builderCtx.scopeContext
+  val context = scopeCtx.pluginCtx
 
+  fun <R> runScoped(block: context(CX.Scope, CX.Builder) () -> R): R =
+    block(scopeCtx, builderCtx)
 
-  inline fun <reified T> make(vararg args: IrExpression): IrConstructorCall = with(builderCtx) { io.exoquery.plugin.trees.make<T>(*args) }
-  inline fun <reified T> makeObject(): IrGetObjectValue = with(builderCtx) { io.exoquery.plugin.trees.makeObject<T>() }
+  inline fun <reified T> make(vararg args: IrExpression): IrConstructorCall = runScoped { io.exoquery.plugin.trees.make<T>(*args) }
+  inline fun <reified T> makeObject(): IrGetObjectValue = runScoped { io.exoquery.plugin.trees.makeObject<T>() }
   fun makeClassFromId(id: ClassId, args: List<IrExpression>, types: List<IrType> = listOf()) =
-    with(builderCtx) { io.exoquery.plugin.trees.makeClassFromId(id, args, types) }
+    runScoped { io.exoquery.plugin.trees.makeClassFromId(id, args, types) }
   fun makeObjectFromId(id: ClassId): IrGetObjectValue =
-    with(builderCtx) { io.exoquery.plugin.trees.makeObjectFromId(id) }
+    runScoped { io.exoquery.plugin.trees.makeObjectFromId(id) }
   inline fun <reified T> makeWithTypes(types: List<IrType>, args: List<IrExpression>): IrConstructorCall =
-    with(builderCtx) { io.exoquery.plugin.trees.makeWithTypes<T>(types, args) }
+    runScoped { io.exoquery.plugin.trees.makeWithTypes<T>(types, args) }
 
   fun Boolean.lift(): IrExpression = irBuilder.irBoolean(this)
   fun Byte.lift(): IrExpression = IrConstImpl.byte(irBuilder.startOffset, irBuilder.endOffset, context.irBuiltIns.byteType, this)
@@ -71,8 +74,8 @@ class Lifter(val builderCtx: BuilderContext) {
     } else {
       // We go throught the bruhaha of finding the constructor for the element type because we need to know it in order to create the varags list i.e. the `...` argument to `listOf(...)`
       // otherwise we could just call the list constructor and ignore the element type and rely on the compiler's type inference
-      val classId = with(builderCtx) { elementType.fullPathOfBasic() }
-      val classSymbol = builderCtx.pluginCtx.referenceClass(classId) ?: throw IllegalStateException("Cannot find a class for: ${classId} for the element type: ${elementType}")
+      val classId = runScoped { elementType.fullPathOfBasic() }
+      val classSymbol = context.referenceClass(classId) ?: throw IllegalStateException("Cannot find a class for: ${classId} for the element type: ${elementType}")
       val varargType = classSymbol.owner.defaultType
 
       // Another way to get the IrType from the FqName is to get the constructor of the class. However it's not possible to do this if the type here is an interface or abstract class so not using this method
@@ -87,8 +90,8 @@ class Lifter(val builderCtx: BuilderContext) {
 
   inline fun <reified T> List<IrExpression>.liftExpr(): IrExpression {
     val elementType = typeOf<T>()
-    val classId = with(builderCtx) { elementType.fullPathOfBasic() }
-    val classSymbol = builderCtx.pluginCtx.referenceClass(classId) ?: throw IllegalStateException("Cannot find a class for: ${classId} for the element type: ${elementType}")
+    val classId = runScoped { elementType.fullPathOfBasic() }
+    val classSymbol = context.referenceClass(classId) ?: throw IllegalStateException("Cannot find a class for: ${classId} for the element type: ${elementType}")
 
     // Another way to get the IrType from the FqName is to get the constructor of the class. However it's not possible to do this if the type here is an interface or abstract class so not using this method
     //val expressionType = context.referenceConstructors(classId).firstOrNull()?.owner?.returnType ?: throw IllegalStateException("Cannot find a constructor for: ${classId} for the element type: ${elementType}")
@@ -141,7 +144,7 @@ class Lifter(val builderCtx: BuilderContext) {
 
   fun TraceConfig.lift(fileSinkOutputPath: String): IrExpression {
     val liftOutputSink =
-      with (builderCtx) {
+      runScoped {
         call("io.exoquery.util.defaultTraceOutputSink")(fileSinkOutputPath.lift())
       }
     return make<TraceConfig>(this.enabledTraces.lift { it.lift() }, liftOutputSink, if (this.phaseLabel != null) this.phaseLabel!!.lift() else irBuilder.irNull())
@@ -156,12 +159,12 @@ class Lifter(val builderCtx: BuilderContext) {
   fun Token.lift(paramSetExpr: IrExpression): IrExpression =
     when (this) {
       is ParamSingleToken -> {
-        with (builderCtx) {
+        runScoped {
           make<ParamSingleToken>(this@lift.bid.lift()).callDispatch("realize")(paramSetExpr)
         }
       }
       is ParamMultiToken -> {
-        with (builderCtx) {
+        runScoped {
           make<ParamMultiToken>(this@lift.bid.lift()).callDispatch("realize")(paramSetExpr)
         }
       }

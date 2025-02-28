@@ -5,6 +5,7 @@ import io.exoquery.*
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.transform.BinaryOperators
+import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.plugin.transform.UnaryOperators
 import io.exoquery.terpal.Interpolator
@@ -24,10 +25,12 @@ object ExtractorsDomain {
   fun IsSelectFunction() = Ir.Expr.ClassOf<SelectClauseCapturedBlock>()
 
   object DynamicQueryCall {
+    context(CX.Scope)
     private fun IrExpression.isSqlQuery() =
       this.type.isClass<SqlQuery<*>>()
 
-    context (CompileLogger) operator fun <AP: Pattern<IrExpression>> get(x: AP) =
+    context(CX.Scope)
+    operator fun <AP: Pattern<IrExpression>> get(x: AP) =
       customPattern1("DynamicQueryCall", x) { expr: IrExpression ->
         val matches = expr.match(
           // TODO are we sure we want to accept arbitrary calls and treat them as dynamic queries?
@@ -44,15 +47,15 @@ object ExtractorsDomain {
   }
 
   sealed interface QueryDslFunction {
-    context (CompileLogger) fun matchesMethod(it: IrCall): Boolean
-    context (CompileLogger) fun extract(it: IrCall): Pair<RecieverCallData, ReplacementMethodToCall>?
+    context(CX.Scope) fun matchesMethod(it: IrCall): Boolean
+    context(CX.Scope) fun extract(it: IrCall): Pair<RecieverCallData, ReplacementMethodToCall>?
   }
 
   object CaseClassConstructorCall {
     data class Data(val className: String, val fields: List<Field>)
     data class Field(val name: String, val value: IrExpression?)
 
-    context (CompileLogger) operator fun <AP: Pattern<Data>> get(x: AP) =
+    context(CX.Scope) operator fun <AP: Pattern<Data>> get(x: AP) =
       customPattern1("CaseClassConstructorCall", x) { call: IrConstructorCall ->
         when {
           call.symbol.safeName == "<init>" -> {
@@ -73,7 +76,7 @@ object ExtractorsDomain {
   }
 
   object CaseClassConstructorCall1 {
-    context (CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
+    context(CX.Scope) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
       customPattern2("CaseClassConstructorCall1", x, y) { call: IrConstructorCall ->
         when {
           call.symbol.safeName == "<init>" && call.symbol.owner.simpleValueParams.size == 1 -> {
@@ -95,7 +98,7 @@ object ExtractorsDomain {
   // Match case classes that have at least one paramater. The match is on the case class name and the first parameter. This is useful
   // since in many cases the primary deconstructin logic is on on that data
   object CaseClassConstructorCall1Plus {
-    context (CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
+    context(CX.Scope) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
       customPattern2("CaseClassConstructorCall1Plus", x, y) { call: IrConstructorCall ->
         when {
           call.symbol.safeName == "<init>" && call.symbol.owner.simpleValueParams.size >= 1 -> {
@@ -119,7 +122,7 @@ object ExtractorsDomain {
     data class UnaryOperatorCall(val x: IrExpression, val op: UnaryOperator)
 
     data class LambdaFunctionMethod(val matchesMethod: (IrCall) -> Boolean) {
-      context (CompileLogger) operator fun <AP: Pattern<CallData.LambdaMember>> get(x: AP) =
+      context(CX.Scope) operator fun <AP: Pattern<CallData.LambdaMember>> get(x: AP) =
         customPattern1("Call.LambdaFunctionMethod", x) { it: IrCall ->
           if (matchesMethod(it)) {
             it.match(
@@ -138,7 +141,7 @@ object ExtractorsDomain {
     }
 
     object InterpolateInvoke {
-      context (CompileLogger) operator fun <BP: Pattern<List<IrExpression>>> get(terpComps: BP) =
+      context(CX.Scope) operator fun <BP: Pattern<List<IrExpression>>> get(terpComps: BP) =
         customPattern1("InterpolateInvoke", terpComps) { call: IrCall ->
           call.match(
             // I.e. (CapturedBlock).free("foo, bar"):FreeBlock
@@ -163,7 +166,7 @@ object ExtractorsDomain {
       }
 
     object `x op y` {
-      context (CompileLogger) operator fun <AP: Pattern<OperatorCall>> get(x: AP) =
+      context(CX.Scope) operator fun <AP: Pattern<OperatorCall>> get(x: AP) =
         customPattern1("x op y", x) { it: IrCall ->
           it.match(
             case(Ir.Call.FunctionUntethered2[Is(), Is(), Is()])
@@ -185,7 +188,7 @@ object ExtractorsDomain {
       if (this) predicate() else null
 
     object `x to y` {
-      context (CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
+      context(CX.Scope) operator fun <AP: Pattern<IrExpression>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
         customPattern2("x to y", x, y) { it: IrCall ->
           // TODO see what other descriptors it has to make sure it's only a system-level a to b
           (it.symbol.safeName == "to").thenLet {
@@ -200,7 +203,7 @@ object ExtractorsDomain {
 
 
     object `(op)x` {
-      context (CompileLogger) operator fun <AP: Pattern<UnaryOperatorCall>> get(x: AP) =
+      context(CX.Scope) operator fun <AP: Pattern<UnaryOperatorCall>> get(x: AP) =
         customPattern1("(op)x", x) { it: IrCall ->
           on(it).match(
             case(Ir.Call.FunctionUntethered1.Arg[Is()]).thenThis { arg1 -> Pair(this.symbol.safeName, arg1) },

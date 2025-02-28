@@ -71,8 +71,8 @@ object MirrorIdiomReqGoldenDynamic: GoldenQueryFile {
     "XR.Expression/XR.Product" to kt(
       "MyClass(foo = bar, baz = qux)"
     ),
-    "XR.Expression/XR.Infix" to kt(
-      """sql("a, ${'$'}foo, b, ${'$'}bar, c, ${'$'}baz")"""
+    "XR.Expression/XR.Free" to kt(
+      """free("a, ${'$'}foo, b, ${'$'}bar, c, ${'$'}baz").asPure()"""
     ),
     "XR.Expression/XR.MethodCall" to kt(
       "foo.method_MC(bar, baz)"
@@ -143,8 +143,8 @@ object MirrorIdiomReqGoldenDynamic: GoldenQueryFile {
     "XR.Query/XR.ExprToQuery" to kt(
       "foo.toQuery"
     ),
-    "XR.Query/XR.Infix" to kt(
-      """sql("a, ${'$'}foo, b, ${'$'}bar, c, ${'$'}baz")"""
+    "XR.Query/XR.Free" to kt(
+      """free("a, ${'$'}foo, b, ${'$'}bar, c, ${'$'}baz").asPure()"""
     ),
     "XR.Query/XR.TagForSqlQuery" to kt(
       """TagQ("foo")"""

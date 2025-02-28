@@ -11,6 +11,7 @@ import io.exoquery.xr.PrefixUnaryOperator
 import io.exoquery.xr.SX
 import io.exoquery.xr.SelectClause
 import io.exoquery.xr.XR
+import io.exoquery.xr.XRType
 import io.exoquery.xr.id
 
 
@@ -113,7 +114,7 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
 
       is XR.FunctionApply -> this.token
       is XR.Ident -> this.token
-      is XR.Infix -> this.token
+      is XR.Free -> this.token
       is XR.Const -> this.token
       // scala: stmt"${name.token}(${values.map { case (k, v) -> s"${k.token}: ${v.token}" }.mkString(", ").token})"
       is XR.Product ->
@@ -170,7 +171,7 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
       is XR.ExprToQuery -> stmt("${head.tokenScoped}.toQuery")
       is XR.FunctionApply -> this.token
       is XR.Ident -> this.token
-      is XR.Infix -> this.token
+      is XR.Free -> this.token
       is XR.TagForSqlQuery -> stmt("""TagQ("${id.value.trimId()}")""")
       is XR.GlobalCall -> this.token
       is XR.MethodCall -> this.token
@@ -246,7 +247,7 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
 //    }
 
 
-  val XR.Infix.token: Token get() = run {
+  val XR.Free.token: Token get() = run {
     val dol = ('$' + "").token
     fun tokenParam(ast: XR): Token =
       when (ast) {
@@ -256,13 +257,22 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
     val pt = parts.map { it.token }
     val pr = params.map { tokenParam(it) }
     val body = pt.interleaveWith(pr)
-    stmt("sql(\"${body.token{ it }}\")")
+
+    val suffix =
+      when {
+        this.pure && this.type == XRType.BooleanExpression -> stmt(".asPureCondition()")
+        !this.pure && this.type == XRType.BooleanExpression -> stmt(".asCondition()")
+        this.pure -> stmt(".asPure()")
+        else -> stmt("invoke()")
+      }
+
+    stmt("free(\"${body.token{ it }}\")${suffix.token}")
   }
 
 
 // Scala:
-//  implicit final def infixTokenizer(implicit externalTokenizer: Tokenizer[External]): Tokenizer[Infix] =
-//  Tokenizer[Infix] { case Infix(parts, params, _, _, _) ->
+//  implicit final def infixTokenizer(implicit externalTokenizer: Tokenizer[External]): Tokenizer[Free] =
+//  Tokenizer[Free] { case Free(parts, params, _, _, _) ->
 //    def tokenParam(ast: Ast) =
 //    ast match {
 //      case ast: Ident -> stmt"$$${ast.token}"

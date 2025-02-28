@@ -4,9 +4,9 @@ package io.exoquery.plugin.trees
 
 import io.decomat.*
 import io.exoquery.ValueWithSerializer
-import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.parseError
 import io.exoquery.plugin.*
+import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.ReceiverCaller
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
@@ -64,7 +64,7 @@ val IrType.simpleTypeArgs: List<IrType> get() =
 
 object Ir {
   object Expression {
-    context(CompileLogger) operator fun <AP: Pattern<IrExpression>> get(components: AP) =
+    context(CX.Scope) operator fun <AP: Pattern<IrExpression>> get(components: AP) =
       customPattern1("Ir.Expression", components) { it: IrExpression ->
         Components1(it)
       }
@@ -74,7 +74,7 @@ object Ir {
     // Can't do just get(components: Pattern<List<IrExpression>) need to do:
     // <AP: Pattern<List<IrExpression>>> get(components: AP) or it doesn't work because
     // it needs to have a concrete pattern instance
-    context(CompileLogger) operator fun <AP: Pattern<List<IrExpression>>> get(components: AP) =
+    context(CX.Scope) operator fun <AP: Pattern<List<IrExpression>>> get(components: AP) =
       customPattern1("StringConcatenation", components) { it: IrExpression ->
         if (it is IrStringConcatenation) {
           Components1(it.arguments)
@@ -117,7 +117,7 @@ object Ir {
   object Type {
 
 //    object Nullable {
-//      context(CompileLogger) operator fun <AP: Pattern<IrType>> get(realType: AP) =
+//      context(CX.Scope) operator fun <AP: Pattern<IrType>> get(realType: AP) =
 //        customPattern1("Type.Nullable", realType) { it: IrType ->
 //
 //          if (cls != null && simpleTypeArgs.size == 1 && it.isClass<List<*>>()) {
@@ -128,7 +128,7 @@ object Ir {
 //    }
 
     object NullableOf {
-      context(CompileLogger) operator fun <AP: Pattern<IrType>> get(realType: AP) =
+      context(CX.Scope) operator fun <AP: Pattern<IrType>> get(realType: AP) =
         customPattern1("Type.NullableOf", realType) { it: IrType ->
           if (it.isNullable()) {
             Components1(it.makeNotNull())
@@ -138,7 +138,7 @@ object Ir {
     }
 
     object KotlinList {
-      context(CompileLogger) operator fun <AP: Pattern<IrType>> get(realType: AP) =
+      context(CX.Scope) operator fun <AP: Pattern<IrType>> get(realType: AP) =
         customPattern1("Type.KotlinList", realType) { it: IrType ->
           val cls = it.classOrNull
           val simpleTypeArgs = it.simpleTypeArgs
@@ -150,7 +150,7 @@ object Ir {
     }
 
     object DataClass {
-      context(CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<List<Pair<String, IrType>>>> get(name: AP, fields: BP) =
+      context(CX.Scope) operator fun <AP: Pattern<String>, BP: Pattern<List<Pair<String, IrType>>>> get(name: AP, fields: BP) =
         customPattern2("Type.DataClass", name, fields) { it: IrType ->
           val cls = it.classOrNull
           if (cls != null && cls.isDataClass()) {
@@ -182,7 +182,7 @@ object Ir {
     }
 
     object Generic {
-      context(CompileLogger) operator fun get(type: Pattern0<IrType>) =
+      context(CX.Scope) operator fun get(type: Pattern0<IrType>) =
         customPattern1("Ir.Call.Generic", type) { it: IrType ->
           if (it.isTypeParameter())
             Components1(it)
@@ -192,6 +192,7 @@ object Ir {
     }
 
     object Value {
+      context(CX.Scope)
       private fun isValueType(it: IrType) =
         it.isString() ||
           it.isLong() ||
@@ -225,7 +226,7 @@ object Ir {
           it.isClassStrict<java.sql.Timestamp>() ||
           it.isClass<ValueWithSerializer<*>>()
 
-      context(CompileLogger) operator fun get(type: Pattern0<IrType>) =
+      context(CX.Scope) operator fun get(type: Pattern0<IrType>) =
         customPattern1("Ir.Call.Value", type) { it: IrType ->
           if (isValueType(it) || it.hasAnnotation<kotlinx.serialization.Contextual>() || it.hasAnnotation<io.exoquery.annotation.ExoValue>()) {
             // If mistake is made in the Components-returning section, the match will not be successful
@@ -254,28 +255,28 @@ object Ir {
   }
 
   object Variable {
-    context (CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<B>, B: IrExpression> get(name: AP, rhs: BP) =
+    context (CX.Scope) operator fun <AP: Pattern<String>, BP: Pattern<B>, B: IrExpression> get(name: AP, rhs: BP) =
       customPattern2("Ir.Variable", name, rhs) { it: IrVariable ->
         it.initializer?.let { init -> Components2(it.name.asString(), init) }
       }
   }
 
   object Field {
-    context (CompileLogger) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(name: AP, rhs: BP) =
+    context (CX.Scope) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(name: AP, rhs: BP) =
       customPattern2("Ir.Field", name, rhs) { it: IrField ->
         it.initializer?.let { initExprBody -> Components2(it.name.asString(), initExprBody.expression) }
       }
   }
 
   object GetValue {
-    context (CompileLogger) operator fun get(value: Pattern0<IrSymbol>) =
+    context (CX.Scope) operator fun get(value: Pattern0<IrSymbol>) =
       customPattern1("Ir.GetValue", value) { it: IrGetValue ->
         Components1(it.symbol)
       }
   }
 
   object GetField {
-    context (CompileLogger) operator fun get(value: Pattern0<IrSymbol>) =
+    context (CX.Scope) operator fun get(value: Pattern0<IrSymbol>) =
       customPattern1("Ir.GetField", value) { it: IrGetField ->
         Components1(it.symbol)
       }
@@ -344,7 +345,7 @@ object Ir {
   }
 
   object When {
-    context (CompileLogger) operator fun <AP: Pattern<L>, L: List<A>, A: IrBranch> get(value: AP) =
+    context (CX.Scope) operator fun <AP: Pattern<L>, L: List<A>, A: IrBranch> get(value: AP) =
       customPattern1("Ir.When", value) { it: IrWhen ->
         Components1(it.branches)
       }
@@ -359,7 +360,7 @@ object Ir {
   }
 
   object Vararg {
-    context (CompileLogger) operator fun <AP : Pattern<List<IrExpression>>> get(x: AP): Pattern1<AP, List<IrExpression>, IrVararg> =
+    context (CX.Scope) operator fun <AP : Pattern<List<IrExpression>>> get(x: AP): Pattern1<AP, List<IrExpression>, IrVararg> =
       customPattern1("Ir.Vararg", x) { it: IrVararg ->
         Components1(it.elements.toList())
       }
@@ -369,7 +370,7 @@ object Ir {
   object Call {
 
     object NamedExtensionFunctionZeroArg {
-      context (CompileLogger) operator fun <AP : Pattern<String>, BP : Pattern<E>, E: IrExpression> get(name: AP, reciever: BP): Pattern2<AP, BP, String, E, IrCall> =
+      context (CX.Scope) operator fun <AP : Pattern<String>, BP : Pattern<E>, E: IrExpression> get(name: AP, reciever: BP): Pattern2<AP, BP, String, E, IrCall> =
         customPattern2("NamedExtensionFunctionZeroArg", name, reciever) { it: IrCall ->
           val reciever = it.extensionReceiver
           if (reciever != null && it.simpleValueArgs.size == 0) {
@@ -380,7 +381,7 @@ object Ir {
         }
     }
 
-    context (CompileLogger) operator fun <AP : Pattern<IrCall>> get(x: AP): Pattern1<AP, IrCall, IrCall> =
+    context (CX.Scope) operator fun <AP : Pattern<IrCall>> get(x: AP): Pattern1<AP, IrCall, IrCall> =
       customPattern1("Ir.Call", x) { it: IrCall ->
         if (it.simpleValueArgs.all { it != null }) {
           Components1(it)
@@ -391,7 +392,7 @@ object Ir {
 
     // TODO get rid of this in favor of FunctionMem
     object FunctionRec {
-      context (CompileLogger) operator fun <AP : Pattern<List<IrExpression>>> get(x: AP): Pattern1<AP, List<IrExpression>, IrCall> =
+      context (CX.Scope) operator fun <AP : Pattern<List<IrExpression>>> get(x: AP): Pattern1<AP, List<IrExpression>, IrCall> =
         customPattern1("Ir.Call.FunctionRec", x) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.all { it != null }) {
@@ -404,8 +405,8 @@ object Ir {
 
     // TODO get rid of this in favor of FunctionMem1
     object FunctionRec1 {
-      // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
-      context (CompileLogger) operator fun <AP : Pattern<A>, A:IrExpression, BP : Pattern<B>, B:IrExpression> get(x: AP, y: BP): Pattern2<AP, BP, A, B, IrCall> =
+      // context (CX.Scope) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
+      context (CX.Scope) operator fun <AP : Pattern<A>, A:IrExpression, BP : Pattern<B>, B:IrExpression> get(x: AP, y: BP): Pattern2<AP, BP, A, B, IrCall> =
         customPattern2("Ir.Call.FunctionRec1", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null }) {
@@ -418,8 +419,8 @@ object Ir {
 
     // TODO get rid of this in favor of FunctionMem1
     object FunctionRec0 {
-      // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
-      context (CompileLogger) operator fun <AP : Pattern<A>, A:IrExpression> get(x: AP): Pattern1<AP, A, IrCall> =
+      // context (CX.Scope) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
+      context (CX.Scope) operator fun <AP : Pattern<A>, A:IrExpression> get(x: AP): Pattern1<AP, A, IrCall> =
         customPattern1("Ir.Call.FunctionRec0", x) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.size == 0 && it.simpleValueArgs.all { it != null }) {
@@ -434,7 +435,7 @@ object Ir {
     object FunctionMemN {
       object Caller {
         // Interesting here how we can have just AP/BP and not need the additional parameters A and B
-        context (CompileLogger) operator fun <AP : Pattern<ReceiverCaller>, BP : Pattern<List<IrExpression>>> get(x: AP, y: BP): Pattern2<AP, BP, ReceiverCaller, List<IrExpression>, IrCall> =
+        context (CX.Scope) operator fun <AP : Pattern<ReceiverCaller>, BP : Pattern<List<IrExpression>>> get(x: AP, y: BP): Pattern2<AP, BP, ReceiverCaller, List<IrExpression>, IrCall> =
           customPattern2("Ir.Call.FunctionMem", x, y) { it: IrCall ->
             val reciever = it.caller()
             if (reciever != null && it.simpleValueArgs.all { it != null }) {
@@ -445,7 +446,7 @@ object Ir {
           }
       }
 
-      context (CompileLogger) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<List<IrExpression>>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, List<IrExpression>, IrCall> =
+      context (CX.Scope) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<List<IrExpression>>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, List<IrExpression>, IrCall> =
         customPattern2("Ir.Call.FunctionMemN", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.safeName)) {
@@ -457,7 +458,7 @@ object Ir {
     }
 
     object FunctionMem2 {
-      context (CompileLogger) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<Pair<IrExpression, IrExpression>>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, Pair<IrExpression, IrExpression>, IrCall> =
+      context (CX.Scope) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<Pair<IrExpression, IrExpression>>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, Pair<IrExpression, IrExpression>, IrCall> =
         customPattern2("Ir.Call.FunctionMemN", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.size == 2 && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.safeName)) {
@@ -470,7 +471,7 @@ object Ir {
 
     object FunctionMemAllowNulls {
       // Interesting here how we can have just AP/BP and not need the additional parameters A and B
-      context (CompileLogger) operator fun <AP: Pattern<ReceiverCaller>, BP : Pattern<List<IrExpression>>> get(x: AP, y: BP): Pattern2<AP, BP, ReceiverCaller, List<IrExpression?>, IrCall> =
+      context (CX.Scope) operator fun <AP: Pattern<ReceiverCaller>, BP : Pattern<List<IrExpression>>> get(x: AP, y: BP): Pattern2<AP, BP, ReceiverCaller, List<IrExpression?>, IrCall> =
         customPattern2("Ir.Call.FunctionMemAllowNulls", x, y) { it: IrCall ->
           val reciever = it.caller()
           if (reciever != null) {
@@ -484,7 +485,7 @@ object Ir {
     // Member Function1
     object FunctionMem1 {
 
-      context (CompileLogger) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<IrExpression>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, IrExpression, IrCall> =
+      context (CX.Scope) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<IrExpression>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, IrExpression, IrCall> =
         customPattern2("Ir.Call.FunctionMem1", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.safeName)) {
@@ -502,7 +503,7 @@ object Ir {
          * kind of Pattern2 that decomposes the string into multiple pieces). Therefore we can treat the middle-parameter as a simple Pattern argument
          * that has no effect on other side of the `case` expressions.
          */
-        context (CompileLogger) operator fun <AP : Pattern<ReceiverCaller>, MP : Pattern<String>, BP : Pattern<IrExpression>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, ReceiverCaller, IrExpression, IrCall> =
+        context (CX.Scope) operator fun <AP : Pattern<ReceiverCaller>, MP : Pattern<String>, BP : Pattern<IrExpression>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, ReceiverCaller, IrExpression, IrCall> =
           customPattern2("Ir.Call.FunctionMem1.WithCaller", x, y) { it: IrCall ->
             val reciever = it.caller()
             if (reciever != null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.safeName)) {
@@ -521,8 +522,8 @@ object Ir {
          * on the other side of the `case` function.
          */
         object Named {
-          // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
-          context (CompileLogger) operator fun <AP : Pattern<ReceiverCaller>, MP : Pattern<String>, BP : Pattern<IrExpression>> get(x: AP, m: MP, y: BP): Pattern2M<AP, String, BP, ReceiverCaller, IrExpression, IrCall> =
+          // context (CX.Scope) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
+          context (CX.Scope) operator fun <AP : Pattern<ReceiverCaller>, MP : Pattern<String>, BP : Pattern<IrExpression>> get(x: AP, m: MP, y: BP): Pattern2M<AP, String, BP, ReceiverCaller, IrExpression, IrCall> =
             customPattern2M("Ir.Call.FunctionMem1.WithCaller.Named", x, y) { it: IrCall ->
               val reciever = it.caller()
               if (reciever != null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.safeName)) {
@@ -537,8 +538,8 @@ object Ir {
 
     object FunctionMem0 {
       object WithCaller {
-        // context (CompileLogger) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
-        context(CompileLogger) operator fun <AP : Pattern<A>, MP: Pattern<String>, A : ReceiverCaller> get(x: AP, y: MP): Pattern1<AP, A, IrCall> =
+        // context (CX.Scope) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP) =
+        context(CX.Scope) operator fun <AP : Pattern<A>, MP: Pattern<String>, A : ReceiverCaller> get(x: AP, y: MP): Pattern1<AP, A, IrCall> =
           customPattern1("Ir.Call.FunctionMem0.WithCaller", x) { it: IrCall ->
             val reciever = it.caller()
             if (reciever != null && it.simpleValueArgs.size == 0 && y.matchesAny(it.symbol.safeName)) {
@@ -549,7 +550,7 @@ object Ir {
           }
       }
 
-      context(CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<String>> get(x: AP, y: BP): Pattern2<AP, BP, IrExpression, String, IrCall> =
+      context(CX.Scope) operator fun <AP: Pattern<IrExpression>, BP: Pattern<String>> get(x: AP, y: BP): Pattern2<AP, BP, IrExpression, String, IrCall> =
         customPattern2("Ir.Call.FunctionMem0", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.size == 0) {
@@ -561,7 +562,7 @@ object Ir {
     }
 
     object FunctionUntethered0 {
-      context (CompileLogger) operator fun <AP: Pattern<String>> get(x: AP) =
+      context (CX.Scope) operator fun <AP: Pattern<String>> get(x: AP) =
         customPattern1("Ir.Call.FunctionUntethered0", x) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever == null && it.simpleValueArgs.size == 0) {
@@ -573,7 +574,7 @@ object Ir {
     }
 
     object FunctionMemVararg {
-      context (CompileLogger) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, TP: Pattern<IrType>, BP : Pattern<List<IrExpression>>> get(x: AP, m: MP, yTpe: TP, y: BP): Pattern2<AP, BP, IrExpression, List<IrExpression>, IrCall> =
+      context (CX.Scope) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, TP: Pattern<IrType>, BP : Pattern<List<IrExpression>>> get(x: AP, m: MP, yTpe: TP, y: BP): Pattern2<AP, BP, IrExpression, List<IrExpression>, IrCall> =
         customPattern2("Ir.Call.FunctionMemVararg", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null
@@ -593,7 +594,7 @@ object Ir {
     // not a function on an object or class i.e. top-level
     object FunctionUntethered1 {
       object Arg {
-        /*context (CompileLogger) operator fun <AP: Pattern<IrExpression>> get(x: AP) =
+        /*context (CX.Scope) operator fun <AP: Pattern<IrExpression>> get(x: AP) =
           customPattern1(x) { it: IrCall ->
             val reciever = it.extensionReceiver ?: it.dispatchReceiver
             if (reciever == null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null }) {
@@ -603,7 +604,7 @@ object Ir {
             }
           }*/
 
-        context (CompileLogger) operator fun <AP : Pattern<E>, E: IrExpression> get(x: AP): Pattern1<AP, E, IrCall> =
+        context (CX.Scope) operator fun <AP : Pattern<E>, E: IrExpression> get(x: AP): Pattern1<AP, E, IrCall> =
           customPattern1("Ir.Call.FunctionUntethered1.Arg", x) { it: IrCall ->
             val reciever = it.extensionReceiver ?: it.dispatchReceiver
             if (reciever == null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null }) {
@@ -614,7 +615,7 @@ object Ir {
           }
       }
 
-      context (CompileLogger) operator fun <AP : Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP): Pattern2<AP, BP, String, IrExpression, IrCall> =
+      context (CX.Scope) operator fun <AP : Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP): Pattern2<AP, BP, String, IrExpression, IrCall> =
         customPattern2("Ir.Call.FunctionUntethered1", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever == null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null }) {
@@ -626,7 +627,7 @@ object Ir {
     }
 
     object FunctionUntetheredN {
-      context (CompileLogger) operator fun <AP : Pattern<String>, BP: Pattern<List<IrExpression?>>> get(x: AP, y: BP): Pattern2<AP, BP, String, List<IrExpression?>, IrCall> =
+      context (CX.Scope) operator fun <AP : Pattern<String>, BP: Pattern<List<IrExpression?>>> get(x: AP, y: BP): Pattern2<AP, BP, String, List<IrExpression?>, IrCall> =
         customPattern2("Ir.Call.FunctionUntetheredN", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever == null) {
@@ -638,7 +639,7 @@ object Ir {
     }
 
     object FunctionUntethered2 {
-      context (CompileLogger) operator fun <AP : Pattern<A>, MP : Pattern<String>, BP : Pattern<B>, A: IrExpression, B: IrExpression> get(m: MP, x: AP, y: BP): Pattern2<AP, BP, A, B, IrCall> =
+      context (CX.Scope) operator fun <AP : Pattern<A>, MP : Pattern<String>, BP : Pattern<B>, A: IrExpression, B: IrExpression> get(m: MP, x: AP, y: BP): Pattern2<AP, BP, A, B, IrCall> =
         customPattern2("Ir.Call.FunctionUntethered2", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever == null && it.simpleValueArgs.size == 2 && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.fullName)) {
@@ -650,7 +651,7 @@ object Ir {
     }
 
     object Property {
-      context (CompileLogger) operator fun <AP: Pattern<IrExpression>, BP: Pattern<String>> get(host: AP, name: BP) =
+      context (CX.Scope) operator fun <AP: Pattern<IrExpression>, BP: Pattern<String>> get(host: AP, name: BP) =
         customPattern2("Ir.Call.Property", host, name) { it: IrCall ->
           // if there exists both a dispatch reciever and an extension reciever it's an extension
           // of some class defined inside of some other class, in that case we only care about the extension reciever

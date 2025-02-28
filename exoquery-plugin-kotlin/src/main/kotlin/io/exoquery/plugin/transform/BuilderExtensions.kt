@@ -27,7 +27,7 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
 class CallMethod(private val callerRaw: Caller, private val replacementFun: ReplacementMethodToCall, private val types: List<IrType>, private val tpe: IrType?) {
-  context(BuilderContext) operator fun invoke(vararg args: IrExpression?): IrExpression {
+  context(CX.Scope, CX.Builder) operator fun invoke(vararg args: IrExpression?): IrExpression {
     val caller =
       when (replacementFun.callerType) {
         ChangeReciever.ToDispatch -> callerRaw.toDispatch()
@@ -138,14 +138,14 @@ fun IrExpression.callDispatchWithParams(method: String, typeParams: List<IrType>
 fun IrExpression.callDispatchWithParamsAndOutput(method: String, typeParams: List<IrType>, fullOutputType: IrType): CallMethod = CallMethod(Caller.Dispatch(this), ReplacementMethodToCall(method), typeParams, fullOutputType)
 
 
-context (BuilderContext) fun createLambda0(functionBody: IrExpression, functionParent: IrDeclarationParent): IrFunctionExpression =
+context (CX.Scope, CX.Builder) fun createLambda0(functionBody: IrExpression, functionParent: IrDeclarationParent): IrFunctionExpression =
   with(builder) {
     val functionClosure = createLambda0Closure(functionBody, functionParent)
     val functionType = pluginCtx.symbols.functionN(0).typeWith(functionClosure.returnType)
     IrFunctionExpressionImpl(startOffset, endOffset, functionType, functionClosure, IrStatementOrigin.LAMBDA)
   }
 
-context (BuilderContext) fun createLambda0Closure(functionBody: IrExpression, functionParent: IrDeclarationParent): IrSimpleFunction {
+context (CX.Scope, CX.Builder) fun createLambda0Closure(functionBody: IrExpression, functionParent: IrDeclarationParent): IrSimpleFunction {
   return with(pluginCtx) {
     irFactory.buildFun {
       origin = IrDeclarationOrigin.LOCAL_FUNCTION_FOR_LAMBDA

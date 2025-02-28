@@ -14,6 +14,7 @@ import io.exoquery.annotation.DslNestingIgnore
 import io.exoquery.parseError
 import io.exoquery.parseErrorSym
 import io.exoquery.plugin.hasAnnotation
+import io.exoquery.plugin.isClass
 import io.exoquery.plugin.loc
 import io.exoquery.plugin.location
 import io.exoquery.plugin.locationXR
@@ -24,6 +25,7 @@ import io.exoquery.plugin.ownerHasAnnotation
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.symName
+import io.exoquery.plugin.transform.CX
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
@@ -37,7 +39,7 @@ import org.jetbrains.kotlin.name.FqName
 
 object ParseQuery {
 
-  context(ParserContext, CompileLogger)
+  context(CX.Scope, CX.Parsing, CX.Symbology)
   private fun processQueryLambda(head: IrExpression, lambda: IrExpression) =
     lambda.match(
       case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { _, blockBody ->
@@ -48,11 +50,11 @@ object ParseQuery {
       }
     )
 
-  context(ParserContext, CompileLogger)
+  context(CX.Scope, CX.Parsing, CX.Symbology)
   fun IrCall.isDslMethod() =
     this.symbol.owner.let { it.hasAnnotation<Dsl>() } ?: false
 
-  context(ParserContext, CompileLogger) fun parse(expr: IrExpression): XR.Query =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun parse(expr: IrExpression): XR.Query =
     when {
       // We don't want arbitrary functions returning SqlQuery to be treated as dynamic so we make sure they are annotated with @Dsl
       // this processes everything like that.
@@ -64,15 +66,6 @@ object ParseQuery {
 
       else -> {
         on(expr).match<XR.Query>(
-          // If you find a random identifier hanging around, check if:
-          // 1. It is coming from a scope outside of the inside of the current function e.g. `capture { val x = Table<Person>; x/*<- we are here*/.map(...) }`
-          //    (if it isn't then we know it needs to be a dynamic)
-          // 2. It is a captured variable or function argument
-//          case(Ir.GetValue[Is()]).thenThis { sym->
-//            error("----------- GetValue Owner ---------\n${this.symbol.owner}")
-//            XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR())
-//          },
-
           // TODO need to make sure 1st arg is SqlQuery instance and also the owner function has a @CapturedFunction annotate
           //     (also parser should check for any IrFunction that has a @CapturedFunction annotation that doesn't have scaffolding and immediately report an error on that)
           case(Ir.Call.FunctionUntethered2[Is(PT.io_exoquery_util_scaffoldCapFunctionQuery), Is(), Ir.Vararg[Is()]]).thenThis { sqlQueryArg, (args) ->
@@ -136,7 +129,12 @@ object ParseQuery {
                 Messages.VariableComingFromNonCapturedFunction(expr.ownerFunName ?: "<???>")
 
               expr is IrGetValue ->
-                "Lineage: ${expr.showLineage()}"
+                """|It looks like the variable ${expr.symbol.safeName} is coming from outside the capture/select block
+                   |but it could not be parsed as a static or dynamic query call of type SqlQuery<T>. We detected that
+                   |it's type is ${expr.type.dumpKotlinLike()} which cannot be used (${expr.type.isClass<SqlQuery<*>>()}, ${expr.symbol.owner.type.annotations.map { it.dumpKotlinLike() }}).
+                   |
+                   |(Lineage: ${expr.showLineage()})
+                """.trimMargin()
               else -> ""
             }
 
@@ -146,7 +144,7 @@ object ParseQuery {
     }
 
   // Assuming everything that gets into here is already annotated with @Dsl
-  context(ParserContext, CompileLogger) private fun parseDslCall(expr: IrExpression): XR.Query? =
+  context(CX.Scope, CX.Parsing, CX.Symbology) private fun parseDslCall(expr: IrExpression): XR.Query? =
     // Note, every single instance being parsed here shuold be of SqlQuery<*>, should check for that as an entry sanity-check
     on(expr).match<XR.Query>(
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("map", "concatMap", "filter"), Is()]).thenThis { head, lambda ->

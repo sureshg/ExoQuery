@@ -2,14 +2,15 @@ package io.exoquery.plugin
 
 import io.exoquery.config.ExoCompileOptions
 import io.exoquery.plugin.transform.FileQueryAccum
-import io.exoquery.plugin.transform.TransformerScope
+import io.exoquery.plugin.transform.QueryAccumState
+import io.exoquery.plugin.transform.SymbolSet
 import io.exoquery.plugin.transform.VisitTransformExpressions
+import io.exoquery.plugin.transform.VisitorContext
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
-import java.nio.file.Path
 
 class GenerationExtension(
     private val config: CompilerConfiguration,
@@ -20,7 +21,7 @@ class GenerationExtension(
         moduleFragment
             .transform(
                 VisitTransformExpressions(pluginContext, config, exoOptions),
-                TransformerScope(listOf(), listOf(), FileQueryAccum.Empty)
+                VisitorContext(SymbolSet(listOf(), listOf()), FileQueryAccum.empty())
             )
     }
 }

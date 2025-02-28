@@ -13,16 +13,16 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 
-class TransformSelectClause(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+class TransformSelectClause(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
   private val fqn: String = "io.exoquery.select"
 
-  context(BuilderContext, CompileLogger)
-  override fun matchesBase(expression: IrCall): Boolean =
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun matches(expression: IrCall): Boolean =
     expression.symbol.owner.kotlinFqName.asString().let { it == fqn }
 
   // parent symbols are collected in the parent context
-  context(LocationContext, BuilderContext, CompileLogger)
-  override fun transformBase(selectExpressionRaw: IrCall): IrExpression {
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun transform(selectExpressionRaw: IrCall): IrExpression {
     val (xr, dynamics) = parseSelectClause(selectExpressionRaw, superTransformer)
     val paramsExprModel = dynamics.makeParams()
     val newSqlQuery =
@@ -38,7 +38,7 @@ class TransformSelectClause(override val ctx: BuilderContext, val superTransform
   }
 
   companion object {
-    context(LocationContext, BuilderContext, CompileLogger)
+    context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
     fun parseSelectClause(selectExpressionRaw: IrCall, superTransformer: VisitTransformExpressions)  = run {
       // since there could be SqlQuery clauses inside we need to recurisvely transform the stuff inside the Select-Clause first
       // therefore we need to call the super-transform on the select lambda

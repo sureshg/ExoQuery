@@ -17,7 +17,7 @@ import kotlin.io.path.nameWithoutExtension
 class QueryFile(
   // I.e. the actual file encountered by the Ir transformer
   val codeFile: IrFile,
-  val codeFileScope: TransformerScope,
+  val codeFileAccum: FileQueryAccum,
   val compilerConfig: CompilerConfiguration,
   val config: ExoCompileOptions
 ) {
@@ -56,8 +56,8 @@ class QueryFile(
 
     val srcFile = Path.of(dirOfFile.toString(), srcFileName)
 
-    val collectedQueries = codeFileScope.currentQueries()
-    val dumpedQueryText = QueryFileTextMaker(collectedQueries, FileQueryAccum.PathBehavior.IncludePaths, FileQueryAccum.LabelBehavior.IncludeAll)
+    val collectedQueries = codeFileAccum.currentQueries()
+    val dumpedQueryText = QueryFileTextMaker(collectedQueries, QueryAccumState.PathBehavior.IncludePaths, QueryAccumState.LabelBehavior.IncludeAll)
 
     writeToFile(dumpedQueryText, srcFile)
   }
@@ -100,7 +100,7 @@ class QueryFile(
 
     val srcFile = Path.of(dirOfFile.toString(), srcFileName)
 
-    val currentQueries = codeFileScope.currentQueries().filter { it.label != null }
+    val currentQueries = codeFileAccum.currentQueries().filter { it.label != null }
 
     // Since we can only golden tests that are actually labelled, need to make sure the queries have labels
     if (currentQueries.isEmpty()) {

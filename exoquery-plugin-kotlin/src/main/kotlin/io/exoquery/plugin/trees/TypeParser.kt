@@ -11,6 +11,7 @@ import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.Location
 import io.exoquery.plugin.show
+import io.exoquery.plugin.transform.CX
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
@@ -25,39 +26,37 @@ import org.jetbrains.kotlin.ir.types.isBoolean
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 object TypeParser {
-  context(ParserContext, CompileLogger) fun of(expr: IrExpression) =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun of(expr: IrExpression) =
     ofElementWithType(expr, expr.type)
 
-  context(ParserContext, CompileLogger) fun ofTypeArgOf(expr: IrCall) =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun ofTypeArgOf(expr: IrCall) =
     ofElementWithType(expr, expr.typeArguments.firstOrNull() ?: run {
-      val loc = currentLocation()
       parseErrorFromType("ERROR Could not parse type-argument", expr)
     })
 
   // E.g. for a function-call that returns `Param<String>` get `String`
-  context(ParserContext, CompileLogger) fun ofFirstArgOfReturnTypeOf(expr: IrCall) =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun ofFirstArgOfReturnTypeOf(expr: IrCall) =
     ofElementWithType(expr, expr.type.simpleTypeArgs.firstOrNull() ?: run {
-      val loc = currentLocation()
       parseErrorFromType("ERROR Could get the first type-argument of: ${expr.type}", expr)
     })
 
-  context(ParserContext, CompileLogger) fun of(expr: IrVariable) =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun of(expr: IrVariable) =
     ofElementWithType(expr, expr.type)
 
-  context(ParserContext, CompileLogger) fun of(expr: IrFunction) =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun of(expr: IrFunction) =
     ofElementWithType(expr, expr.returnType)
 
-  context(ParserContext, CompileLogger) fun of(expr: IrValueParameter) =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun of(expr: IrValueParameter) =
     ofElementWithType(expr, expr.type)
 
-  context(ParserContext, CompileLogger) fun ofTypeAt(type: IrType, loc: Location): XRType =
+  context(CX.Scope, CX.Parsing, CX.Symbology) fun ofTypeAt(type: IrType, loc: Location): XRType =
     try {
       parse(type)
     } catch (e: Exception) {
       parseErrorFromType("ERROR Could not parse type: ${type.dumpKotlinLike()}", loc)
     }
 
-  context(ParserContext, CompileLogger) private fun ofElementWithType(expr: IrElement, type: IrType) =
+  context(CX.Scope, CX.Parsing, CX.Symbology) private fun ofElementWithType(expr: IrElement, type: IrType) =
     try {
       when {
         // If this is a field from a class that is marked @Contextaul then we know immediately it is a value type
@@ -68,7 +67,7 @@ object TypeParser {
       parseErrorFromType("ERROR Could not parse the type: ${type.dumpKotlinLike()} (${type.toString()}", expr)
     }
 
-  context(ParserContext, CompileLogger) private fun parse(expr: IrType): XRType =
+  context(CX.Scope, CX.Parsing, CX.Symbology) private fun parse(expr: IrType): XRType =
     on(expr).match<XRType>(
       // TODO why for Components1 it's (type) bot for Components2 it's (type, type)
       //     think this is a bug with DecoMat.
@@ -123,7 +122,6 @@ object TypeParser {
         XRType.Generic
       }
     ) ?: run {
-      val loc = currentLocation()
-      parseErrorFromType("ERROR Could not parse type from: ${expr.dumpKotlinLike()}", loc)
+      parseErrorFromType("ERROR Could not parse type from: ${expr.dumpKotlinLike()}", currentFile)
     }
 }

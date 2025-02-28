@@ -1,73 +1,51 @@
 package io.exoquery.plugin.trees
 
 import io.decomat.Is
-import io.decomat.case
-import io.decomat.match
 import io.exoquery.CapturedBlock
-import io.exoquery.Ord
 import io.exoquery.xr.SelectClause
 import io.exoquery.SqlQuery
 import io.exoquery.annotation.DslFunctionCall
 import io.exoquery.annotation.DslNestingIgnore
-import io.exoquery.plugin.printing.dumpSimple
-import io.exoquery.plugin.transform.TransformerScope
 import io.exoquery.parseError
 import io.exoquery.plugin.*
-import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.transform.LocateableContext
-import io.exoquery.plugin.trees.ExtractorsDomain.Call.`x to y`
+import io.exoquery.plugin.transform.CX
 import io.exoquery.xr.*
-import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
-import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 
-data class LocationContext(val internalVars: TransformerScope, override val currentFile: IrFile): LocateableContext {
-  fun newParserCtx() = ParserContext(this)
-  fun withCapturedFunctionParameters(capturedFunctionParameters: List<IrValueParameter>) =
-    LocationContext(internalVars.withCapturedFunctionParameters(capturedFunctionParameters), currentFile)
-  fun withSymbols(symbols: List<IrSymbol>) =
-    LocationContext(internalVars.withSymbols(symbols), currentFile)
-}
-
-data class ParserContext(val location: LocationContext, val binds: DynamicsAccum = DynamicsAccum.newEmpty()): LocateableContext {
-  val internalVars get() = location.internalVars
-  val capturedFunctionSymbols get() = internalVars.capturedFunctionParameters
-  override val currentFile get() = location.currentFile
-}
 
 inline fun <reified R> Is.Companion.of(vararg possibilities: R): Is<R> = Is.PredicateAs(io.decomat.Typed<R>(), { possibilities.contains(it) })
 
 object Parser {
-  context(LocationContext, CompileLogger) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR, DynamicsAccum> =
-    with (newParserCtx()) {
+  context(CX.Scope, CX.Symbology) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR, DynamicsAccum> =
+    with (CX.Parsing()) {
       ParseExpression.parseFunctionBlockBody(blockBody) to binds
     }
 
-  context(LocationContext, CompileLogger) fun parseQuery(expr: IrExpression): Pair<XR.Query, DynamicsAccum> =
-    with (newParserCtx()) {
+  context(CX.Scope, CX.Symbology) fun parseQuery(expr: IrExpression): Pair<XR.Query, DynamicsAccum> =
+    with (CX.Parsing()) {
       ParseQuery.parse(expr) to binds
     }
 
-  context(LocationContext, CompileLogger) fun parseSelectClauseLambda(expr: IrExpression): Pair<SelectClause, DynamicsAccum> =
-    with (newParserCtx()) {
+  context(CX.Scope, CX.Symbology) fun parseSelectClauseLambda(expr: IrExpression): Pair<SelectClause, DynamicsAccum> =
+    with (CX.Parsing()) {
       ParseSelectClause.parseSelectLambda(expr) to binds
     }
 
-  context(LocationContext, CompileLogger) fun parseExpression(expr: IrExpression): Pair<XR.Expression, DynamicsAccum> =
-    with (newParserCtx()) {
+  context(CX.Scope, CX.Symbology) fun parseExpression(expr: IrExpression): Pair<XR.Expression, DynamicsAccum> =
+    with (CX.Parsing()) {
       ParseExpression.parse(expr) to binds
     }
 
-  context(LocationContext, CompileLogger) fun parseValueParamter(expr: IrValueParameter): XR.Ident =
-    with (newParserCtx()) { expr.makeIdent() }
+  context(CX.Scope, CX.Symbology) fun parseValueParamter(expr: IrValueParameter): XR.Ident =
+    with (CX.Parsing()) { expr.makeIdent() }
 
-  context(ParserContext, CompileLogger)
+  context(CX.Scope, CX.Parsing, CX.Symbology)
   internal fun parseArg(arg: IrExpression) =
     when {
       arg.type.isClass<SqlQuery<*>>() -> ParseQuery.parse(arg)
@@ -75,7 +53,7 @@ object Parser {
     }
 }
 
-context(ParserContext, CompileLogger)
+context(CX.Scope, CX.Parsing, CX.Symbology)
 fun IrValueParameter.makeIdent() =
   XR.Ident(this.name.asString(), TypeParser.of(this), this.locationXR())
 
@@ -87,7 +65,7 @@ fun IrCall.extensionOrDispatch() =
 
 // Parser for GlobalCall and MethodCall
 object CallParser {
-  context(ParserContext, CompileLogger)
+  context(CX.Scope, CX.Parsing, CX.Symbology)
   fun parse(expr: IrCall): XR.U.QueryOrExpression {
 
     fun IrSimpleFunctionSymbol.toFqNameXR() = this.owner.kotlinFqName.toXR()
@@ -102,7 +80,7 @@ object CallParser {
     }
   }
 
-  context(ParserContext, CompileLogger)
+  context(CX.Scope, CX.Parsing, CX.Symbology)
   private fun parseCall(reciever: IrExpression?, expr: IrCall): XR.U.QueryOrExpression =
     when {
       reciever == null || reciever.type.isClass<CapturedBlock>() ->
@@ -125,7 +103,7 @@ object CallParser {
         )
     }
 
-  context(ParserContext, CompileLogger)
+  context(CX.Scope, CX.Parsing, CX.Symbology)
   private fun IrCall.extractCallType(): XR.CallType {
     val arg =
       (this.symbol.owner.getAnnotationArgs<DslFunctionCall>().firstOrNull() ?: parseError("Could not find DslFunctionCall annotation", this))

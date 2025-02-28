@@ -4,15 +4,14 @@ import io.decomat.*
 import io.decomat.fail.fail
 import io.exoquery.annotation.*
 import io.exoquery.liftingError
-import io.exoquery.plugin.transform.BuilderContext
+import io.exoquery.parseError
+import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.Caller
-import io.exoquery.plugin.transform.LocateableContext
-import io.exoquery.plugin.transform.LoggableContext
 import io.exoquery.plugin.trees.Ir
-import io.exoquery.plugin.trees.LocationContext
-import io.exoquery.plugin.trees.ParserContext
 import io.exoquery.xr.XR
+import org.jetbrains.kotlin.backend.jvm.ir.eraseTypeParameters
 import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
+import org.jetbrains.kotlin.backend.jvm.ir.isInPublicInlineScope
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.com.intellij.openapi.util.TextRange
@@ -34,6 +33,7 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.symbols.isPublicApi
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrNull
@@ -107,7 +107,7 @@ fun IrType.findMethodOrFail(methodName: String): MethodType = run {
 // WARNING assuming (for now) that the extension methods are in the same package as the Class they're being called from.
 // can relax this assumption later by adding an optional package-field to ReplacementMethodToCall and propagating it here
 // TODO Need to filter by reciever type i.e. what if there are multiple extension functions named the same thing
-context(BuilderContext) fun IrType.findExtensionMethodOrFail(methodName: String) = run {
+context(CX.Scope) fun IrType.findExtensionMethodOrFail(methodName: String) = run {
   (this
     .classOrNull ?: error("Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} type is not a class."))
     .let { classSym ->
@@ -117,6 +117,22 @@ context(BuilderContext) fun IrType.findExtensionMethodOrFail(methodName: String)
 }
 
 fun IrClassSymbol.isDataClass() = this.owner.isData
+
+//context(LocateableContext)
+//fun IrClassSymbol.dataClassMethods() {
+//  val params =
+//    (this.constructors.firstOrNull() ?: parseError("No constructors found for data-class: ${this.owner.name}"))
+//      .owner.valueParameters
+//
+//  params.map { param ->
+//    // check if the param is public or private
+//    //val isPublic = param.symbol.isPublicApi
+//
+//  }
+//
+//  TODO()
+//}
+
 
 fun IrClassSymbol.dataClassProperties() =
   if (this.isDataClass()) {
@@ -167,6 +183,9 @@ fun IrElement.location(fileEntry: IrFileEntry): CompilerMessageSourceLocation {
   return messageWithRange
 }
 
+fun IrType.isDataClass() =
+  this.classOrNull?.isDataClass() ?: false
+
 fun CompilerMessageSourceLocation.show() =
   "${path}:${line}:${column}"
 
@@ -176,19 +195,19 @@ val IrGetValue.ownerFunName get() =
   (this.symbol.owner as? IrFunction)?.let { it.symbol.safeName }
 
 // TODO change to LocationContainingContext
-context(LocateableContext) fun IrElement.location(): CompilerMessageSourceLocation =
+context(CX.Scope) fun IrElement.location(): CompilerMessageSourceLocation =
   this.location(currentFile.fileEntry)
 
 fun IrFile.location(): CompilerMessageSourceLocation =
   this.location(this.fileEntry)
 
-context(LocateableContext) fun IrElement.locationXR(): XR.Location =
+context(CX.Scope) fun IrElement.locationXR(): XR.Location =
   this.location(currentFile.fileEntry).toLocationXR()
 
-context(BuilderContext) fun IrElement.buildLocation(): CompilerMessageSourceLocation =
+context(CX.Scope) fun IrElement.buildLocation(): CompilerMessageSourceLocation =
   this.location(currentFile.fileEntry)
 
-context(BuilderContext) fun IrElement.buildLocationXR(): XR.Location =
+context(CX.Scope) fun IrElement.buildLocationXR(): XR.Location =
   this.location(currentFile.fileEntry).toLocationXR()
 
 fun CompilerMessageSourceLocation.toLocationXR(): XR.Location =
@@ -251,7 +270,7 @@ inline fun <reified T> IrFile.fileHasAnnotation() =
   this.annotations.any { it.type.isClassStrict<T>() }
 
 inline fun <reified T> IrFile.getAnnotation() =
-  this.let { it.annotations.find { ctor -> ctor.type.isClass<T>() } }
+  this.let { it.annotations.find { ctor -> ctor.type.isClassStrict<T>() } }
 
 // Cheaper that isClass because doesn't check subclasses
 inline fun <reified T> IrType.isClassStrict(): Boolean {
@@ -261,10 +280,10 @@ inline fun <reified T> IrType.isClassStrict(): Boolean {
 }
 
 // TODO use builderCtx.pluginCtx.referenceClass(classId) instead of this, this means pluginCtx needs to be passed into here
+context(CX.Scope)
 inline fun <reified T> IrType.isClass(): Boolean {
-  // NOTE memoize these things for performance?
-  val className = T::class.classId()
-  return className == this.classOrNull?.owner?.classId || this.superTypes().any { it.classOrNull?.owner?.classId == className }
+  val clsOpt = T::class.classId()?.let { pluginCtx.referenceClass(it) }
+  return clsOpt?.let { cls: IrClassSymbol -> this.eraseTypeParameters().isSubtypeOfClass(cls) } ?: false
 }
 
 fun IrType.classId(): ClassId? = this.classOrNull?.owner?.classId
@@ -272,11 +291,11 @@ fun ClassId.toXR(): XR.ClassId = XR.ClassId(this.packageFqName.toXR(), this.rela
 fun FqName.toXR(): XR.FqName = XR.FqName(this.pathSegments().map { it.identifier })
 
 inline fun <reified T> IrAnnotationContainer.getAnnotationArgs(): List<IrExpression> {
-  val annotation = annotations.find { it.type.isClass<T>() }
+  val annotation = annotations.find { it.type.isClassStrict<T>() }
   return annotation?.valueArguments?.filterNotNull() ?: emptyList()
 }
 
-context(LoggableContext) fun IrExpression.varargValues(): List<IrExpression> =
+context(CX.Scope) fun IrExpression.varargValues(): List<IrExpression> =
   (this as? IrVararg ?: run{
     logger.warn("[ExoQuery-WARN] Expected the argument to be an IrVararg but it was not: ${this.dumpKotlinLike()}"); null
     null
@@ -292,7 +311,7 @@ inline fun <reified T> IrCall.reciverIs() =
 inline fun <reified T> IrCall.reciverIs(methodName: String) =
   (this.extensionReceiver ?: this.dispatchReceiver)?.isClass<T>() ?: false && this.symbol.safeName == methodName
 
-context(ParserContext) val IrElement.loc get() = this.locationXR()
+context(CX.Scope) val IrElement.loc get() = this.locationXR()
 
 data class ReplacementMethodToCall(val methodToCall: String, val callerType: ChangeReciever = ChangeReciever.DoNothing) {
   companion object {
@@ -326,7 +345,7 @@ fun IrCall.caller() =
   }
 
 // Best-effort to get the source of the file
-context(LocateableContext) fun IrElement.source(): String? = run {
+context(CX.Scope) fun IrElement.source(): String? = run {
   val range = TextRange(this.startOffset, this.endOffset)
 
   fun getFromFirSource() =

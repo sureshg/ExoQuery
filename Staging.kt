@@ -18,7 +18,7 @@ final data class TableContext(entity: Entity, alias: String) extends FromContext
 final data class QueryContext(query: SqlQuery, alias: String) extends FromContext {
   override def quat: Quat = query.quat
 }
-final data class InfixContext(infix: Infix, alias: String) extends FromContext { override def quat: Quat = infix.quat }
+final data class InfixContext(infix: Free, alias: String) extends FromContext { override def quat: Quat = infix.quat }
 final data class JoinContext(t: JoinType, a: FromContext, b: FromContext, on: Ast) extends FromContext {
   override def quat: Quat = Quat.Tuple(a.quat, b.quat)
 }
@@ -139,8 +139,8 @@ class SqlQueryApply(traceConfig: TraceConfig) {
         trace("Construct SqlQuery from: Query") andReturn {
           flatten(q, "x")
         }
-      case infix: Infix =>
-        trace("Construct SqlQuery from: Infix") andReturn {
+      case infix: Free =>
+        trace("Construct SqlQuery from: Free") andReturn {
           flatten(infix, "x")
         }
       case other =>
@@ -158,21 +158,21 @@ class SqlQueryApply(traceConfig: TraceConfig) {
   private def flattenContexts(query: Ast): (List[FromContext], Ast) =
     query match {
       // A flat-join query with no maps e.g: `qr1.flatMap(e1 => qr1.join(e2 => e1.i == e2.i))`
-      case FlatMap(q @ (_: Query | _: Infix), id: Ident, flatJoin @ FlatJoin(_, _, alias @ Ident(name, _), _)) =>
+      case FlatMap(q @ (_: Query | _: Free), id: Ident, flatJoin @ FlatJoin(_, _, alias @ Ident(name, _), _)) =>
         trace("Flattening FlatMap with FlatJoin") andReturn {
           val cc = CaseClassMake.fromQuat(flatJoin.quat)(name)
           flattenContexts(FlatMap(q, id, Map(flatJoin, alias, cc)))
         }
-      case FlatMap(q @ (_: Query | _: Infix), Ident(alias, _), p: Query) =>
+      case FlatMap(q @ (_: Query | _: Free), Ident(alias, _), p: Query) =>
         trace("Flattening Flatmap with Query") andReturn {
           val source                             = this.source(q, alias)
           val (nestedContexts, finalFlatMapBody) = flattenContexts(p)
           (source +: nestedContexts, finalFlatMapBody)
         }
-      // This needs to go before the case above it because in ExoQuery Infix is a sub-type of Query
-      case FlatMap(q @ (_: Query | _: Infix), Ident(alias, _), p: Infix) =>
-        trace("Flattening Flatmap with Infix") andReturn {
-          fail(s"Infix can't be use as a `flatMap` body. $query")
+      // This needs to go before the case above it because in ExoQuery Free is a sub-type of Query
+      case FlatMap(q @ (_: Query | _: Free), Ident(alias, _), p: Free) =>
+        trace("Flattening Flatmap with Free") andReturn {
+          fail(s"Free can't be use as a `flatMap` body. $query")
         }
       case other =>
         trace("Flattening other") andReturn {
@@ -406,7 +406,7 @@ class SqlQueryApply(traceConfig: TraceConfig) {
   private def source(ast: Ast, alias: String): FromContext =
     ast match {
       case entity: Entity            => TableContext(entity, alias)
-      case infix: Infix              => InfixContext(infix, alias)
+      case infix: Free              => InfixContext(infix, alias)
       case Join(t, a, b, ia, ib, on) => JoinContext(t, source(a, ia.name), source(b, ib.name), on)
       case FlatJoin(t, a, ia, on)    => FlatJoinContext(t, source(a, ia.name), on)
       case Nested(q)                 => QueryContext(apply(q), alias)

@@ -114,7 +114,7 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
           else -> Tree.Literal(x.shortString(), elementName)
         }
       //is XR.Product -> Tree.Apply("Product", (listOf(treeifyThis(x.name.takeLastWhile { it != '.' })) + x.fields.map { treeifyThis(it) }).iterator())
-      //is XR.Infix -> Tree.Apply("Infix", iteratorOf(treeifySuper(x.parts), treeifySuper(x.params)))
+      //is XR.Free -> Tree.Apply("Free", iteratorOf(treeifySuper(x.parts), treeifySuper(x.params)))
       is XR.Ident -> Tree.Apply("Id", iteratorOf(Tree.Literal(x.name, "name"), PrintXR(XRType.serializer(), config).treeifyThis(x.type, "type")), elementName)
       is XR.Location.File -> Tree.Literal("<Location:${x.path}:${x.row}:${x.col}>", elementName)
       is XR.Location.Synth -> Tree.Literal("<Location:Synthetic>", elementName)

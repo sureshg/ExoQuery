@@ -155,10 +155,10 @@ class PrintDiff(val defaultWidth: Int = 150): PPrinter(
 //
 //    case l @ Lazy(_) => (l, l)
 //
-//    case Infix(lhs, op, rhs) =>
+//    case Free(lhs, op, rhs) =>
 //    val (lhs1, lhs2) = duplicateTree(lhs)
 //    val (rhs1, rhs2) = duplicateTree(rhs)
-//    (Infix(lhs1, op, rhs1), Infix(lhs2, op, rhs2))
+//    (Free(lhs1, op, rhs1), Free(lhs2, op, rhs2))
 //
 //    case l @ Tree.Literal(_) => (l, l)
 //  }
@@ -170,7 +170,7 @@ class PrintDiff(val defaultWidth: Int = 150): PPrinter(
 //  case Apply(_, body)     => body.toList.map(countMaxDepth(_, currDepth + 1)).maxOption.getOrElse(0)
 //  case KeyValue(_, value) => countMaxDepth(value, currDepth + 1)
 //  case Lazy(_)            => currDepth // don't know what to do about lazy trees for now
-//  case Infix(lhs, _, rhs) => Math.max(countMaxDepth(lhs, currDepth + 1), countMaxDepth(rhs, currDepth + 1))
+//  case Free(lhs, _, rhs) => Math.max(countMaxDepth(lhs, currDepth + 1), countMaxDepth(rhs, currDepth + 1))
 //  case Tree.Literal(_)    => currDepth
 //}
 

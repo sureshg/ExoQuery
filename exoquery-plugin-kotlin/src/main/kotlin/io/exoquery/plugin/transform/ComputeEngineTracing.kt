@@ -7,7 +7,6 @@ import io.exoquery.plugin.isClass
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.source
-import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.simpleTypeArgs
 import io.exoquery.plugin.varargValues
 import io.exoquery.util.FilePrintOutputSink
@@ -23,10 +22,10 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 // TODO also want to get TracesEnabled annotation from the build query itself.
 object ComputeEngineTracing {
-  context(LocationContext, BuilderContext, CompileLogger)
+  context(CX.Scope, CX.Builder)
   private fun getTraceAnnotations() = run {
     // get annotations
-    val traceTypesClsRef = currentFileRaw.getAnnotation<TracesEnabled>()?.valueArguments?.firstOrNull()?.varargValues() ?: emptyList()
+    val traceTypesClsRef = currentFile.getAnnotation<TracesEnabled>()?.valueArguments?.firstOrNull()?.varargValues() ?: emptyList()
     val traceTypesNames =
       traceTypesClsRef
         .map { ref -> (ref as? IrClassReference) ?: parseError("Invalid Trace Type: ${ref.source() ?: ref.dumpKotlinLike()} was not a class-reference:\n${ref.dumpSimple()}") }
@@ -39,7 +38,7 @@ object ComputeEngineTracing {
     traceTypesNames
   }
 
-  context(LocationContext, BuilderContext, CompileLogger)
+  context(CX.Scope, CX.Builder)
   operator fun invoke(queryLabel: String?) = run {
     val traceTypesNames = getTraceAnnotations()
     val writeSource =

@@ -66,8 +66,8 @@ class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGol
     "XR.Product" {
       shouldBeGolden(XR.Product("MyClass", listOf("foo" to XR.Ident("bar"), "baz" to XR.Ident("qux"))))
     }
-    "XR.Infix" {
-      shouldBeGolden(XR.Infix(listOf("a", "b", "c"), listOf(XR.Ident("foo"), XR.Ident("bar"), XR.Ident("baz")), true, true, XRType.Value))
+    "XR.Free" {
+      shouldBeGolden(XR.Free(listOf("a", "b", "c"), listOf(XR.Ident("foo"), XR.Ident("bar"), XR.Ident("baz")), true, true, XRType.Value))
     }
     "XR.MethodCall" {
       shouldBeGolden(XR.MethodCall(XR.Ident("foo"), "method", listOf(XR.Ident("bar"), XR.Ident("baz")), XR.CallType.PureFunction, XR.ClassId("com.Stuff"), XRType.Value))
@@ -140,8 +140,8 @@ class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGol
     "XR.ExprToQuery" {
       shouldBeGolden(XR.ExprToQuery(XR.Ident("foo")))
     }
-    "XR.Infix" {
-      shouldBeGolden(XR.Infix(listOf("a", "b", "c"), listOf(XR.Ident("foo"), XR.Ident("bar"), XR.Ident("baz")), true, true, XRType.Value))
+    "XR.Free" {
+      shouldBeGolden(XR.Free(listOf("a", "b", "c"), listOf(XR.Ident("foo"), XR.Ident("bar"), XR.Ident("baz")), true, true, XRType.Value))
     }
     "XR.TagForSqlQuery" {
       shouldBeGolden(XR.TagForSqlQuery(BID("foo"), XRType.Value))

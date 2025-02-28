@@ -32,8 +32,8 @@ import io.decomat.HasProductClass as PC
  *    that are invoked via FunctionApplly), operators and functions.
  * 3. Actions - These are Sql Insert, Delete, Update and possibly corresponding batch actions.
  *
- * This only exceptions to this rule are Infix and Marker blocks that are used as any of the above four.
- * Infix in particular is represented as so sql("any_${}_sql_${}_here").as[Query/Expression/Action]
+ * This only exceptions to this rule are Free and Marker blocks that are used as any of the above four.
+ * Free in particular is represented as so sql("any_${}_sql_${}_here").as[Query/Expression/Action]
  *
  * The other miscellaneous elements are Branch, Block, and Variable which are used in the `when` clause i.e. XR.When
  * The type Ordering is used in the `sortBy` clause i.e. XR.SortBy is technically not part of the XR but closely related
@@ -438,18 +438,18 @@ sealed interface XR {
   }
 
   // ************************************************************************************************
-  // ****************************************** Infix ********************************************
+  // ****************************************** Free ********************************************
   // ************************************************************************************************
 
   @Serializable
   @Mat
-  data class Infix(@Slot val parts: List<String>, @Slot val params: List<XR>, val pure: Boolean, val transparent: Boolean, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<Infix> {
+  data class Free(@Slot val parts: List<String>, @Slot val params: List<XR>, val pure: Boolean, val transparent: Boolean, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<Free> {
     @Transient override val productComponents = productOf(this, parts, params)
     companion object {}
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
-    override fun equals(other: Any?): Boolean = other is Infix && other.id() == cid
+    override fun equals(other: Any?): Boolean = other is Free && other.id() == cid
   }
 
   // ************************************************************************************************

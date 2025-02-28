@@ -51,7 +51,7 @@ import io.exoquery.xrError
  * be {a} referring to the ident of the outer FlatMap.
  */
 object AttachToEntity {
-  fun XR.Query.isEntity() = this is XR.Entity || this is XR.Infix
+  fun XR.Query.isEntity() = this is XR.Entity || this is XR.Free
 
   operator fun invoke(f: (XR.Query, XR.Ident) -> XR.Query, alias: XR.Ident? = null): (XR.Query) -> XR.Query = { q ->
     applyWithId(f, alias, 0)(q)
@@ -98,7 +98,7 @@ object AttachToEntity {
 Scala:
 
 object AttachToEntity {
-  private object IsEntity { def unapply(q: Ast): Option[Ast] = q match { case q: Entity => Some(q); case q: Infix  => Some(q); case _         => None } }
+  private object IsEntity { def unapply(q: Ast): Option[Ast] = q match { case q: Entity => Some(q); case q: Free  => Some(q); case _         => None } }
 
   private def applyWithId(f: (Ast, Ident) => Query, alias: Option[Ident], nextId: Long)(q: Ast): Ast =
     q match {

@@ -4,42 +4,24 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.parseError
-import io.exoquery.plugin.locationXR
 import io.exoquery.xr.XR
 import io.exoquery.plugin.trees.*
-import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.printing.dumpSimple
-import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
-import io.exoquery.plugin.trees.CallData.MultiArgMember.ArgType
-import io.exoquery.xr.XRType
-import io.exoquery.xr.encode
-import kotlinx.serialization.encodeToHexString
-import kotlinx.serialization.protobuf.ProtoBuf
-import kotlinx.serialization.protobuf.ProtoBuf.Default.serializersModule
-import kotlinx.serialization.serializer
-import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
-import org.jetbrains.kotlin.ir.builders.irAs
-import org.jetbrains.kotlin.ir.builders.irImplicitCast
-import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
 
 
-class TransformCapturedExpression(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+class TransformCapturedExpression(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
   private val fqn: String = "io.exoquery.captureValue"
 
-  context(BuilderContext, CompileLogger)
-  override fun matchesBase(expression: IrCall): Boolean =
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun matches(expression: IrCall): Boolean =
     expression.symbol.owner.kotlinFqName.asString().let { it == fqn }
 
   // parent symbols are collected in the parent context
-  context(LocationContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrCall): IrExpression {
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun transform(expression: IrCall): IrExpression {
     val (xrExpr, dynamics) = parseSqlExpression(expression, superTransformer)
     val paramsExprModel = dynamics.makeParams()
     //val make = makeClassFromString("io.exoquery.SqlExpression", listOf(strExpr, paramsListExpr))
@@ -57,7 +39,7 @@ class TransformCapturedExpression(override val ctx: BuilderContext, val superTra
   }
 
   companion object {
-    context(LocationContext, BuilderContext, CompileLogger)
+    context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
     fun parseSqlExpression(expression: IrCall, superTransformer: VisitTransformExpressions)  = run {
       val bodyRaw =
         on(expression).match(

@@ -151,7 +151,7 @@ final data class UnaryOperationSqlQuery(
  * is actually a Query, additional sub-type of SqlQuery shuold be created for it. Instead what should
  * be inside of each SelectValue is a Expression type of some kind whether it be a a Propery(id, name)
  * construct e.g. Property(Id(person), name) or a constant, or perhaps like an expression (a + b).
- * The only exception to this is an Infix which can both be a Query and Expression but in the case
+ * The only exception to this is an Free which can both be a Query and Expression but in the case
  * of being inside a SelectValue, it should always be the latter.
  *
  * NOTE: Since SQL query expansion phases typically join property paths to process subqueries e.g.
@@ -248,8 +248,8 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
           trace("Construct SqlQuery from: TakeDropFlatten") andReturn {
             flatten(head, head.id.copy(name = "x")).copy(offset = num, type = query.type)
           }
-        is XR.Infix ->
-          trace("Construct SqlQuery from: Infix") andReturn { flatten(this, XR.Ident("x", type, XR.Location.Synth)) }
+        is XR.Free ->
+          trace("Construct SqlQuery from: Free") andReturn { flatten(this, XR.Ident("x", type, XR.Location.Synth)) }
 
         else ->
           trace("Construct SqlQuery from: Query").andReturn {
@@ -284,9 +284,9 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             val cc: XR.Product = XR.Product.fromProductIdent(body.id)
             flattenContexts(FlatMap.csf(head, id, Map(body, body.id, cc, loc))(this))
           }
-        this is XR.FlatMap && body is XR.Infix ->
-          trace("[INVALID] Flattening Flatmap with Infix") andReturn {
-            xrError("Infix can't be use as a `flatMap` body. $query")
+        this is XR.FlatMap && body is XR.Free ->
+          trace("[INVALID] Flattening Flatmap with Free") andReturn {
+            xrError("Free can't be use as a `flatMap` body. $query")
           }
         // Conceptually (the actual DSL is different):
         // people.flatMap(p -> groupBy(expr).flatMap(rest)) is:
@@ -641,7 +641,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
             // The following have special handling in source function
             is XR.ExprToQuery -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
-            is XR.Infix -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
+            is XR.Free -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
             is XR.Nested -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
             is FlatJoin -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
 
@@ -689,7 +689,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
   private fun source(ast: XR.Entity, alias: String): FromContext = TableContext(ast, alias)
 
-  private fun source(ast: XR.Infix, alias: String): FromContext = ExpressionContext(ast, alias)
+  private fun source(ast: XR.Free, alias: String): FromContext = ExpressionContext(ast, alias)
   private fun source(ast: XR.ExprToQuery, alias: String): FromContext = ExpressionContext(ast.head, alias)
   private fun source(ast: XR.FlatJoin, alias: String): FromContext =
     FlatJoinContext(ast.joinType, sourceSpecific(ast.head, ast.id.name) ?: QueryContext(invoke(ast.head), ast.id.name), ast.on)
@@ -706,7 +706,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
     with (ast) {
       when (this) {
         is XR.Entity            -> source(this, alias)
-        is XR.Infix             -> source(this, alias)
+        is XR.Free             -> source(this, alias)
         is XR.ExprToQuery       -> source(this, alias)
         is XR.FlatJoin          -> source(this, alias)
         is XR.Nested            -> source(this, alias)

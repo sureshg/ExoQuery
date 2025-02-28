@@ -3,19 +3,25 @@ package io.exoquery.plugin.trees
 import io.exoquery.CapturedBlock
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.safeName
+import io.exoquery.plugin.transform.CX
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.declarations.nameWithPackage
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 
-context(ParserContext)
+context(CX.Symbology)
 fun IrGetValue.isCapturedFunctionArgument(): Boolean = run {
   val gv = this
-  capturedFunctionSymbols.find { gv.symbol.owner == it } != null
+  symbolSet.capturedFunctionParameters.find { gv.symbol.owner == it } != null
 }
 
+context(CX.Scope)
 fun IrGetValue.isCapturedVariable(): Boolean {
   tailrec fun rec(elem: IrElement, recurseCount: Int): Boolean =
     when {
@@ -30,36 +36,45 @@ fun IrGetValue.isCapturedVariable(): Boolean {
   return rec(this.symbol.owner, 100)
 }
 
-
+context(CX.Scope)
 fun IrGetValue.showLineage(): String {
   val collect = mutableListOf<String>()
+  fun IrVariable.declSymbol(): String = if (this.isVar) "var" else "val"
+
   tailrec fun rec(elem: IrElement, recurseCount: Int): Unit {
-    collect.add("RecurseInto:${(elem as? IrFunction)?.let { "IrFun-" + it.symbol.safeName } ?: (elem as? IrVariable)?.let { "IrVar-" + it.symbol.safeName } ?: (elem as? IrValueParameter)?.let { "IrValParam-" + it.symbol.safeName } ?: "???"}")
+    val prefix =
+      "${(elem as? IrFunction)?.let { "fun " + it.symbol.safeName +"(...)" } 
+        ?: (elem as? IrVariable)?.let { "${it.declSymbol()} " + it.symbol.safeName } 
+        ?: (elem as? IrValueParameter)?.let { "param " + it.symbol.safeName }
+        ?: (elem as? IrFile)?.let { "File(${it.nameWithPackage})" }  
+        ?: (elem::class.simpleName ?: "Unknown")}"
+
     when {
       recurseCount == 0 -> {
-        collect.add("RECURSION LIMIT HIT")
+        collect.add("${prefix}->RECURSION LIMIT HIT")
         Unit
       }
       elem is IrFunction && elem.extensionReceiverParameter?.type?.isClass<CapturedBlock>() ?: false -> {
-        collect.add("${elem.symbol.safeName} has CapturedBlock")
+        collect.add("${prefix}->${elem.symbol.safeName}-in CapturedBlock")
         Unit
       }
       elem is IrFunction -> {
-        collect.add("IrFun.Owner")
+        collect.add("${prefix}->fun.Owner")
         rec(elem.symbol.owner.parent, recurseCount-1)
       }
       elem is IrValueParameter -> {
-        collect.add("IrValParam.Owner")
+        collect.add("${prefix}->param.Owner")
         rec(elem.symbol.owner.parent, recurseCount-1)
       }
       elem is IrVariable -> {
-        collect.add("IrVar.Owner")
+        collect.add("${prefix}->${elem.declSymbol()}.Owner")
         rec(elem.symbol.owner.parent, recurseCount-1)
       }
-      else -> Unit
+      else ->
+        collect.add(prefix)
     }
   }
 
   rec(this.symbol.owner, 100)
-  return collect.joinToString("->")
+  return collect.map { "[${it}]" }.joinToString("->")
 }

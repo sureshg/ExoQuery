@@ -3,11 +3,6 @@ package io.exoquery.plugin.transform
 import io.exoquery.annotation.ExoGoldenOverride
 import io.exoquery.annotation.ExoGoldenTest
 import io.exoquery.plugin.hasAnnotation
-import io.exoquery.plugin.location
-import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.logging.CompileLogger.Companion.invoke
-import org.jetbrains.kotlin.ir.declarations.path
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 object QueryFileBuilder {
   sealed interface OutputMode {
@@ -16,11 +11,11 @@ object QueryFileBuilder {
     object GoldenNoOverwrite : OutputMode
   }
 
-  context(LoggableContext) operator fun invoke(queryFile: QueryFile) {
-    if (!queryFile.codeFileScope.hasQueries()) return
+  context(CX.Scope) operator fun invoke(queryFile: QueryFile) {
+    if (!queryFile.codeFileAccum.hasQueries()) return
 
     // check queries for duplicate labels
-    val labelDups = queryFile.codeFileScope.currentQueries().filterNot { it.label == null }.groupBy { it.label }.filter { it.value.size > 1 }
+    val labelDups = queryFile.codeFileAccum.currentQueries().filterNot { it.label == null }.groupBy { it.label }.filter { it.value.size > 1 }
     if (labelDups.isNotEmpty()) {
       logger.error("Duplicate labels found in queries: ${labelDups.keys.joinToString(", ")}")
       return

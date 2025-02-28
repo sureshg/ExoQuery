@@ -19,7 +19,7 @@ class ApplyMap(val traceConfig: TraceConfig) {
     fun Expression.hasImpureInfix() = // TODO Optimize with ContainsXR
       CollectXR.invoke(this) {
         when {
-          this is Infix && this.pure == false -> this
+          this is Free && this.pure == false -> this
           else -> null
         }
       }.isNotEmpty()
@@ -27,7 +27,7 @@ class ApplyMap(val traceConfig: TraceConfig) {
     fun Expression.hasImpurities() = // TODO Optimize with ContainsXR
       CollectXR.invoke(this) {
         when {
-          this is Infix && this.pure == false -> this
+          this is Free && this.pure == false -> this
           this is XR.U.Call && !this.isPure() -> this
           else -> null
         }

@@ -10,7 +10,7 @@ import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.printing.dumpSimple
-import io.exoquery.plugin.trees.LocationContext
+import io.exoquery.plugin.trees.Elaborate
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.path
@@ -22,14 +22,10 @@ import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-class TransformPrintSource(
-  override val ctx: BuilderContext,
-  val superTransformer: VisitTransformExpressions
-): Transformer<IrCall>() {
-  private val compileLogger = ctx.logger
+class TransformPrintSource(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
 
-  context(BuilderContext, CompileLogger)
-  override fun matchesBase(expression: IrCall): Boolean =
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun matches(expression: IrCall): Boolean =
     expression.symbol.owner.hasAnnotation<ExoExtras>()
 
   sealed interface MatchedType {
@@ -37,10 +33,10 @@ class TransformPrintSource(
     data class Single(val ir: IrExpression): MatchedType
   }
 
-  context(LocationContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrCall): IrExpression =
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun transform(expression: IrCall): IrExpression =
       with(compileLogger) {
-        with (ctx.makeLifter()) {
+        with (makeLifter()) {
           on(expression).match(
             case(Ir.Call.FunctionUntethered1[Is("io.exoquery.printSource"), Ir.FunctionExpression.withReturnOnlyBlock[Is()]]).then { _, (ret) ->
               transformPrintSource(MatchedType.Single(ret))
@@ -52,6 +48,14 @@ class TransformPrintSource(
             case(Ir.Call.FunctionUntethered0[Is("currentSourceFile")]).then {
               currentFileRaw.path.lift()
             },
+            case(Ir.Call.FunctionUntethered1[Is("io.exoquery.elaborateDataClass"), Is()]).then { _, rec ->
+              val pairs =
+                Elaborate.invoke(rec).map { path ->
+                  val dotPathExpr = path.path.joinToString(".").lift()
+                  Pair(dotPathExpr, path.invocation).lift({a -> a}, {b -> b})
+                }
+              pairs.lift { it }
+            },
             case(Ir.Call.FunctionMem0.WithCaller[Is(), Is("ExoGoldenTest")]).then { caller ->
               caller.call("ExoGoldenTestExpr").invoke(currentFileRaw.path.lift())
             },
@@ -62,7 +66,7 @@ class TransformPrintSource(
         }
       } ?: parseError("Parsing Failed\n================== The expresson was not a Global Function (with one argument-block): ==================\n" + expression.dumpKotlinLike() + "\n--------------------------\n" + expression.dumpSimple())
 
-  context(LocationContext, BuilderContext, CompileLogger)
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   fun transformPrintSource(argsRaw: MatchedType) = run {
     val args = when(argsRaw) {
       is MatchedType.Single ->
@@ -71,7 +75,7 @@ class TransformPrintSource(
         argsRaw.copy(superTransformer.visitBlockBody(argsRaw.irs) as IrBlockBody)
     }
 
-    val printSourceExpr = ctx.pluginCtx
+    val printSourceExpr = pluginCtx
       .referenceFunctions(
         CallableId(FqName("io.exoquery"), Name.identifier("printSourceExpr"))
       ).first()
@@ -84,7 +88,7 @@ class TransformPrintSource(
 
     compileLogger.warn(message)
 
-    with(ctx.builder) {
+    with(builder) {
       this.irCall(printSourceExpr).apply {
         putValueArgument(0, irString(message))
       }

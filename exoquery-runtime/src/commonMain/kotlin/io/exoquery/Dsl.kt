@@ -41,6 +41,9 @@ fun errorCap(message: Any): Nothing = throw MissingCaptureError(message.toString
 
 // TODO When context recivers are finally implemented in KMP, make this have a context-reciver that allows `use` to be used, otherwise don't allow it
 fun <T> captureValue(block: CapturedBlock.() -> T): @Captured SqlExpression<T> = errorCap("Compile time plugin did not transform the tree")
+
+//fun <SqlContainer: ContainerOfXR> capture(block: CapturedBlock.() -> SqlContainer): @Captured SqlContainer = errorCap("Compile time plugin did not transform the tree")
+
 fun <T> capture(block: CapturedBlock.() -> SqlQuery<T>): @Captured SqlQuery<T> = errorCap("Compile time plugin did not transform the tree")
 
 interface StringSqlDsl {
@@ -53,27 +56,26 @@ interface StringSqlDsl {
 }
 
 
-
-// !"foo bar".asValueOf<String>()
-// sql("foo bar").asValueOf<String>()
-// sql("foo bar").asPureValueOf<String>()
-// sql("foo bar").asPurePredicate()
-
-interface Interpolated {
-  fun <T> asValueOf(): T = errorCap("The `asPure` expression of the Query was not inlined")
-  fun <T> asPureValueOf(): T = errorCap("The `asPure` expression of the Query was not inlined")
-  fun asPredicate(): Boolean = errorCap("The `asPurePredicate` expression of the Query was not inlined")
-
-}
-
 // Use for interpolate blocks e.g. free("foo bar").<String>() where free("foo bar") is a FreeBlock instance
 // no values of this should ever be created (that is called a "phantom type" in various circles)
+
+sealed interface Values
+sealed interface SqlActionWithFilter<T>
+interface ActionCapturedBlock: CapturedBlock {
+  fun <T> insert(valueBlock: (T).() -> Values): SqlAction<T> = errorCap("The `insertValues` expression of the Query was not inlined")
+  fun <T> update(valueBlock: (T).() -> Values): SqlActionWithFilter<T> = errorCap("The `insertValues` expression of the Query was not inlined")
+
+  fun <T> SqlActionWithFilter<T>.filter(block: (T) -> Boolean): SqlAction<T> = errorCap("The `where` expression of the Query was not inlined")
+
+  fun values(vararg values: Pair<Any, Any>): Values = errorCap("The `values` expression of the Query was not inlined")
+}
+
+
 sealed interface FreeBlock
-
 interface CapturedBlock {
-  @Dsl fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
-
   @Dsl fun free(block: String): FreeBlock = errorCap("Compile time plugin did not transform the tree")
+
+  @Dsl fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
 
   operator fun <T> FreeBlock.invoke(): T = errorCap("The `invoke` expression of the Query was not inlined")
   fun <T> FreeBlock.asPure(): T = errorCap("The `invoke` expression of the Query was not inlined")

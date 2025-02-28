@@ -3,16 +3,35 @@ package io.exoquery.plugin.logging
 import io.exoquery.annotation.CapturedFunction
 import io.exoquery.plugin.dataClassProperties
 import io.exoquery.plugin.printing.dumpSimple
+import io.exoquery.plugin.safeName
 import io.exoquery.plugin.source
-import io.exoquery.plugin.transform.LocateableContext
+import io.exoquery.plugin.transform.CX
+import io.exoquery.plugin.trees.showLineage
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.IrReturn
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.*
 
 object Messages {
+
+context(CX.Scope)
+fun ValueLookupComingFromExternalInExpression(variable: IrGetValue) =
+"""
+It looks like the variable ${variable.symbol.safeName} is coming from outside the capture/select block. Typically
+this is a runtime-value that you need to bring into the query as a parameter like this: `param(${variable.symbol.safeName})`.
+For example:
+
+val nameVariable = "Joe"
+val query = select { Table<Person>().filter { p -> p.name == param(nameVariable) } }
+> This will create the query:
+> SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ?
+
+(Lineage: ${variable.showLineage()})
+""".trimIndent()
+
 
 fun VariableComingFromNonCapturedFunction(funName: String) =
 """
@@ -35,7 +54,7 @@ If this is a custom type defined on a data-class e.g. `data class Customer(lastT
    `@Serializable(with=Something::class) class MyCustomDate(...); data class Customer(lastTransacted: @ExoValue MyCustomDate)`.
 """.trimIndent()
 
-context(LocateableContext)
+context(CX.Scope)
 fun CapturedFunctionFormWrong(msg: String) =
 """
 $msg

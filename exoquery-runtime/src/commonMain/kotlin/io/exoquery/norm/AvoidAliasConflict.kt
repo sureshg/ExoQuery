@@ -18,7 +18,7 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
     Tracer(TraceType.AvoidAliasConflict, traceConfig, 1)
 
   /**
-   * I.e. we consider to be something to be "unaliased" if it is an Entity or Infix most often it will be something like
+   * I.e. we consider to be something to be "unaliased" if it is an Entity or Free most often it will be something like
    * `Map(head:Entity(people), id, body)` then the `Map` won't be considered aliased because it's `head` is an XR.Entity.
    * In case there are some single-element things like `Map(Distinct(Entity(people)), ...)`, or `Map(Take(Entity(people), ...), ...)`
    * etc... recursively go inside of those things to see if an XR.Entity is inside.
@@ -31,7 +31,7 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
       // Aggregation is not a query in ExoQuery
       //is Aggregation -> head.isUnaliased()
       is Distinct -> head.isUnaliased()
-      is Entity, is Infix -> true
+      is Entity, is Free -> true
       else -> false
     }
 
@@ -43,7 +43,7 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
 //        case Drop(q: Query, _)        => isUnaliased(q)
 //        case Aggregation(_, q: Query) => isUnaliased(q)
 //        case Distinct(q: Query)       => isUnaliased(q)
-//        case _: Entity | _: Infix     => true
+//        case _: Entity | _: Free     => true
 //        case _                        => false
 //      }
 

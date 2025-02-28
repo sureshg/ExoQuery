@@ -111,7 +111,7 @@ abstract class SqlIdiom: HasPhasePrinting {
       is BinaryOp      -> token
       is XR.UnaryOp       -> token
       is XR.Const         -> token
-      is XR.Infix         -> token
+      is XR.Free         -> token
       is XR.Product       -> token
       is XR.Property      -> token
       is Ident            -> token
@@ -586,7 +586,7 @@ abstract class SqlIdiom: HasPhasePrinting {
       is FlatJoinContext -> +"${joinType.token} ${from.token} ON ${on.token}"
     }
 
-  val XR.Infix.token get(): Token {
+  val XR.Free.token get(): Token {
     val pt = parts.map { it.token }
     val pr = params.map { it.token }
     return Statement(pt.intersperseWith(pr))

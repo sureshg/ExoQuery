@@ -5,6 +5,12 @@ import io.exoquery.sql.SqlIdiom
 import io.exoquery.xr.RuntimeQueryBuilder
 import io.exoquery.xr.XR
 
+
+
+data class SqlAction<T>(val placeholder: String, /*val xr: XR.Action, val runtimes: RuntimeSet, override val params: ParamSet*/) {
+
+}
+
 data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfXR {
   fun determinizeDynamics(): SqlQuery<T> = DeterminizeDynamics().ofQuery(this)
 

@@ -106,10 +106,10 @@ interface StatefulTransformer<T> {
           val (valuesA, stateA) = applyList(values) { t, v -> t.invoke(v) }
           Product.cs(keys zip valuesA) to stateA
         }
-        // Infix can be both a Query and Expression
-        is Infix -> {
+        // Free can be both a Query and Expression
+        is Free -> {
           val (paramsA, stateA) = applyList(params) { t, v -> t.invoke(v) }
-          Infix.cs(parts, paramsA) to stateA
+          Free.cs(parts, paramsA) to stateA
         }
         is MethodCall -> invoke(this)
         is GlobalCall -> invoke(this)
@@ -205,10 +205,10 @@ interface StatefulTransformer<T> {
           val (queryA, stateA) = invoke(head)
           Nested.cs(queryA) to stateA
         }
-        // Infix can be both a Query and Expression
-        is Infix -> {
+        // Free can be both a Query and Expression
+        is Free -> {
           val (paramsA, stateA) = applyList(params) { t, v -> t.invoke(v) }
-          Infix(parts, paramsA, pure, transparent, type, loc) to stateA
+          Free(parts, paramsA, pure, transparent, type, loc) to stateA
         }
         is ExprToQuery -> {
           val (headA, stateA) = invoke(head)

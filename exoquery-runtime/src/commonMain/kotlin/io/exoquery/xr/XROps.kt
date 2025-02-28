@@ -48,7 +48,7 @@ fun XR.Map.containsImpurities(): Boolean =
       when {
         this is XR.GlobalCall && !this.isPure() -> this
         this is XR.MethodCall && !this.isPure() -> this
-        this is XR.Infix && !this.pure -> this
+        this is XR.Free && !this.pure -> this
         else -> null
       }
     }
@@ -59,7 +59,7 @@ fun XR.Map.containsImpurities(): Boolean =
 def unapply(ast: Ast) =
 CollectAst(ast) {
   case agg: Aggregation          => agg
-    case inf: Infix if (!inf.pure) => inf
+    case inf: Free if (!inf.pure) => inf
 }.nonEmpty
  */
 

@@ -5,7 +5,6 @@ import io.exoquery.TransformXrError
 import io.exoquery.config.ExoCompileOptions
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
-import io.exoquery.plugin.logging.CompileLogger.Companion.invoke
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -18,20 +17,37 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.*
 
+data class VisitorContext(val symbolSet: SymbolSet, val queriesAccum: FileQueryAccum) {
+  fun withNewAccum() = VisitorContext(symbolSet, FileQueryAccum.empty())
+  fun withNewFileAccum(file: IrFile) = VisitorContext(symbolSet, FileQueryAccum.emptyWithFile(file))
+}
+
 class VisitTransformExpressions(
   private val context: IrPluginContext,
   private val config: CompilerConfiguration,
   private val exoOptions: ExoCompileOptions
-) : IrElementTransformerWithContext<TransformerScope>() {
+) : IrElementTransformerWithContext<VisitorContext>() {
 
-  context (BuilderContext)
+  fun makeCompileLogger(currentExpr: IrElement) =
+    CompileLogger.invoke(config, currentFile, currentExpr)
+
+  fun makeScope(currentExpr: IrElement) = CX.Scope(
+    currentExpr = currentExpr,
+    logger = makeCompileLogger(currentExpr),
+    currentFile = currentFile,
+    pluginCtx = context,
+    compilerConfig = config,
+    options = exoOptions
+  )
+
+  context (CX.Symbology, CX.QueryAccum)
   fun recurse(expression: IrExpression): IrExpression =
     when (expression) {
-      is IrCall -> visitCall(expression, transformerScope) as IrExpression
-      else -> visitExpression(expression, transformerScope) as IrExpression
+      is IrCall -> visitCall(expression, makeVisitorContext()) as IrExpression
+      else -> visitExpression(expression, makeVisitorContext()) as IrExpression
     }
 
-  fun recurse(expression: IrExpression, data: TransformerScope): IrExpression =
+  fun recurse(expression: IrExpression, data: VisitorContext): IrExpression =
     when (expression) {
       is IrCall -> visitCall(expression, data) as IrExpression
       else -> visitExpression(expression, data) as IrExpression
@@ -55,7 +71,7 @@ class VisitTransformExpressions(
 //    return super.visitExpression(expression)
 //  }
 
-  override fun visitFileNew(file: IrFile, data: TransformerScope): IrFile {
+  override fun visitFileNew(file: IrFile, data: VisitorContext): IrFile {
     // Not sure if we should transfer any symbols from the previous and where they can be. Genrally transfer of symbols
     // should only be cumulative in a captured context for example something like:
     // capture {
@@ -75,64 +91,73 @@ class VisitTransformExpressions(
     // phase where it is easy to make an error and analyze adjacent expressions, the FreeSymbols check at the end
     // of the compilation phases).
     //if (file.hasAnnotation<ExoGoldenTest>())
-    val loggerCtx = LoggableContext.makeLite(config, file, file)
+
+    val scope = makeScope(file)
 
     val sanityCheck = currentFile.path == file.path
     if (!sanityCheck) {
-      loggerCtx.logger.warn("Current file is not the same as the file being visited: ${currentFile.path} != ${file.path}. Will not write this file.")
+      scope.logger.warn("Current file is not the same as the file being visited: ${currentFile.path} != ${file.path}. Will not write this file.")
     }
 
-    val fileScope = TransformerScope(data.symbols, data.capturedFunctionParameters, FileQueryAccum.RealFile(file))
-    val ret = super.visitFileNew(file, fileScope)
 
-    if (sanityCheck && fileScope.hasQueries()) {
+    val queryAccum = FileQueryAccum(QueryAccumState.RealFile(file))
+    val ret = super.visitFileNew(file, data.withNewFileAccum(file))
+
+    if (sanityCheck && queryAccum.hasQueries()) {
       //BuildQueryFile(file, fileScope, config, exoOptions, currentFile).buildRegular()
-      val queryFile = QueryFile(file, fileScope, config, exoOptions)
-      with(loggerCtx) { QueryFileBuilder.invoke(queryFile) }
+      val queryFile = QueryFile(file, queryAccum, config, exoOptions)
+      with(scope) { QueryFileBuilder.invoke(queryFile) }
     }
 
     return ret
   }
 
-  override fun visitFunctionNew(declaration: IrFunction, data: TransformerScope): IrStatement {
-    val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val transformerCtx = TransformerOrigin(context, config, this.currentFile, data, exoOptions)
-    val builderContext = transformerCtx.makeBuilderContext(declaration, scopeOwner)
+  private fun <R> runInContext(scopeContext:CX.Scope, builderContext: CX.Builder, visitorContext: VisitorContext, runBlock: context (CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum) () -> R): R =
+    runBlock(scopeContext, builderContext, CX.Symbology(visitorContext.symbolSet), CX.QueryAccum(visitorContext.queriesAccum))
 
-    val transformAnnotatedFunction = TransformAnnotatedFunction(builderContext, this)
-    return catchErrors(builderContext, declaration) {
-      when {
-        transformAnnotatedFunction.matches(declaration) -> transformAnnotatedFunction.transform(declaration)
-        else -> super.visitFunctionNew(declaration, data)
+  override fun visitFunctionNew(declaration: IrFunction, data: VisitorContext): IrStatement {
+    val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
+    val scopeContext = makeScope(declaration)
+    val builderContext = CX.Builder(scopeContext, scopeOwner)
+    val runner = ScopedRunner(scopeContext, builderContext, data)
+
+    val transformAnnotatedFunction = TransformAnnotatedFunction(this)
+    return runner.run(declaration) {
+      runInContext(scopeContext, builderContext, data) {
+        when {
+          transformAnnotatedFunction.matches(declaration) -> transformAnnotatedFunction.transform(declaration)
+          else -> super.visitFunctionNew(declaration, data)
+        }
       }
     }
   }
 
-  fun <T: IrElement> catchErrors(builderCtx: BuilderContext, expression: T, block: () -> T): T {
-    return try {
-      block()
-    } catch (e: ParseError) {
-      // builderContext.logger.error(e.msg, e.location ?: expression.location(currentFile.fileEntry))
-      val location = e.location ?: expression.location(currentFile.fileEntry)
-      builderCtx.logger.error(e.msg, location)
-      expression
-    } catch (e: TransformXrError) {
-      val location = expression.location(currentFile.fileEntry)
-      builderCtx.logger.error("An error occurred during the transformation of the expression: ${e.message}\n" + e.stackTraceToString(), location)
-      expression
-    }
+  data class ScopedRunner(val scopeContext:CX.Scope, val builderContext: CX.Builder, val visitorContext: VisitorContext) {
+    fun <R: IrElement> run(expression: R, block: context (CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum) () -> R): R =
+      try {
+        block(scopeContext, builderContext, CX.Symbology(visitorContext.symbolSet), CX.QueryAccum(visitorContext.queriesAccum))
+      } catch (e: ParseError) {
+        // builderContext.logger.error(e.msg, e.location ?: expression.location(currentFile.fileEntry))
+        scopeContext.logger.error(e.msg)
+        expression
+      } catch (e: TransformXrError) {
+        val location = expression.location(scopeContext.currentFile.fileEntry)
+        scopeContext.logger.error("An error occurred during the transformation of the expression: ${e.message}\n" + e.stackTraceToString(), location)
+        expression
+      }
   }
 
 
   // TODO move this to visitGetValue? That would be more efficient but what other things might we wnat to transform?
-  override fun visitExpression(expression: IrExpression, data: TransformerScope): IrExpression {
+  override fun visitExpression(expression: IrExpression, data: VisitorContext): IrExpression {
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val transformerCtx = TransformerOrigin(context, config, this.currentFile, data, exoOptions)
-    val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
-    val transformProjectCapture = TransformProjectCapture(builderContext, this)
-    val transformScaffoldAnnotatedFunctionCall = TransformScaffoldAnnotatedFunctionCall(builderContext, this)
+    val scopeContext = makeScope(expression)
+    val builderContext = CX.Builder(scopeContext, scopeOwner)
+    val transformProjectCapture = TransformProjectCapture(this)
+    val transformScaffoldAnnotatedFunctionCall = TransformScaffoldAnnotatedFunctionCall(this)
+    val runner = ScopedRunner(scopeContext, builderContext, data)
 
-    return catchErrors(builderContext, expression) {
+    return runner.run(expression) {
       when {
         // If it is a call that needs to be scaffolded need to recurse into it as a priority (it will call superTransformer recursively and transformProjectCapture will be called on SqlQuery/SqlExpression clauses inside)
         expression is IrCall && transformScaffoldAnnotatedFunctionCall.matches(expression) ->
@@ -151,35 +176,25 @@ class VisitTransformExpressions(
     }
   }
 
-  override fun visitCall(expression: IrCall, data: TransformerScope): IrElement {
+  override fun visitCall(expression: IrCall, data: VisitorContext): IrElement {
 
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
     val stack = RuntimeException()
 
-    val transformerCtx = TransformerOrigin(context, config, this.currentFile, data, exoOptions)
-    val builderContext = transformerCtx.makeBuilderContext(expression, scopeOwner)
+    val builderContext = CX.Builder(makeScope(expression), scopeOwner)
 
-    val transformPrint = TransformPrintSource(builderContext, this)
+    val transformPrint = TransformPrintSource(this)
     // TODO just for Expression capture or also for Query capture? Probably both
-    val transformCapture = TransformCapturedExpression(builderContext, this)
-    val transformCaptureQuery = TransformCapturedQuery(builderContext, this)
-    val transformSelectClause = TransformSelectClause(builderContext, this)
+    val transformCapture = TransformCapturedExpression(this)
+    val transformCaptureQuery = TransformCapturedQuery(this)
+    val transformSelectClause = TransformSelectClause(this)
     // I.e. tranforms the SqlQuery.build call (i.e. the SqlQuery should have already been transformed into an Uprootable before recursing "out" to the .build call
     // or the .build call should have recursed down into it (because it calls the superTransformer on the reciever of the .build call)
-    val transformCompileQuery = TransformCompileQuery(builderContext, this)
-    val transformScaffoldAnnotatedFunctionCall = TransformScaffoldAnnotatedFunctionCall(builderContext, this)
+    val transformCompileQuery = TransformCompileQuery(this)
+    val transformScaffoldAnnotatedFunctionCall = TransformScaffoldAnnotatedFunctionCall(this)
+    val runner = ScopedRunner(makeScope(expression), builderContext, data)
 
-    // TODO Catch parser errors here, make a warning via the compileLogger (in the BuilderContext) & don't transform the expresison
-
-    // TODO Create a 'transformer' for SelectClause that will just collect
-    //      the variables declared there and propagate them to clauses defined inside of that
-
-    // TODO Get the variables collected from queryMapTransformer or the transformer that activates
-    //      and pass them in when the transformers recurse inside, currently only TransformQueryMap
-    //      does this.
-
-
-    return catchErrors(builderContext, expression) {
+    return runner.run(expression) {
       when {
         transformScaffoldAnnotatedFunctionCall.matches(expression) -> transformScaffoldAnnotatedFunctionCall.transform(expression)
 

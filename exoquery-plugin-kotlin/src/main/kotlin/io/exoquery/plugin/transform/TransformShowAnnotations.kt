@@ -23,18 +23,18 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 
 
-class TransformShowAnnotations(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+class TransformShowAnnotations(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
 
 
   private val fqn: String = "io.exoquery.showAnnotations"
 
-  context(BuilderContext, CompileLogger)
-  override fun matchesBase(expression: IrCall): Boolean =
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun matches(expression: IrCall): Boolean =
     expression.symbol.owner.kotlinFqName.asString().let { it == fqn }
 
   // parent symbols are collected in the parent context
-  context(LocationContext, BuilderContext, CompileLogger)
-  override fun transformBase(expression: IrCall): IrExpression {
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun transform(expression: IrCall): IrExpression {
     val newExpression = superTransformer.recurse(expression)
     val sqlExpressionType = newExpression.type
 

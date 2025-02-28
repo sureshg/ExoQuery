@@ -24,7 +24,7 @@ import io.exoquery.xr.XR.FlatFilter
 import io.exoquery.xr.XR.Distinct
 import io.exoquery.xr.XR.DistinctOn
 import io.exoquery.xr.XR.Nested
-import io.exoquery.xr.XR.Infix
+import io.exoquery.xr.XR.Free
 import io.exoquery.xr.XR.FunctionN
 import io.exoquery.xr.XR.FunctionApply
 import io.exoquery.xr.XR.BinaryOp
@@ -100,8 +100,8 @@ fun DistinctOn.cs(head: XR.Query, id: XR.Ident, by: XR.Expression) = io.exoquery
 val Nested.Nested get() = this
 fun Nested.cs(head: XR.Query) = io.exoquery.xr.XR.Nested.csf(head)(this)
 
-val Infix.Infix get() = this
-fun Infix.cs(parts: List<String>, params: List<XR>) = io.exoquery.xr.XR.Infix.csf(parts, params)(this)
+val Free.Free get() = this
+fun Free.cs(parts: List<String>, params: List<XR>) = io.exoquery.xr.XR.Free.csf(parts, params)(this)
 
 val FunctionN.FunctionN get() = this
 fun FunctionN.cs(params: List<Ident>, body: XR.U.QueryOrExpression) = io.exoquery.xr.XR.FunctionN.csf(params, body)(this)

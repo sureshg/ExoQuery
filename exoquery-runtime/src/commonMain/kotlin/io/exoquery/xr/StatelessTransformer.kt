@@ -55,8 +55,8 @@ interface StatelessTransformer {
         is When -> When.csf(branches.map { invoke(it) }, invoke(orElse))(this)
         is Block -> invoke(this)
         is Product -> Product.csf(fields.map { it.first to invoke(it.second) })(this)
-        // Infix can both be Expression and Query
-        is Infix -> Infix(parts, params.map { invoke(it) }, pure, transparent, type, loc)
+        // Free can both be Expression and Query
+        is Free -> Free(parts, params.map { invoke(it) }, pure, transparent, type, loc)
         is MethodCall -> invoke(this)
         is GlobalCall -> invoke(this)
         is QueryToExpr -> QueryToExpr.csf(invoke(head))(this)
@@ -87,8 +87,8 @@ interface StatelessTransformer {
         is ConcatMap -> ConcatMap.csf(invoke(head), invokeIdent(id), invoke(body))(this)
         is Nested -> Nested.csf(invoke(head))(this)
         is ExprToQuery -> ExprToQuery.csf(invoke(head))(this)
-        // Infix can both be Expression and Query
-        is Infix -> Infix.csf(parts, params.map { invoke(it) })(this)
+        // Free can both be Expression and Query
+        is Free -> Free.csf(parts, params.map { invoke(it) })(this)
         is TagForSqlQuery -> this
         is CustomQueryRef -> CustomQueryRef.csf(customQuery.handleStatelessTransform(this@StatelessTransformer))(this)
         is FunctionApply -> FunctionApply.csf(invoke(function), args.map { invoke(it) })(this)

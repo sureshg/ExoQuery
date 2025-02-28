@@ -7,19 +7,15 @@ import io.exoquery.parseError
 import io.exoquery.plugin.funName
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.isClass
-import io.exoquery.plugin.location
 import io.exoquery.plugin.locationXR
-import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.trees.Ir
-import io.exoquery.plugin.trees.LocationContext
 import io.exoquery.plugin.trees.Parser
 import io.exoquery.plugin.trees.SqlQueryExpr
 import io.exoquery.plugin.trees.of
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.builders.irBlockBody
-import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -73,17 +69,17 @@ import kotlin.with
  * of the function itself needs to be called in order to get params and runtimes. This is why we remove the arguments but still make the function
  * accessible.
  */
-class TransformAnnotatedFunction(override val ctx: BuilderContext, val superTransformer: VisitTransformExpressions): ElementTransformer<IrFunction>() {
+class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions): ElementTransformer<IrFunction>() {
 
-  context(BuilderContext, CompileLogger)
-  override fun matchesBase(expr: IrFunction): Boolean =
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun matches(expr: IrFunction): Boolean =
     expr is IrSimpleFunction && expr.hasAnnotation<CapturedFunction>()
 
   fun IrSimpleFunction.getSingleReturnExpr(): IrExpression? =
     body?.statements?.singleOrNull().let { it as? IrReturn }?.value
 
-  context(LocationContext, BuilderContext, CompileLogger)
-  override fun transformBase(capFunRaw: IrFunction): IrFunction {
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun transform(capFunRaw: IrFunction): IrFunction {
     val capFun = capFunRaw as? IrSimpleFunction ?: parseError("The function annotated with @CapturedFunction must be a simple function.", capFunRaw)
 
     if (!capFun.returnType.isClass<SqlQuery<*>>()) {
@@ -101,7 +97,7 @@ class TransformAnnotatedFunction(override val ctx: BuilderContext, val superTran
         capFun.getSingleReturnExpr() ?: parseError(Messages.CapturedFunctionFormWrong("Outer form of the captured-function was wrong."), capFun)
 
     // Add the function value parameters to the parsing context so that the parser treats them as identifiers (instead of dynamics)
-    val (rawQueryXR, dynamics) = with (this@LocationContext.withCapturedFunctionParameters(capFun.valueParameters)) {
+    val (rawQueryXR, dynamics) = with (CX.Symbology(symbolSet.withCapturedFunctionParameters(capFun.valueParameters))) {
       on(capFunReturn).match(
         // It can either be a `select { ... }` or a `capture { ... }`
         case(Ir.Call.FunctionUntethered1[Is.of("io.exoquery.capture", "io.exoquery.select"), Is()]).thenThis { funName, _ ->
@@ -132,7 +128,7 @@ class TransformAnnotatedFunction(override val ctx: BuilderContext, val superTran
         SqlQueryExpr.Uprootable.plantNewPluckable(xrLambda.asQuery(), dynamics.makeRuntimes(), params)
       }
 
-    capFun.body = ctx.builder.irBlockBody {
+    capFun.body = builder.irBlockBody {
       +irReturn(newSqlQuery)
     }
     //error("---------- New CapFun: ----------\n${capFun.dumpKotlinLike()}")
