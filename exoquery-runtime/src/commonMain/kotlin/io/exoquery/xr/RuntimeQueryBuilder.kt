@@ -2,6 +2,7 @@ package io.exoquery.xr
 
 import io.exoquery.ContainerOfXR
 import io.exoquery.ParamSet
+import io.exoquery.Phase
 import io.exoquery.SqlCompiledQuery
 import io.exoquery.SqlQuery
 import io.exoquery.sql.ParamMultiToken
@@ -33,7 +34,7 @@ class RuntimeQueryBuilder<T>(val query: SqlQuery<T>, val dialect: SqlIdiom, val 
 
     val queryRaw = queryTokenized.build()
     val query = if (pretty) formatQuery(queryRaw) else queryRaw
-    return SqlCompiledQuery(queryRaw, queryTokenized, false, label)
+    return SqlCompiledQuery(queryRaw, queryTokenized, false, label, Phase.Runtime)
   }
 
   class TokenRealizer(val paramSet: ParamSet): StatelessTokenTransformer {

@@ -2,6 +2,7 @@ package io.exoquery.plugin.transform
 
 import com.github.vertical_blank.sqlformatter.SqlFormatter
 import io.decomat.*
+import io.exoquery.Phase
 import io.exoquery.PostgresDialect
 import io.exoquery.SqlCompiledQuery
 import io.exoquery.SqlQuery
@@ -144,7 +145,8 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
                   // which shows us if the Param is a ParamSingle or ParamMulti. We need to check that in the AST in order to know that this
                   // value is supposed to be.
                   irBuilder.irBoolean(false), // needsTokenization (todo need to determine this from the tokenized value i.e. only `true` if there are no ParamMulti values)
-                  labelExpr
+                  labelExpr,
+                  Phase.CompileTime.lift()
                 )
               )
             }

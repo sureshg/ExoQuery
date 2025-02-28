@@ -2,6 +2,11 @@ package io.exoquery
 
 import io.exoquery.sql.Token
 
+sealed interface Phase {
+  object CompileTime : Phase
+  object Runtime : Phase
+}
+
 // TODO value needs to be Token and we need to write a lifter for Token
 //      This probably needs to be something like SqlCompiledQuery<T> which has constructors
 //      SqlCompiledQuery.compileTime<T>(String|Token,Params,serialier<T>=some-default-value) and SqlCompiledQuery.runtime(query:SqlQuery,serialier<T>=some-default-value)
@@ -10,7 +15,7 @@ import io.exoquery.sql.Token
 // can just use the value-string. Typically we cannot use the value-string because there is a paramList (since we don't know how many instances of "?" to use)
 // This needs to be checked from the Token at compile-time (also if the dialect requires numbered parameters
 // it is also useful to use Token)
-data class SqlCompiledQuery<T>(val value: String, val token: Token, val needsTokenization: Boolean, val label: String?) {
+data class SqlCompiledQuery<T>(val value: String, val token: Token, val needsTokenization: Boolean, val label: String?, val phase: Phase) {
   val params: List<Param<*>> by lazy { token.extractParams() }
 
   // Similar concept tot the SqlQuery/SqlExpression.determinizeDynamics but it does not need to consider any nesting constructs
@@ -25,6 +30,6 @@ data class SqlCompiledQuery<T>(val value: String, val token: Token, val needsTok
     }
     val (bidMap, newParams) = bids.unzip()
     val newToken = token.mapBids(bidMap.toMap())
-    return SqlCompiledQuery(value, newToken, needsTokenization, label)
+    return this.copy(token = newToken)
   }
 }

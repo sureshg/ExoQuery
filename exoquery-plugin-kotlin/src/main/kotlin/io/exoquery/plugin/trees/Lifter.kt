@@ -174,6 +174,12 @@ class Lifter(val builderCtx: CX.Builder) {
       is Statement -> make<Statement>(this.tokens.lift { it.lift(paramSetExpr) })
       is StringToken -> make<StringToken>(string.lift())
     }
+
+  fun Phase.lift(): IrExpression =
+    when (this) {
+      Phase.CompileTime -> makeObject<Phase.CompileTime>()
+      Phase.Runtime -> makeObject<Phase.Runtime>()
+    }
 }
 
 // Some top-level lift functions to use outside of the lifter
