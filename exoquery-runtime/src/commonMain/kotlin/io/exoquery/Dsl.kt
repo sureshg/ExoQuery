@@ -4,6 +4,9 @@ import io.exoquery.annotation.Dsl
 import io.exoquery.annotation.DslFunctionCall
 import io.exoquery.annotation.DslFunctionCallType
 import io.exoquery.annotation.DslNestingIgnore
+import io.exoquery.annotation.ExoCapture
+import io.exoquery.annotation.ExoCaptureExpression
+import io.exoquery.annotation.ExoCaptureSelect
 import io.exoquery.annotation.ExoValue
 import io.exoquery.annotation.ParamCtx
 import io.exoquery.annotation.ParamCustom
@@ -11,14 +14,11 @@ import io.exoquery.annotation.ParamCustomValue
 import io.exoquery.annotation.ParamPrimitive
 import io.exoquery.annotation.ParamStatic
 import io.exoquery.serial.ParamSerializer
-import io.exoquery.terpal.Interpolator
 import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.decodeFromHexString
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlin.jvm.JvmName
 import kotlin.reflect.KClass
 
 fun unpackExpr(expr: String): XR.Expression =
@@ -39,12 +39,26 @@ fun unpackQuery(query: String): XR.Query =
 class MissingCaptureError(val msg: String): IllegalStateException(msg)
 fun errorCap(message: Any): Nothing = throw MissingCaptureError(message.toString())
 
-// TODO When context recivers are finally implemented in KMP, make this have a context-reciver that allows `use` to be used, otherwise don't allow it
-fun <T> captureValue(block: CapturedBlock.() -> T): @Captured SqlExpression<T> = errorCap("Compile time plugin did not transform the tree")
 
-//fun <SqlContainer: ContainerOfXR> capture(block: CapturedBlock.() -> SqlContainer): @Captured SqlContainer = errorCap("Compile time plugin did not transform the tree")
 
-fun <T> capture(block: CapturedBlock.() -> SqlQuery<T>): @Captured SqlQuery<T> = errorCap("Compile time plugin did not transform the tree")
+object capture {
+
+  // TODO When context recivers are finally implemented in KMP, make this have a context-reciver that allows `use` to be used, otherwise don't allow it
+  @ExoCaptureExpression
+  fun <T> expression(block: CapturedBlock.() -> T): @Captured SqlExpression<T> = errorCap("Compile time plugin did not transform the tree")
+
+  // Very interesting thing happen to the annotation if we do this. I.e. when something like a conditional
+// happens e.g. `if (foo) capture { query } else throw ...` then instead of being @Captured SqlQuery it will be just SqlQuery which
+// is actually the behavior that we wanted since the start.
+  @ExoCapture
+  operator fun <SqlContainer : ContainerOfXR> invoke(block: CapturedBlock.() -> SqlContainer): @Captured SqlContainer = errorCap("Compile time plugin did not transform the tree")
+
+  // TODO play around with having multiple from-clauses
+  @ExoCaptureSelect
+  fun <T> select(block: SelectClauseCapturedBlock.() -> T): @Captured SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
+}
+
+//fun <T> capture(block: CapturedBlock.() -> SqlQuery<T>): @Captured SqlQuery<T> = errorCap("Compile time plugin did not transform the tree")
 
 interface StringSqlDsl {
   @DslFunctionCall(DslFunctionCallType.PureFunction::class) fun left(i: Int): String = errorCap("The `left` expression of the Query was not inlined")
@@ -194,9 +208,6 @@ interface SelectClauseCapturedBlock: CapturedBlock {
   @Dsl fun groupBy(vararg groupings: Any): Unit = errorCap("The `groupBy` expression of the Query was not inlined")
   @Dsl fun sortBy(vararg orderings: Pair<*, Ord>): Unit = errorCap("The `sortBy` expression of the Query was not inlined")
 }
-
-// TODO play around with having multiple from-clauses
-fun <T> select(block: SelectClauseCapturedBlock.() -> T): @Captured SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
 
 interface ValueWithSerializer<T: Any> {
   val value: T

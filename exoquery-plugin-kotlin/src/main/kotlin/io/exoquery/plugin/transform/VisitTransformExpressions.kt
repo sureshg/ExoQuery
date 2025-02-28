@@ -19,7 +19,7 @@ import org.jetbrains.kotlin.ir.util.*
 
 data class VisitorContext(val symbolSet: SymbolSet, val queriesAccum: FileQueryAccum) {
   fun withNewAccum() = VisitorContext(symbolSet, FileQueryAccum.empty())
-  fun withNewFileAccum(file: IrFile) = VisitorContext(symbolSet, FileQueryAccum.emptyWithFile(file))
+  fun withNewFileAccum(accum: FileQueryAccum) = VisitorContext(symbolSet, accum)
 }
 
 class VisitTransformExpressions(
@@ -46,6 +46,10 @@ class VisitTransformExpressions(
       is IrCall -> visitCall(expression, makeVisitorContext()) as IrExpression
       else -> visitExpression(expression, makeVisitorContext()) as IrExpression
     }
+
+  context (CX.Symbology, CX.QueryAccum)
+  fun recurse(expression: IrBlockBody): IrBlockBody =
+    visitBody(expression, makeVisitorContext()) as IrBlockBody
 
   fun recurse(expression: IrExpression, data: VisitorContext): IrExpression =
     when (expression) {
@@ -101,7 +105,7 @@ class VisitTransformExpressions(
 
 
     val queryAccum = FileQueryAccum(QueryAccumState.RealFile(file))
-    val ret = super.visitFileNew(file, data.withNewFileAccum(file))
+    val ret = super.visitFileNew(file, data.withNewFileAccum(queryAccum))
 
     if (sanityCheck && queryAccum.hasQueries()) {
       //BuildQueryFile(file, fileScope, config, exoOptions, currentFile).buildRegular()

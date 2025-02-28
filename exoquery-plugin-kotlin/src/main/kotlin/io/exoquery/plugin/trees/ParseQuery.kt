@@ -112,11 +112,11 @@ object ParseQuery {
           },
           case(ExtractorsDomain.DynamicQueryCall[Is()])
             .thenIf {
-              // TODO should disable this Strict-Model by default (when the entire DSL is built out) and make this just a warning by default
               // We don't want arbitrary functions returning SqlQuery to be treated as dynamic (e.g. right now I am working on parsing for .nested
               // and since it doesn't exist yet this case is being hit). Make the user either annotate the type or the function with @CapturedReturn
               // in order to know we shuold actually be doing this. Should use a similar strategy for QueryMethodCall and QueryGlobalCall
-              it.type.hasAnnotation<CapturedDynamic>() || it.type.hasAnnotation(FqName("io.exoquery.Captured"))
+              //it.type.hasAnnotation<CapturedDynamic>() || it.type.hasAnnotation(FqName("io.exoquery.Captured"))
+              true
             }.then { _ ->
               val bid = BID.Companion.new()
               binds.addRuntime(bid, expr)
@@ -125,6 +125,7 @@ object ParseQuery {
         ) ?: run {
           val additionalHelp =
             when {
+              // no longer need that message since un-annotation dynamics coming from functions are allowed
               expr is IrGetValue && expr.symbol.owner is IrFunction ->
                 Messages.VariableComingFromNonCapturedFunction(expr.ownerFunName ?: "<???>")
 

@@ -1,10 +1,12 @@
 package io.exoquery
 
+import io.exoquery.serial.ParamSerializer
 import io.exoquery.xr.OP
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.equals.shouldBeEqual
+import io.kotest.matchers.shouldBe
 
 class BasicQueryQuotationSpec : FreeSpec({
   data class Person(val id: Int, val name: String, val age: Int)
@@ -113,6 +115,29 @@ class BasicQueryQuotationSpec : FreeSpec({
         RuntimeSet.of(BID("0") to SqlQuery<Person>(personEnt, RuntimeSet.Empty, ParamSet.Empty)),
         ParamSet.Empty
       )
+    }
+    // TODO too dangerous, don't allow this. If there's an external function being called it should be captured or annotated in some way
+    "c0D=(i)->dyn{TableA.filter(i)}, c={c0D.map(...)} -> {T(B0).map(...),R={B0,TableA}}" {
+      fun cap0(i: Int) =
+        if (tru) {
+          capture { Table<Person>().filter { p -> p.age == param(i) } }
+        } else {
+          throw IllegalArgumentException("Should not be here")
+        }
+      val cap = capture {
+        cap0(123).map { p -> p.name }
+      }
+      cap.determinizeDynamics().withNonStrictEquality() shouldBe SqlQuery<String>(
+        XR.Map(XR.TagForSqlQuery(BID("1"), personTpe), pIdent, XR.Property(pIdent, "name")),
+        RuntimeSet.of(BID("1") to
+          SqlQuery<Person>(
+            xr = XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "age"), OP.`==`, XR.TagForParam.valueTag("0"))),
+            runtimes = RuntimeSet.Empty,
+            params = ParamSet(listOf(ParamSingle(BID("0"), 123, ParamSerializer.Int)))
+          )
+        ),
+        ParamSet.Empty
+      ).withNonStrictEquality()
     }
   }
 })

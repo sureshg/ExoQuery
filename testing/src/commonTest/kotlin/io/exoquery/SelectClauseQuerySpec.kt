@@ -1,13 +1,7 @@
 package io.exoquery
 
-import io.exoquery.xr.XR
-import io.exoquery.xr.XRType
-import io.kotest.core.spec.Spec
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.core.test.TestCase
-import io.kotest.core.test.TestScope
 import io.kotest.matchers.shouldBe
-import kotlin.test.assertEquals
 
 //class GoldenSpec(build: FreeSpec.() -> kotlin.Unit): FreeSpec(build) {
 //  override suspend fun beforeSpec(spec: Spec) {

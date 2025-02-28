@@ -1,13 +1,6 @@
 package io.exoquery
 
-import io.exoquery.annotation.CapturedFunction
-import io.exoquery.xr.XR
-import io.exoquery.xr.XRType
 import io.exoquery.testdata.*
-import io.exoquery.util.TraceType
-import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.string.shouldContain
 
 class ExpressionFunctionReq : GoldenSpecDynamic(ExpressionFunctionReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "String" - {
@@ -90,6 +83,7 @@ class ExpressionFunctionReq : GoldenSpecDynamic(ExpressionFunctionReqGoldenDynam
     "toInt" {
       val q = capture { Table<Person>().map { p -> p.age.toInt() } }
       shouldBeGolden(q.build<PostgresDialect>())
+      println("hello")
     }
     "toLong" {
       val q = capture { Table<Person>().map { p -> p.age.toLong() } }

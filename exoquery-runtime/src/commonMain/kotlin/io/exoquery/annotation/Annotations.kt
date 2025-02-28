@@ -73,6 +73,39 @@ annotation class ParamCustom
 @Retention(AnnotationRetention.BINARY)
 annotation class ParamCustomValue
 
+/**
+ * Used to annotate a type so that the ExoQuery system knows that it is a value (i.e. a value-XRType)
+ * that needs to be encoded/decoded itself and not further broken down into its components during
+ * select-query expasion. For example given something like this:
+ * ```
+ * data class MyDate(val year: Int, val month: Int, val day: Int)
+ * data class Customer(name: String, lastOrder: MyDate)
+ * capture { Table<Customer>() }
+ * // Would be broken down into something like:
+ * // SELECT name, lastOrder_year, lastOrder_month, lastOrder_day FROM Customer
+ * // However, if we annotate MyDate with ExoValue i.e. data class `Customer(name: String, lastOrder: @ExoValue MyDate)`
+ * // then the query will be:
+ * // SELECT name, lastOrder FROM Customer
+ * ```
+ * During deserialization the system will expect to have a serializer dynamcially configured for MyDate (NOT an encoder
+ * since ExoValue does not imply the value in encoding is contextual). In order to both mark the property as a ExoQuery value
+ * and mark it as Contextual (telling the system to expect a direct decoder for MyValue) annotate the type as @Contextual instead
+ * i.e. `data class Customer(name: String, lastOrder: @Contextual MyDate)`
+ */
 @Target(AnnotationTarget.TYPE)
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoValue
+
+// Using annotations to identify what functions capture queries/expressions/etc...
+// instead of parsing them by name is a more flexible approach.
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoCapture
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoCaptureSelect
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoCaptureExpression

@@ -1,8 +1,6 @@
 package io.exoquery
 
 import io.exoquery.testdata.Person
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.shouldBe
 
 
 class ParamReq : GoldenSpecDynamic(ParamReqGoldenDynamic, Mode.ExoGoldenTest(), {

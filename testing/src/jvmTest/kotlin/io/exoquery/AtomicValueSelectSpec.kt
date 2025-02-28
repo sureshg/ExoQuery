@@ -12,7 +12,7 @@ class AtomicValueSelectSpec : GoldenSpec(AtomicValueSelectSpecGolden, {
     "from(atom.nested) + join -> (p, r)" {
       val names = capture { Table<Person>().map { p -> p.name }.nested() }
       val people =
-        select {
+        capture.select {
           val n = from(names)
           val r = join(Table<Robot>()) { r -> n == r.model }
           n to r
@@ -22,7 +22,7 @@ class AtomicValueSelectSpec : GoldenSpec(AtomicValueSelectSpecGolden, {
     "from(atom.nested.nested) + join -> (p, r)" {
       val names = capture { Table<Person>().map { p -> p.name }.nested().nested() }
       val people =
-        select {
+        capture.select {
           val n = from(names)
           val r = join(Table<Robot>()) { r -> n == r.model }
           n to r
@@ -30,12 +30,12 @@ class AtomicValueSelectSpec : GoldenSpec(AtomicValueSelectSpecGolden, {
       people.buildPretty<PostgresDialect>("from(atom.nested.nested) + join -> (p, r)").shouldBeGolden()
     }
     "groupBy(n.nested) -> join(n)" {
-      val names = select {
+      val names = capture.select {
         val n = from(Table<Person>().map { p -> p.name }.nested())
         groupBy(n)
         n
       }
-      val addresses = select {
+      val addresses = capture.select {
         val n = from(names)
         val a = join(Table<Address>()) { a -> n == a.street }
         n to a

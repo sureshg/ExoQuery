@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 inline fun <reified R> Is.Companion.of(vararg possibilities: R): Is<R> = Is.PredicateAs(io.decomat.Typed<R>(), { possibilities.contains(it) })
 
 object Parser {
-  context(CX.Scope, CX.Symbology) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR, DynamicsAccum> =
+  context(CX.Scope, CX.Symbology) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR.Expression, DynamicsAccum> =
     with (CX.Parsing()) {
       ParseExpression.parseFunctionBlockBody(blockBody) to binds
     }

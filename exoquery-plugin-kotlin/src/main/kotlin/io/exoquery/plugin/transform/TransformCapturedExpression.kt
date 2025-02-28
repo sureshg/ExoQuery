@@ -13,11 +13,9 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 
 class TransformCapturedExpression(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
-  private val fqn: String = "io.exoquery.captureValue"
-
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun matches(expression: IrCall): Boolean =
-    expression.symbol.owner.kotlinFqName.asString().let { it == fqn }
+    ExtractorsDomain.Call.CaptureExpression[Is()].matchesAny(expression)
 
   // parent symbols are collected in the parent context
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
@@ -44,7 +42,7 @@ class TransformCapturedExpression(val superTransformer: VisitTransformExpression
       val bodyRaw =
         on(expression).match(
           // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
-          case(Ir.Call.FunctionUntethered1.Arg[Ir.FunctionExpression.withBlock[Is(), Is()]]).then { (_, body) ->
+          case(ExtractorsDomain.Call.CaptureExpression.LambdaBody[Is()]).then { body ->
             body
           }
         )

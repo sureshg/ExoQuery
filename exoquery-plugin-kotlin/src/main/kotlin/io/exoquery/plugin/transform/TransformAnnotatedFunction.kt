@@ -15,6 +15,7 @@ import io.exoquery.plugin.trees.Parser
 import io.exoquery.plugin.trees.SqlQueryExpr
 import io.exoquery.plugin.trees.of
 import io.exoquery.xr.XR
+import io.exoquery.plugin.trees.ExtractorsDomain.Call
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -100,13 +101,11 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
     val (rawQueryXR, dynamics) = with (CX.Symbology(symbolSet.withCapturedFunctionParameters(capFun.valueParameters))) {
       on(capFunReturn).match(
         // It can either be a `select { ... }` or a `capture { ... }`
-        case(Ir.Call.FunctionUntethered1[Is.of("io.exoquery.capture", "io.exoquery.select"), Is()]).thenThis { funName, _ ->
-          // now call the super-transformer on the body of the function
-          when (this.funName) {
-            "capture" -> TransformCapturedQuery.parseCapturedQuery(this, superTransformer)
-            "select" -> TransformSelectClause.parseSelectClause(this, superTransformer)
-            else -> parseError(Messages.CapturedFunctionFormWrong("Invalid capture-function called in the @CapturedFunction body: '${this.funName}'"), capFunReturn)
-          }
+        case(Call.CaptureQuery[Is()]).thenThis {
+          TransformCapturedQuery.parseCapturedQuery(it, superTransformer)
+        },
+        case(Call.CaptureSelect[Is()]).thenThis {
+          TransformSelectClause.parseSelectClause(it, superTransformer)
         }
       ) ?: parseError(Messages.CapturedFunctionFormWrong("Invalid capture-function body"), capFunReturn)
     }

@@ -2,15 +2,7 @@
 
 package io.exoquery
 
-import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.annotation.CapturedFunction
-import io.exoquery.annotation.TracesEnabled
-import io.exoquery.comapre.Compare
-import io.exoquery.comapre.PrintDiff
-import io.exoquery.comapre.show
-import io.exoquery.util.NumbersToWords
-import io.exoquery.util.TraceType
-import io.exoquery.xr.BetaReduction
 
 data class Person(val id: Int, val name: String, val age: Int)
 data class Address(val ownerId: Int, val street: String, val zip: Int)
@@ -28,7 +20,7 @@ fun main() {
   // need to test where both the people variable as well as the joinPeopleToAddress is dynamic (the latter might be a bit trickier e.g. it needs to itself call a dynamic function
   @CapturedFunction
   fun joinPeopleToAddress(people: SqlQuery<Person>) =
-    select {
+    capture.select {
       val p = from(people)
       val a = join(Table<Address>()) { a -> a.ownerId == p.id }
       p to a

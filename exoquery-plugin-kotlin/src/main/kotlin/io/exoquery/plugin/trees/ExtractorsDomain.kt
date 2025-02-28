@@ -2,6 +2,9 @@ package io.exoquery.plugin.trees
 
 import io.decomat.*
 import io.exoquery.*
+import io.exoquery.annotation.ExoCapture
+import io.exoquery.annotation.ExoCaptureExpression
+import io.exoquery.annotation.ExoCaptureSelect
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.transform.BinaryOperators
@@ -29,15 +32,17 @@ object ExtractorsDomain {
     private fun IrExpression.isSqlQuery() =
       this.type.isClass<SqlQuery<*>>()
 
-    context(CX.Scope)
+    context(CX.Scope, CX.Symbology)
     operator fun <AP: Pattern<IrExpression>> get(x: AP) =
       customPattern1("DynamicQueryCall", x) { expr: IrExpression ->
         val matches = expr.match(
           // TODO are we sure we want to accept arbitrary calls and treat them as dynamic queries?
           //      perhaps there should be strictier criteria?
-          case(Ir.Call[Is()]).thenIf { call -> expr.isSqlQuery() && call.symbol.owner is IrSimpleFunction }.then { _ -> true },
-          case(Ir.GetField[Is()]).thenIf { expr.isSqlQuery() }.then { _ -> true },
-          case(Ir.GetValue[Is()]).thenIf { expr.isSqlQuery() }.then { _ -> true }
+          // ONLY ALLOW IF IT IS ZERO ARG, TOO EASY TO MAKE A MISTAKE OTHERWISE
+          //  make a compile error and say that if the user wants to bring it it to run it first and then bring it in
+          case(Ir.Call[Is()]).thenIf { call -> call.isExternal() && expr.isSqlQuery() && call.symbol.owner is IrSimpleFunction }.then { _ -> true },
+          case(Ir.GetField[Is()]).thenIfThis { this.isExternal() && expr.isSqlQuery() }.then { _ -> true },
+          case(Ir.GetValue[Is()]).thenIfThis { this.isExternal() && expr.isSqlQuery() }.then { _ -> true }
         ) ?: false
         if (matches)
           Components1(expr)
@@ -137,6 +142,73 @@ object ExtractorsDomain {
               }
             )
           } else null
+        }
+    }
+
+    object CaptureQuery {
+      object LambdaBody {
+        context(CX.Scope) operator fun <AP: Pattern<IrExpression>> get(call: AP) =
+          customPattern1("Call.CaptureQuery.LambdaBody", call) { it: IrCall ->
+            if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlQuery<*>>()) {
+              val arg = it.simpleValueArgs.first() ?: parseError("CaptureQuery must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
+              arg.match(
+                // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
+                case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { body ->
+                  Components1(body)
+                }
+              )
+            } else {
+              null
+            }
+          }
+      }
+
+      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+        customPattern1("Call.CaptureQuery", call) { it: IrCall ->
+          if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlQuery<*>>()) {
+            Components1(it)
+          } else {
+            null
+          }
+        }
+    }
+
+    object CaptureSelect {
+      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+        customPattern1("Call.CaptureSelect", call) { it: IrCall ->
+          if (it.ownerHasAnnotation<ExoCaptureSelect>() && it.type.isClass<SqlQuery<*>>()) {
+            Components1(it)
+          } else {
+            null
+          }
+        }
+    }
+
+    object CaptureExpression {
+      object LambdaBody {
+        context(CX.Scope) operator fun <AP: Pattern<IrBlockBody>> get(call: AP) =
+          customPattern1("Call.CaptureExpression.LambdaBody", call) { it: IrCall ->
+            if (it.ownerHasAnnotation<ExoCaptureExpression>() && it.type.isClass<SqlExpression<*>>()) {
+              val arg = it.simpleValueArgs.first() ?: parseError("CaptureExpression must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
+              arg.match(
+                // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
+                case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { _, body ->
+                  Components1(body)
+                }
+              )
+            } else {
+              null
+            }
+          }
+      }
+
+      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+        customPattern1("Call.CaptureSelect", call) { it: IrCall ->
+          if (it.ownerHasAnnotation<ExoCaptureExpression>() && it.type.isClass<SqlExpression<*>>()) {
+            Components1(it)
+          } else {
+            null
+          }
         }
     }
 

@@ -10,19 +10,22 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.declarations.nameWithPackage
+import org.jetbrains.kotlin.ir.expressions.IrDeclarationReference
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
+import org.jetbrains.kotlin.ir.expressions.IrValueAccessExpression
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 
 context(CX.Symbology)
-fun IrGetValue.isCapturedFunctionArgument(): Boolean = run {
+fun IrDeclarationReference.isCapturedFunctionArgument(): Boolean = run {
   val gv = this
   symbolSet.capturedFunctionParameters.find { gv.symbol.owner == it } != null
 }
 
+// To be used with IrGetValue and IrGetField
 context(CX.Scope)
-fun IrGetValue.isCapturedVariable(): Boolean {
+fun IrDeclarationReference.isCapturedVariable(): Boolean {
   tailrec fun rec(elem: IrElement, recurseCount: Int): Boolean =
     when {
       recurseCount == 0 -> false
@@ -35,6 +38,10 @@ fun IrGetValue.isCapturedVariable(): Boolean {
 
   return rec(this.symbol.owner, 100)
 }
+
+context(CX.Scope, CX.Symbology)
+fun IrDeclarationReference.isExternal(): Boolean =
+  !isCapturedFunctionArgument() && !isCapturedVariable()
 
 context(CX.Scope)
 fun IrGetValue.showLineage(): String {
