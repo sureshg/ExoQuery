@@ -18,9 +18,9 @@ import org.jetbrains.kotlin.ir.util.*
 object Messages {
 
 context(CX.Scope)
-fun ValueLookupComingFromExternalInExpression(variable: IrGetValue) =
+fun ValueLookupComingFromExternalInExpression(variable: IrGetValue, captureTypeName: String = "select") =
 """
-It looks like the variable ${variable.symbol.safeName} is coming from outside the capture/select block. Typically
+It looks like the variable `${variable.symbol.safeName}` is coming from outside the capture/${captureTypeName} block. Typically
 this is a runtime-value that you need to bring into the query as a parameter like this: `param(${variable.symbol.safeName})`.
 For example:
 
@@ -32,12 +32,20 @@ val query = select { Table<Person>().filter { p -> p.name == param(nameVariable)
 (Lineage: ${variable.showLineage()})
 """.trimIndent()
 
-
-fun VariableComingFromNonCapturedFunction(funName: String) =
+context(CX.Scope)
+fun VariableComingFromNonCapturedFunction(expr: IrExpression, funName: String) =
 """
-It appears that this expression is an argument coming from a function call. In this case, annotate the function with @CapturedDynamic
-to mark it as a dynamic query. If the whole function `${funName}` just returns a SqlQuery and does nothing
+It appears that the expression `${expr.source()}` is an argument coming from a function call which will force
+the whole surrounding query to become dynamic. If the whole function `${funName}` just returns a SqlQuery and does nothing
 else, annotate it as @CapturedFunction and you can then use it to build compile-time functions.
+================= For example: =================
+
+fun joes(people: SqlQuery<Person>) = capture { people.filter { p -> p.name == "Joe" } }
+val myJoes = joes(Table<Person>()) // This will be dynamic
+
+@CapturedFunction
+fun joes(people: SqlQuery<Person>) = capture { people.filter { p -> p.name == "Joe" } }
+val myJoes = joes(Table<Person>()) // Now it will be static
 """.trimIndent()
 
 
@@ -60,7 +68,8 @@ fun CapturedFunctionFormWrong(msg: String) =
 $msg
 
 The form of the function annotated with @CapturedFunction is incorrect. It must be a function with a 
-single output expression that returns a SqlQuery<T> instance. For example:
+single output expression that returns a SqlQuery<T> instance.
+================= For example: =================
 
 @CapturedFunction
 fun myFunction(): SqlQuery<Int> = capture { Table<Person>().map { it.age } }

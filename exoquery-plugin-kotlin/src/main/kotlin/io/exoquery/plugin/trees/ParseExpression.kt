@@ -22,6 +22,7 @@ import io.exoquery.plugin.funName
 import io.exoquery.plugin.getAnnotationArgs
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.isClassStrict
+import io.exoquery.plugin.isSqlQuery
 import io.exoquery.plugin.loc
 import io.exoquery.plugin.location
 import io.exoquery.plugin.locationXR
@@ -48,8 +49,10 @@ import kotlinx.datetime.LocalTime
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrBranch
+import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstKind
@@ -150,6 +153,7 @@ object ParseExpression {
         },
 
       case(Ir.Expr.ClassOf<SqlQuery<*>>()).then { expr ->
+        // Even dynamic variables will be handled by this so don't need to do anything for dynamic SqlQuery instances here.
         XR.QueryToExpr(ParseQuery.parse(expr), expr.loc)
       },
 
@@ -263,15 +267,20 @@ object ParseExpression {
       },
       // Now the same for SqlExpression
       // TODO check that the extension reciever is Ir.Expr.ClassOf<SqlExpression<*>> (and the dispatch method is CapturedBlock)
-      case(Ir.Call.FunctionMem0[Is(), Is("use")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlExpression<*>>() }.then { sqlExprIr, _ ->
+      // TODO make this into an annotated function similar to Param and move the matching into ExtractorsDomain
+      case(ExtractorsDomain.Call.UseExpression.Receiver[Is()]).thenIf { useExpr -> useExpr.type.isClass<SqlExpression<*>>() }.then { sqlExprIr ->
         sqlExprIr.match(
           case(SqlExpressionExpr.Uprootable[Is()]).then { uprootable ->
             // Add all binds from the found SqlExpression instance, this will be truned into something like `currLifts + SqlExpression.lifts` late
             binds.addAllParams(sqlExprIr)
             // Then unpack and return the XR
             uprootable.xr
-          }
-          // TODO add dynamic case
+          },
+          case(ExtractorsDomain.DynamicExprCall[Is()]).then { call ->
+            val bid = BID.Companion.new()
+            binds.addRuntime(bid, sqlExprIr)
+            XR.TagForSqlExpression(bid, TypeParser.of(sqlExprIr), sqlExprIr.loc)
+          },
         ) ?: run {
           val bid = BID.Companion.new()
           binds.addRuntime(bid, sqlExprIr)
@@ -351,8 +360,16 @@ object ParseExpression {
       },
     ) ?: run {
       val additionalHelp =
-        when (expr) {
-          is IrGetValue -> ValueLookupComingFromExternalInExpression(expr)
+        when {
+          expr is IrGetValue && expr.isExternal() -> ValueLookupComingFromExternalInExpression(expr, "expression")
+          expr is IrCall && expr.isExternal() && expr.symbol.owner is IrSimpleFunction ->
+            """|It looks like you are attempting to call the external function `${expr.symbol.safeName}` in a captured block
+               |only functions specifically made to be interpreted by the ExoQuery system are allowed inside
+               |of captured blocks. If you are trying to use a runtime-value of a primitive, you need to bring
+               |it into the captured block by using `param(myCall(...))`. If this is an instance of SqlExpression then
+               |use the `use` function to splice the value e.g. `myExpression.use`.
+            """.trimMargin()
+
           else -> ""
         }
 

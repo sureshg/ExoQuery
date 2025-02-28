@@ -15,6 +15,7 @@ import io.exoquery.parseError
 import io.exoquery.parseErrorSym
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.isClass
+import io.exoquery.plugin.isSqlQuery
 import io.exoquery.plugin.loc
 import io.exoquery.plugin.location
 import io.exoquery.plugin.locationXR
@@ -30,6 +31,7 @@ import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
@@ -118,6 +120,9 @@ object ParseQuery {
               //it.type.hasAnnotation<CapturedDynamic>() || it.type.hasAnnotation(FqName("io.exoquery.Captured"))
               true
             }.then { _ ->
+              if (expr is IrGetValue && expr.symbol.owner is IrFunction)
+                logger.warn(Messages.VariableComingFromNonCapturedFunction(expr, expr.ownerFunName ?: "<???>"), expr)
+
               val bid = BID.Companion.new()
               binds.addRuntime(bid, expr)
               XR.TagForSqlQuery(bid, TypeParser.of(expr), expr.loc)
@@ -125,12 +130,15 @@ object ParseQuery {
         ) ?: run {
           val additionalHelp =
             when {
-              // no longer need that message since un-annotation dynamics coming from functions are allowed
-              expr is IrGetValue && expr.symbol.owner is IrFunction ->
-                Messages.VariableComingFromNonCapturedFunction(expr.ownerFunName ?: "<???>")
+              expr is IrCall && expr.isExternal() && expr.isSqlQuery() && expr.symbol.owner is IrSimpleFunction ->
+                """|It looks like you are attempting to call the external function `${expr.symbol.safeName}` in a captured block
+                   |only functions specifically made to be interpreted by the ExoQuery system are allowed inside
+                   |of captured blocks. If you are trying to use a runtime-value in the query stored it in a variable
+                   |first and then pass it into the block.
+                """.trimMargin()
 
-              expr is IrGetValue ->
-                """|It looks like the variable ${expr.symbol.safeName} is coming from outside the capture/select block
+                expr is IrGetValue ->
+                """|It looks like the variable `${expr.symbol.safeName}` is coming from outside the capture/select block
                    |but it could not be parsed as a static or dynamic query call of type SqlQuery<T>. We detected that
                    |it's type is ${expr.type.dumpKotlinLike()} which cannot be used (${expr.type.isClass<SqlQuery<*>>()}, ${expr.symbol.owner.type.annotations.map { it.dumpKotlinLike() }}).
                    |

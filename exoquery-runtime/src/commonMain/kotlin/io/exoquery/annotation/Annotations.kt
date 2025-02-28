@@ -109,3 +109,7 @@ annotation class ExoCaptureSelect
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoCaptureExpression
+
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoUseExpression

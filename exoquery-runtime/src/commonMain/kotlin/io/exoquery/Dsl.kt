@@ -7,6 +7,7 @@ import io.exoquery.annotation.DslNestingIgnore
 import io.exoquery.annotation.ExoCapture
 import io.exoquery.annotation.ExoCaptureExpression
 import io.exoquery.annotation.ExoCaptureSelect
+import io.exoquery.annotation.ExoUseExpression
 import io.exoquery.annotation.ExoValue
 import io.exoquery.annotation.ParamCtx
 import io.exoquery.annotation.ParamCustom
@@ -136,7 +137,8 @@ interface CapturedBlock {
   //fun <T: Any> values(vararg values: T): Values<T> = errorCap("Compile time plugin did not transform the tree")
 
 
-  @Dsl val <T> SqlExpression<T>.use: T @Dsl get() = throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context")
+  @Dsl
+  val <T> SqlExpression<T>.use: T @ExoUseExpression @Dsl get() = throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context")
 
   // Extension recivers for SqlQuery<T>
   @Dsl fun <T, R> SqlQuery<T>.map(f: (T) -> R): SqlQuery<R> = errorCap("The `map` expression of the Query was not inlined")

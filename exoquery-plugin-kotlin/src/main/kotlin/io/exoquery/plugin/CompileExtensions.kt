@@ -2,6 +2,8 @@ package io.exoquery.plugin
 
 import io.decomat.*
 import io.decomat.fail.fail
+import io.exoquery.SqlExpression
+import io.exoquery.SqlQuery
 import io.exoquery.annotation.*
 import io.exoquery.liftingError
 import io.exoquery.parseError
@@ -366,3 +368,11 @@ context(CX.Scope) fun IrElement.source(): String? = run {
 
   getFromFirSource() ?: getFromKtFile()
 }
+
+context(CX.Scope)
+fun IrExpression.isSqlQuery() =
+  this.type.isClass<SqlQuery<*>>()
+
+context(CX.Scope)
+fun IrExpression.isSqlExpression() =
+  this.type.isClass<SqlExpression<*>>()

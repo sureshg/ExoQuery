@@ -5,6 +5,7 @@ import io.exoquery.*
 import io.exoquery.annotation.ExoCapture
 import io.exoquery.annotation.ExoCaptureExpression
 import io.exoquery.annotation.ExoCaptureSelect
+import io.exoquery.annotation.ExoUseExpression
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.transform.BinaryOperators
@@ -28,21 +29,29 @@ object ExtractorsDomain {
   fun IsSelectFunction() = Ir.Expr.ClassOf<SelectClauseCapturedBlock>()
 
   object DynamicQueryCall {
-    context(CX.Scope)
-    private fun IrExpression.isSqlQuery() =
-      this.type.isClass<SqlQuery<*>>()
-
     context(CX.Scope, CX.Symbology)
     operator fun <AP: Pattern<IrExpression>> get(x: AP) =
       customPattern1("DynamicQueryCall", x) { expr: IrExpression ->
         val matches = expr.match(
-          // TODO are we sure we want to accept arbitrary calls and treat them as dynamic queries?
-          //      perhaps there should be strictier criteria?
-          // ONLY ALLOW IF IT IS ZERO ARG, TOO EASY TO MAKE A MISTAKE OTHERWISE
-          //  make a compile error and say that if the user wants to bring it it to run it first and then bring it in
-          case(Ir.Call[Is()]).thenIf { call -> call.isExternal() && expr.isSqlQuery() && call.symbol.owner is IrSimpleFunction }.then { _ -> true },
+          // Don't allow this for now too many possible edge-cases can happen. Adding a specific warning for it in the ParseQuery
+          // case(Ir.Call[Is()]).thenIf { call -> call.isExternal() && expr.isSqlQuery() && call.symbol.owner is IrSimpleFunction }.then { _ -> true },
           case(Ir.GetField[Is()]).thenIfThis { this.isExternal() && expr.isSqlQuery() }.then { _ -> true },
           case(Ir.GetValue[Is()]).thenIfThis { this.isExternal() && expr.isSqlQuery() }.then { _ -> true }
+        ) ?: false
+        if (matches)
+          Components1(expr)
+        else
+          null
+      }
+  }
+
+  object DynamicExprCall {
+    context(CX.Scope, CX.Symbology)
+    operator fun <AP: Pattern<IrExpression>> get(x: AP) =
+      customPattern1("DynamicExprCall", x) { expr: IrExpression ->
+        val matches = expr.match(
+          case(Ir.GetField[Is()]).thenIfThis { this.isExternal() && expr.isSqlExpression() }.then { _ -> true },
+          case(Ir.GetValue[Is()]).thenIfThis { this.isExternal() && expr.isSqlExpression() }.then { _ -> true }
         ) ?: false
         if (matches)
           Components1(expr)
@@ -177,6 +186,30 @@ object ExtractorsDomain {
       context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
         customPattern1("Call.CaptureSelect", call) { it: IrCall ->
           if (it.ownerHasAnnotation<ExoCaptureSelect>() && it.type.isClass<SqlQuery<*>>()) {
+            Components1(it)
+          } else {
+            null
+          }
+        }
+    }
+
+    object UseExpression {
+      object Receiver {
+        context(CX.Scope) operator fun <AP: Pattern<IrExpression>> get(call: AP) =
+          customPattern1("Call.UseExpression.Receiver", call) { it: IrCall ->
+            if (it.ownerHasAnnotation<ExoUseExpression>()) {
+              val receiver = it.extensionReceiver ?: parseError("UseExpression must have a receiver", it)
+              Components1(receiver)
+            } else {
+              null
+            }
+          }
+      }
+
+      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+        customPattern1("Call.UseExpression", call) { it: IrCall ->
+          // Note that the output type is not SqlExression<T>, it is T since this is the sqlExpression.use call
+          if (it.ownerHasAnnotation<ExoUseExpression>()) {
             Components1(it)
           } else {
             null
