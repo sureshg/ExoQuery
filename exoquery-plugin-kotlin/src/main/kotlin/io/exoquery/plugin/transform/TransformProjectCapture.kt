@@ -6,6 +6,7 @@ import io.decomat.caseEarly
 import io.decomat.match
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
+import io.exoquery.parseError
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
@@ -31,12 +32,12 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions): 
   }
 
   context(CX.Scope, CX.Builder, CX.Symbology)
-  private fun IrExpression.exprTypeOf(): ExprType =
+  private fun IrExpression.exprTypeOf(): ExprType? =
     when {
       this.type.isClass<SqlExpression<*>>() -> ExprType.Expr
       this.type.isClass<SqlQuery<*>>() -> ExprType.Query
-      // TODO what's the domain-specific exception?
-      else -> throw IllegalStateException("The expression is not a SqlExpression or SqlQuery")
+      //else -> parseError("The expression is not a SqlExpression or SqlQuery, (its type is ${this.type.dumpKotlinLike()} which cannot be projected)", this)
+      else -> null
     }
 
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
@@ -45,7 +46,8 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions): 
 
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun transform(expression: IrExpression): IrExpression? {
-    val exprType = expression.exprTypeOf()
+    // If the type of the expression is not an SqlQuery or SqlExpression then we cannot project so just return
+    val exprType = expression.exprTypeOf() ?: return null
     return expression.match(
       // Transform calls to @CapturedFunction so:
       //  @CapturedFunction fun foo(x: SqlQuery<Person>) = select { ... }

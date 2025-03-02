@@ -26,7 +26,7 @@ annotation class Dsl
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoGoldenTest
 
-@Target(AnnotationTarget.FILE)
+@Target(AnnotationTarget.FILE, AnnotationTarget.TYPE)
 @Retention(AnnotationRetention.BINARY)
 annotation class TracesEnabled(vararg val traceType: KClass<out TraceType>)
 

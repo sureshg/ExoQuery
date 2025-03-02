@@ -149,7 +149,7 @@ interface CapturedBlock {
   @Dsl infix fun <T> SqlQuery<T>.unionAll(other: SqlQuery<T>): SqlQuery<T> = errorCap("The `unionAll` expression of the Query was not inlined")
   @Dsl operator fun <T> SqlQuery<T>.plus(other: SqlQuery<T>): SqlQuery<T> = errorCap("The `unionAll` expression of the Query was not inlined")
   @Dsl fun <T> SqlQuery<T>.distinct(): SqlQuery<T> = errorCap("The `distinct` expression of the Query was not inlined")
-  @Dsl fun <T, R> SqlQuery<T>.distinctBy(f: (T) -> R): SqlQuery<T> = errorCap("The `distinctBy` expression of the Query was not inlined")
+  @Dsl fun <T, R> SqlQuery<T>.distinctOn(f: (T) -> R): SqlQuery<T> = errorCap("The `distinctBy` expression of the Query was not inlined")
 
   @DslNestingIgnore val String.sql @DslNestingIgnore get(): StringSqlDsl = errorCap("The `sql-dsl` expression of the Query was not inlined")
 

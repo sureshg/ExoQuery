@@ -27,15 +27,32 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       shouldBeGolden(capJoes.xr, "XR")
       shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
     }
-    "val tbl; select { from(tbl) }" {
+    "val tbl; select { from(capFun(tbl)) }" {
       val tbl = capture { Table<Person>() }
-      val capJoes = capture.select { val p = from(tbl); p }
+      val capJoes = capture.select { val p = from(joes(tbl)); p }
       shouldBeGolden(capJoes.xr, "XR")
       shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
     }
-    "val tbl; select { from(tbl); join }" {
-      val tbl = capture { Table<Person>() }
-      val capJoes = capture.select { val p = from(tbl); val a = join(Table<Address>()) { a -> a.ownerId == p.id }; p to a }
+    "cap { capFunA { capFunB } }" {
+      @CapturedFunction
+      fun jacks(people: SqlQuery<Person>) = capture { joes(people.filter { p -> p.name == "Jack" }) }
+      val capJoes = capture { jacks(Table<Person>()) }
+      shouldBeGolden(capJoes.xr, "XR")
+      shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
+    }
+    "cap { capFunA(x) -> capFunB }" {
+      @CapturedFunction
+      fun namedX(people: SqlQuery<Person>, name: String) = capture { joes(people.filter { p -> p.name == name }) }
+      val capJoes = capture { namedX(Table<Person>(), "Jack") }
+      shouldBeGolden(capJoes.xr, "XR")
+      shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
+    }
+    "cap { capFunA(x) -> capFunB(x) -> capFunC }" {
+      @CapturedFunction
+      fun namedX(people: SqlQuery<Person>, name: String) = capture { joes(people.filter { p -> p.name == name }) }
+      @CapturedFunction
+      fun namedY(people: SqlQuery<Person>, name: String) = capture { namedX(people, name) }
+      val capJoes = capture { namedY(Table<Person>(), "Jack") }
       shouldBeGolden(capJoes.xr, "XR")
       shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
     }

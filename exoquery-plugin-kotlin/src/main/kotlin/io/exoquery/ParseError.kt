@@ -28,7 +28,7 @@ class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) 
                |${src}""".trimMargin()
           }
 
-        """|[ExoQuery] Count not understand an expression or query due to an error: ${msg}.${expressionPart}
+        """|[ExoQuery] Could not understand an expression or query due to an error: ${msg}.${expressionPart}
            |------------ Raw Expression ------------
            |${element.dumpKotlinLike()}
            |------------ Raw Expression Tree ------------

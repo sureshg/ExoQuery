@@ -17,15 +17,22 @@ import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 // TODO also want to get TracesEnabled annotation from the build query itself.
 object ComputeEngineTracing {
+  context(CX.Scope)
+  private fun getFileTraceAnnotations() = currentFile.getTraceAnnotationArgs()
+
+  context(CX.Scope)
+  private fun IrAnnotationContainer.getTraceAnnotationArgs() =
+    this.getAnnotation<TracesEnabled>()?.valueArguments?.firstOrNull()?.varargValues() ?: emptyList()
+
   context(CX.Scope, CX.Builder)
-  private fun getTraceAnnotations() = run {
-    // get annotations
-    val traceTypesClsRef = currentFile.getAnnotation<TracesEnabled>()?.valueArguments?.firstOrNull()?.varargValues() ?: emptyList()
+  private fun getTraceAnnotations(dialectType: IrType) = run {
+    val traceTypesClsRef = getFileTraceAnnotations() + dialectType.getTraceAnnotationArgs()
     val traceTypesNames =
       traceTypesClsRef
         .map { ref -> (ref as? IrClassReference) ?: parseError("Invalid Trace Type: ${ref.source() ?: ref.dumpKotlinLike()} was not a class-reference:\n${ref.dumpSimple()}") }
@@ -39,8 +46,8 @@ object ComputeEngineTracing {
   }
 
   context(CX.Scope, CX.Builder)
-  operator fun invoke(queryLabel: String?) = run {
-    val traceTypesNames = getTraceAnnotations()
+  operator fun invoke(queryLabel: String?, dialectType: IrType) = run {
+    val traceTypesNames = getTraceAnnotations(dialectType)
     val writeSource =
       if (traceTypesNames.isNotEmpty())
         FilePrintOutputSink.open(options)

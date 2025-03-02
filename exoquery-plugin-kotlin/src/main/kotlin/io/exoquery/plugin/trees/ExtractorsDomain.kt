@@ -73,7 +73,7 @@ object ExtractorsDomain {
       customPattern1("CaseClassConstructorCall", x) { call: IrConstructorCall ->
         when {
           call.symbol.safeName == "<init>" -> {
-            val className: String = call.type.classFqName?.asString() ?: call.type.dumpKotlinLike()
+            val className: String = call.type.classFqName?.sanitizedClassName() ?: call.type.dumpKotlinLike()
             if (!call.symbol.owner.isPrimary)
               parseError("Detected construction of the class ${className} using a non-primary constructor. This is not allowed.")
 

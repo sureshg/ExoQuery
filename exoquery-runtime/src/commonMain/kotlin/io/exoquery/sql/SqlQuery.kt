@@ -557,10 +557,16 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 }
             }
 
+            // nest(source(this, alias.name)) back here
             is XR.Distinct -> {
               val b = base(head, alias, nestNextMap = false)
               trace("Flattening| Distinct") andReturn {
                 b.copy(distinct = DistinctKind.Distinct, type = type)
+                //FlattenSqlQuery(
+                //  from = listOf(QueryContext(invoke(head), alias.name)),
+                //  select = select(alias.name, type, alias.loc),
+                //  type = type
+                //)
               }
             }
 
@@ -608,6 +614,9 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
                 type = type
               )
 
+            is FlatMap ->
+              flatten(this, alias)
+
             // TODO introduce a CustomQueryContext that will take this. for now just throw an error.
             //is XR.CustomQueryRef if this.customQuery is XR.CustomQuery.Tokenizeable ->
             //  FlattenSqlQuery(
@@ -636,7 +645,6 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
             is FlatFilter -> xrError("FlatFilter (and all FlatUnit) functions should have already been handled in the `base` phase: ${this}")
             is FlatGroupBy -> xrError("FlatGroupBy (and all FlatUnit) functions should have already been handled in the `base` phase: ${this}")
-            is FlatMap -> xrError("FlatMap (and all FlatUnit) functions should have already been handled in the `base` phase: ${this}")
             is FlatSortBy -> xrError("FlatSortBy (and all FlatUnit) functions should have already been handled in the `base` phase: ${this}")
 
             // The following have special handling in source function

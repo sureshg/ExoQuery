@@ -78,6 +78,14 @@ class ApplyMap(val traceConfig: TraceConfig) {
 //  }
 
 
+  // Note, since the purpose of this beta reduction is to check isomorphism types should not actually be
+  // checked here since they may be wrong (i.e. if there is no actual isomorphism).
+  private fun isomorphic(e: XR.Expression, c: XR.Expression, alias: Ident): Boolean =
+    BetaReduction(e, TypeBehavior.ReplaceWithReduction, alias to c) == c
+
+  // Scala
+  //private def isomorphic(e: Ast, c: Ast, alias: Ident) =
+  //  BetaReduction(e, TypeBehavior.ReplaceWithReduction, alias -> c) == c
 
   operator fun invoke(q: Query): Query? =
     on(q).match(
@@ -96,11 +104,12 @@ class ApplyMap(val traceConfig: TraceConfig) {
 //      case Map(Distinct(DetachableMap(a, b, c)), d, e) if isomorphic(e, c, d) =>
 //        trace"ApplyMap on Distinct for $q" andReturn Some(Distinct(Map(a, b, c)))
 
+      // Disable this check for now because testing isophormism here requires expression beta reduction which is expesive. Can look into re-enabling this later.
       //  map(i => (i.i, i.l)).distinct.map(x => (x._1, x._2)) =>
       //    map(i => (i.i, i.l)).distinct
-      case(XR.Map.DistinctHead[DetachableMap[Is(), Is()], Is()]).thenThis { (a, b, c), d, e ->
-        trace("ApplyMap on Distinct for $q") andReturn { Distinct(Map.cs(a, b, c), loc) }
-      },
+      //case(XR.Map.DistinctHead[DetachableMap[Is(), Is()], Is()]).thenIf { (a, b, c), d, e -> isomorphic(e, c, d) }.thenThis { (a, b, c), d, e ->
+      //  trace("ApplyMap on Distinct for $q") andReturn { Distinct(Map.cs(a, b, c), loc) }
+      //},
 
       // When dealing with a map inside of a map the rules for detachability are more lienent
       // i.e. they can contain DistinctOn and FlatJoin because these inside elements can just be

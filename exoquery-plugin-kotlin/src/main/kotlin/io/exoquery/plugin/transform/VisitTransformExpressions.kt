@@ -142,7 +142,10 @@ class VisitTransformExpressions(
         block(scopeContext, builderContext, CX.Symbology(visitorContext.symbolSet), CX.QueryAccum(visitorContext.queriesAccum))
       } catch (e: ParseError) {
         // builderContext.logger.error(e.msg, e.location ?: expression.location(currentFile.fileEntry))
-        scopeContext.logger.error(e.msg)
+        scopeContext.logger.error(
+          // e.msg + "\n---------------- Stack Trace ----------------\n" + // stackTraceToString includes the message
+          e.stackTraceToString(),
+        )
         expression
       } catch (e: TransformXrError) {
         val location = expression.location(scopeContext.currentFile.fileEntry)

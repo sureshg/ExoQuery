@@ -271,7 +271,7 @@ inline fun <reified T> IrType.hasAnnotation() =
 inline fun <reified T> IrFile.fileHasAnnotation() =
   this.annotations.any { it.type.isClassStrict<T>() }
 
-inline fun <reified T> IrFile.getAnnotation() =
+inline fun <reified T> IrAnnotationContainer.getAnnotation() =
   this.let { it.annotations.find { ctor -> ctor.type.isClassStrict<T>() } }
 
 // Cheaper that isClass because doesn't check subclasses

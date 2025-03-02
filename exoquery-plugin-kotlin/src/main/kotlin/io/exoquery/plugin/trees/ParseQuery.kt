@@ -180,6 +180,10 @@ object ParseQuery {
           else -> parseErrorSym(this)
         }
       },
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is("distinctOn"), Is()]).thenThis { head, lambda ->
+        val (head, id, body) = processQueryLambda(head, lambda) ?: parseError("Could not parse distinctBy", expr)
+        XR.DistinctOn(head, id, body, expr.loc)
+      },
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("sortedBy", "sortedByDescending"), Ir.FunctionExpression.withBlock[Is(), Is()]]).thenThis { head, (params, body) ->
         when (symName) {
           "sortedBy" -> XR.SortBy(parse(head), params.first().makeIdent(), ParseExpression.parseFunctionBlockBody(body), XR.Ordering.Asc, expr.loc)

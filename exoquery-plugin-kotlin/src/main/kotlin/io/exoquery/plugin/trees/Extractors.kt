@@ -154,7 +154,7 @@ object Ir {
         customPattern2("Type.DataClass", name, fields) { it: IrType ->
           val cls = it.classOrNull
           if (cls != null && cls.isDataClass()) {
-            val name = cls.safeName
+            val name = it.classFqName?.sanitizedClassName() ?: cls.safeName
             val props = cls.dataClassProperties()
             // Note that this was not matching without props.toList() because it was a Sequence object instead of a list
             // this is improtant to note since if the types to not line up the match won't happen although the IDE

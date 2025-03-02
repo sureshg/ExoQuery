@@ -81,8 +81,8 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
 
         val compileLocation = expr.location(currentFile.fileEntry)
         val fileLabel = (queryLabel?.let {it + " - "} ?: "") + "file:${compileLocation.show()}"
-        val (traceConfig, writeSource) = ComputeEngineTracing.invoke(fileLabel)
         val dialectType = this.typeArguments.first() ?: parseError("Need to pass a constructable dialect to the build method but no argument was provided", expr)
+        val (traceConfig, writeSource) = ComputeEngineTracing.invoke(fileLabel, dialectType)
         val (construct, clsPackageName) = extractDialectConstructor(dialectType)
 
         // If sqlQueryExprRaw is an Uprootable then we need to do superTransformer.visitCall on that which typically will happen if you call .build on a capture directly

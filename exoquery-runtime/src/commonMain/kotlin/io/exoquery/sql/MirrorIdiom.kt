@@ -130,6 +130,8 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
         stmt("""TagE("${id.value.trimId()}")""")
     }
 
+  private val String.lastPart get() = this.split('.').last()
+
 
   val XR.Query.token: Token get() =
     when(this) {
