@@ -1,5 +1,6 @@
 package io.exoquery.xr
 
+import io.decomat.Is
 import io.exoquery.xr.copy.*
 import io.exoquery.xrError
 import io.exoquery.xr.XR.U.QueryOrExpression
@@ -56,6 +57,24 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
         val rep = BetaReduce(map - xr - replacement).invoke(replacement)
         correctTheTypeOfReplacement(xr, rep)
       }
+
+      // TODO have a equivalent for XOrNullIfNull check
+      // TODO any performance impact of running this during every beta reduction?
+      xr is XR.When && XR.When.NullIfNullOrX[Is()].matchesAny(xr) ->
+        invoke(xr.orElse)
+
+      // TODO have a equivalent for XOrNullIfNull check
+      // TODO any performance impact of running this during every beta reduction?
+      xr is XR.When && XR.When.XIsNotNullOrNull[Is()].matchesAny(xr) ->
+        invoke(xr.branches.first().then)
+
+      // E.g. `(if (x) Name(first=foo,second=bar) else Name(first=baz,second=waz)).first` ->
+      //   `if (x) Name(first=foo,second=bar).first else Name(first=baz,second=waz).first` ->
+      //   (then in later stages) if (x) foo else baz
+      //
+      // Note, it might be a problem doing this with impure values. Need to look into those situations
+      xr is XR.Property && xr.of is XR.When && xr.of.type.isProduct() ->
+        invoke(xr.of.nestProperty(xr.name))
 
       // Represents: case Property(Product(_, tuples), name) =>
       // The rule:

@@ -6,7 +6,8 @@ import io.exoquery.xr.XR.*
 object UnnestProperty {
   operator fun invoke(ast: XR.Expression): Pair<XR.Expression, List<String>> =
     when {
-      ast is Property && ast.visibility == Visibility.Hidden -> {
+      // If the property is hidden or it itself yields a product (i.e. it's a property that dereferences an embedded class)
+      ast is Property && (ast.visibility == Visibility.Hidden || ast.type.isProduct()) -> {
         val (a, nestedName) = invoke(ast.of)
         a to nestedName
       }

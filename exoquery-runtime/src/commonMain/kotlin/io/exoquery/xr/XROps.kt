@@ -1,8 +1,6 @@
 package io.exoquery.xr
 
-import io.decomat.Components2M
-import io.decomat.Pattern
-import io.decomat.customPattern2M
+import io.decomat.*
 import io.exoquery.BID
 
 // Can't use || or && chars because they don't work with linuxX64
@@ -63,6 +61,83 @@ CollectAst(ast) {
 }.nonEmpty
  */
 
+// case(When.SingleBranch[Is(), Is()])
+
+val XR.When.Companion.SingleBranch get() = SingleBranch()
+class SingleBranch {
+  operator fun <AP: Pattern<A>, A: XR.Expression, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
+    customPattern2("When.SingleBranch", x, y) { it: XR.When ->
+      with(it) {
+        when {
+          this.branches.size == 1 -> Components2(this.branches[0].cond, this.branches[0].then)
+          else -> null
+        }
+      }
+    }
+}
+
+val XR.When.Companion.NullIfNullOrX get() = NullIfNullOrX()
+class NullIfNullOrX {
+  operator fun <AP: Pattern<XR.Expression>> get(x: AP) =
+    customPattern1("When.NullIfNullOrX", x) { it: XR.When ->
+      on(it).match(
+        /* Simple example:
+         * ```
+         * val x = from(...)
+         * val y = joinLeft(...)
+         * y?.foo
+         * ```
+         * The `y?.foo` is interpreted in Kotlin is `if (y == null) null else y.foo`
+         * so in this case we want to just use y.foo because y itself cannot be null in the SQL
+         */
+        case(XR.When.SingleBranch[XR.BinaryOp.EqEq[Is(), NullXR()], NullXR()]).thenThis { _, _ ->
+          Components1(this.orElse)
+        }
+      )
+    }
+}
+
+val XR.When.Companion.XIsNotNullOrNull get() = XIsNotNullOrNull()
+class XIsNotNullOrNull {
+  operator fun <AP: Pattern<XR.Expression>> get(x: AP) =
+    customPattern1("When.XIsNotNullOrNull", x) { it: XR.When ->
+      on(it).match(
+        // if (x != null) x else null -> x
+        case(XR.When.SingleBranch[XR.BinaryOp.NotEq[Is(), NullXR()], Is()]).thenIfThis { _, _ -> NullXR().matchesAny(orElse) }.thenThis { _, then ->
+          Components1(then)
+        }
+      )
+    }
+}
+
+fun IsTypeProduct() = Is<XR.Expression> { it.type is XRType.Product }
+fun NullXR() = Is<XR.Expression> { it is XR.Const.Null }
+
+val XR.BinaryOp.Companion.NotEq get() = BinaryOpNotEq()
+class BinaryOpNotEq {
+  operator fun <AP: Pattern<XR.Expression>, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
+    customPattern2("When.BinaryOpNotEq", x, y) { it: XR.BinaryOp ->
+      on(it).match(
+        case(XR.BinaryOp[Is(), Is()]).thenThis { a, op, b ->
+          if (op is OP.`!=`) Components2(a, b) else null
+        }
+      )
+    }
+}
+
+val XR.BinaryOp.Companion.EqEq get() = BinaryOpEqEq()
+class BinaryOpEqEq {
+  operator fun <AP: Pattern<XR.Expression>, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
+    customPattern2("When.BinaryOpEqEq", x, y) { it: XR.BinaryOp ->
+      on(it).match(
+        case(XR.BinaryOp[Is(), Is()]).thenThis { a, op, b ->
+          if (op is OP.`==`) Components2(a, b) else null
+        }
+      )
+    }
+}
+
+
 val XR.Map.Companion.DistinctHead get() = DistinctHeadMap()
 class DistinctHeadMap() {
   operator fun <AP: Pattern<Q>, Q: XR.Query, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
@@ -89,6 +164,10 @@ class DistinctHeadMatchSortBy() {
       }
     }
 }
+
+
+fun XR.When.nestProperty(propertyName: String): XR.When =
+  XR.When(this.branches.map { it.copy(then = XR.Property(it.then, propertyName)) }, XR.Property(this.orElse, propertyName))
 
 
 object CID {

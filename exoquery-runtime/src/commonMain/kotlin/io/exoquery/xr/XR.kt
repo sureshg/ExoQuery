@@ -498,9 +498,9 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class BinaryOp(@Slot val a: XR.Expression, @CS val op: BinaryOperator, @Slot val b: XR.Expression, override val loc: Location = Location.Synth) : Expression, PC<BinaryOp> {
+  data class BinaryOp(@Slot val a: XR.Expression, @MSlot val op: BinaryOperator, @Slot val b: XR.Expression, override val loc: Location = Location.Synth) : Expression, PC<BinaryOp> {
     // TODO mark this @Transient in the PC class?
-    @Transient override val productComponents = productOf(this, a, b)
+    @Transient override val productComponents = productOf(this, a, op, b)
     override val type: XRType by lazy {
       when (op) {
         is YieldsBool -> XRType.BooleanExpression
