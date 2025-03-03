@@ -156,13 +156,13 @@ object ExtractorsDomain {
 
     object CaptureQuery {
       object LambdaBody {
-        context(CX.Scope) operator fun <AP: Pattern<IrExpression>> get(call: AP) =
+        context(CX.Scope) operator fun <AP: Pattern<IrBlockBody>> get(call: AP) =
           customPattern1("Call.CaptureQuery.LambdaBody", call) { it: IrCall ->
             if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlQuery<*>>()) {
               val arg = it.simpleValueArgs.first() ?: parseError("CaptureQuery must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
               arg.match(
                 // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
-                case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { body ->
+                case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { _, body ->
                   Components1(body)
                 }
               )

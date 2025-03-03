@@ -50,11 +50,14 @@ class SqlNormalize(
   inline fun ((Query) -> Query).andThen(phaseTitle: String, crossinline f: (Query) -> Query): (Query) -> Query = { qRaw ->
     // Too much noise when both before and after the phase are printed
     //demarcate(phaseTitle, q)
-    val q = this(qRaw)
-    val output = f(q)
     val label = traceConf.phaseLabel
     val labelText = if (label != null) " (${label})" else ""
-    demarcate("${phaseTitle}${labelText}", output)
+    val q = this(qRaw)
+
+    demarcate("${phaseTitle} ${labelText}", q)
+    val output = f(q)
+
+    demarcate("${phaseTitle} (COMPLETED) ${labelText}", output)
     output
   }
 

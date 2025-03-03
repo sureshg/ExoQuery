@@ -45,7 +45,7 @@ class TransformCapturedQuery(val superTransformer: VisitTransformExpressions): T
             expr
           }
         )
-          ?: parseError("Parsing Failed\n================== The Query-expresson was not a Global Function (with one argument-block): ==================\n" + expression.dumpKotlinLike() + "\n--------------------------\n" + expression.dumpSimple())
+          ?: parseError("The qeury expression has an invalid structure", expression)
 
       // Transform the contents of `capture { ... }` this is important for several reasons,
       // most notable any kind of variables used inside that need to be inlined e.g:
@@ -57,7 +57,7 @@ class TransformCapturedQuery(val superTransformer: VisitTransformExpressions): T
       val body = superTransformer.recurse(bodyExpr)
 
       // TODO Needs to convey SourceLocation coordinates, think I did this in terpal-sql somehow
-      val p = Parser.parseQuery(body)
+      val p = Parser.parseQueryFromBlock(body)
       //warn("------------ Parsed Query: ------------\n${p.first.showRaw()}\n--------------------------\n${body.dumpSimple()}")
       p
     }

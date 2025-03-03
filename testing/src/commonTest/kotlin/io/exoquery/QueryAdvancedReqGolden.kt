@@ -37,7 +37,6 @@ object QueryAdvancedReqGolden: GoldenQueryFile {
         r.name,
         r.model
       FROM
-        Person p,
         (
           SELECT
             p.id AS first_id,
@@ -47,6 +46,7 @@ object QueryAdvancedReqGolden: GoldenQueryFile {
             a.street AS second_street,
             a.city AS second_city
           FROM
+            Person p
             INNER JOIN Address a ON a.ownerId = p.id
         ) AS a
         INNER JOIN Robot r ON r.ownerId = a.first_id

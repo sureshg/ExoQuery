@@ -106,7 +106,7 @@ object ParseExpression {
     on(expr).match(
       case(Ir.Variable[Is(), Is()]).thenThis { name, rhs ->
         val irType = TypeParser.of(this)
-        XR.Variable(XR.Ident(name, irType, rhs.locationXR()), parse(rhs), expr.loc)
+        XR.Variable(XR.Ident(name.sanitizeIdentName(), irType, rhs.locationXR()), parse(rhs), expr.loc)
       }
     ) ?: parseError("Could not parse Ir Variable statement from:\n${expr.dumpSimple()}")
 
@@ -304,7 +304,7 @@ object ParseExpression {
 
       // Other situations where you might have an identifier which is not an SqlVar e.g. with variable bindings in a Block (inside an expression)
       case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym ->
-        XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR()) // this.symbol.owner.type
+        XR.Ident(sym.safeName.sanitizeIdentName(), TypeParser.of(this), this.locationXR()) // this.symbol.owner.type
       },
       case(Ir.Const[Is()]).thenThis {
         parseConst(this)
@@ -312,8 +312,19 @@ object ParseExpression {
 
       // TODO need to check for @SerialName("name_override") annotations from the Kotlin seriazation API and override the name
       //      (the parser also needs to be able to generated these based on a mapping)
-      case(Ir.Call.Property[Is(), Is()]).then { expr, name ->
-        XR.Property(parse(expr), name, XR.Visibility.Visible, expr.loc)
+      case(Ir.Call.Property[Is(), Is()]).then { expr, propKind ->
+        val core = parse(expr)
+        when (propKind) {
+          is Ir.Call.Property.PropertyKind.Named ->
+            XR.Property(core, propKind.name, XR.Visibility.Visible, expr.loc)
+          is Ir.Call.Property.PropertyKind.Component -> {
+            (core.type as? XRType.Product)?.let { productType ->
+              val field = productType.fields[propKind.index]?.first
+                ?: parseError("Could not find field at index ${propKind.index} in product type ${productType.name}. The fields were: ${productType.fields.map { (fieldName, _) -> fieldName }.withIndex()}", expr)
+              XR.Property(core, field, XR.Visibility.Visible, expr.loc)
+            } ?: parseError("Component property can only be used on a product type but the IRType of the expression was: ${core.type}.\nThe expression was parsed as:\n${core.showRaw(false)}", expr)
+          }
+        }
       },
 
       // case(Ir.Call.Function[Is()]).thenIf { (list) -> list.size == 2 }.thenThis { list ->

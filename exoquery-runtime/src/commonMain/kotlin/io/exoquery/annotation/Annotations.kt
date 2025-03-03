@@ -26,6 +26,12 @@ annotation class Dsl
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoGoldenTest
 
+// TODO annotate build and other build functions with this. (maybe even have a BuildPretty?). Make a warning
+//      if a build function is called from a capture function that this is invalid
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoBuildFunction
+
 @Target(AnnotationTarget.FILE, AnnotationTarget.TYPE)
 @Retention(AnnotationRetention.BINARY)
 annotation class TracesEnabled(vararg val traceType: KClass<out TraceType>)

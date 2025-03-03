@@ -10,8 +10,7 @@ import kotlinx.serialization.Transient
 // val from: SX.From, val joins: List<SX.JoinClause>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?
 @Serializable
 data class SelectClause(
-  val from: List<SX.From>,
-  val joins: List<SX.Join>,
+  val assignments: List<SX.U.Assignment>,
   val where: SX.Where?,
   val groupBy: SX.GroupBy?,
   val sortBy: SX.SortBy?,
@@ -21,13 +20,27 @@ data class SelectClause(
 ): XR.CustomQuery.Convertable {
 
   override fun toQueryXR(): XR.Query = SelectClauseToXR(this)
-  fun allComponents(): List<SX> = from + joins + listOfNotNull(where, groupBy, sortBy)
+  fun allComponents(): List<SX> = assignments + listOfNotNull(where, groupBy, sortBy)
 
   // Do nothing for now, in the cuture recurse in queries and expressions inside the SX clauses
   override fun handleStatelessTransform(t: StatelessTransformer): XR.CustomQuery.Convertable =
     copy(
-      from.map { from -> from.copy(t.invokeIdent(from.variable), t(from.xr)) },
-      joins.map { join -> join.copy(variable = t.invokeIdent(join.variable), onQuery = t(join.onQuery), conditionVariable = t.invokeIdent(join.conditionVariable), condition = t(join.condition)) },
+      assignments.map {
+        when (it) {
+          is SX.From -> {
+            val from = it
+            from.copy(t.invokeIdent(from.variable), t(from.xr))
+          }
+          is SX.Join -> {
+            val join = it
+            join.copy(variable = t.invokeIdent(join.variable), onQuery = t(join.onQuery), conditionVariable = t.invokeIdent(join.conditionVariable), condition = t(join.condition))
+          }
+          is SX.ArbitraryAssignment -> {
+            val assignment = it
+            assignment.copy(variable = t.invokeIdent(assignment.variable), expression = t(assignment.expression))
+          }
+        }
+      },
       where?.let { where -> where.copy(t(where.condition)) },
       groupBy?.let { groupBy -> groupBy.copy(t(groupBy.grouping)) },
       sortBy?.let { sortBy -> sortBy.copy(t(sortBy.sorting)) },
@@ -39,28 +52,27 @@ data class SelectClause(
   override fun showTree(config: PPrinterConfig): Tree = PrintSkipLoc<SelectClause>(serializer(), config).treeify(this, null, false, false)
 
   companion object {
-    fun justSelect(select: XR.Expression, loc: XR.Location): SelectClause = SelectClause(emptyList(), emptyList(), null, null, null, select, select.type, loc)
+    fun justSelect(select: XR.Expression, loc: XR.Location): SelectClause = SelectClause(emptyList(), null, null, null, select, select.type, loc)
 
     // A friendlier constructor for tests
     fun of (
-      from: List<SX.From>,
-      joins: List<SX.Join> = listOf(),
+      assignments: List<SX.U.Assignment>,
       where: SX.Where? = null,
       groupBy: SX.GroupBy? = null,
       sortBy: SX.SortBy? = null,
       select: XR.Expression,
       type: XRType,
       loc: XR.Location = XR.Location.Synth
-    ): SelectClause = SelectClause(from, joins, where, groupBy, sortBy, select, type, loc)
+    ): SelectClause = SelectClause(assignments, where, groupBy, sortBy, select, type, loc)
   }
 
   fun toXrTransform(): XR.Query = SelectClauseToXR(this)
   fun toXrRef(): XR.CustomQueryRef = XR.CustomQueryRef(this)
 
 
-  data class Id(val from: List<SX.From>, val joins: List<SX.Join>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?, val select: XR.Expression)
+  data class Id(val assignments: List<SX.U.Assignment>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?, val select: XR.Expression)
   @Transient
-  val id = Id(from, joins, where, groupBy, sortBy, select)
+  val id = Id(assignments, where, groupBy, sortBy, select)
   override fun equals(other: Any?): Boolean = (this === other) || (other is SelectClause && id == other.id)
   override fun hashCode(): Int = id.hashCode()
 }

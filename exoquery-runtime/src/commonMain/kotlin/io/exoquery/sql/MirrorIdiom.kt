@@ -14,6 +14,11 @@ import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import io.exoquery.xr.id
 
+fun String.sanitizeName() =
+  if (this.contains("<") || this.contains(">"))
+    "`${this}`"
+  else
+    this
 
 fun String.uncapitalize() = replaceFirstChar { it.lowercaseChar() }
 
@@ -44,7 +49,7 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
   val XR.Variable.token: Token get() = stmt("val ${name.token} = ${this.rhs.token}")
   val XR.Branch.token: Token get() = stmt("${cond.token} -> ${then.token}")
 
-  val XR.Ident.token: Token get() = name.token
+  val XR.Ident.token: Token get() = name.sanitizeName().token
 
   val XR.JoinType.token: Token get() = simpleName.token
 
@@ -303,6 +308,7 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
     when (this) {
       is SX.From -> stmt("val ${variable.token} = from(${xr.token})")
       is SX.Join -> stmt("val ${variable.token} = ${joinType.simpleName.token}(${onQuery.token}) { ${condition.token} }")
+      is SX.ArbitraryAssignment -> stmt("val ${variable.token} = /*ASI*/ ${expression.token}")
       is SX.GroupBy -> stmt("groupBy(${grouping.token})")
       is SX.SortBy -> stmt("sortBy(${ordering.token})(${sorting.token})")
       is SX.Where -> stmt("where(${condition.token})")

@@ -651,7 +651,12 @@ object Ir {
     }
 
     object Property {
-      context (CX.Scope) operator fun <AP: Pattern<IrExpression>, BP: Pattern<String>> get(host: AP, name: BP) =
+      sealed interface PropertyKind {
+        data class Named(val name: String): PropertyKind
+        data class Component(val index: Int): PropertyKind
+      }
+
+      context (CX.Scope) operator fun <AP: Pattern<IrExpression>, BP: Pattern<PropertyKind>> get(host: AP, name: BP) =
         customPattern2("Ir.Call.Property", host, name) { it: IrCall ->
           // if there exists both a dispatch reciever and an extension reciever it's an extension
           // of some class defined inside of some other class, in that case we only care about the extension reciever
@@ -662,12 +667,18 @@ object Ir {
               IrStatementOrigin.GET_LOCAL_PROPERTY -> true
               else -> false
             }
+          fun isComponent() = it.simpleValueArgsCount == 0 && it.symbol.safeName.matches(Regex("component[0-9]+"))
 
           // if there is a reciever and a single value property then this is a property call and we return it, otherwise it is not
-          if (isProperty && reciever != null && it.simpleValueArgs.all { it != null }) {
-            Components2(reciever, it.symbol.safeName)
-          } else {
-            null
+          when {
+            isProperty && reciever != null && it.simpleValueArgs.all { it != null } ->
+              Components2(reciever, PropertyKind.Named(it.symbol.safeName))
+
+            isComponent() ->
+              // Note that component is actually a 1-based index so need to subtract 1 to make it line up XRType field names (which we choose from based on it)
+              Components2(reciever, PropertyKind.Component(it.symbol.safeName.removePrefix("component").toInt() - 1))
+
+            else -> null
           }
         }
     }

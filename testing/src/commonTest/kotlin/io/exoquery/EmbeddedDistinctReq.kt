@@ -84,7 +84,7 @@ class EmbeddedDistinctReq : GoldenSpecDynamic(EmbeddedDistinctReqGoldenDynamic, 
         Table<Emb>().map { e -> Parent(1, e) }.distinct().map { p -> Grandparent(2, p) }.distinct().map { g -> 3 to g }.distinct()
       }
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.build<@TracesEnabled(TraceType.SqlQueryConstruct::class, TraceType.SqlNormalizations::class, TraceType.Normalizations::class) PostgresDialect>(), "SQL")
+      shouldBeGolden(q.build<PostgresDialect>(), "SQL")
     }
   }
 })

@@ -59,6 +59,11 @@ sealed interface XR {
     }
 
     @Serializable
+    sealed interface HasHead {
+      val head: XR.Query
+    }
+
+    @Serializable
     sealed interface Terminal: Expression, XR
 
     @Serializable
@@ -134,7 +139,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class Filter(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression, override val loc: Location = Location.Synth): Query, PC<Filter> {
+  data class Filter(@Slot override val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression, override val loc: Location = Location.Synth): Query, U.HasHead, PC<Filter> {
     @Transient override val productComponents = productOf(this, head, id, body)
     override val type get() = head.type
     companion object {}
@@ -146,7 +151,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class Map(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression, override val loc: Location = Location.Synth): Query, PC<Map> {
+  data class Map(@Slot override val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression, override val loc: Location = Location.Synth): Query, U.HasHead, PC<Map> {
     @Transient override val productComponents = productOf(this, head, id, body)
     override val type get() = body.type
     companion object {
@@ -159,7 +164,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class ConcatMap(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression, override val loc: Location = Location.Synth): Query, PC<ConcatMap> {
+  data class ConcatMap(@Slot override val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression, override val loc: Location = Location.Synth): Query, U.HasHead, PC<ConcatMap> {
     @Transient override val productComponents = productOf(this, head, id, body)
     override val type get() = body.type
     companion object {}
@@ -343,7 +348,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class FlatMap(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Query, override val loc: Location = Location.Synth): Query, PC<FlatMap> {
+  data class FlatMap(@Slot override val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Query, override val loc: Location = Location.Synth): Query, U.HasHead, PC<FlatMap> {
     @Transient override val productComponents = productOf(this, head, id, body)
     override val type get() = body.type
     companion object {}

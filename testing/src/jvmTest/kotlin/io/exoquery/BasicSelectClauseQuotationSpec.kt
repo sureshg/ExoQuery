@@ -45,8 +45,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         }
 
       people.xr shouldBeEqual SelectClause.of(
-        from = listOf(SX.From(pIdent, personEnt)),
-        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
+        listOf(SX.From(pIdent, personEnt), SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
         select = XR.Product.TupleSmartN(XR.Ident("p", personTpe), XR.Ident("r", robotTpe)),
         type = XRType.Value
       ).toXrRef()
@@ -64,8 +63,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         }
 
       people.xr shouldBeEqual SelectClause.of(
-        from = listOf(SX.From(pIdent, personEnt)),
-        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot), SX.Join(XR.JoinType.Left, aIdent, addressEnt, aIdent, joinAddress)),
+        listOf(SX.From(pIdent, personEnt), SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot), SX.Join(XR.JoinType.Left, aIdent, addressEnt, aIdent, joinAddress)),
         select = XR.Product("Custom", "person" to XR.Ident("p", personTpe), "robot" to XR.Ident("r", robotTpe)),
         type = XRType.Value
       ).toXrRef()
@@ -82,8 +80,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         }
 
       people.xr shouldBeEqual SelectClause.of(
-        from = listOf(SX.From(pIdent, personEnt)),
-        joins = listOf(SX.Join(XR.JoinType.Left, rIdent, robotEnt, rIdent, joinRobot)),
+        listOf(SX.From(pIdent, personEnt), SX.Join(XR.JoinType.Left, rIdent, robotEnt, rIdent, joinRobot)),
         select = XR.Product("Custom", "person" to XR.Ident("p", personTpe), "robot" to XR.Ident("r", robotTpe)),
         type = XRType.Value
       ).toXrRef()
@@ -101,8 +98,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         }
 
       people.xr shouldBeEqual SelectClause.of(
-        from = listOf(SX.From(pIdent, personEnt)),
-        joins = listOf(SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
+        listOf(SX.From(pIdent, personEnt), SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
         where = SX.Where(XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const("Joe"))),
         select = XR.Property(pIdent, "name"),
         type = XRType.Value
@@ -119,7 +115,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         }
 
       people.xr shouldBeEqual SelectClause.of(
-        from = listOf(SX.From(pIdent, personEnt)),
+        listOf(SX.From(pIdent, personEnt)),
         sortBy = SX.SortBy(TupleSmartN(pIdent.prop("age"), pIdent.prop("name")), TupleOrdering.of(XR.Ordering.Asc, XR.Ordering.Desc)),
         select = XR.Property(pIdent, "name"),
         type = XRType.Value
@@ -136,7 +132,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         }
 
       people.xr shouldBeEqual SelectClause.of(
-        from = listOf(SX.From(pIdent, personEnt)),
+        listOf(SX.From(pIdent, personEnt)),
         sortBy = SX.SortBy(pIdent.prop("age"), XR.Ordering.Asc),
         select = XR.Property(pIdent, "name"),
         type = XRType.Value
@@ -154,7 +150,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         }
 
       people.xr shouldBeEqual SelectClause.of(
-        from = listOf(SX.From(pIdent, personEnt)),
+        listOf(SX.From(pIdent, personEnt)),
         groupBy = SX.GroupBy(pIdent.prop("age")),
         select = XR.Property(pIdent, "age"),
         type = XRType.Value
@@ -173,7 +169,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
       }
 
     people.xr shouldBeEqual SelectClause.of(
-      from = listOf(SX.From(pIdent, personEnt)),
+      listOf(SX.From(pIdent, personEnt)),
       groupBy = SX.GroupBy(TupleSmartN(pIdent.prop("age"), pIdent.prop("name"))),
       select = XR.Property(pIdent, "age"),
       type = XRType.Value

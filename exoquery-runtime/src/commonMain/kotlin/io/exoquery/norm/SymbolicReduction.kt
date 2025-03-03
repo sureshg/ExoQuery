@@ -17,6 +17,9 @@ import io.exoquery.xr.copy.*
  * `P.flatMap(x => ...)`.
  */
 class SymbolicReduction(val traceConfig: TraceConfig) {
+  fun XR.FlatMap.hasTailPositionFlatJoin(): Boolean =
+    body is XR.U.HasHead && body.head is XR.FlatJoin
+
   operator fun invoke(q: XR.Query): XR.Query? =
     with(q) {
       when {
@@ -67,7 +70,17 @@ class SymbolicReduction(val traceConfig: TraceConfig) {
         //
         // case FlatMap(FlatMap(a, b, c), d, e) =>
         //     Some(FlatMap(a, b, FlatMap(c, d, e)))
-        this is XR.FlatMap && head is XR.FlatMap -> {
+        //
+        // Note that in practice there is a caveat here in that if this transformation causes FlatJoins to be both in head and body position
+        // then the SelectQuery transformer will not be able to propertly constuct it (there is a check there in flattenContexts that assures it).
+        // The problem stems from having the construct FlatMap(..., FlatMap(Map(FlatJoin, ...)), Map(FlatJoin, ...)) which is not a valid construct
+        // for the sake a query construction. Now recall that if you have something like FlatMap( FlatMap(ent, Map(FlatJoin)) , Map(FlatJoin))
+        // (P.S. which is something like ent.flatMap(a => a.flatMap(join(b))).map(join(c)) although typically produced by using a capture.select
+        // clause, see "variable deconstruction should work even when passed to further join" in VariableReductionReq.kt for an example)
+        // and proceed to flatten it out to FlatMap(ent, FlatMap(Map(FlatJoin), Map(FlatJoin)) then you will have a problem because the FlatJoin in the
+        // head and body positions of the inner FlatMap. Therefore we need to check that the head and body of the outer FlatMap do not have both have
+        // flatJoins in order to proceed with this transformation.
+        this is XR.FlatMap && head is XR.FlatMap && !(this.hasTailPositionFlatJoin() && this.head.hasTailPositionFlatJoin()) -> {
           val (a, b, c) = Triple(head.head, head.id, head.body)
           val (d, e) = Pair(id, body)
           FlatMap.cs(a, b, FlatMap.cs(c, d, e))

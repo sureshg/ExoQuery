@@ -139,8 +139,7 @@ class EncodingSpecXR: FreeSpec({
     "CustomQueryRef" {
       val clause =
         SelectClause(
-          listOf(SX.From(peopleVar, people)),
-          listOf(SX.Join(XR.JoinType.Inner, addressesVar, addresses, addressesVar, addressesJoinCond)),
+          listOf(SX.From(peopleVar, people), SX.Join(XR.JoinType.Inner, addressesVar, addresses, addressesVar, addressesJoinCond)),
           SX.Where(peopleAreGreen),
           SX.GroupBy(peopleVar),
           SX.SortBy(peopleVar, XR.Ordering.Asc),

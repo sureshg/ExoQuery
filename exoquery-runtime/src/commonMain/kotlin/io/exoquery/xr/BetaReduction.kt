@@ -69,13 +69,13 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
       // ExprToQuery(QueryToExpr(expr)) -> expr
       // e.g. select * from (ExprToQuery(QueryToExpr(select * from foo))) -> select * from foo
       xr is XR.ExprToQuery && xr.head is XR.QueryToExpr -> {
-        xr.head.head
+        invoke(xr.head.head)
       }
 
       // QueryToExpr(ExprToQuery(query)) -> query
       // e.g. ExprToQuery(QueryToExpr(select * from foo)) -> select * from foo
       xr is XR.QueryToExpr && xr.head is XR.ExprToQuery -> {
-        xr.head.head
+        invoke(xr.head.head)
       }
 
       // If we have any FunctionApply(ExprToQuery/QueryToExpr(core))) we need to get at the core element and repeat reduction

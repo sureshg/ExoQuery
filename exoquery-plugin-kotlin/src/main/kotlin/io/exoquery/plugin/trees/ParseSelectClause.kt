@@ -12,6 +12,7 @@ import io.exoquery.plugin.safeName
 import io.exoquery.plugin.toLocationXR
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`x to y`
+import io.exoquery.xr.BetaReduction
 import io.exoquery.xr.SX
 import io.exoquery.xr.SelectClause
 import io.exoquery.xr.XR
@@ -21,6 +22,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrReturn
 
 object ParseSelectClause {
+
   context(CX.Scope, CX.Parsing, CX.Symbology) fun processSelectLambda(statementsFromRet: List<IrStatement>, loc: CompilerMessageSourceLocation): SelectClause {
     if (statementsFromRet.isEmpty()) parseError("A select-clause usually should have two statements, a from(query) and an output. This one has neither", loc) // TODO provide example in the error
     if (statementsFromRet.last() !is IrReturn) parseError("A select-clause must return a plain (i.e. not SqlQuery) value.", loc)
@@ -51,13 +53,13 @@ object ParseSelectClause {
   context(CX.Scope, CX.Parsing, CX.Symbology) fun parseSubClause(expr: IrStatement): SX =
     on(expr).match<SX>(
       case(Ir.Variable[Is(), Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SelectClauseCapturedBlock>(), Is("from"), Is()]]).thenThis { varName, (_, table) ->
-        val id = XR.Ident(varName, TypeParser.of(this), this.loc)
+        val id = XR.Ident(varName.sanitizeIdentName(), TypeParser.of(this), this.loc)
         SX.From(id, ParseQuery.parse(table))
       },
       case(Ir.Variable[Is(), Ir.Call.FunctionMem2[ExtractorsDomain.IsSelectFunction(), Is { it == "join" || it == "joinLeft" }, Is()]]).then { varName, (_, args) ->
         val joinFunc = compRight
         val (onTable, joinCondLambda) = args
-        val varNameIdent = XR.Ident(varName, TypeParser.of(this.comp), this.comp.loc)
+        val varNameIdent = XR.Ident(varName.sanitizeIdentName(), TypeParser.of(this.comp), this.comp.loc)
         val joinType =
           when(joinFunc.symbol.safeName) {
             "join" -> XR.JoinType.Inner
@@ -68,13 +70,25 @@ object ParseSelectClause {
           case(Ir.FunctionExpression.withBlock[Is(), Is()]).then { lambdaParams, stmtsAndReturn ->
             val lambdaParam = lambdaParams.first()
             val lambdaVarName = lambdaParam.name.asString() /* join lambda should have only one element e.g. join(Table<Addresses>()){addressesLambdaVar ->addressesLambdaVar == 123} */
-            val lambdaVarIdent = XR.Ident(lambdaVarName, TypeParser.of(lambdaParam), lambdaParam.loc)
+            val lambdaVarIdent = XR.Ident(lambdaVarName.sanitizeIdentName(), TypeParser.of(lambdaParam), lambdaParam.loc)
             val joinCond = ParseExpression.parseFunctionBlockBody(stmtsAndReturn)
-            SX.Join(joinType, varNameIdent, ParseQuery.parse(onTable), lambdaVarIdent, joinCond, joinFunc.loc)
-
+            SX.Join(joinType, varNameIdent, ParseQuery.parse(onTable), lambdaVarIdent, joinCond, joinFunc.loc).swapItVariableForOuter()
           }
         ) ?: parseError("Could not parse Join Lambda from: ${joinCondLambda.dumpSimple()}", joinCondLambda)
       },
+      // Generally speaking, arbitrary variables are not allowed in select clauses but an exception is made for deconstruction e.g:
+      // val (p, a) = from(select { from; join; people to addresses })
+      // This will yield:
+      // val <destruct>: Pair<Person, Address> = from(select { from; join; people to addresses })
+      // val p: Person = <destruct>.component1()
+      // val a: Address = <destruct>.component2()
+      // Then p and a are used in the rest of the select clause normally so we need to know to appropriately treat the p and a situations
+      case(Ir.Variable[Is(), Is()]).thenThis { varName, rhs ->
+        val id = XR.Ident(varName.sanitizeIdentName(), TypeParser.of(this), this.loc)
+        val rhsExpr = ParseExpression.parse(rhs)
+        SX.ArbitraryAssignment(id, rhsExpr, this.loc)
+      },
+
       // where(() -> Boolean)
       case(Ir.Call.FunctionMem1[ExtractorsDomain.IsSelectFunction(), Is("where"), Ir.FunctionExpression.withBlock[Is(), Is()]]).thenThis { _, (_, body) ->
         val whereCond = ParseExpression.parseFunctionBlockBody(body)

@@ -149,8 +149,7 @@ class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGol
     "XR.CustomQueryRef - SelectValue" {
       shouldBeGolden(XR.CustomQueryRef(
         SelectClause(
-          listOf(SX.From("p".id, personEnt)),
-          listOf(SX.Join(XR.JoinType.Inner, "p".id, addressEnt, "a".id, ("p" dot "name") `+==+` ("a" dot "street"))),
+          listOf(SX.From("p".id, personEnt), SX.Join(XR.JoinType.Inner, "p".id, addressEnt, "a".id, ("p" dot "name") `+==+` ("a" dot "street"))),
           SX.Where("p" dot "age" `+==+` XR.Const.Int(42)),
           SX.GroupBy("p" dot "name"),
           SX.SortBy("p" dot "name", XR.Ordering.Asc),

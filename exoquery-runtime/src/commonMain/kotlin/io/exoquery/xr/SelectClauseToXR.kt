@@ -1,6 +1,7 @@
 package io.exoquery.xr
 
 import io.exoquery.util.tail
+import io.exoquery.xr.XR.*
 
 object SelectClauseToXR {
   operator fun invoke(selectClause: SelectClause): XR.Query = run {
@@ -10,7 +11,8 @@ object SelectClauseToXR {
     if (components.isEmpty()) {
       XR.ExprToQuery(selectClause.select)
     } else {
-      nest(selectClause.from.first().xr, selectClause.from.first().variable, components.tail(), selectClause.select)
+      val firstFrom = components.first() as? SX.From ?: error("First clause must be a FROM clause but was ${components.first()}")
+      nest(firstFrom.xr, firstFrom.variable, components.tail(), selectClause.select)
     }
   }
 
@@ -55,27 +57,65 @@ object SelectClauseToXR {
         when (val curr = remaining.first()) {
           // This is not the 1st FROM clause (which will always be in a head-position
           is SX.From ->
-            XR.FlatMap(prev, prevVar, nestRecurse(curr.xr, curr.variable, remaining.tail))
+            FlatMap(prev, prevVar, nestRecurse(curr.xr, curr.variable, remaining.tail))
           is SX.Join ->
-            XR.FlatMap(
+            FlatMap(
               prev, prevVar,
-              nestRecurse(XR.FlatJoin(curr.joinType, curr.onQuery, curr.conditionVariable, curr.condition, curr.loc), curr.variable, remaining.tail)
+              nestRecurse(FlatJoin(curr.joinType, curr.onQuery, curr.conditionVariable, curr.condition, curr.loc), curr.variable, remaining.tail)
             )
+
+          /*
+           * This is a deconstruction case e.g.
+           * select {
+           *   val (p, a) = from(select { from; join; people to addresses })
+           *   val j = join(somethingElse) { ... }
+           *   Something(p.name, j.somethingElse)
+           * }
+           * Kotlin understands this as:
+           * select {
+           *   val <destruct>: Pair<Person, Address> = from(select { from; join; people to addresses })
+           *   val p: Person = <destruct>.component1()
+           *   val a: Address = <destruct>.component2()
+           *   val j = join(somethingElse) { ... }
+           *   Something(p.name, j.somethingElse)
+           * }
+           * An ArbitraryAssignment will be
+           *   ArbitraryAssignment(p, <destruct>.component1())
+           *   ArbitraryAssignment(a, <destruct>.component2())
+           *
+           * In the Ast it needs to become something like:
+           *   XR.Block(
+           *     p = <destruct>.component1()
+           *     XR.Block(
+           *       a = <destruct>.component2()
+           *       QueryToExpr(FlatMap(FlatJoin(somethingElse) { ... }))
+           *     )
+           *   )
+           * Some additional nesting of ExprToQuery is needed because XR.Block is an expression type
+           */
+          is SX.ArbitraryAssignment ->
+            XR.ExprToQuery(
+              XR.Block(
+                listOf(XR.Variable(curr.variable, curr.expression)),
+                QueryToExpr(nestRecurse(prev, prevVar, remaining.tail))
+              )
+            )
+
           is SX.Where ->
-            XR.FlatMap(
+            FlatMap(
               prev, prevVar,
               // Since there is no 'new' variable to bind to use use Ident.Unused
-              nestRecurse(XR.FlatFilter(curr.condition, curr.loc), XR.Ident.Unused, remaining.tail)
+              nestRecurse(FlatFilter(curr.condition, curr.loc), XR.Ident.Unused, remaining.tail)
             )
           is SX.GroupBy ->
-            XR.FlatMap(
+            FlatMap(
               prev, prevVar,
-              nestRecurse(XR.FlatGroupBy(curr.grouping, curr.loc), XR.Ident.Unused, remaining.tail)
+              nestRecurse(FlatGroupBy(curr.grouping, curr.loc), XR.Ident.Unused, remaining.tail)
             )
           is SX.SortBy ->
-            XR.FlatMap(
+            FlatMap(
               prev, prevVar,
-              nestRecurse(XR.FlatSortBy(curr.sorting, curr.ordering, curr.loc), XR.Ident.Unused, remaining.tail)
+              nestRecurse(FlatSortBy(curr.sorting, curr.ordering, curr.loc), XR.Ident.Unused, remaining.tail)
             )
         }
     return nestRecurse(prev, prevVar, remaining)

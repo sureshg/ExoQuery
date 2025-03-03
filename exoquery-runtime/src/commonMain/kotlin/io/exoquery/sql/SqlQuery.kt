@@ -302,6 +302,16 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             listOf(Layer.fromFlatUnit(head)) to body
           }
 
+        // Check to see that there is no FlatJoin in both head and body positions of a FlatMap
+        this is XR.FlatMap &&
+          head is XR.U.HasHead && head.head is XR.FlatJoin &&
+          body is XR.U.HasHead && body.head is XR.FlatJoin ->
+          trace("Flattening Flatmap((FlatJoin), (FlatJoin))") andReturn {
+            xrError("Cannot have FlatJoin in both head and body positions of a FlatMap.\n${this.show()}")
+          }
+
+
+
         this is XR.FlatMap ->
           trace("Flattening Flatmap with Query") andReturn {
             val source                             = sourceSpecific(head, id.name) ?: QueryContext(invoke(head), id.name)
@@ -653,13 +663,16 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             is XR.Nested -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
             is FlatJoin -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
 
+            //is XR.Ident -> FlattenSqlQuery(from = sources + ExpressionContext(this, alias.name), select = select(alias.name, type, loc), type = type)
+            is XR.Ident -> xrError("Invalid flattening, should have been beta-reduced already: ${this.showRaw()}")
+
             is XR.TagForSqlQuery ->
               xrError("Invalid flattening, XR.TagForSqlQuery should have been reduced-out of the query construction already: ${this.showRaw()}")
             is XR.Union ->
               xrError("Union should have been handled by the SetOperationSqlQuery ${this.showRaw()}")
             is XR.UnionAll ->
               xrError("UnionAll should have been handled by the SetOperationSqlQuery ${this.showRaw()}")
-            is XR.FunctionApply, is XR.Ident ->
+            is XR.FunctionApply ->
               xrError("Invalid flattening, should have been beta-reduced already: ${this.showRaw()}")
 
             // Need to think more about how these are handled

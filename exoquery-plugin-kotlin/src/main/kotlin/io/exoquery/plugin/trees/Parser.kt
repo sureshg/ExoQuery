@@ -1,6 +1,6 @@
 package io.exoquery.plugin.trees
 
-import io.decomat.Is
+import io.decomat.*
 import io.exoquery.CapturedBlock
 import io.exoquery.xr.SelectClause
 import io.exoquery.SqlQuery
@@ -10,6 +10,7 @@ import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.transform.CX
 import io.exoquery.xr.*
+import org.jetbrains.kotlin.com.intellij.lang.java.parser.ExpressionParser
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
@@ -30,6 +31,18 @@ object Parser {
   context(CX.Scope, CX.Symbology) fun parseQuery(expr: IrExpression): Pair<XR.Query, DynamicsAccum> =
     with (CX.Parsing()) {
       ParseQuery.parse(expr) to binds
+    }
+
+  context(CX.Scope, CX.Symbology) fun parseQueryFromBlock(expr: IrBlockBody): Pair<XR.Query, DynamicsAccum> =
+    with (CX.Parsing()) {
+      val parsedQuery =
+        on(expr).match<XR.Query> (
+          case(Ir.BlockBody.ReturnOnly[Is()]).then { ParseQuery.parse(it) }
+        ) ?: run {
+          ParseExpression.parseFunctionBlockBody(expr).asQuery()
+        }
+
+      parsedQuery to binds
     }
 
   context(CX.Scope, CX.Symbology) fun parseSelectClauseLambda(expr: IrExpression): Pair<SelectClause, DynamicsAccum> =
@@ -55,7 +68,7 @@ object Parser {
 
 context(CX.Scope, CX.Parsing, CX.Symbology)
 fun IrValueParameter.makeIdent() =
-  XR.Ident(this.name.asString(), TypeParser.of(this), this.locationXR())
+  XR.Ident(this.name.asString().sanitizeIdentName(), TypeParser.of(this), this.locationXR())
 
 fun IrFunctionExpression.firstParam() =
   this.function.simpleValueParams[0]
