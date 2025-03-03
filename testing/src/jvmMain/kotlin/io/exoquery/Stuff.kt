@@ -4,7 +4,9 @@ package io.exoquery
 
 import io.exoquery.annotation.CapturedFunction
 
-data class Person(val id: Int, val name: String, val age: Int)
+interface HasId { val id: Int }
+
+data class Person(override val id: Int, val name: String, val age: Int): HasId
 data class Address(val ownerId: Int, val street: String, val zip: Int)
 
 
@@ -13,40 +15,74 @@ data class Address(val ownerId: Int, val street: String, val zip: Int)
 fun main() {
 
   val joes = capture { Table<Person>().filter { p -> p.name == param("joe") } }
-  //val jacks = capture { Table<Person>().filter { p -> p.name == "Jack" } }
 
 
-  // Need tests for both the static and dynamic variations of this
-  // need to test where both the people variable as well as the joinPeopleToAddress is dynamic (the latter might be a bit trickier e.g. it needs to itself call a dynamic function
+// Add this to the test
+//  @CapturedFunction
+//  fun <T: HasId> joinPeopleToAddress(people: SqlQuery<T>) =
+//    capture.select {
+//      val p = from(people)
+//      val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+//      p to a
+//    }
+//
+//  val result = capture {
+//    joinPeopleToAddress(joes).map { kv -> kv.first.name + " lives at " + kv.second.street }
+//  }
+//
+//  println(result.buildPretty<PostgresDialect>().value)
+
+//  @CapturedFunction
+//  fun <T> joinPeopleToAddress(people: SqlQuery<T>, f: (T) -> Int) =
+//    capture.select {
+//      val p = from(people)
+//      val a = join(Table<Address>()) { a -> a.ownerId == f(p) }
+//      p to a
+//    }
+//
+//  val result = capture {
+//    joinPeopleToAddress(joes) { it.id }.map { kv -> kv.first.name + " lives at " + kv.second.street }
+//  }
+
+
   @CapturedFunction
-  fun joinPeopleToAddress(people: SqlQuery<Person>) =
+  fun <T> joinPeopleToAddress(people: SqlQuery<T>, otherValue: String, f: (T) -> Int) =
     capture.select {
       val p = from(people)
-      val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+      val a = join(Table<Address>()) { a -> a.ownerId == f(p) && a.street == otherValue } // should have a verification that param(otherValue) fails
       p to a
     }
 
-// can test how this thing is actually parsed
-//  val result = joinPeopleToAddress(jacks)
-//  println(result.show())
-//  println("hello")
-
+  val r = "foobar"
   val result = capture {
-    /*
-    ======= Could not parse expression from: =======
-    <destruct>.component1()
-    --------- With the Tree ---------
-    [IrCall] Fun(component1) - dispatch=kotlin.Pair
-      [IrGetValue] Param(<destruct>)
-     */
-    //joinPeopleToAddress(jacks).map { (p, a) -> p.name + " lives at " + a.street }
-    joinPeopleToAddress(joes).map { kv -> kv.first.name + " lives at " + kv.second.street }
+    joinPeopleToAddress(joes, param(r)) { it.id }.map { kv -> kv.first.name + " lives at " + kv.second.street }
   }
-  println(result.show())
 
-  println(result.build<PostgresDialect>().value)
+  println("-------- Result ------\n${result.params.lifts.map { it.showValue() }}")
 
-  println("helloooooooooooooo")
+
+//  @CapturedFunction
+//  fun <T> joinPeopleToAddress(people: SqlQuery<T>, f: (T, Address) -> Boolean) =
+//    capture.select {
+//      val p = from(people)
+//      val a = join(Table<Address>()) { a -> f(p, a) }
+//      p to a
+//    }
+//
+//  val joinFunction = capture.expression {
+//    { p: Person, a: Address -> p.id == a.ownerId }
+//  }
+//  // TODO captured-function for SqlExpression
+//
+//  val result = capture {
+//    joinPeopleToAddress(joes) { p, a -> joinFunction.use(p, a) /*p.id == a.ownerId*/ }.map { kv -> kv.first.name + " lives at " + kv.second.street }
+//  }
+
+  //println(result.buildPretty<PostgresDialect>().params.map { it.showValue() })
+
+  println(result.buildPretty<PostgresDialect>())
+
+
 
   // then try this only with a fun and generic
 //  val joinPeopleToAddress2 = captureValue {

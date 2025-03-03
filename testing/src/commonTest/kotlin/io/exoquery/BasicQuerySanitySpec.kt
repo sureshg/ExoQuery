@@ -8,6 +8,50 @@ class BasicQuerySanitySpec : GoldenSpecDynamic(BasicQuerySanitySpecGoldenDynamic
   data class Person(val id: Int, val name: String, val age: Int)
   data class Address(val ownerId: Int, val street: String, val city: String)
 
+  val p: Person = TODO()
+
+  class Value {
+    operator fun set(value: Any) = TODO()
+  }
+
+
+
+
+//  fun <T> setValues(f: (T).(Value) -> set) = TODO()
+//
+//  setValues<Person> { set(it[name] = "Joe", it[age] = 123) }
+//
+//  interface SetValues
+//
+//  interface CapBlock {
+//    val set: Value
+//    fun <T> insert(f: (T).() -> set) = TODO()
+//    fun <T> insertValue(value: T) = TODO()
+//
+//    fun set(vararg values: Pair<Any, Any>): SetValues = TODO()
+//
+//
+//    fun <T> param(value: T): T = TODO()
+//  }
+//
+//  fun <T> myCapture(block: CapBlock.() -> SetValues): Int = TODO()
+//
+//  fun foo() {
+//    val a = "Joe"
+//    val b = 123
+//    val p = Person(1, a, b)
+//    myCapture {
+//      insert<Person> { set(name to param(joe), age to param(b)) }
+//      // .excludingColumns(name, age)
+//      // TODO should should have docs about how it does a "quiet" return (and about dialect support)
+//      // .returningColumns(id, name)
+//      // TODO should have note about how this necessarily introduces a "returning" statement to the SQL (and about dialect support)
+//      // .returning { p -> something(p.name) }
+//    }
+//  }
+
+
+
   "basic query" {
     val people = capture { Table<Person>() }
     people.build<PostgresDialect>("basic query").shouldBeGolden()

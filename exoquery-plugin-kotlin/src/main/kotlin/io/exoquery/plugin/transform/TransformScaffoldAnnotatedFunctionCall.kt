@@ -1,6 +1,7 @@
 package io.exoquery.plugin.transform
 
 import io.exoquery.annotation.CapturedFunction
+import io.exoquery.parseError
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
@@ -15,6 +16,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.makeNullable
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 
 context(CX.Scope, CX.Builder)
@@ -41,7 +43,7 @@ fun buildScaffolding(zeroisedCall: IrExpression, scaffoldType: IrType, originalA
 class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun matches(call: IrCall): Boolean =
-    call.symbol.owner is IrSimpleFunction && call.symbol.owner.hasAnnotation<CapturedFunction>()
+    call.symbol.owner.hasAnnotation<CapturedFunction>()
 
 
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
@@ -81,7 +83,11 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
     // And the parser will know that `joes` is a pluckable function and create the following:
     //   val drivingJoes = SqlQuery(Apply(Tag(123), listOf(People.filterAge)), runtimes={Tag(123)->joes})
 
-    val zeroizedCall = (TransformProjectCapture(superTransformer).transform(zeroizedCallRaw) ?: zeroizedCallRaw)
+    val zeroizedCall = (
+      TransformProjectCapture(superTransformer).transform(zeroizedCallRaw) ?: parseError("Could not capture-project the call", zeroizedCallRaw)
+      )
+
+
 
     // Note that the one case that we haven't considered aboive is where the argument to the function call i.e. People.filterAge
     // itself is a uprootable variable for example:
@@ -95,11 +101,13 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
     //   val drivingJoes = scaffoldCapFunctionQuery(SqlQuery((people)=>people.filterJoe <- i.e. `joes`), args=[SqlQuery(xr=People.filterAge)])
     //   (and if there are any parameters it it the argument becomes:
     //    args=[SqlQuery(xr=People.filterAge), params=drivingPeople.params])
-    val projectedArgs = originalArgs.map { arg -> arg?.let{ TransformProjectCapture(superTransformer).transform(it) ?: it } }
+    val projectedArgs = originalArgs.map { arg -> arg?.let{ superTransformer.recurse(it) ?: it } }
 
     //val zeroizedCall = zeroizedCallRaw as IrCall
 
     val scaffoldedCall = buildScaffolding(zeroizedCall, call.type, projectedArgs)
+    //throw IllegalStateException("------------------- Scaffolding ------------------\n${scaffoldedCall.dumpKotlinLike()}")
+
     //error("""
     //  |--------------------------- Scaffolded call: ---------------------------
     //  |${scaffoldedCall.dumpKotlinLike()}

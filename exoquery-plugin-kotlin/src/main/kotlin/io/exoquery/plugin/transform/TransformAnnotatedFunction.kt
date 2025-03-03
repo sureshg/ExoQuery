@@ -116,6 +116,7 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
     // The function should not have any parameters since they will be captured in the XR
     val originalParams = capFun.valueParameters
     capFun.valueParameters = emptyList()
+    //capFun.typeParameters = emptyList()
 
     val xrLambdaParams = originalParams.map { Parser.parseValueParamter(it) }
     val xrLambda = XR.FunctionN(params = xrLambdaParams, body = queryXR, loc = capFun.locationXR())

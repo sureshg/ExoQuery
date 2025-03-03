@@ -71,6 +71,7 @@ object ParseQuery {
           // TODO need to make sure 1st arg is SqlQuery instance and also the owner function has a @CapturedFunction annotate
           //     (also parser should check for any IrFunction that has a @CapturedFunction annotation that doesn't have scaffolding and immediately report an error on that)
           case(Ir.Call.FunctionUntethered2[Is(PT.io_exoquery_util_scaffoldCapFunctionQuery), Is(), Ir.Vararg[Is()]]).thenThis { sqlQueryArg, (args) ->
+            //throw IllegalStateException("------------------- Reading Scaffold ------------------\n${expr.dumpKotlinLike()}")
             val callExpr = this
             val sqlQueryExpr = sqlQueryArg
             val warppedQueryCall =

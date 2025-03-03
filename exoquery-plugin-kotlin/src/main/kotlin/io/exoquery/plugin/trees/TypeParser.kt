@@ -87,6 +87,11 @@ object TypeParser {
           XRType.Value
       },
 
+      case(Ir.Type.ClassOfType<Function<*>>()).then { functionType ->
+        // functionType will be something like Function1<..., R> i.e. the last argument is the return type which we take
+        parse(functionType.simpleTypeArgs.last())
+      },
+
       case(Ir.Type.NullableOf[Is()]).then { realType ->
         parse(realType)
       },

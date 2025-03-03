@@ -56,6 +56,7 @@ import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstKind
+import org.jetbrains.kotlin.ir.expressions.IrDeclarationReference
 import org.jetbrains.kotlin.ir.expressions.IrElseBranch
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
@@ -172,6 +173,7 @@ object ParseExpression {
 
       case(Ir.Call.FunctionMemN[Is(), Is.of("param", "paramCtx", "paramCustom"), Is()]).thenThis { _, args ->
         val paramValue = args.first()
+        validateParamArg(paramValue)
         val paramBindType =
           when {
             this.ownerHasAnnotation<ParamStatic>() -> {
@@ -201,6 +203,9 @@ object ParseExpression {
 
       case(Ir.Call.FunctionMemN[Is(), Is.of("params", "paramsCtx", "paramsCustom"), Is()]).thenThis { _, args ->
         val paramValue = args.first()
+        validateParamArg(paramValue)
+
+        // TODO detect if the param is coming from inside the capture block and throw an error if it is, make a special note if it is an argument of a CapturedFunction
         val paramBindType =
           when {
             // currently not used because the specific ones have been commented out. Waiting for @SignatureName in KMP
@@ -385,6 +390,14 @@ object ParseExpression {
         }
 
       parseError("Could not parse the expression." + (if (additionalHelp.isNotEmpty()) "\n${additionalHelp}" else ""), expr)
+    }
+
+  context(CX.Scope, CX.Symbology)
+  private fun validateParamArg(paramValue: IrExpression): Unit =
+    when {
+      paramValue is IrDeclarationReference && !paramValue.isExternal() ->
+        parseError("The argument of a param(...) function must be a runtime value, not a value defined within the `capture` block. Instead of wrapping this in a param(...) function just use it locally", paramValue)
+      else -> Unit
     }
 
   private fun getSerializerForType(type: IrType): ClassId? =
