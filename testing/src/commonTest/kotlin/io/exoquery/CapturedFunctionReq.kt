@@ -72,6 +72,8 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       val result = capture {
         joinPeopleToAddress(joes, param(r)) { it.id }.map { kv -> kv.first to kv.second }
       }
+      shouldBeGolden(result.build<PostgresDialect>(), "SQL")
+      shouldBeGolden(result.xr, "XR")
     }
     "subtype polymorphicsm" {
       val joes = capture { Table<SubtypePoly.Person>().filter { p -> p.name == param("joe") } }
@@ -87,6 +89,8 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       val result = capture {
         joinPeopleToAddress(joes).map { kv -> kv.first.name to kv.second.city }
       }
+      shouldBeGolden(result.build<PostgresDialect>(), "SQL")
+      shouldBeGolden(result.xr, "XR")
     }
 
     "lambda polymorphism - A" {
@@ -98,10 +102,11 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
           p to a
         }
 
-
       val result = capture {
         joinPeopleToAddress(joes) { it.id }.map { kv -> kv.first.name to kv.second.city }
       }
+      shouldBeGolden(result.build<PostgresDialect>(), "SQL")
+      shouldBeGolden(result.xr, "XR")
     }
 
     "lambda polymorphism - B" {
@@ -120,6 +125,28 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       val result = capture {
         joinPeopleToAddress(joes) { p, a -> joinFunction.use(p, a) }.map { kv -> kv.first.name to kv.second.city }
       }
+      shouldBeGolden(result.build<PostgresDialect>(), "SQL")
+      shouldBeGolden(result.xr, "XR")
+    }
+
+    "lambda polymorphism - C + captured expression" {
+      @CapturedFunction
+      fun <T> joinPeopleToAddress(people: SqlQuery<T>, f: (T, Address) -> Boolean) =
+        capture.select {
+          val p = from(people)
+          val a = join(Table<Address>()) { a -> f(p, a) }
+          p to a
+        }
+
+      @CapturedFunction
+      fun joinFunction(p: Person, a: Address) =
+        capture.expression { p.id == a.ownerId }
+
+      val result = capture {
+        joinPeopleToAddress(joes) { p, a -> joinFunction(p, a).use }.map { kv -> kv.first.name to kv.second.city }
+      }
+      shouldBeGolden(result.build<PostgresDialect>(), "SQL")
+      shouldBeGolden(result.xr, "XR")
     }
 
   }

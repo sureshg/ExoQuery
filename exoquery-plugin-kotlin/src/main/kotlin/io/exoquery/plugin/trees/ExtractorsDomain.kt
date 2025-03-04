@@ -2,6 +2,7 @@ package io.exoquery.plugin.trees
 
 import io.decomat.*
 import io.exoquery.*
+import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.annotation.ExoCapture
 import io.exoquery.annotation.ExoCaptureExpression
 import io.exoquery.annotation.ExoCaptureSelect
@@ -16,6 +17,7 @@ import io.exoquery.terpal.Interpolator
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.UnaryOperator
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
+import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -51,7 +53,8 @@ object ExtractorsDomain {
       customPattern1("DynamicExprCall", x) { expr: IrExpression ->
         val matches = expr.match(
           case(Ir.GetField[Is()]).thenIfThis { this.isExternal() && expr.isSqlExpression() }.then { _ -> true },
-          case(Ir.GetValue[Is()]).thenIfThis { this.isExternal() && expr.isSqlExpression() }.then { _ -> true }
+          case(Ir.GetValue[Is()]).thenIfThis { this.isExternal() && expr.isSqlExpression() }.then { _ -> true },
+          case(Ir.Call[Is()]).thenIf { call -> call.someOwnerHasAnnotation<CapturedDynamic>() }.then { _ -> true }
         ) ?: false
         if (matches)
           Components1(expr)

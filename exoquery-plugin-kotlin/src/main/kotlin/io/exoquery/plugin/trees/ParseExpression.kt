@@ -27,6 +27,7 @@ import io.exoquery.plugin.loc
 import io.exoquery.plugin.location
 import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.logging.Messages.ValueLookupComingFromExternalInExpression
 import io.exoquery.plugin.ownerHasAnnotation
 import io.exoquery.plugin.printing.dumpSimple
@@ -34,6 +35,7 @@ import io.exoquery.plugin.safeName
 import io.exoquery.plugin.show
 import io.exoquery.plugin.toXR
 import io.exoquery.plugin.transform.CX
+import io.exoquery.plugin.varargValues
 import io.exoquery.serial.ParamSerializer
 import io.exoquery.terpal.UnzipPartsParams
 import io.exoquery.xr.`+and+`
@@ -270,7 +272,28 @@ object ParseExpression {
       case(Ir.Call.FunctionMem0[Is(), Is("value")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlQuery<*>>() }.then { sqlQueryIr, _ ->
         XR.QueryToExpr(ParseQuery.parse(sqlQueryIr), sqlQueryIr.loc)
       },
-      // Now the same for SqlExpression
+
+      case(ExtractorsDomain.Call.UseExpression.Receiver[Ir.Call.FunctionUntethered2[Is(PT.io_exoquery_util_scaffoldCapFunctionQuery), Is(), Is()]]).thenThis { (sqlExprArg, irVararg) ->
+        val loc = this.loc
+        val wrappedExprCall =
+          sqlExprArg.match(
+            case(SqlExpressionExpr.Uprootable[Is()]).then { uprootable ->
+              // Add all binds from the found SqlExpression instance, this will be truned into something like `currLifts + SqlExpression.lifts` late
+              binds.addAllParams(sqlExprArg)
+              // Then unpack and return the XR
+              uprootable.xr
+            },
+            case(ExtractorsDomain.DynamicExprCall[Is()]).then { call ->
+              val bid = BID.Companion.new()
+              binds.addRuntime(bid, sqlExprArg)
+              XR.TagForSqlExpression(bid, TypeParser.of(sqlExprArg), sqlExprArg.loc)
+            },
+          ) ?: parseError(Messages.CannotCallUseOnAnArbitraryDynamic(), sqlExprArg)
+        val args = irVararg.varargValues()
+        val parsedArgs = args.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null(loc) }
+        XR.FunctionApply(wrappedExprCall, parsedArgs, expr.loc)
+      },
+
       // TODO check that the extension reciever is Ir.Expr.ClassOf<SqlExpression<*>> (and the dispatch method is CapturedBlock)
       // TODO make this into an annotated function similar to Param and move the matching into ExtractorsDomain
       case(ExtractorsDomain.Call.UseExpression.Receiver[Is()]).thenIf { useExpr -> useExpr.type.isClass<SqlExpression<*>>() }.then { sqlExprIr ->
@@ -286,11 +309,7 @@ object ParseExpression {
             binds.addRuntime(bid, sqlExprIr)
             XR.TagForSqlExpression(bid, TypeParser.of(sqlExprIr), sqlExprIr.loc)
           },
-        ) ?: run {
-          val bid = BID.Companion.new()
-          binds.addRuntime(bid, sqlExprIr)
-          XR.TagForSqlExpression(bid, TypeParser.of(sqlExprIr), sqlExprIr.loc)
-        }
+        ) ?: parseError(Messages.CannotCallUseOnAnArbitraryDynamic(), sqlExprIr)
       },
       // Binary Operators
       case(ExtractorsDomain.Call.`x op y`[Is()]).thenThis { opCall ->

@@ -71,11 +71,9 @@ object ParseQuery {
           // TODO need to make sure 1st arg is SqlQuery instance and also the owner function has a @CapturedFunction annotate
           //     (also parser should check for any IrFunction that has a @CapturedFunction annotation that doesn't have scaffolding and immediately report an error on that)
           case(Ir.Call.FunctionUntethered2[Is(PT.io_exoquery_util_scaffoldCapFunctionQuery), Is(), Ir.Vararg[Is()]]).thenThis { sqlQueryArg, (args) ->
-            //throw IllegalStateException("------------------- Reading Scaffold ------------------\n${expr.dumpKotlinLike()}")
-            val callExpr = this
-            val sqlQueryExpr = sqlQueryArg
+            val loc = this.loc
             val warppedQueryCall =
-              sqlQueryExpr.match(
+              sqlQueryArg.match(
                 case(SqlQueryExpr.Uprootable[Is()]).thenThis { uprootable ->
                   val sqlQueryIr = this
                   // Add all binds from the found SqlQuery instance, this will be truned into something like `currLifts + SqlQuery.lifts` late
@@ -85,12 +83,12 @@ object ParseQuery {
                 },
                 case(ExtractorsDomain.DynamicQueryCall[Is()]).then { _ ->
                   val bid = BID.Companion.new()
-                  binds.addRuntime(bid, sqlQueryExpr)
+                  binds.addRuntime(bid, sqlQueryArg)
                   // need to type the parse
-                  XR.TagForSqlQuery(bid, TypeParser.of(sqlQueryExpr), expr.loc)
+                  XR.TagForSqlQuery(bid, TypeParser.of(sqlQueryArg), expr.loc)
                 }
-              ) ?: parseError("Could not parse the SqlQuery from the scaffold call", sqlQueryExpr)
-            val parsedArgs = args.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null(callExpr.loc) }
+              ) ?: parseError("Could not parse the SqlQuery from the scaffold call", sqlQueryArg)
+            val parsedArgs = args.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null(loc) }
             XR.FunctionApply(warppedQueryCall, parsedArgs, expr.loc)
           },
 

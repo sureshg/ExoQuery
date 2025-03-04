@@ -17,6 +17,14 @@ import org.jetbrains.kotlin.ir.util.*
 
 object Messages {
 
+fun CannotCallUseOnAnArbitraryDynamic() =
+"""
+Could not understand the SqlExpression (from the scaffold-call) that you are attempting to call `.use` on. You can only call `.use` on a variable type as SqlExpression.
+If you are attempting to use an expression here, it is best practice to write it into a variable outside the capture-block and then call `.use` on that variable. If
+this is a function that you are sure can be safely spliced (e.g. it is a pure-function that does not have side-effects) then you can use the @CapturedDynamic annotation
+on the function to allow it to be used in this context.
+""".trimIndent()
+
 context(CX.Scope)
 fun ValueLookupComingFromExternalInExpression(variable: IrGetValue, captureTypeName: String = "select") =
 """

@@ -45,8 +45,7 @@ class TransformCapturedExpression(val superTransformer: VisitTransformExpression
           case(ExtractorsDomain.Call.CaptureExpression.LambdaBody[Is()]).then { body ->
             body
           }
-        )
-          ?: parseError("Parsing Failed\n================== The expresson was not a Global Function (with one argument-block): ==================\n" + expression.dumpKotlinLike() + "\n--------------------------\n" + expression.dumpSimple())
+        ) ?: parseError("The expression has an invalid structure", expression)
 
       // Transform the contents of `capture { ... }` this is important for several reasons,
       // most notable any kind of variables used inside that need to be inlined e.g:

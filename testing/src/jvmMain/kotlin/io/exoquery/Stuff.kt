@@ -15,20 +15,31 @@ fun main() {
 
   val joes = capture { Table<Person>().filter { p -> p.name == param("joe") } }
 
-  @CapturedFunction
-  fun <T> joinPeopleToAddress(people: SqlQuery<T>, otherValue: String, f: (T) -> Int) =
-    capture.select {
-      val p = from(people)
-      val a = join(Table<Address>()) { a -> a.ownerId == f(p) && a.street == otherValue } // should have a verification that param(otherValue) fails
-      p to a
-    }
+  // TODO introduce a spec for these
 
-  val r = "foobar"
+  @CapturedFunction
+  fun isJoe(name: String) =
+    capture.expression { name == "joe" }
+
   val result = capture {
-    joinPeopleToAddress(joes, param(r)) { it.id }.map { kv -> kv.first.name to kv.second.street }
+    joes.filter { isJoe(it.name).use }.map { it.name }
   }
 
-  println("-------- Result ------\n${result.params.lifts.map { it.showValue() }}")
+
+//  @CapturedFunction
+//  fun <T> joinPeopleToAddress(people: SqlQuery<T>, otherValue: String, f: (T) -> Int) =
+//    capture.select {
+//      val p = from(people)
+//      val a = join(Table<Address>()) { a -> a.ownerId == f(p) && a.street == otherValue } // should have a verification that param(otherValue) fails
+//      p to a
+//    }
+//
+//  val r = "foobar"
+//  val result = capture {
+//    joinPeopleToAddress(joes, param(r)) { it.id }.map { kv -> kv.first.name to kv.second.street }
+//  }
+
+  //println("-------- Result ------\n${result.params.lifts.map { it.showValue() }}")
 
 
 //  @CapturedFunction

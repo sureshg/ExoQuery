@@ -1,5 +1,6 @@
 package io.exoquery
 
+import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.serial.ParamSerializer
 import io.exoquery.xr.`+++`
 import io.exoquery.xr.XR
@@ -74,6 +75,7 @@ class BasicExpressionQuotationSpec : FreeSpec({
   "dynamic quotation mechanics" - {
     "c0D=dyn{nA}, c={nB+c0D} -> {nB+T(B0),R={B0,nA}}" {
       val x = true
+      @CapturedDynamic
       fun cap0() =
         if (x)
           capture.expression { 123 }
@@ -90,6 +92,7 @@ class BasicExpressionQuotationSpec : FreeSpec({
     "cls Foo{c0D=dyn{nA+lift}}, f=Foo, c={nB+f.c0D} -> {nB+T(B0),R={B0,nA+lift}}" {
       val v = true
       class Foo {
+        @CapturedDynamic
         val cap0 =
           if (v) capture.expression { 456 + param(456) } else capture.expression { 456 + param(999) }
       }
@@ -113,6 +116,7 @@ class BasicExpressionQuotationSpec : FreeSpec({
     "cls Foo{c0D(i)=dyn{nA+lift(i)}}, f=Foo, c={nB+f.c0D(nn)} -> {nB+T(B0),R={B0,nA+lift(nn)}}" {
       val v = true
       class Foo {
+        @CapturedDynamic
         fun cap0(input: Int) =
           if (v) capture.expression { 456 + param(input) } else capture.expression { 456 + param(999) }
       }

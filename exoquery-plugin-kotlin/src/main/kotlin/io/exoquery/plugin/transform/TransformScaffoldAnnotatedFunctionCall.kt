@@ -83,9 +83,9 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
     // And the parser will know that `joes` is a pluckable function and create the following:
     //   val drivingJoes = SqlQuery(Apply(Tag(123), listOf(People.filterAge)), runtimes={Tag(123)->joes})
 
-    val zeroizedCall = (
+    val zeroizedCall =
       TransformProjectCapture(superTransformer).transform(zeroizedCallRaw) ?: parseError("Could not capture-project the call", zeroizedCallRaw)
-      )
+
 
 
 

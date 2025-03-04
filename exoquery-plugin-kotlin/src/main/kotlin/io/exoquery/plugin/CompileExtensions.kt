@@ -245,6 +245,9 @@ inline fun <reified T> classIdOf(): ClassId? = T::class.classId()
 inline fun <reified T> IrCall.ownerHasAnnotation() =
   this.symbol.owner.hasAnnotation<T>()
 
+inline fun <reified T> IrCall.someOwnerHasAnnotation() =
+  this.symbol.owner.hasAnnotation<T>() || this.symbol.owner.correspondingPropertySymbol?.owner?.hasAnnotation<T>() ?: false
+
 inline fun <reified T> IrElement.hasAnnotation() =
   when (this) {
     is IrAnnotationContainer ->

@@ -1,6 +1,7 @@
 package io.exoquery.plugin.transform
 
 import io.decomat.*
+import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.annotation.CapturedFunction
 import io.exoquery.parseError
@@ -10,16 +11,19 @@ import io.exoquery.plugin.isClass
 import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.printing.dumpSimple
+import io.exoquery.plugin.trees.DynamicsAccum
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.Parser
 import io.exoquery.plugin.trees.SqlQueryExpr
 import io.exoquery.plugin.trees.of
 import io.exoquery.xr.XR
 import io.exoquery.plugin.trees.ExtractorsDomain.Call
+import io.exoquery.plugin.trees.SqlExpressionExpr
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -83,57 +87,77 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
   override fun transform(capFunRaw: IrFunction): IrFunction {
     val capFun = capFunRaw as? IrSimpleFunction ?: parseError("The function annotated with @CapturedFunction must be a simple function.", capFunRaw)
 
-    if (!capFun.returnType.isClass<SqlQuery<*>>()) {
-      parseError("The function annotated with @CapturedFunction must return a single, siple SqlQuery<T> instance", capFun)
+    val errorText = "A function annotated with @CapturedFunction must return a single, single SqlQuery<T> or SqlExpression<T> instance"
+
+    if (!(capFun.returnType.isClass<SqlQuery<*>>() || capFun.returnType.isClass<SqlExpression<*>>())) {
+      parseError("The Captured Function had the wrong kind of return type. ${errorText}", capFun)
     }
     if (capFun.body == null) {
       parseError("The function body of a @CapturedFunction cannot be empty", capFun)
     }
     val funBody = capFun.body!!
-    // TODO allow for SqlExpression and captureValue to be used below
-    // run transforms on the body of the function so that a `select`, `capture`, or will be transformed
-    //val body = superTransformer.visitBody(funBody, )
+
+    val originalParams = capFun.valueParameters
 
     val capFunReturn =
         capFun.getSingleReturnExpr() ?: parseError(Messages.CapturedFunctionFormWrong("Outer form of the captured-function was wrong."), capFun)
 
     // Add the function value parameters to the parsing context so that the parser treats them as identifiers (instead of dynamics)
-    val (rawQueryXR, dynamics) = with (CX.Symbology(symbolSet.withCapturedFunctionParameters(capFun.valueParameters))) {
-      on(capFunReturn).match(
-        // It can either be a `select { ... }` or a `capture { ... }`
-        case(Call.CaptureQuery[Is()]).thenThis {
-          TransformCapturedQuery.parseCapturedQuery(it, superTransformer)
-        },
-        case(Call.CaptureSelect[Is()]).thenThis {
-          TransformSelectClause.parseSelectClause(it, superTransformer)
-        }
-      ) ?: parseError(Messages.CapturedFunctionFormWrong("Invalid capture-function body"), capFunReturn)
-    }
-
-    // Note that when we add TransformCapturedExpression above this will possible be an XR.Expression as well
-    val queryXR = rawQueryXR as? XR.Query ?: parseError("The return value of a @CapturedFunction must be a Query ADT instance but it was: ${rawQueryXR.showRaw()}", capFunReturn)
+    val newSqlContainer =
+      with (CX.Symbology(symbolSet.withCapturedFunctionParameters(capFun.valueParameters))) {
+        on(capFunReturn).match(
+          // It can either be a `select { ... }` or a `capture { ... }`
+          case(Call.CaptureQuery[Is()]).thenThis {
+            val (rawQueryXR, dynamics) = TransformCapturedQuery.parseCapturedQuery(it, superTransformer)
+            processQuery(rawQueryXR, dynamics, originalParams, capFun.locationXR(), capFunReturn)
+          },
+          case(Call.CaptureSelect[Is()]).thenThis {
+            val (rawQueryXR, dynamics) = TransformSelectClause.parseSelectClause(it, superTransformer)
+            processQuery(rawQueryXR, dynamics, originalParams, capFun.locationXR(), capFunReturn)
+          },
+          case(Call.CaptureExpression[Is()]).thenThis {
+            val (rawQueryXR, dynamics) = TransformCapturedExpression.parseSqlExpression(it, superTransformer)
+            processExpression(rawQueryXR, dynamics, originalParams, capFun.locationXR(), capFunReturn)
+          }
+        ) ?: parseError(Messages.CapturedFunctionFormWrong("Invalid capture-function body. ${errorText}"), capFunReturn)
+      }
 
     // The function should not have any parameters since they will be captured in the XR
-    val originalParams = capFun.valueParameters
     capFun.valueParameters = emptyList()
     //capFun.typeParameters = emptyList()
 
-    val xrLambdaParams = originalParams.map { Parser.parseValueParamter(it) }
-    val xrLambda = XR.FunctionN(params = xrLambdaParams, body = queryXR, loc = capFun.locationXR())
-    val params = dynamics.makeParams()
-    val newSqlQuery =
-      if (dynamics.noRuntimes()) {
-        SqlQueryExpr.Uprootable.plantNewUprootable(xrLambda.asQuery(), params)
-      } else {
-        SqlQueryExpr.Uprootable.plantNewPluckable(xrLambda.asQuery(), dynamics.makeRuntimes(), params)
-      }
-
     capFun.body = builder.irBlockBody {
-      +irReturn(newSqlQuery)
+      +irReturn(newSqlContainer)
     }
     //error("---------- New CapFun: ----------\n${capFun.dumpKotlinLike()}")
 
     return capFun
+  }
+
+  context(CX.Scope, CX.Builder, CX.Symbology)
+  private fun processQuery(rawQueryXR: XR, dynamics: DynamicsAccum, originalParams: List<IrValueParameter>, capFunLocation: XR.Location, capFunReturn: IrExpression) = run {
+    val xrLambdaParams = originalParams.map { Parser.parseValueParamter(it) }
+    val params = dynamics.makeParams()
+    val queryXR = rawQueryXR as? XR.Query ?: parseError("The body @CapturedFunction must be a capture returning a SqlQuery<T> or SqlExpression<T> instance but it was: ${rawQueryXR.showRaw()}", capFunReturn)
+    val xrLambda = XR.FunctionN(params = xrLambdaParams, body = queryXR, loc = capFunLocation)
+    if (dynamics.noRuntimes()) {
+      SqlQueryExpr.Uprootable.plantNewUprootable(xrLambda.asQuery(), params)
+    } else {
+      SqlQueryExpr.Uprootable.plantNewPluckable(xrLambda.asQuery(), dynamics.makeRuntimes(), params)
+    }
+  }
+
+  context(CX.Scope, CX.Builder, CX.Symbology)
+  private fun processExpression(rawQueryXR: XR, dynamics: DynamicsAccum, originalParams: List<IrValueParameter>, capFunLocation: XR.Location, capFunReturn: IrExpression) = run {
+    val xrLambdaParams = originalParams.map { Parser.parseValueParamter(it) }
+    val params = dynamics.makeParams()
+    val queryXR = rawQueryXR as? XR.Expression ?: parseError("The return value of a @CapturedFunction must be an Expression ADT instance but it was: ${rawQueryXR.showRaw()}", capFunReturn)
+    val xrLambda = XR.FunctionN(params = xrLambdaParams, body = queryXR, loc = capFunLocation)
+    if (dynamics.noRuntimes()) {
+      SqlExpressionExpr.Uprootable.plantNewUprootable(xrLambda.asExpr(), params)
+    } else {
+      SqlExpressionExpr.Uprootable.plantNewPluckable(xrLambda.asExpr(), dynamics.makeRuntimes(), params)
+    }
   }
 
   // Diagnostic error for debugging uproot failure of a particular clause
