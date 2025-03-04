@@ -8,14 +8,11 @@ class BasicQuerySanitySpec : GoldenSpecDynamic(BasicQuerySanitySpecGoldenDynamic
   data class Person(val id: Int, val name: String, val age: Int)
   data class Address(val ownerId: Int, val street: String, val city: String)
 
-  val p: Person = TODO()
-
-  class Value {
-    operator fun set(value: Any) = TODO()
-  }
-
-
-
+//  val p: Person = TODO()
+//
+//  class Value {
+//    operator fun set(value: Any) = TODO()
+//  }
 
 //  fun <T> setValues(f: (T).(Value) -> set) = TODO()
 //

@@ -4,46 +4,16 @@ package io.exoquery
 
 import io.exoquery.annotation.CapturedFunction
 
-interface HasId { val id: Int }
-
-data class Person(override val id: Int, val name: String, val age: Int): HasId
-data class Address(val ownerId: Int, val street: String, val zip: Int)
 
 
 // Note that "Build" -> "Rebuild" will work for this file because it is "JVM" specifically. It will not work for stuff in commonMain/Test
 // in general the "Build" -> "Rebuild" only works for platform specific targets
 fun main() {
+  // DO NOT move these out to the top level. The compiler will not will cause strange shadowing errors with commonTest/io.exoquery.testdata.TestData.kt classes
+  data class Person(val id: Int, val name: String, val age: Int)
+  data class Address(val ownerId: Int, val street: String, val zip: Int)
 
   val joes = capture { Table<Person>().filter { p -> p.name == param("joe") } }
-
-
-// Add this to the test
-//  @CapturedFunction
-//  fun <T: HasId> joinPeopleToAddress(people: SqlQuery<T>) =
-//    capture.select {
-//      val p = from(people)
-//      val a = join(Table<Address>()) { a -> a.ownerId == p.id }
-//      p to a
-//    }
-//
-//  val result = capture {
-//    joinPeopleToAddress(joes).map { kv -> kv.first.name + " lives at " + kv.second.street }
-//  }
-//
-//  println(result.buildPretty<PostgresDialect>().value)
-
-//  @CapturedFunction
-//  fun <T> joinPeopleToAddress(people: SqlQuery<T>, f: (T) -> Int) =
-//    capture.select {
-//      val p = from(people)
-//      val a = join(Table<Address>()) { a -> a.ownerId == f(p) }
-//      p to a
-//    }
-//
-//  val result = capture {
-//    joinPeopleToAddress(joes) { it.id }.map { kv -> kv.first.name + " lives at " + kv.second.street }
-//  }
-
 
   @CapturedFunction
   fun <T> joinPeopleToAddress(people: SqlQuery<T>, otherValue: String, f: (T) -> Int) =
@@ -55,7 +25,7 @@ fun main() {
 
   val r = "foobar"
   val result = capture {
-    joinPeopleToAddress(joes, param(r)) { it.id }.map { kv -> kv.first.name + " lives at " + kv.second.street }
+    joinPeopleToAddress(joes, param(r)) { it.id }.map { kv -> kv.first.name to kv.second.street }
   }
 
   println("-------- Result ------\n${result.params.lifts.map { it.showValue() }}")

@@ -3,7 +3,7 @@ package io.exoquery
 import io.exoquery.annotation.CapturedFunction
 import io.exoquery.testdata.*
 
-class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, Mode.ExoGoldenOverride(), {
   @CapturedFunction
   fun joes(people: SqlQuery<Person>) = capture { people.filter { p -> p.name == "Joe" } }
 
@@ -57,6 +57,73 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
     }
   }
+  "advanced cases" - {
+    val joes = capture { Table<Person>().filter { p -> p.name == param("joe") } }
+    "passing in a param" {
+      @CapturedFunction
+      fun <T> joinPeopleToAddress(people: SqlQuery<T>, otherValue: String, f: (T) -> Int) =
+        capture.select {
+          val p = from(people)
+          val a = join(Table<Address>()) { a -> a.ownerId == f(p) && a.street == otherValue } // should have a verification that param(otherValue) fails
+          p to a
+        }
+
+      val r = "foobar"
+      val result = capture {
+        joinPeopleToAddress(joes, param(r)) { it.id }.map { kv -> kv.first to kv.second }
+      }
+    }
+    "subtype polymorphicsm" {
+      val joes = capture { Table<SubtypePoly.Person>().filter { p -> p.name == param("joe") } }
+
+      @CapturedFunction
+      fun <T: SubtypePoly.HasId> joinPeopleToAddress(people: SqlQuery<T>): SqlQuery<Pair<T, Address>> =
+        capture.select {
+          val p = from(people)
+          val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+          p to a
+        }
+
+      val result = capture {
+        joinPeopleToAddress(joes).map { kv -> kv.first.name to kv.second.city }
+      }
+    }
+
+    "lambda polymorphism - A" {
+      @CapturedFunction
+      fun <T> joinPeopleToAddress(people: SqlQuery<T>, f: (T) -> Int) =
+        capture.select {
+          val p = from(people)
+          val a = join(Table<Address>()) { a -> a.ownerId == f(p) }
+          p to a
+        }
+
+
+      val result = capture {
+        joinPeopleToAddress(joes) { it.id }.map { kv -> kv.first.name to kv.second.city }
+      }
+    }
+
+    "lambda polymorphism - B" {
+      @CapturedFunction
+      fun <T> joinPeopleToAddress(people: SqlQuery<T>, f: (T, Address) -> Boolean) =
+        capture.select {
+          val p = from(people)
+          val a = join(Table<Address>()) { a -> f(p, a) }
+          p to a
+        }
+
+      val joinFunction = capture.expression {
+        { p: Person, a: Address -> p.id == a.ownerId }
+      }
+
+      val result = capture {
+        joinPeopleToAddress(joes) { p, a -> joinFunction.use(p, a) }.map { kv -> kv.first.name to kv.second.city }
+      }
+    }
+
+  }
+
   "dynamic function capture - structural tests" - {
     "val tbl(Dyn); cap { capFun(tbl) }" {
       val tbl = if (foo) capture { Table<Person>() } else capture { Table<Person>() }
@@ -70,3 +137,8 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
     }
   }
 })
+
+object SubtypePoly {
+  interface HasId { val id: Int }
+  data class Person(override val id: Int, val name: String, val age: Int): HasId
+}
