@@ -62,26 +62,63 @@ class SymbolicReduction(val traceConfig: TraceConfig) {
 //        val er = AttachToEntity(Filter(_, _, cr))(e)
 //        Some(FlatMap(a, d, er))
 
-        // This transformation does not have an analogue in Wadler's paper, it represents the fundamental nature of the Monadic 'bind' function
-        // that A.flatMap(a => B).flatMap(b => C) is isomorphic to A.flatMap(a => B.flatMap(b => C)).
-        //
-        // a.flatMap(b => c).flatMap(d => e) =>
-        //     a.flatMap(b => c.flatMap(d => e))
-        //
-        // case FlatMap(FlatMap(a, b, c), d, e) =>
-        //     Some(FlatMap(a, b, FlatMap(c, d, e)))
-        //
-        // Note that in practice there is a caveat here in that if this transformation causes FlatJoins to be both in head and body position
-        // then the SelectQuery transformer will not be able to propertly constuct it (there is a check there in flattenContexts that assures it).
-        // The problem stems from having the construct FlatMap(..., FlatMap(Map(FlatJoin, ...)), Map(FlatJoin, ...)) which is not a valid construct
-        // for the sake a query construction. Now recall that if you have something like FlatMap( FlatMap(ent, Map(FlatJoin)) , Map(FlatJoin))
-        // (P.S. which is something like ent.flatMap(a => a.flatMap(join(b))).map(join(c)) although typically produced by using a capture.select
-        // clause, see "variable deconstruction should work even when passed to further join" in VariableReductionReq.kt for an example)
-        // and proceed to flatten it out to FlatMap(ent, FlatMap(Map(FlatJoin), Map(FlatJoin)) then you will have a problem because the FlatJoin in the
-        // head and body positions of the inner FlatMap. Therefore we need to check that the head and body of the outer FlatMap do not have both have
-        // flatJoins in order to proceed with this transformation.
-        // The only exception to this rule if the head of the inner FlatMap has a XR.Map in the tail position (which is actually the most common case).
-        // In that case we have some special handling in SqlQueryHelper.flattenDualHeadsIfPossible to make it work.
+        /*
+         * This transformation does not have an analogue in Wadler's paper, it represents the fundamental nature of the Monadic 'bind' function
+         * that A.flatMap(a => B).flatMap(b => C) is isomorphic to A.flatMap(a => B.flatMap(b => C)).
+         *
+         * a.flatMap(b => c).flatMap(d => e) =>
+         *     a.flatMap(b => c.flatMap(d => e))
+         *
+         * case FlatMap(FlatMap(a, b, c), d, e) =>
+         *     Some(FlatMap(a, b, FlatMap(c, d, e)))
+         *
+         * Note that in practice there is a caveat here in that if this transformation causes FlatJoins to be both in head and body position
+         * then the SelectQuery transformer will not be able to propertly constuct it (there is a check there in flattenContexts that assures it).
+         * The problem stems from having the construct FlatMap(..., FlatMap(Map(FlatJoin, ...)), Map(FlatJoin, ...)) which is not a valid construct
+         * for the sake a query construction. Now recall that if you have something like FlatMap( FlatMap(ent, Map(FlatJoin)) , Map(FlatJoin))
+         * (P.S. which is something like ent.flatMap(a => a.flatMap(join(b))).map(join(c)) (**) and proceed to flatten it out to
+         * FlatMap(ent, FlatMap(Map(FlatJoin), Map(FlatJoin)) then you will have a problem because the FlatJoin in the
+         * head and body positions of the inner FlatMap. Therefore we need to check that the head and body of the outer FlatMap do not have both have
+         * flatJoins in order to proceed with this transformation.
+         * (**) This is typically produced by using a capture.select clause, see "variable deconstruction should work even when passed to further join" in
+         * VariableReductionReq.kt for an example. Also the MonadicMachinerReq has lots of examples of this.
+         *
+         * The only exception to this rule if the head of the inner FlatMap has a XR.Map in the tail position (which is actually the most common case).
+         * In that case we have some special handling in SqlQueryHelper.flattenDualHeadsIfPossible to make it work.
+         *
+         * For example, let's say we have:
+         * people.flatMap(p => join(addr, p.id).map(a => (p, a)))
+         *   .flatMap(kv => join(robot, kv._1.id).map(r => ...))
+         *
+         * In SQL-DSL land that is:
+         * select {
+         *   kv = from( select { p = from(people); a = join(addr).on(p.id...) } )
+         *   r = join(robot).on(kv._1.id...)
+         * }
+         *
+         * This transformation will turn it into:
+         * people
+         *   .flatMap(p =>
+         *     join(addr, p.id...).map(a => (p, a))
+         *     .flatMap(kv => join(robot, kv._1.id).map(r => ...))
+         *
+         * This would be something like:
+         * select {
+         *    p = from(people)
+         *    kv = from(
+         *      select {
+         *        a = join(addr).map(a => (p, a)) // <- Not a valid clause!
+         *        r = join(robot).on(p.id...)
+         *        (a.second to r)
+         *      }
+         *    )
+         *
+         * This of course is not valid-sql because a join cannot be the 1st part of a seelct statement. This is actually
+         * a significant difference from the Monadic paradigm to SQL, and because of it `join(table) on(cond)` is not
+         * exactly eqivalent to `table.filter(cond)`. For the specific above case however (i.e. where the `join(addr, p.id...).map(a => (p, a))` expression
+         * exists above, since the head-position is just a XR.Map(XR.Join(...)) clause we can pull out the Join and flatten the whole query.
+         * See SqlQueryHelper for more details on how that is done.
+         */
         this is XR.FlatMap && head is XR.FlatMap && !(this.hasTailPositionFlatJoin() && this.head.hasTailPositionFlatJoin() && this.head.body !is XR.Map) -> {
           val (a, b, c) = Triple(head.head, head.id, head.body)
           val (d, e) = Pair(id, body)
