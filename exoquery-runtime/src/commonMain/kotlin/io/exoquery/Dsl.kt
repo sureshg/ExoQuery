@@ -88,6 +88,11 @@ interface ActionCapturedBlock: CapturedBlock {
 }
 
 
+sealed interface CapturedBlockInternal {
+  @Dsl @FlatJoin fun <T> flatJoin(query: SqlQuery<T>, cond: (T) -> Boolean): SqlQuery<T> = errorCap("The `flatJoin` expression of the Query was not inlined")
+  @Dsl @FlatJoinLeft fun <T> flatJoinLeft(query: SqlQuery<T>, cond: (T) -> Boolean): SqlQuery<T?> = errorCap("The `flatJoinLeft` expression of the Query was not inlined")
+}
+
 sealed interface FreeBlock
 interface CapturedBlock {
   @Dsl fun free(block: String): FreeBlock = errorCap("Compile time plugin did not transform the tree")
@@ -99,9 +104,7 @@ interface CapturedBlock {
   fun FreeBlock.asConditon(): Boolean = errorCap("The `invoke` expression of the Query was not inlined")
   fun FreeBlock.asPureConditon(): Boolean = errorCap("The `invoke` expression of the Query was not inlined")
 
-  // TODO these are for testing only, put these in a sub-namespace and make them opt-in
-  @Dsl @FlatJoin fun <T> flatJoin(query: SqlQuery<T>, cond: (T) -> Boolean): SqlQuery<T> = errorCap("The `flatJoin` expression of the Query was not inlined")
-  @Dsl @FlatJoinLeft fun <T> flatJoinLeft(query: SqlQuery<T>, cond: (T) -> Boolean): SqlQuery<T?> = errorCap("The `flatJoinLeft` expression of the Query was not inlined")
+  val internal: CapturedBlockInternal
 
   @Dsl @ParamStatic(ParamSerializer.String::class) fun param(value: String): String = errorCap("Compile time plugin did not transform the tree")
   @Dsl @ParamStatic(ParamSerializer.Char::class) fun param(value: Char): Char = errorCap("Compile time plugin did not transform the tree")

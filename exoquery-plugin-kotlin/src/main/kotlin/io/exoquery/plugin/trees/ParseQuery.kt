@@ -31,6 +31,7 @@ import io.exoquery.plugin.symName
 import io.exoquery.plugin.transform.CX
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
+import org.jetbrains.kotlin.com.intellij.lang.java.parser.ExpressionParser
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -169,6 +170,12 @@ object ParseQuery {
           "filter" -> XR.Filter(head, id, body, expr.loc)
           else -> parseError("Unknown SqlQuery method call: ${symName} in: ${expr.dumpKotlinLike()}", expr)
         }
+      },
+      // There are some situations where someone could do capture.expression { ... SqlQuery } and we need to handle that
+      // later injecting that into a query-capture with a .use function. For example capture.expression { { p: Person -> flatJoin(addresses, ...) } }.
+      // we need to handle those cases.
+      case(ExtractorsDomain.Call.UseExpression.Receiver[Is()]).thenThis { head ->
+        ParseExpression.parse(head).asQuery()
       },
       case(Ir.Call.FunctionMemN[Is(), Is.of("flatJoin", "flatJoinLeft"), Is()]).thenIfThis { _, _ -> ownerHasAnnotation<FlatJoin>() || ownerHasAnnotation<FlatJoinLeft>() }.thenThis { _, args ->
         on(args[1]).match(

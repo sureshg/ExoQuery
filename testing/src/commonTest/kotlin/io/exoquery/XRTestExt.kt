@@ -7,4 +7,4 @@ import io.exoquery.xr.XRType
 // tests it is fine to assume they just represent a value
 operator fun XR.Ident.Companion.invoke(name: String) = XR.Ident(name, XRType.Value)
 
-val String.id: XR.Ident get() = XR.Ident(this)
+val String.toId: XR.Ident get() = XR.Ident(this)

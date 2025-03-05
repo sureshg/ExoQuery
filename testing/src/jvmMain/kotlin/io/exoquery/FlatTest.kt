@@ -10,9 +10,9 @@ fun main() {
   val cap =
     capture {
       Table<Person>().flatMap { p ->
-        flatJoin(Table<Address>()) { a -> p.id == a.ownerId }.map { a -> p to a }
+        internal.flatJoin(Table<Address>()) { a -> p.id == a.ownerId }.map { a -> p to a }
           .flatMap { pa ->
-            flatJoin(Table<Robot>()) { r -> pa.first.id == r.ownerId }.map { r -> Triple(pa.first, pa.second, r) }
+            internal.flatJoin(Table<Robot>()) { r -> pa.first.id == r.ownerId }.map { r -> Triple(pa.first, pa.second, r) }
           }
       }
     }

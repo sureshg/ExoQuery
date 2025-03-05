@@ -2,6 +2,7 @@ package io.exoquery.plugin.transform
 
 import io.exoquery.plugin.logging.Location
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 
@@ -78,5 +79,12 @@ data class SymbolSet(
 
   fun withSymbols(newSymbols: List<IrSymbol>) = SymbolSet(this.symbols + newSymbols, capturedFunctionParameters)
   // Add parameters for captured functions (don't think there are cases where this is called in a nested fasion i.e. there are symbols that should exist beforehand)
-  fun withCapturedFunctionParameters(newCapturedFunctionParameters: List<IrValueParameter>) = SymbolSet(symbols, this.capturedFunctionParameters + newCapturedFunctionParameters)
+  fun withCapturedFunctionParameters(capFun: IrSimpleFunction) = run {
+    // Note that it is possible for dispatch/extension params to be used inside a function e.g:
+    // @CapturedFunction fun Person.firstAndLastName() = capture.expression { this.first() + this.last() }
+    val extensionParam = capFun.symbol.owner.extensionReceiverParameter?.let { listOf(it) } ?: emptyList()
+    val dispatchParam = capFun.symbol.owner.dispatchReceiverParameter?.let { listOf(it) } ?: emptyList()
+    SymbolSet(symbols, this.capturedFunctionParameters + capFun.valueParameters + extensionParam + dispatchParam)
+  }
+
 }

@@ -35,6 +35,7 @@ import io.exoquery.plugin.safeName
 import io.exoquery.plugin.show
 import io.exoquery.plugin.toXR
 import io.exoquery.plugin.transform.CX
+import io.exoquery.plugin.transform.dumpKotlinLikePretty
 import io.exoquery.plugin.varargValues
 import io.exoquery.serial.ParamSerializer
 import io.exoquery.terpal.UnzipPartsParams
@@ -274,24 +275,14 @@ object ParseExpression {
       },
 
       case(ExtractorsDomain.Call.UseExpression.Receiver[Ir.Call.FunctionUntethered2[Is(PT.io_exoquery_util_scaffoldCapFunctionQuery), Is(), Is()]]).thenThis { (sqlExprArg, irVararg) ->
-        val loc = this.loc
-        val wrappedExprCall =
-          sqlExprArg.match(
-            case(SqlExpressionExpr.Uprootable[Is()]).then { uprootable ->
-              // Add all binds from the found SqlExpression instance, this will be truned into something like `currLifts + SqlExpression.lifts` late
-              binds.addAllParams(sqlExprArg)
-              // Then unpack and return the XR
-              uprootable.xr
-            },
-            case(ExtractorsDomain.DynamicExprCall[Is()]).then { call ->
-              val bid = BID.Companion.new()
-              binds.addRuntime(bid, sqlExprArg)
-              XR.TagForSqlExpression(bid, TypeParser.of(sqlExprArg), sqlExprArg.loc)
-            },
-          ) ?: parseError(Messages.CannotCallUseOnAnArbitraryDynamic(), sqlExprArg)
-        val args = irVararg.varargValues()
-        val parsedArgs = args.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null(loc) }
-        XR.FunctionApply(wrappedExprCall, parsedArgs, expr.loc)
+        processScaffolded(sqlExprArg, irVararg, expr)
+      },
+
+      // In certain odd situations (e.g. using a `@CatpuredFunction fun foo(p: Person) = capture.expression { flatJoin(Table<Address>, ...) }` inside of a other query
+      // like so capture.select { val p = from(Person); val a = from(joinAddress(...)) }. We can have a scaffold without a proceeding use-function
+      // need to handle that case.
+      case(Ir.Call.FunctionUntethered2[Is(PT.io_exoquery_util_scaffoldCapFunctionQuery), Is(), Is()]).thenThis { sqlExprArg, irVararg ->
+        processScaffolded(sqlExprArg, irVararg, expr)
       },
 
       // TODO check that the extension reciever is Ir.Expr.ClassOf<SqlExpression<*>> (and the dispatch method is CapturedBlock)
@@ -410,6 +401,38 @@ object ParseExpression {
 
       parseError("Could not parse the expression." + (if (additionalHelp.isNotEmpty()) "\n${additionalHelp}" else ""), expr)
     }
+
+  context(CX.Scope, CX.Parsing, CX.Symbology)
+  fun processScaffolded(sqlExprArg: IrExpression, irVararg: IrExpression, currentExpr: IrExpression) = run {
+    val loc = currentExpr.loc
+    //if (this.dumpKotlinLikePretty().contains("Table(Address).join { a -> p.id == a.ownerId }.toExpr")) {
+    //  throw IllegalArgumentException("--------------------- HERE (${sqlExprArg.dumpKotlinLikePretty()}) --------------------")
+    //}
+
+    val wrappedExprCall =
+      sqlExprArg.match(
+        // It is possible to capture a SqlQuery<*> value inside an capture.expression. Handle that case.
+        // The actual type of the expression in this case will be SqlExpression<SqlQuery<T>> so that's what we need to check for
+        case(Ir.Expr.ClassOf<SqlExpression<*>>()).thenIf { sqlExprArg.type.simpleTypeArgs.firstOrNull()?.isClass<SqlQuery<*>>() ?: false }.then {
+
+          ParseQuery.parse(sqlExprArg)
+        },
+        case(SqlExpressionExpr.Uprootable[Is()]).then { uprootable ->
+          // Add all binds from the found SqlExpression instance, this will be truned into something like `currLifts + SqlExpression.lifts` late
+          binds.addAllParams(sqlExprArg)
+          // Then unpack and return the XR
+          uprootable.xr
+        },
+        case(ExtractorsDomain.DynamicExprCall[Is()]).then { call ->
+          val bid = BID.Companion.new()
+          binds.addRuntime(bid, sqlExprArg)
+          XR.TagForSqlExpression(bid, TypeParser.of(sqlExprArg), sqlExprArg.loc)
+        },
+      ) ?: parseError(Messages.CannotCallUseOnAnArbitraryDynamic(), sqlExprArg)
+    val args = irVararg.varargValues()
+    val parsedArgs = args.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null(loc) }
+    XR.FunctionApply(wrappedExprCall, parsedArgs, loc)
+  }
 
   context(CX.Scope, CX.Symbology)
   private fun validateParamArg(paramValue: IrExpression): Unit =

@@ -6,6 +6,8 @@ import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.source
 import io.exoquery.plugin.symName
 import io.exoquery.plugin.transform.CX
+import io.exoquery.plugin.transform.dumpKotlinLikePretty
+import io.exoquery.plugin.transform.prepareForPrinting
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFile
@@ -28,11 +30,13 @@ class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) 
                |${src}""".trimMargin()
           }
 
+        val printingElement = element.prepareForPrinting()
+
         """|[ExoQuery] Could not understand an expression or query due to an error: ${msg}.${expressionPart}
            |------------ Raw Expression ------------
-           |${element.dumpKotlinLike()}
+           |${printingElement.dumpKotlinLike()}
            |------------ Raw Expression Tree ------------
-           |${element.dumpSimple()}
+           |${printingElement.dumpSimple()}
            |""".trimMargin()
       }
       return ParseError(fullMsg, location)

@@ -104,7 +104,7 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
 
     // Add the function value parameters to the parsing context so that the parser treats them as identifiers (instead of dynamics)
     val newSqlContainer =
-      with (CX.Symbology(symbolSet.withCapturedFunctionParameters(capFun.valueParameters))) {
+      with (CX.Symbology(symbolSet.withCapturedFunctionParameters(capFun))) {
         on(capFunReturn).match(
           // It can either be a `select { ... }` or a `capture { ... }`
           case(Call.CaptureQuery[Is()]).thenThis {
@@ -124,6 +124,10 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
 
     // The function should not have any parameters since they will be captured in the XR
     capFun.valueParameters = emptyList()
+
+    // The dispatch-reciever to a annotated function remains, the extension reciever gets dropped and used like a variable
+    capFun.extensionReceiverParameter = null
+
     //capFun.typeParameters = emptyList()
 
     capFun.body = builder.irBlockBody {

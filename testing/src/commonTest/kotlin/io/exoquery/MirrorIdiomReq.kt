@@ -10,7 +10,7 @@ import io.exoquery.xr.XRType
 class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGoldenTest(), {
   val personEnt = XR.Entity("Person", XRType.Product.leaf("Person", "name", "age"))
   val addressEnt = XR.Entity("Address", XRType.Product.leaf("Address", "street", "city"))
-  infix fun String.dot(other: String): XR.Property = XR.Property(this.id, other)
+  infix fun String.dot(other: String): XR.Property = XR.Property(this.toId, other)
 
   "XR.Expression" - {
     "XR.Ident" {
@@ -60,7 +60,7 @@ class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGol
       shouldBeGolden(XR.BinaryOp(XR.Ident("a"), OP.`==`, XR.Ident("b")))
     }
     "XR.Block" {
-      val vars = listOf(XR.Variable("foo".id, "bar".id), XR.Variable("baz".id, "qux".id))
+      val vars = listOf(XR.Variable("foo".toId, "bar".toId), XR.Variable("baz".toId, "qux".toId))
       shouldBeGolden(XR.Block(vars, XR.Ident("baz")))
     }
     "XR.Product" {
@@ -87,28 +87,28 @@ class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGol
   }
   "XR.Query" - {
     "XR.Map" {
-      shouldBeGolden(XR.Map(personEnt, "p".id, "p" dot "name"))
+      shouldBeGolden(XR.Map(personEnt, "p".toId, "p" dot "name"))
     }
     "XR.FlatMap" {
-      shouldBeGolden(XR.FlatMap(personEnt, "p".id, XR.Map(personEnt, "p".id, "p" dot "name")))
+      shouldBeGolden(XR.FlatMap(personEnt, "p".toId, XR.Map(personEnt, "p".toId, "p" dot "name")))
     }
     "XR.Filter" {
-      shouldBeGolden(XR.Filter(personEnt, "p".id, "p" dot "age" `+==+` XR.Const.Int(42)))
+      shouldBeGolden(XR.Filter(personEnt, "p".toId, "p" dot "age" `+==+` XR.Const.Int(42)))
     }
     "XR.Entity" {
       shouldBeGolden(personEnt)
     }
     "XR.Union" {
-      shouldBeGolden(XR.Union("foo".id, "bar".id))
+      shouldBeGolden(XR.Union("foo".toId, "bar".toId))
     }
     "XR.UnionAll" {
-      shouldBeGolden(XR.UnionAll("foo".id, "bar".id))
+      shouldBeGolden(XR.UnionAll("foo".toId, "bar".toId))
     }
     "XR.Distinct" {
       shouldBeGolden(XR.Distinct(personEnt))
     }
     "XR.DistinctOn" {
-      shouldBeGolden(XR.DistinctOn(personEnt, "p".id, "p" dot "name"))
+      shouldBeGolden(XR.DistinctOn(personEnt, "p".toId, "p" dot "name"))
     }
     "XR.Drop" {
       shouldBeGolden(XR.Drop(personEnt, XR.Const.Int(2)))
@@ -117,10 +117,10 @@ class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGol
       shouldBeGolden(XR.Take(personEnt, XR.Const.Int(2)))
     }
     "XR.SortBy" {
-      shouldBeGolden(XR.SortBy(personEnt, "p".id, "p" dot "name", XR.Ordering.Asc))
+      shouldBeGolden(XR.SortBy(personEnt, "p".toId, "p" dot "name", XR.Ordering.Asc))
     }
     "XR.FlatJoin" {
-      shouldBeGolden(XR.FlatJoin(XR.JoinType.Inner, personEnt, "p".id, ("p" dot "name") `+==+` ("o" dot "other")))
+      shouldBeGolden(XR.FlatJoin(XR.JoinType.Inner, personEnt, "p".toId, ("p" dot "name") `+==+` ("o" dot "other")))
     }
     "XR.FlatGroupBy" {
       shouldBeGolden(XR.FlatGroupBy("p" dot "name"))
@@ -132,7 +132,7 @@ class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGol
       shouldBeGolden(XR.FlatFilter("p" dot "name" `+==+` ("o" dot "other")))
     }
     "XR.ConcatMap" {
-      shouldBeGolden(XR.ConcatMap(personEnt, "p".id, "p" dot "name"))
+      shouldBeGolden(XR.ConcatMap(personEnt, "p".toId, "p" dot "name"))
     }
     "XR.Nested" {
       shouldBeGolden(XR.Nested(personEnt))
@@ -149,7 +149,7 @@ class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGol
     "XR.CustomQueryRef - SelectValue" {
       shouldBeGolden(XR.CustomQueryRef(
         SelectClause(
-          listOf(SX.From("p".id, personEnt), SX.Join(XR.JoinType.Inner, "p".id, addressEnt, "a".id, ("p" dot "name") `+==+` ("a" dot "street"))),
+          listOf(SX.From("p".toId, personEnt), SX.Join(XR.JoinType.Inner, "p".toId, addressEnt, "a".toId, ("p" dot "name") `+==+` ("a" dot "street"))),
           SX.Where("p" dot "age" `+==+` XR.Const.Int(42)),
           SX.GroupBy("p" dot "name"),
           SX.SortBy("p" dot "name", XR.Ordering.Asc),

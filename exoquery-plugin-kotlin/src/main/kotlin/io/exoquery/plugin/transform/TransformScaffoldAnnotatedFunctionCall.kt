@@ -24,8 +24,10 @@ fun IrCall.zeroisedArgs(): IrCall {
   val call = this
   return with (builder) {
     val newCall = irCall(call.symbol)
+
+    // The dispatch-reciever to a annotated function remains, the extension reciever gets dropped and used like a variable
     call.dispatchReceiver?.let { newCall.dispatchReceiver = it }
-    call.extensionReceiver?.let { newCall.extensionReceiver = it }
+
     newCall.typeArguments.withIndex().forEach { (i, tpe) -> putTypeArgument(i, tpe) }
     // no value arguments, should not have any since they are added to the scaffolding
     newCall

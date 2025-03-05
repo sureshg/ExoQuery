@@ -6,6 +6,7 @@ import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.source
 import io.exoquery.plugin.transform.CX
+import io.exoquery.plugin.transform.dumpKotlinLikePretty
 import io.exoquery.plugin.trees.showLineage
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -90,21 +91,22 @@ fun myFunction(): SqlQuery<Int> = select {
 """.trimIndent()
 
 
-  fun ParserMessage(ir: IrExpression?, parsedCode: String?) =
+context(CX.Scope)
+fun ParserMessage(ir: IrExpression?, parsedCode: String?) =
 """
 ================ Parsed As: ================
 $parsedCode
 ================ Interpreted IR: ================
-${ir?.dumpKotlinLike()}
+${ir?.dumpKotlinLikePretty()}
 ================= Raw IR: ========================
 ${ir?.dumpSimple()}
 """.trimIndent()
 
-
-  fun PrintingMessage(ir: IrExpression?) =
+context(CX.Scope)
+fun PrintingMessage(ir: IrExpression?) =
 """
 ================ Interpreated IR: ================
-${ir?.dumpKotlinLike()}
+${ir?.dumpKotlinLikePretty()}
 ================= Raw IR: ========================
 ${ir?.dumpSimple()}
 """.trimIndent()

@@ -19,10 +19,10 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 // Note that if you don't do `.deepCopyWithSymbols()` then the actual Transformer will modify the original tree adding the XR.show into the unpackQuery/unpackExpr calls
 // which will obviously fail. It is non-obvious where the DeclarationIrBuilder actually does this.
 context(CX.Scope)
-private fun IrExpression.prettyUnpacks() = TransformShowUnpacks(this@Scope).visitExpression(this.deepCopyWithSymbols(), Unit) as IrExpression
+fun IrElement.prepareForPrinting() = TransformShowUnpacks(this@Scope).visitElement(this.deepCopyWithSymbols(), Unit) as IrExpression
 
 context(CX.Scope)
-fun IrExpression.dumpKotlinLikePretty() = prettyUnpacks().dumpKotlinLike()
+fun IrElement.dumpKotlinLikePretty() = prepareForPrinting().dumpKotlinLike()
 
 
 private class TransformShowUnpacks(val scopeContext: CX.Scope): IrElementTransformer<Unit> {
