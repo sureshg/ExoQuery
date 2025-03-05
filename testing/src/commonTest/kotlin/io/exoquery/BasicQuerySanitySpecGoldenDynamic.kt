@@ -1,10 +1,11 @@
 package io.exoquery
 
+import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
 object BasicQuerySanitySpecGoldenDynamic: GoldenQueryFile {
-  override val queries = mapOf<String, String>(
+  override val queries = mapOf<String, GoldenResult>(
     "basic query" to cr(
       "SELECT x.id, x.name, x.age FROM Person x"
     ),

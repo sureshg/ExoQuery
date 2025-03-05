@@ -39,7 +39,7 @@ class RuntimesExpr(val runtimes: List<Pair<BID, IrExpression>>, val runtimesToCo
         .map { it.callDispatch("runtimes")() }
         // Then compose them them together with the new lifts
         .fold(newRuntimes, { acc, nextRuntimes ->
-          newRuntimes.callDispatch("plus")(nextRuntimes)
+          acc.callDispatch("plus")(nextRuntimes)
         })
     }
   }
@@ -166,11 +166,13 @@ class ParamsExpr(val paramBinds: List<ParamBind>, val paramsToCompose: List<IrEx
         paramType.build(bid, value, lifter)
       }
       val newParams: IrExpression = make<ParamSet>(paramsList.liftExpr<Param<*>>())
+      val out =
       paramsToCompose
         .map { it.callDispatch("params")() }
         .fold(newParams, { acc, nextParams ->
-          newParams.callDispatch("plus")(nextParams)
+          acc.callDispatch("plus")(nextParams)
         })
+      out
     }
   }
 }
@@ -257,7 +259,13 @@ object SqlExpressionExpr {
 // not worth it. Need to keep an eye on this as we add more ContainerOfXR types
 object SqlQueryExpr {
   data class Uprootable(val packedXR: String) {
-    val xr by lazy { EncodingXR.protoBuf.decodeFromHexString<XR.Query>(packedXR) }
+    val xr by lazy {
+      try {
+        EncodingXR.protoBuf.decodeFromHexString<XR.Query>(packedXR)
+      } catch (e: Throwable) {
+        throw IllegalArgumentException("Could not decode the XR.Query from the packed string: $packedXR", e)
+      }
+    }
     context(CX.Scope, CX.Builder)
     fun replant(paramsFrom: IrExpression): IrExpression {
       val strExpr = call(PT.io_exoquery_unpackQuery).invoke(builder.irString(packedXR))

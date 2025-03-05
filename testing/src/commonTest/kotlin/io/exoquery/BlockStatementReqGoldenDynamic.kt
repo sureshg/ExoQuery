@@ -1,10 +1,11 @@
 package io.exoquery
 
+import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
 object BlockStatementReqGoldenDynamic: GoldenQueryFile {
-  override val queries = mapOf<String, String>(
+  override val queries = mapOf<String, GoldenResult>(
     "blocks with map/XR" to kt(
       "Table(Person).map { it -> { val name = it.name; val age = it.age; Tuple(first = name, second = age) } }"
     ),

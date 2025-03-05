@@ -1,13 +1,15 @@
 package io.exoquery
 
 import io.exoquery.annotation.CapturedFunction
+import io.exoquery.sql.Renderer
 import io.exoquery.testdata.*
+
 
 class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, Mode.ExoGoldenOverride(), {
   @CapturedFunction
   fun joes(people: SqlQuery<Person>) = capture { people.filter { p -> p.name == "Joe" } }
-
   val foo: Boolean = true
+  println("helloo")
 
   "static function capture - structural tests" - {
     "cap { capFun(Table) }" {
@@ -56,7 +58,17 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       shouldBeGolden(capJoes.xr, "XR")
       shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
     }
+    "cap { capFunA(capFunB(x)) -> capFunC }" {
+      @CapturedFunction
+      fun namedX(people: SqlQuery<Person>, name: String) = capture { people.filter { p -> p.name == name } }
+      @CapturedFunction
+      fun namedY(people: SqlQuery<Person>, name: String) = capture { people.filter { p -> p.name == name } }
+      val capJoes = capture { namedY(namedX(Table<Person>(), "Joe"), "Jack") }
+      shouldBeGolden(capJoes.xr, "XR")
+      shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")
+    }
   }
+
   "advanced cases" - {
     val joes = capture { Table<Person>().filter { p -> p.name == param("joe") } }
     "passing in a param" {
@@ -72,8 +84,8 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       val result = capture {
         joinPeopleToAddress(joes, param(r)) { it.id }.map { kv -> kv.first to kv.second }
       }
+      shouldBeGolden(result.determinizeDynamics().xr, "XR")
       shouldBeGolden(result.build<PostgresDialect>(), "SQL")
-      shouldBeGolden(result.xr, "XR")
     }
     "subtype polymorphicsm" {
       val joes = capture { Table<SubtypePoly.Person>().filter { p -> p.name == param("joe") } }
@@ -89,8 +101,8 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       val result = capture {
         joinPeopleToAddress(joes).map { kv -> kv.first.name to kv.second.city }
       }
+      shouldBeGolden(result.determinizeDynamics().xr, "XR")
       shouldBeGolden(result.build<PostgresDialect>(), "SQL")
-      shouldBeGolden(result.xr, "XR")
     }
 
     "lambda polymorphism - A" {
@@ -105,8 +117,8 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       val result = capture {
         joinPeopleToAddress(joes) { it.id }.map { kv -> kv.first.name to kv.second.city }
       }
+      shouldBeGolden(result.determinizeDynamics().xr, "XR")
       shouldBeGolden(result.build<PostgresDialect>(), "SQL")
-      shouldBeGolden(result.xr, "XR")
     }
 
     "lambda polymorphism - B" {
@@ -122,11 +134,13 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
         { p: Person, a: Address -> p.id == a.ownerId }
       }
 
-      val result = capture {
-        joinPeopleToAddress(joes) { p, a -> joinFunction.use(p, a) }.map { kv -> kv.first.name to kv.second.city }
-      }
+      val result =
+        capture {
+          joinPeopleToAddress(joes) { p, a -> joinFunction.use(p, a) }.map { kv -> kv.first.name to kv.second.city }
+        }
+
+      shouldBeGolden(result.determinizeDynamics().xr, "XR")
       shouldBeGolden(result.build<PostgresDialect>(), "SQL")
-      shouldBeGolden(result.xr, "XR")
     }
 
     "lambda polymorphism - C + captured expression" {
@@ -145,10 +159,9 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       val result = capture {
         joinPeopleToAddress(joes) { p, a -> joinFunction(p, a).use }.map { kv -> kv.first.name to kv.second.city }
       }
+      shouldBeGolden(result.determinizeDynamics().xr, "XR")
       shouldBeGolden(result.build<PostgresDialect>(), "SQL")
-      shouldBeGolden(result.xr, "XR")
     }
-
   }
 
   "dynamic function capture - structural tests" - {
@@ -156,8 +169,8 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       val tbl = if (foo) capture { Table<Person>() } else capture { Table<Person>() }
       val capJoes = capture { joes(tbl) }
       val det = capJoes.determinizeDynamics()
-      shouldBeGolden(tbl.xr, "XR-tbl")
-      shouldBeGolden(det.xr, "XR")
+      shouldBeGolden(tbl.determinizeDynamics().xr, "XR-tbl")
+      shouldBeGolden(det.determinizeDynamics().xr, "XR")
       shouldBeGolden(det.runtimes.runtimes.first().second.xr, "XR->Runimtes.first.XR")
       shouldBeTrueInGolden { det.runtimes.runtimes.first().second.xr == tbl.xr }
       shouldBeGolden(capJoes.build<PostgresDialect>(), "SQL")

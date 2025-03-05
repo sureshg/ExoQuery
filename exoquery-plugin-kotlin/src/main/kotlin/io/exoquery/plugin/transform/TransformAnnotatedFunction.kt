@@ -136,7 +136,7 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
 
   context(CX.Scope, CX.Builder, CX.Symbology)
   private fun processQuery(rawQueryXR: XR, dynamics: DynamicsAccum, originalParams: List<IrValueParameter>, capFunLocation: XR.Location, capFunReturn: IrExpression) = run {
-    val xrLambdaParams = originalParams.map { Parser.parseValueParamter(it) }
+    val xrLambdaParams = originalParams.map { Parser.scoped { Parser.parseValueParamter(it) } }
     val params = dynamics.makeParams()
     val queryXR = rawQueryXR as? XR.Query ?: parseError("The body @CapturedFunction must be a capture returning a SqlQuery<T> or SqlExpression<T> instance but it was: ${rawQueryXR.showRaw()}", capFunReturn)
     val xrLambda = XR.FunctionN(params = xrLambdaParams, body = queryXR, loc = capFunLocation)
@@ -149,7 +149,7 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
 
   context(CX.Scope, CX.Builder, CX.Symbology)
   private fun processExpression(rawQueryXR: XR, dynamics: DynamicsAccum, originalParams: List<IrValueParameter>, capFunLocation: XR.Location, capFunReturn: IrExpression) = run {
-    val xrLambdaParams = originalParams.map { Parser.parseValueParamter(it) }
+    val xrLambdaParams = originalParams.map { Parser.scoped { Parser.parseValueParamter(it) } }
     val params = dynamics.makeParams()
     val queryXR = rawQueryXR as? XR.Expression ?: parseError("The return value of a @CapturedFunction must be an Expression ADT instance but it was: ${rawQueryXR.showRaw()}", capFunReturn)
     val xrLambda = XR.FunctionN(params = xrLambdaParams, body = queryXR, loc = capFunLocation)

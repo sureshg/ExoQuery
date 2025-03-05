@@ -3,6 +3,7 @@ package io.exoquery
 import io.exoquery.annotation.ExoExtras
 import io.exoquery.printing.PrintableValue
 import io.exoquery.printing.QueryFileKotlinMaker
+import io.exoquery.sql.Renderer
 import io.exoquery.xr.XR
 import io.kotest.core.spec.DslDrivenSpec
 import io.kotest.core.spec.style.scopes.FreeSpecRootScope
@@ -52,8 +53,17 @@ abstract class GoldenSpecDynamic(val goldenQueries: GoldenQueryFile, val mode: M
   }
 
   fun TestScope.shouldBeGolden(xr: XR, suffix: String = "") = xr.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix")
-  fun TestScope.shouldBeGolden(sql: SqlCompiledQuery<*>, suffix: String = "") = sql.value.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix", PrintableValue.Type.SqlQuery)
-  fun TestScope.shouldBeGolden(value: String, suffix: String = "") = value.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix", PrintableValue.Type.SqlQuery)
+  fun TestScope.shouldBeGolden(sql: SqlCompiledQuery<*>, suffix: String = "") = run {
+    // Get the query as it is resolved from the runtime tokes. That is the only way to know whether the binding lifts actually work or not.
+    // The sql.value will never have <UNR?> entries because if params erroneously don't exist it is only know at runtime.
+    val resolvedQuery = sql.determinizeDynamics().token.show(Renderer())
+    resolvedQuery.shouldBeGolden(
+      testPath() + if (suffix.isEmpty()) "" else "/$suffix",
+      PrintableValue.Type.SqlQuery,
+      sql.params.map { PrintableValue.Param(it.id.value, it.showValue()) }
+    )
+  }
+  fun TestScope.shouldBeGolden(value: String, suffix: String = "") = value.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix", PrintableValue.Type.SqlQuery, listOf())
 
   // A simple test that does an assert only when in ExoGoldenTest mode
   fun <T> TestScope.shouldBeGoldenValue(expected: T, actual: T, suffix: String = "") =
@@ -65,21 +75,26 @@ abstract class GoldenSpecDynamic(val goldenQueries: GoldenQueryFile, val mode: M
     }
 
   // TODO the show() function should use the mirror idiom once that is complete
-  fun XR.shouldBeGolden(label: String) = this.show().shouldBeGolden(label, PrintableValue.Type.KotlinCode)
-  fun SqlCompiledQuery<*>.shouldBeGolden() = this.value.shouldBeGolden(this.label ?: errorCap("""The following query did not have a label: "$value""""), PrintableValue.Type.SqlQuery)
+  fun XR.shouldBeGolden(label: String) = this.show().shouldBeGolden(label, PrintableValue.Type.KotlinCode, listOf())
+  fun SqlCompiledQuery<*>.shouldBeGolden() =
+    this.value.shouldBeGolden(
+      this.label ?: errorCap("""The following query did not have a label: "$value""""),
+      PrintableValue.Type.SqlQuery,
+      this.params.map { PrintableValue.Param(it.id.value, it.showValue()) }
+    )
 
-  fun String.shouldBeGolden(label: String, printType: PrintableValue.Type) =
+  fun String.shouldBeGolden(label: String, printType: PrintableValue.Type, params: List<PrintableValue.Param>) =
     when (mode) {
       is Mode.ExoGoldenTest ->
         goldenQueries.queries[label]?.let {
           assertEquals(
-            it.trimIndent().trim(), this.trimIndent().trim(),
+            it.queryString.trimIndent().trim(), this.trimIndent().trim(),
             "Golden query for label: \"$label\" did not match"
           )
         } ?: errorCap("""No golden query found for label: "$label"""")
 
       is Mode.ExoGoldenOverride ->
-        outputQueries.add(PrintableValue(this, printType, label))
+        outputQueries.add(PrintableValue(this, printType, label, params))
     }
 
   fun complete() {
@@ -113,7 +128,7 @@ abstract class GoldenSpec(val goldenQueries: GoldenQueryFile, body: GoldenSpec.(
   private fun String.shouldBeGolden(label: String?, printType: PrintableValue.Type) =
     goldenQueries.queries[label]?.let {
       assertEquals(
-        it.trimIndent().trim(), this.trimIndent().trim(),
+        it.queryString.trimIndent().trim(), this.trimIndent().trim(),
         "Golden query for label: \"$label\" did not match"
       )
     } ?: errorCap("""No golden query found for label: "$label"""")

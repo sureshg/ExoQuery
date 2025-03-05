@@ -1,10 +1,11 @@
 package io.exoquery
 
+import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
 object MirrorIdiomReqGoldenDynamic: GoldenQueryFile {
-  override val queries = mapOf<String, String>(
+  override val queries = mapOf<String, GoldenResult>(
     "XR.Expression/XR.Ident" to kt(
       "foo"
     ),

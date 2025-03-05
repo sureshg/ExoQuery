@@ -1,0 +1,57 @@
+package io.exoquery.plugin.transform
+
+import io.exoquery.plugin.fullName
+import io.exoquery.plugin.trees.PT
+import io.exoquery.plugin.trees.simpleValueArgs
+import io.exoquery.unpackExpr
+import io.exoquery.unpackQuery
+import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
+import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrConst
+import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
+
+// Note that if you don't do `.deepCopyWithSymbols()` then the actual Transformer will modify the original tree adding the XR.show into the unpackQuery/unpackExpr calls
+// which will obviously fail. It is non-obvious where the DeclarationIrBuilder actually does this.
+context(CX.Scope)
+private fun IrExpression.prettyUnpacks() = TransformShowUnpacks(this@Scope).visitExpression(this.deepCopyWithSymbols(), Unit) as IrExpression
+
+context(CX.Scope)
+fun IrExpression.dumpKotlinLikePretty() = prettyUnpacks().dumpKotlinLike()
+
+
+private class TransformShowUnpacks(val scopeContext: CX.Scope): IrElementTransformer<Unit> {
+  override fun visitCall(call: IrCall, data: Unit): IrElement =
+    if (call.symbol.fullName == PT.io_exoquery_unpackQuery || call.symbol.fullName == PT.io_exoquery_unpackExpr) {
+      // I don't think this declaration builder has a real scope so it cannot create lambdas (need a proper scope-stack for that) everything else should be fine.
+      val builder = DeclarationIrBuilder(scopeContext.pluginCtx, call.symbol, scopeContext.currentExpr.startOffset, scopeContext.currentExpr.endOffset)
+      with (builder) {
+        val newCall = irCall(call.symbol)
+        val newContent =
+          try {
+            call.simpleValueArgs.firstOrNull()
+              ?.let { it as? IrConst }
+              ?.value.toString()
+              ?.let { encodedValue ->
+                 if (call.symbol.fullName == PT.io_exoquery_unpackQuery)
+                   unpackQuery(encodedValue).show()
+                 else if (call.symbol.fullName == PT.io_exoquery_unpackExpr)
+                   unpackExpr(encodedValue).show()
+                 else
+                   "<ERROR_UNPACKING>"
+              } ?: "<ERROR_EXTRACTING>"
+          } catch (e: Throwable) {
+            "<ERROR_UNPACKING>"
+          }
+        newCall.putValueArgument(0, irString(newContent))
+        newCall
+      }
+    } else {
+      super.visitCall(call, data)
+    }
+}

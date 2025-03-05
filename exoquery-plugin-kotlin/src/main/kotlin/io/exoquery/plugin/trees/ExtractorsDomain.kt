@@ -3,6 +3,7 @@ package io.exoquery.plugin.trees
 import io.decomat.*
 import io.exoquery.*
 import io.exoquery.annotation.CapturedDynamic
+import io.exoquery.annotation.CapturedFunction
 import io.exoquery.annotation.ExoCapture
 import io.exoquery.annotation.ExoCaptureExpression
 import io.exoquery.annotation.ExoCaptureSelect
@@ -36,7 +37,11 @@ object ExtractorsDomain {
       customPattern1("DynamicQueryCall", x) { expr: IrExpression ->
         val matches = expr.match(
           // Don't allow this for now too many possible edge-cases can happen. Adding a specific warning for it in the ParseQuery
-          // case(Ir.Call[Is()]).thenIf { call -> call.isExternal() && expr.isSqlQuery() && call.symbol.owner is IrSimpleFunction }.then { _ -> true },
+          // (allow un-annotated calls with zero-args to go through because frequently things like case-class fields will show up as args)
+          case(Ir.Call[Is()]).thenIf { call ->
+            call.isExternal() && expr.isSqlQuery() &&
+              (call.simpleValueArgsCount == 0 && call.symbol.owner is IrSimpleFunction) || call.someOwnerHasAnnotation<CapturedFunction>()
+          }.then { _ -> true },
           case(Ir.GetField[Is()]).thenIfThis { this.isExternal() && expr.isSqlQuery() }.then { _ -> true },
           case(Ir.GetValue[Is()]).thenIfThis { this.isExternal() && expr.isSqlQuery() }.then { _ -> true }
         ) ?: false
@@ -54,7 +59,9 @@ object ExtractorsDomain {
         val matches = expr.match(
           case(Ir.GetField[Is()]).thenIfThis { this.isExternal() && expr.isSqlExpression() }.then { _ -> true },
           case(Ir.GetValue[Is()]).thenIfThis { this.isExternal() && expr.isSqlExpression() }.then { _ -> true },
-          case(Ir.Call[Is()]).thenIf { call -> call.someOwnerHasAnnotation<CapturedDynamic>() }.then { _ -> true }
+          case(Ir.Call[Is()]).thenIf { call ->
+            (call.simpleValueArgsCount == 0 && call.symbol.owner is IrSimpleFunction) || call.someOwnerHasAnnotation<CapturedDynamic>()
+          }.then { _ -> true }
         ) ?: false
         if (matches)
           Components1(expr)

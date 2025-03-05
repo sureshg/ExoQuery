@@ -10,7 +10,7 @@ class ParamReq : GoldenSpecDynamic(ParamReqGoldenDynamic, Mode.ExoGoldenTest(), 
     val build = cap.build<PostgresDialect>()
     "compileTime" {
       shouldBeGolden(build.value, "Original SQL")
-      shouldBeGolden(build.determinizeDynamics().token.build(), "Determinized SQL")
+      shouldBeGolden(build.determinizeDynamics(), "Determinized SQL")
       shouldBeGolden(build.determinizeDynamics().params.toString(), "Params")
     }
     val buildRuntime = cap.buildRuntime(PostgresDialect(), null)

@@ -1,10 +1,11 @@
 package io.exoquery
 
+import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
 object QueryDistinctReqGoldenDynamic: GoldenQueryFile {
-  override val queries = mapOf<String, String>(
+  override val queries = mapOf<String, GoldenResult>(
     "distinct simple/table.map.distinct/XR" to kt(
       "Table(Person).map { it -> Tuple(first = it.name, second = it.age) }.distinct"
     ),

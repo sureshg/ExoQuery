@@ -1,10 +1,11 @@
 package io.exoquery
 
+import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
 object QueryAdvancedReqGolden: GoldenQueryFile {
-  override val queries = mapOf<String, String>(
+  override val queries = mapOf<String, GoldenResult>(
     "select clause + join + nested filters" to cr(
       """
       SELECT

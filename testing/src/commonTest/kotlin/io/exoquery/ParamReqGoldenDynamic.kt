@@ -1,15 +1,17 @@
 package io.exoquery
 
+import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
 object ParamReqGoldenDynamic: GoldenQueryFile {
-  override val queries = mapOf<String, String>(
+  override val queries = mapOf<String, GoldenResult>(
     "single single-param/compileTime/Original SQL" to cr(
-      "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = <UNR?>"
+      "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ?"
     ),
     "single single-param/compileTime/Determinized SQL" to cr(
-      "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ?"
+      "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:Leah}",
+      "0" to "Leah"
     ),
     "single single-param/compileTime/Params" to cr(
       "[ParamSingle(id=BID(value=0), value=Leah, serial=String)]"
@@ -24,7 +26,7 @@ object ParamReqGoldenDynamic: GoldenQueryFile {
       "[ParamSingle(id=BID(value=0), value=Leah, serial=String)]"
     ),
     "multi single-param/compileTime/Original SQL" to cr(
-      "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = <UNR?> AND p.age = <UNR?>"
+      "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ? AND p.age = ?"
     ),
     "multi single-param/compileTime/Determinized SQL" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ? AND p.age = ?"
@@ -42,7 +44,7 @@ object ParamReqGoldenDynamic: GoldenQueryFile {
       "[ParamSingle(id=BID(value=0), value=Leib, serial=String), ParamSingle(id=BID(value=1), value=42, serial=Int)]"
     ),
     "single multi-param/compileTime/Original SQL" to cr(
-      "SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN (<UNRS?>)"
+      "SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN (?)"
     ),
     "single multi-param/compileTime/Determinized SQL" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN (?, ?)"
@@ -60,7 +62,7 @@ object ParamReqGoldenDynamic: GoldenQueryFile {
       "[ParamMulti(id=BID(value=0), value=[Leah, Leib], serial=String)]"
     ),
     "multi multi-param/compileTime/Original SQL" to cr(
-      "SELECT p.id, p.name, p.age FROM Person p WHERE CASE WHEN p.name IN (<UNRS?>) THEN p.age IN (<UNRS?>) ELSE false END"
+      "SELECT p.id, p.name, p.age FROM Person p WHERE CASE WHEN p.name IN (?) THEN p.age IN (?) ELSE false END"
     ),
     "multi multi-param/compileTime/Determinized SQL" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE CASE WHEN p.name IN (?, ?) THEN p.age IN (?, ?) ELSE false END"
@@ -78,7 +80,7 @@ object ParamReqGoldenDynamic: GoldenQueryFile {
       "[ParamMulti(id=BID(value=0), value=[Leah, Leib], serial=String), ParamMulti(id=BID(value=1), value=[42, 43], serial=Int)]"
     ),
     "one single, one multi/compileTime/Original SQL" to cr(
-      "SELECT p.id, p.name, p.age FROM Person p WHERE CASE WHEN p.name = <UNR?> THEN p.age IN (<UNRS?>) ELSE false END"
+      "SELECT p.id, p.name, p.age FROM Person p WHERE CASE WHEN p.name = ? THEN p.age IN (?) ELSE false END"
     ),
     "one single, one multi/compileTime/Determinized SQL" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE CASE WHEN p.name = ? THEN p.age IN (?, ?) ELSE false END"

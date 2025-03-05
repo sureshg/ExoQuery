@@ -88,7 +88,11 @@ object ParseQuery {
                   XR.TagForSqlQuery(bid, TypeParser.of(sqlQueryArg), expr.loc)
                 }
               ) ?: parseError("Could not parse the SqlQuery from the scaffold call", sqlQueryArg)
+
+            //logger.warn("---------------- Processing Scaffold Whole Expression---------------\n${expr.dumpKotlinLike()}\n--------------------- Query Arg --------------------------\n${sqlQueryArg.dumpKotlinLike()}\n--------------------- Args ------------------\n${args.map { it.dumpKotlinLike() }.joinToString("\n------------\n")}", sqlQueryArg)
+
             val parsedArgs = args.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null(loc) }
+
             XR.FunctionApply(warppedQueryCall, parsedArgs, expr.loc)
           },
 

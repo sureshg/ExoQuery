@@ -55,7 +55,7 @@ class TransformCapturedExpression(val superTransformer: VisitTransformExpression
       // val y = capture { SqlExpression(XR.Int(123), ...).use + 1 } which will be done by TransformProjectCapture
       // which is called by the superTransformer.visitBlockBody
       val body = superTransformer.visitBlockBody(bodyRaw) as IrBlockBody
-      val (xr, dynamics) = Parser.parseFunctionBlockBody(body)
+      val (xr, dynamics) = Parser.scoped { Parser.parseFunctionBlockBody(body) }
 
       val xrExpr = xr as? XR.Expression ?: parseError("Could not parse to expression:\n${xr}")
       xrExpr to dynamics

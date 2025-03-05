@@ -1,10 +1,11 @@
 package io.exoquery
 
+import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
 object EmbeddedDistinctReqGoldenDynamic: GoldenQueryFile {
-  override val queries = mapOf<String, String>(
+  override val queries = mapOf<String, GoldenResult>(
     "queries with embedded entities should/function property inside of nested distinct queries/XR" to kt(
       "Table(Emb).map { e -> Parent(id = 1, emb1 = e) }.distinct"
     ),

@@ -15,6 +15,7 @@ import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.Lifter
 import io.exoquery.plugin.trees.SqlQueryExpr
 import io.exoquery.plugin.trees.simpleTypeArgs
+import io.exoquery.sql.Renderer
 import io.exoquery.sql.SqlIdiom
 import io.exoquery.sql.token
 import io.exoquery.util.TraceConfig
@@ -111,7 +112,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
             // Can include the sql-formatting library here since the compiler is always on the JVM!
             val queryStringRaw =
               try {
-                queryTokenized.build()
+                queryTokenized.show(Renderer(false, false))
               } catch (e: Exception) {
                 parseError("The query could not be compiled: ${e.message}\n------------------\n${xr.showRaw()}", expr)
               }

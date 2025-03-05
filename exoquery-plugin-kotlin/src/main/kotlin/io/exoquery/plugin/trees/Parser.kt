@@ -23,18 +23,19 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 inline fun <reified R> Is.Companion.of(vararg possibilities: R): Is<R> = Is.PredicateAs(io.decomat.Typed<R>(), { possibilities.contains(it) })
 
 object Parser {
-  context(CX.Scope, CX.Symbology) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR.Expression, DynamicsAccum> =
-    with (CX.Parsing()) {
-      ParseExpression.parseFunctionBlockBody(blockBody) to binds
-    }
+  context (CX.Scope, CX.Symbology)
+  fun <X> scoped(parse: context(CX.Scope, CX.Symbology, CX.Parsing) () -> X): X =
+    parse(this@Scope, this@Symbology, CX.Parsing())
 
-  context(CX.Scope, CX.Symbology) fun parseQuery(expr: IrExpression): Pair<XR.Query, DynamicsAccum> =
-    with (CX.Parsing()) {
-      ParseQuery.parse(expr) to binds
-    }
 
-  context(CX.Scope, CX.Symbology) fun parseQueryFromBlock(expr: IrBlockBody): Pair<XR.Query, DynamicsAccum> =
-    with (CX.Parsing()) {
+  context(CX.Scope, CX.Symbology, CX.Parsing) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR.Expression, DynamicsAccum> =
+    ParseExpression.parseFunctionBlockBody(blockBody) to binds
+
+  context(CX.Scope, CX.Symbology, CX.Parsing) fun parseQuery(expr: IrExpression): Pair<XR.Query, DynamicsAccum> =
+    ParseQuery.parse(expr) to binds
+
+  context(CX.Scope, CX.Symbology, CX.Parsing) fun parseQueryFromBlock(expr: IrBlockBody): Pair<XR.Query, DynamicsAccum> =
+    run {
       val parsedQuery =
         on(expr).match<XR.Query> (
           case(Ir.BlockBody.ReturnOnly[Is()]).then { ParseQuery.parse(it) }
@@ -45,18 +46,14 @@ object Parser {
       parsedQuery to binds
     }
 
-  context(CX.Scope, CX.Symbology) fun parseSelectClauseLambda(expr: IrExpression): Pair<SelectClause, DynamicsAccum> =
-    with (CX.Parsing()) {
-      ParseSelectClause.parseSelectLambda(expr) to binds
-    }
+  context(CX.Scope, CX.Symbology, CX.Parsing) fun parseSelectClauseLambda(expr: IrExpression): Pair<SelectClause, DynamicsAccum> =
+    ParseSelectClause.parseSelectLambda(expr) to binds
 
-  context(CX.Scope, CX.Symbology) fun parseExpression(expr: IrExpression): Pair<XR.Expression, DynamicsAccum> =
-    with (CX.Parsing()) {
-      ParseExpression.parse(expr) to binds
-    }
+  context(CX.Scope, CX.Symbology, CX.Parsing) fun parseExpression(expr: IrExpression): Pair<XR.Expression, DynamicsAccum> =
+    ParseExpression.parse(expr) to binds
 
-  context(CX.Scope, CX.Symbology) fun parseValueParamter(expr: IrValueParameter): XR.Ident =
-    with (CX.Parsing()) { expr.makeIdent() }
+  context(CX.Scope, CX.Symbology, CX.Parsing) fun parseValueParamter(expr: IrValueParameter): XR.Ident =
+    expr.makeIdent()
 
   context(CX.Scope, CX.Parsing, CX.Symbology)
   internal fun parseArg(arg: IrExpression) =

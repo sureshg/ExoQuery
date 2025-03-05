@@ -18,6 +18,9 @@ class DynamicsAccum {
   fun makeRuntimes() = RuntimesExpr(runtimesCollect, allParamsCollect)
   fun makeParams() = ParamsExpr(paramsCollect, allParamsCollect)
 
+  fun getParamsCollect() = paramsCollect.toList()
+  fun getAllParamsCollect() = allParamsCollect.toList()
+
   // TODO have a similar technique for lifts
 
   fun noRuntimes():Boolean = runtimesCollect.isEmpty()
@@ -42,8 +45,12 @@ class DynamicsAccum {
     val newBinds = DynamicsAccum()
     newBinds.runtimesCollect.addAll(this.runtimesCollect)
     newBinds.runtimesCollect.addAll(other.runtimesCollect)
+    newBinds.allRuntimesCollect.addAll(this.allRuntimesCollect)
+    newBinds.allRuntimesCollect.addAll(other.allRuntimesCollect)
     newBinds.paramsCollect.addAll(this.paramsCollect)
     newBinds.paramsCollect.addAll(other.paramsCollect)
+    newBinds.allParamsCollect.addAll(this.allParamsCollect)
+    newBinds.allParamsCollect.addAll(other.allParamsCollect)
     return newBinds
   }
 
