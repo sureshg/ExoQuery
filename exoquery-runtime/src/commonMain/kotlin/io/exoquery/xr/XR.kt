@@ -58,9 +58,30 @@ sealed interface XR {
       fun isAggregation(): Boolean
     }
 
+    /**
+     * This is used specifically for detecting situations where there is a FlatJoin
+     * in both head and tail position. Something like:
+     * ```
+     *     capture {
+     *       people.flatMap { p ->
+     *         flatJoin(addresses, p.id = ...).map { a -> p to a }
+     *           .flatMap { pa ->
+     *             flatJoin(robots, pa.first.id = ...).map { r -> ... }
+     *           }
+     *       }
+     *     }
+     * ```
+     */
     @Serializable
     sealed interface HasHead {
       val head: XR.Query
+      fun replaceHead(newHead: XR.Query): XR.Query =
+        when (this) {
+          is XR.Filter -> XR.Filter(newHead, id, body)
+          is XR.Map -> XR.Map(newHead, id, body)
+          is XR.ConcatMap -> XR.ConcatMap(newHead, id, body)
+          is XR.FlatMap -> XR.FlatMap(newHead, id, body)
+        }
     }
 
     @Serializable

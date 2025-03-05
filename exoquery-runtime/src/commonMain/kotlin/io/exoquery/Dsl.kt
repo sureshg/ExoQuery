@@ -9,6 +9,8 @@ import io.exoquery.annotation.ExoCaptureExpression
 import io.exoquery.annotation.ExoCaptureSelect
 import io.exoquery.annotation.ExoUseExpression
 import io.exoquery.annotation.ExoValue
+import io.exoquery.annotation.FlatJoin
+import io.exoquery.annotation.FlatJoinLeft
 import io.exoquery.annotation.ParamCtx
 import io.exoquery.annotation.ParamCustom
 import io.exoquery.annotation.ParamCustomValue
@@ -96,6 +98,10 @@ interface CapturedBlock {
   fun <T> FreeBlock.asPure(): T = errorCap("The `invoke` expression of the Query was not inlined")
   fun FreeBlock.asConditon(): Boolean = errorCap("The `invoke` expression of the Query was not inlined")
   fun FreeBlock.asPureConditon(): Boolean = errorCap("The `invoke` expression of the Query was not inlined")
+
+  // TODO these are for testing only, put these in a sub-namespace and make them opt-in
+  @Dsl @FlatJoin fun <T> flatJoin(query: SqlQuery<T>, cond: (T) -> Boolean): SqlQuery<T> = errorCap("The `flatJoin` expression of the Query was not inlined")
+  @Dsl @FlatJoinLeft fun <T> flatJoinLeft(query: SqlQuery<T>, cond: (T) -> Boolean): SqlQuery<T?> = errorCap("The `flatJoinLeft` expression of the Query was not inlined")
 
   @Dsl @ParamStatic(ParamSerializer.String::class) fun param(value: String): String = errorCap("Compile time plugin did not transform the tree")
   @Dsl @ParamStatic(ParamSerializer.Char::class) fun param(value: Char): Char = errorCap("Compile time plugin did not transform the tree")

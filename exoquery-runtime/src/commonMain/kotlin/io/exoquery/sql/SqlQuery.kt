@@ -4,6 +4,7 @@ package io.exoquery.sql
 
 import io.exoquery.PostgresDialect
 import io.exoquery.printing.PrintXR
+import io.exoquery.sql.SqlQueryHelper.flattenDualHeadsIfPossible
 import io.exoquery.util.Globals
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
@@ -302,15 +303,15 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
             listOf(Layer.fromFlatUnit(head)) to body
           }
 
-        // Check to see that there is no FlatJoin in both head and body positions of a FlatMap
         this is XR.FlatMap &&
           head is XR.U.HasHead && head.head is XR.FlatJoin &&
           body is XR.U.HasHead && body.head is XR.FlatJoin ->
           trace("Flattening Flatmap((FlatJoin), (FlatJoin))") andReturn {
-            xrError("Cannot have FlatJoin in both head and body positions of a FlatMap.\n${this.show()}")
+            this.flattenDualHeadsIfPossible()?.let { newQuery ->
+              flattenContexts(newQuery)
+            }
+              ?: xrError("Cannot have FlatJoin in both head and body positions of a FlatMap.\n${this.show()}")
           }
-
-
 
         this is XR.FlatMap ->
           trace("Flattening Flatmap with Query") andReturn {

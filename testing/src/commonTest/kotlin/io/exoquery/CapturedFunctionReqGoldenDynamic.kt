@@ -59,35 +59,35 @@ object CapturedFunctionReqGoldenDynamic: GoldenQueryFile {
     ),
     "advanced cases/passing in a param/SQL" to cr(
       "SELECT p.id, p.name, p.age, a.ownerId, a.street, a.city FROM Person p INNER JOIN Address a ON a.ownerId = p.id AND a.street = {0:foobar} WHERE p.name = {1:joe}",
-      "f6255870-2b3e-4e9b-808c-fda205f2d74d" to "foobar", "b61d18ca-22aa-4eb3-88bc-132ed5b50615" to "joe"
+      "d313a577-9948-4602-9325-13df11371ff5" to "foobar", "4a30d14c-2e75-4934-a1ba-70a79dd63d59" to "joe"
     ),
     "advanced cases/subtype polymorphicsm/XR" to kt(
       """{ people -> select { val p = from(people); val a = join(Table(Address)) { a.ownerId == p.id } } }.toQuery.apply(Table(Person).filter { p -> p.name == TagP("0") }).map { kv -> Tuple(first = kv.first.name, second = kv.second.city) }"""
     ),
     "advanced cases/subtype polymorphicsm/SQL" to cr(
       "SELECT p.name AS first, a.city AS second FROM Person p INNER JOIN Address a ON a.ownerId = p.id WHERE p.name = {0:joe}",
-      "37130c9d-d768-45fa-ac80-4c6a4510a089" to "joe"
+      "121abcd6-1e72-4925-bcc5-668f510bb369" to "joe"
     ),
     "advanced cases/lambda polymorphism - A/XR" to kt(
       """{ people, f -> select { val p = from(people); val a = join(Table(Address)) { a.ownerId == f.apply(p) } } }.toQuery.apply(Table(Person).filter { p -> p.name == TagP("0") }, { it -> it.id }).map { kv -> Tuple(first = kv.first.name, second = kv.second.city) }"""
     ),
     "advanced cases/lambda polymorphism - A/SQL" to cr(
       "SELECT p.name AS first, a.city AS second FROM Person p INNER JOIN Address a ON a.ownerId = p.id WHERE p.name = {0:joe}",
-      "b61d18ca-22aa-4eb3-88bc-132ed5b50615" to "joe"
+      "4a30d14c-2e75-4934-a1ba-70a79dd63d59" to "joe"
     ),
     "advanced cases/lambda polymorphism - B/XR" to kt(
       """{ people, f -> select { val p = from(people); val a = join(Table(Address)) { f.apply(p, a) } } }.toQuery.apply(Table(Person).filter { p -> p.name == TagP("0") }, { p, a -> { p, a -> p.id == a.ownerId }.apply(p, a) }).map { kv -> Tuple(first = kv.first.name, second = kv.second.city) }"""
     ),
     "advanced cases/lambda polymorphism - B/SQL" to cr(
       "SELECT p.name AS first, a.city AS second FROM Person p INNER JOIN Address a ON p.id = a.ownerId WHERE p.name = {0:joe}",
-      "b61d18ca-22aa-4eb3-88bc-132ed5b50615" to "joe"
+      "4a30d14c-2e75-4934-a1ba-70a79dd63d59" to "joe"
     ),
     "advanced cases/lambda polymorphism - C + captured expression/XR" to kt(
       """{ people, f -> select { val p = from(people); val a = join(Table(Address)) { f.apply(p, a) } } }.toQuery.apply(Table(Person).filter { p -> p.name == TagP("0") }, { p, a -> { p, a -> p.id == a.ownerId }.apply(p, a) }).map { kv -> Tuple(first = kv.first.name, second = kv.second.city) }"""
     ),
     "advanced cases/lambda polymorphism - C + captured expression/SQL" to cr(
       "SELECT p.name AS first, a.city AS second FROM Person p INNER JOIN Address a ON p.id = a.ownerId WHERE p.name = {0:joe}",
-      "b61d18ca-22aa-4eb3-88bc-132ed5b50615" to "joe"
+      "4a30d14c-2e75-4934-a1ba-70a79dd63d59" to "joe"
     ),
     "dynamic function capture - structural tests/val tbl(Dyn); cap { capFun(tbl) }/XR-tbl" to kt(
       "Table(Person)"

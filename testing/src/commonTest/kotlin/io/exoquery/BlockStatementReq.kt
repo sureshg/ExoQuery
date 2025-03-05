@@ -3,7 +3,7 @@ package io.exoquery
 import io.exoquery.testdata.Address
 import io.exoquery.testdata.Person
 
-class BlockStatementReq : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGoldenOverride(), {
+class BlockStatementReq : GoldenSpecDynamic(BlockStatementReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "blocks with map" {
     val p = capture {
       Table<Person>().map {

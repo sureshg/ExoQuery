@@ -4,7 +4,7 @@ import io.exoquery.util.TraceType
 import io.exoquery.testdata.Address
 import io.exoquery.testdata.Person
 
-class QueryDistinctReq : GoldenSpecDynamic(QueryDistinctReqGoldenDynamic, Mode.ExoGoldenOverride(), {
+class QueryDistinctReq : GoldenSpecDynamic(QueryDistinctReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "distinct simple" - {
     "table.map.distinct" {
       val q = capture {

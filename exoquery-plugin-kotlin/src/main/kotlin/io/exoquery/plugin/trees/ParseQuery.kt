@@ -11,6 +11,8 @@ import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.annotation.Dsl
 import io.exoquery.annotation.DslFunctionCall
 import io.exoquery.annotation.DslNestingIgnore
+import io.exoquery.annotation.FlatJoin
+import io.exoquery.annotation.FlatJoinLeft
 import io.exoquery.parseError
 import io.exoquery.parseErrorSym
 import io.exoquery.plugin.hasAnnotation
@@ -167,6 +169,19 @@ object ParseQuery {
           "filter" -> XR.Filter(head, id, body, expr.loc)
           else -> parseError("Unknown SqlQuery method call: ${symName} in: ${expr.dumpKotlinLike()}", expr)
         }
+      },
+      case(Ir.Call.FunctionMemN[Is(), Is.of("flatJoin", "flatJoinLeft"), Is()]).thenIfThis { _, _ -> ownerHasAnnotation<FlatJoin>() || ownerHasAnnotation<FlatJoinLeft>() }.thenThis { _, args ->
+        on(args[1]).match(
+          case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { params, block ->
+            val cond = ParseExpression.parseFunctionBlockBody(block)
+            val id = params.first().makeIdent()
+            when (symName) {
+              "flatJoin" -> XR.FlatJoin(XR.JoinType.Inner, ParseQuery.parse(args[0]), id, cond, expr.loc)
+              "flatJoinLeft" -> XR.FlatJoin(XR.JoinType.Left, ParseQuery.parse(args[0]), id, cond, expr.loc)
+              else -> parseError("Invalid flatJoin method: ${symName}", expr)
+            }
+          }
+        ) ?: parseError("Could not parse flatJoin", expr)
       },
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is("flatMap"), Is()]).thenThis { head, lambda ->
           lambda.match(

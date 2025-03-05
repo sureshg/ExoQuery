@@ -38,19 +38,9 @@ object QueryAdvancedReqGolden: GoldenQueryFile {
         r.name,
         r.model
       FROM
-        (
-          SELECT
-            p.id AS first_id,
-            p.name AS first_name,
-            p.age AS first_age,
-            a.ownerId AS second_ownerId,
-            a.street AS second_street,
-            a.city AS second_city
-          FROM
-            Person p
-            INNER JOIN Address a ON a.ownerId = p.id
-        ) AS a
-        INNER JOIN Robot r ON r.ownerId = a.first_id
+        Person p
+        INNER JOIN Address a ON a.ownerId = p.id
+        INNER JOIN Robot r ON r.ownerId = p.id
       """
     ),
     "select clauses with join(select-clause)" to cr(

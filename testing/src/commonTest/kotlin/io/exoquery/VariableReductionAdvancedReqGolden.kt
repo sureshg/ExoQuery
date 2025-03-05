@@ -29,23 +29,13 @@ object VariableReductionAdvancedReqGolden: GoldenQueryFile {
     "when passed to further join" to cr(
       """
       SELECT
-        a.first_name AS name,
-        a.second_city AS city,
+        p.name,
+        a.city,
         r.name AS robotName
       FROM
-        (
-          SELECT
-            p.id AS first_id,
-            p.name AS first_name,
-            p.age AS first_age,
-            a.ownerId AS second_ownerId,
-            a.street AS second_street,
-            a.city AS second_city
-          FROM
-            Person p
-            INNER JOIN Address a ON p.id = a.ownerId
-        ) AS a
-        INNER JOIN Robot r ON a.first_id = r.ownerId
+        Person p
+        INNER JOIN Address a ON p.id = a.ownerId
+        INNER JOIN Robot r ON p.id = r.ownerId
       """
     ),
   )

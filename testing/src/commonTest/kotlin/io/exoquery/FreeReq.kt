@@ -2,7 +2,7 @@ package io.exoquery
 
 import io.exoquery.testdata.Person
 
-class FreeReq : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGoldenOverride(), {
+class FreeReq : GoldenSpecDynamic(FreeReqGoldenDynamic, Mode.ExoGoldenTest(), {
 
   // TODO if 'free' not follorwed by anything there should be some kidn of compile error
   "static free" - {

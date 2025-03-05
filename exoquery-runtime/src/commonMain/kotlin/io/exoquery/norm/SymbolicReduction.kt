@@ -80,7 +80,9 @@ class SymbolicReduction(val traceConfig: TraceConfig) {
         // and proceed to flatten it out to FlatMap(ent, FlatMap(Map(FlatJoin), Map(FlatJoin)) then you will have a problem because the FlatJoin in the
         // head and body positions of the inner FlatMap. Therefore we need to check that the head and body of the outer FlatMap do not have both have
         // flatJoins in order to proceed with this transformation.
-        this is XR.FlatMap && head is XR.FlatMap && !(this.hasTailPositionFlatJoin() && this.head.hasTailPositionFlatJoin()) -> {
+        // The only exception to this rule if the head of the inner FlatMap has a XR.Map in the tail position (which is actually the most common case).
+        // In that case we have some special handling in SqlQueryHelper.flattenDualHeadsIfPossible to make it work.
+        this is XR.FlatMap && head is XR.FlatMap && !(this.hasTailPositionFlatJoin() && this.head.hasTailPositionFlatJoin() && this.head.body !is XR.Map) -> {
           val (a, b, c) = Triple(head.head, head.id, head.body)
           val (d, e) = Pair(id, body)
           FlatMap.cs(a, b, FlatMap.cs(c, d, e))
