@@ -45,6 +45,15 @@ class TransformPrintSource(val superTransformer: VisitTransformExpressions): Tra
             case(Ir.Call.FunctionUntethered1[Is("io.exoquery.printSource"), Ir.FunctionExpression.withBlock[Is(), Is()]]).then { _, (_, args) ->
               transformPrintSource(MatchedType.Multi(args))
             },
+
+            case(Ir.Call.FunctionUntethered1[Is("io.exoquery.printSourceBefore"), Ir.FunctionExpression.withReturnOnlyBlock[Is()]]).then { _, (ret) ->
+              transformPrintSource(MatchedType.Single(ret), false)
+            },
+            // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
+            case(Ir.Call.FunctionUntethered1[Is("io.exoquery.printSourceBefore"), Ir.FunctionExpression.withBlock[Is(), Is()]]).then { _, (_, args) ->
+              transformPrintSource(MatchedType.Multi(args), false)
+            },
+
             case(Ir.Call.FunctionUntethered0[Is("currentSourceFile")]).then {
               currentFileRaw.path.lift()
             },
@@ -67,12 +76,18 @@ class TransformPrintSource(val superTransformer: VisitTransformExpressions): Tra
       } ?: parseError("Parsing Failed\n================== The expresson was not a Global Function (with one argument-block): ==================\n" + expression.dumpKotlinLike() + "\n--------------------------\n" + expression.dumpSimple())
 
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
-  fun transformPrintSource(argsRaw: MatchedType) = run {
+  fun transformPrintSource(argsRaw: MatchedType, applySuperTransform: Boolean = true) = run {
     val args = when(argsRaw) {
       is MatchedType.Single ->
-        argsRaw.copy(superTransformer.recurse(argsRaw.ir))
+        if (applySuperTransform)
+          argsRaw.copy(superTransformer.recurse(argsRaw.ir))
+        else
+          argsRaw
       is MatchedType.Multi ->
-        argsRaw.copy(superTransformer.visitBlockBody(argsRaw.irs) as IrBlockBody)
+        if (applySuperTransform)
+          argsRaw.copy(superTransformer.visitBlockBody(argsRaw.irs) as IrBlockBody)
+        else
+          argsRaw
     }
 
     val printSourceExpr = pluginCtx

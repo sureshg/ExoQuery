@@ -104,6 +104,8 @@ abstract class SqlIdiom: HasPhasePrinting {
       // is XR.Action -> this.lift()
       is XR.Branch, is XR.Variable ->
         xrError("All instances of ${this::class.qualifiedName} should have been beta-reduced out by now.")
+      is XR.Action -> TODO()
+      is XR.Assignment -> TODO()
     }
 
   val XR.Expression.token get(): Token =

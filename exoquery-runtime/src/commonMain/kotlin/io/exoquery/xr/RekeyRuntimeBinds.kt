@@ -1,9 +1,9 @@
 package io.exoquery.xr
 
 import io.exoquery.BID
-import io.exoquery.ContainerOfXR
+import io.exoquery.ContainerOfFunXR
 
-fun <CXR: ContainerOfXR> CXR.rekeyRuntimeBinds(): CXR {
+fun <CXR: ContainerOfFunXR> CXR.rekeyRuntimeBinds(): CXR {
   // Scala:
   //    def rekeyLeafBindsUsing(ast: Ast, bindMap: Map[String, String]) =
   //      Transform(ast) {
@@ -41,7 +41,7 @@ fun <CXR: ContainerOfXR> CXR.rekeyRuntimeBinds(): CXR {
   //      Quoted(newAst, newPlanters, quoted.runtimeQuotes)
   //    }
 
-  fun rekeyLeafBinds(quoted: ContainerOfXR): ContainerOfXR {
+  fun rekeyLeafBinds(quoted: ContainerOfFunXR): ContainerOfFunXR {
     val (liftIdMap, newPlanters) = quoted.params.lifts.map { lift ->
       val newId = BID.new()
       val newLift = lift.withNewBid(newId)
@@ -69,7 +69,7 @@ fun <CXR: ContainerOfXR> CXR.rekeyRuntimeBinds(): CXR {
 
   // need to rekey depth-first, otherwise the same uid might be rekeyed multiple times which is not the correct behavior
   // innermost binds need to be rekeyed first
-  fun rekeyRecurse(quoted: ContainerOfXR): ContainerOfXR {
+  fun rekeyRecurse(quoted: ContainerOfFunXR): ContainerOfFunXR {
     // rekey leaf binds of the children, for inner most children runtimeQuotes shuold be empty
     val (vaseIdMap, newVases) = quoted.runtimes.runtimes.map { (vaseId, vase) ->
       val newVaseId = BID.new()

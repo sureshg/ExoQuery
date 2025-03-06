@@ -4,17 +4,31 @@ import io.exoquery.printing.PrintMisc
 import io.exoquery.xr.XR
 import io.exoquery.xr.swapTags
 
-sealed interface ContainerOfXR {
+sealed interface ContainerOfXR
+
+
+// Less fungible i.e. always top-level and only for actions
+sealed interface ContainerOfActionXR: ContainerOfXR {
+  val xr: XR.Action
+  val runtimes: RuntimeSet
+  val params: ParamSet
+
+  fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): ContainerOfActionXR
+  fun withNonStrictEquality(): ContainerOfActionXR
+}
+
+// Specifically for fungible XR Query and Expression types that are composable (e.g. that can be in a RuntimeSet)
+sealed interface ContainerOfFunXR: ContainerOfXR {
   val xr: XR.U.QueryOrExpression
   // I.e. runtime containers that are used in the expression (if any)
   val runtimes: RuntimeSet
   val params: ParamSet
 
-  fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): ContainerOfXR
-  fun withNonStrictEquality(): ContainerOfXR
+  fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): ContainerOfFunXR
+  fun withNonStrictEquality(): ContainerOfFunXR
 }
 
-data class SqlExpression<T>(override val xr: XR.Expression, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfXR {
+data class SqlExpression<T>(override val xr: XR.Expression, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfFunXR {
   fun determinizeDynamics(): SqlExpression<T> = DeterminizeDynamics().ofExpression(this)
 
   fun show() = PrintMisc().invoke(this)
@@ -29,13 +43,13 @@ internal class DeterminizeDynamics() {
   private var id = 0
   private fun nextId() = "$id".also { id++ }
 
-  private fun recContainer(expr: ContainerOfXR): ContainerOfXR =
+  private fun recContainer(expr: ContainerOfFunXR): ContainerOfFunXR =
     when (expr) {
       is SqlExpression<*> -> recExpr(expr)
       is SqlQuery<*> -> recQuery(expr)
     }
 
-  fun ContainerOfXR.walkParams() =
+  fun ContainerOfFunXR.walkParams() =
     params.lifts.map { param ->
       val newBid = BID(nextId())
       val newParam = when (param) {
@@ -45,7 +59,7 @@ internal class DeterminizeDynamics() {
       Triple(param.id, newBid, newParam)
     }
 
-  fun ContainerOfXR.walkRuntimes() =
+  fun ContainerOfFunXR.walkRuntimes() =
     runtimes.runtimes.map { (bid, container) ->
       val newContainer = recContainer(container)
       val newBid = BID(nextId())

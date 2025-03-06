@@ -25,10 +25,12 @@ interface StatelessTransformer {
   operator fun invoke(xr: XR): XR =
     with(xr) {
       when (this) {
-        is XR.Expression -> invoke(this)
-        is XR.Query -> invoke(this)
-        is XR.Branch -> invoke(this)
-        is XR.Variable -> invoke(this)
+        is Expression -> invoke(this)
+        is Query -> invoke(this)
+        is Branch -> invoke(this)
+        is Variable -> invoke(this)
+        is Action -> invoke(this)
+        is Assignment -> invoke(this)
       }
     }
 
@@ -50,7 +52,7 @@ interface StatelessTransformer {
         is FunctionN -> FunctionN.csf(params, invoke(body))(this)
         is FunctionApply -> FunctionApply.csf(invoke(function), args.map { invoke(it) })(this)
         is Ident -> invokeIdent(this)
-        is Property -> Property.csf(invoke(of), name)(this)
+        is Property -> invoke(this)
         is UnaryOp -> UnaryOp.csf(op, invoke(expr))(this)
         is When -> When.csf(branches.map { invoke(it) }, invoke(orElse))(this)
         is Block -> invoke(this)
@@ -65,6 +67,9 @@ interface StatelessTransformer {
         is TagForSqlExpression -> this
       }
     }
+
+  operator fun invoke(xr: XR.Property): XR.Property =
+    Property.csf(invoke(xr.of), xr.name)(xr)
 
   operator fun invoke(xr: XR.Query): XR.Query =
     with(xr) {
@@ -96,5 +101,43 @@ interface StatelessTransformer {
         is GlobalCall -> invoke(this)
         is MethodCall -> invoke(this)
       }
+    }
+
+  operator fun invoke(xr: XR.Action): XR.Action =
+    with(xr) {
+      when (this) {
+        is Insert -> invoke(this)
+        is Update -> Update.csf(invoke(query), assignments.map { invoke(it) })(this)
+        is Delete -> Delete.csf(invoke(query))(this)
+        is OnConflict -> invoke(this)
+        is Returning -> Returning.csf(invoke(action), alias, invoke(output))(this)
+      }
+    }
+
+  operator fun invoke(xr: XR.Returning.Kind): XR.Returning.Kind =
+    when (xr) {
+      is XR.Returning.Kind.Expression -> XR.Returning.Kind.Expression(invoke(xr.expr))
+      is XR.Returning.Kind.Keys -> XR.Returning.Kind.Keys(xr.keys.map { invoke(it) })
+    }
+
+  operator fun invoke(xr: XR.Insert): XR.Insert =
+    Insert.csf(invoke(xr.query), xr.assignments.map { invoke(it) }, xr.exclusions.map { invoke(it) })(xr)
+
+  operator fun invoke(xr: XR.Assignment): XR.Assignment =
+    Assignment.csf(invoke(xr.property), invoke(xr.value))(xr)
+
+  operator fun invoke(xr: XR.OnConflict): XR.OnConflict =
+    OnConflict.csf(invoke(xr.insert), invoke(xr.target), invoke(xr.resolution))(xr)
+
+  operator fun invoke(xr: XR.OnConflict.Target): XR.OnConflict.Target =
+    when (xr) {
+      is XR.OnConflict.Target.NoTarget -> xr
+      is XR.OnConflict.Target.Properties -> XR.OnConflict.Target.Properties(xr.props.map { invoke(it) })
+    }
+
+  operator fun invoke(xr: XR.OnConflict.Resolution): XR.OnConflict.Resolution =
+    when (xr) {
+      is XR.OnConflict.Resolution.Ignore -> xr
+      is XR.OnConflict.Resolution.Update -> XR.OnConflict.Resolution.Update(xr.excludedId, xr.assignments.map { invoke(it) })
     }
 }

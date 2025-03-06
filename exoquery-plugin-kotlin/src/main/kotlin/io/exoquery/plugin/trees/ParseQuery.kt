@@ -28,9 +28,11 @@ import io.exoquery.plugin.ownerHasAnnotation
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.symName
+import io.exoquery.plugin.toLocationXR
 import io.exoquery.plugin.transform.CX
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.com.intellij.lang.java.parser.ExpressionParser
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -38,9 +40,65 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.name.FqName
+
+object ParseAction {
+  context(CX.Scope, CX.Parsing, CX.Symbology)
+  fun parse(expr: IrExpression) =
+    on(expr).match<XR.Action> (
+      // the `insert` part of capture { insert<Person> { set ... } }
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is.of("insert", "update"), Is()]).thenThis { _, lambdaRaw ->
+        val insertType = this.typeArguments.first() ?: parseError("Could not find the type argument of the insert/update call", expr)
+        on(lambdaRaw).match(
+          case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).then { blockBody ->
+            val compositeType = CompositeType.from(symName) ?: parseError("Unknown composite type: ${symName}", expr)
+            parseActionComposite(blockBody, insertType, compositeType)
+          }
+        ) ?: parseError("The statement inside of a insert/update block must be a single `set` or `setParams` expression followed by excluded, returning/Keys, or onConflict", lambdaRaw)
+      },
+    )
+
+  // TODO when going back to the Expression parser the 'this' pointer needs to be on the list of local symbols
+  context(CX.Scope, CX.Parsing, CX.Symbology)
+  private fun parseActionComposite(expr: IrExpression, inputType: IrType, compositeType: CompositeType): XR.Action =
+    // the i.e. insert { set(...) } or update { set(...) }
+    on(expr).match<XR.Action>(
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is("set"), Ir.Vararg[Is()]]).then { _, (assignments) ->
+        val ent = ParseQuery.parseEntity(inputType, expr.location())
+        val parsedAssignments = assignments.map { ParseAction.parseAssignment(it) }
+        when (compositeType) {
+          CompositeType.Insert -> XR.Insert(ent, parsedAssignments, listOf(), expr.loc)
+          CompositeType.Update -> XR.Update(ent, parsedAssignments, expr.loc)
+        }
+      }
+    ) ?: parseError("Could not parse the expression inside of the action", expr)
+
+  context(CX.Scope, CX.Parsing, CX.Symbology)
+  private fun parseAssignment(expr: IrExpression): XR.Assignment =
+    on(expr).match<XR.Assignment>(
+      case(ExtractorsDomain.Call.`x to y`[Is(), Is()]).thenThis { left, right ->
+        val property = ParseExpression.parse(left).let { it as? XR.Property ?: parseError("Could not parse the left side of the assignment: ${it.showRaw()}", left) }
+        XR.Assignment(property, ParseExpression.parse(right), expr.loc)
+      }
+    ) ?: parseError("Could not parse the assignment", expr)
+
+  sealed interface CompositeType {
+    object Insert: CompositeType; object Update: CompositeType
+
+    companion object {
+      fun from(str: String) =
+        when (str) {
+          "insert" -> ParseAction.CompositeType.Insert
+          "update" -> ParseAction.CompositeType.Update
+          else -> null
+        }
+    }
+  }
+
+}
 
 object ParseQuery {
 
@@ -242,4 +300,11 @@ object ParseQuery {
         XR.CustomQueryRef(ParseSelectClause.parseSelectLambda(selectLambda))
       },
     )
+
+  context(CX.Scope, CX.Parsing, CX.Symbology)
+  fun parseEntity(type: IrType, location: CompilerMessageSourceLocation): XR.Entity {
+    val tpe = TypeParser.ofTypeAt(type, location)
+    val tpeProd = tpe as? XRType.Product ?: parseError("Table<???>() call argument type must be a data-class, but was: ${tpe}", location)
+    return XR.Entity(tpeProd.name, tpeProd, location.toLocationXR())
+  }
 }

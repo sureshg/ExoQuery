@@ -1,12 +1,12 @@
 package io.exoquery
 
 // Create a wrapper class for runtimes for easy lifting/unlifting
-data class RuntimeSet(val runtimes: List<Pair<BID, ContainerOfXR>>) {
+data class RuntimeSet(val runtimes: List<Pair<BID, ContainerOfFunXR>>) {
   companion object {
     // When this container is spliced, the ExprModel will look for this actual value in the Ir to tell if there are
     // runtime XR Containers (hence the dynamic-path needs to be followed).
     val Empty = RuntimeSet(emptyList())
-    fun of(vararg runtimes: Pair<BID, ContainerOfXR>) = RuntimeSet(runtimes.toList())
+    fun of(vararg runtimes: Pair<BID, ContainerOfFunXR>) = RuntimeSet(runtimes.toList())
   }
   operator fun plus(other: RuntimeSet): RuntimeSet = RuntimeSet(runtimes + other.runtimes)
 }

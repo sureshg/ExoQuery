@@ -65,7 +65,6 @@ interface StatefulTransformer<T> {
       when (this) {
         is Expression -> invoke(this)
         is Query -> invoke(this)
-        // is XR.Action -> this.lift()
         is Branch -> invoke(this)
         is Variable -> invoke(this)
         is Action -> invoke(this)
@@ -90,10 +89,8 @@ interface StatefulTransformer<T> {
           val (argsA, stateB) = stateA.applyList(args) { t, v -> t.invoke(v) }
           FunctionApply.cs(functionA, argsA) to stateB
         }
-        is Property -> {
-          val (ofA, stateA) = invoke(of)
-          Property.cs(ofA, name) to stateA
-        }
+        is Property ->
+          invoke(this)
         is UnaryOp -> {
           val (exprA, stateA) = invoke(expr)
           UnaryOp.cs(op, exprA) to stateA
@@ -126,6 +123,13 @@ interface StatefulTransformer<T> {
         is TagForParam -> this to this@StatefulTransformer
         is TagForSqlExpression -> this to this@StatefulTransformer
       }
+    }
+
+  // Need to have a specific property-invoke because Assignment uses it directly
+  operator fun invoke(xr: XR.Property): Pair<XR.Property, StatefulTransformer<T>> =
+    with(xr) {
+      val (ofA, stateA) = invoke(of)
+      Property.cs(ofA, name) to stateA
     }
 
   operator fun invoke(xr: XR.Query): Pair<XR.Query, StatefulTransformer<T>> =
@@ -285,31 +289,82 @@ interface StatefulTransformer<T> {
       Variable.cs(name, rhsA) to stateA
     }
 
+  // Need to have a specifc insert-invoke because OnConflict uses it directly
+  operator fun invoke(xr: XR.Insert): Pair<XR.Insert, StatefulTransformer<T>> =
+    with (xr) {
+      val (at, att) = invoke(query)
+      val (bt, btt) = att.applyList(assignments) { t, v -> t.invoke(v) }
+      val (ct, ctt) = btt.applyList(exclusions) { t, v -> t.invoke(v) }
+      Insert.cs(at, bt, ct) to btt
+    }
+
+  operator fun invoke(xr: XR.OnConflict.Target): Pair<XR.OnConflict.Target, StatefulTransformer<T>> =
+    with (xr) {
+      when (this) {
+        is XR.OnConflict.Target.NoTarget -> this to this@StatefulTransformer
+        is XR.OnConflict.Target.Properties -> {
+          val (propsA, stateA) = applyList(props) { t, v -> t.invoke(v) }
+          XR.OnConflict.Target.Properties(propsA) to stateA
+        }
+      }
+    }
+
+  operator fun invoke(xr: XR.OnConflict.Resolution): Pair<XR.OnConflict.Resolution, StatefulTransformer<T>> =
+    with (xr) {
+      when (this) {
+        is XR.OnConflict.Resolution.Ignore -> this to this@StatefulTransformer
+        is XR.OnConflict.Resolution.Update -> {
+          val (a, stateA) = applyList(assignments) { t, v -> t.invoke(v) }
+          XR.OnConflict.Resolution.Update(excludedId, a) to stateA
+        }
+      }
+    }
+
   operator fun invoke(xr: XR.Action): Pair<XR.Action, StatefulTransformer<T>> =
+    with (xr) {
+      when (this) {
+        is Insert -> invoke(this)
+        is Update -> {
+          val (at, att) = invoke(query)
+          val (bt, btt) = att.applyList(assignments) { t, v -> t.invoke(v) }
+          Update.cs(at, bt) to btt
+        }
+        is Delete -> {
+          val (at, att) = invoke(query)
+          Delete.cs(at) to att
+        }
+        is OnConflict -> {
+          val (at, att) = invoke(insert)
+          val (bt, btt) = att.invoke(target)
+          val (ct, ctt) = btt.invoke(resolution)
+          OnConflict.cs(at, bt, ct) to ctt
+        }
+        is Returning -> {
+          val (at, att) = invoke(action)
+          val (bt, btt) = invoke(output)
+          Returning.cs(at, alias, bt) to btt
+        }
+      }
+    }
+
+  operator fun invoke(xr: XR.Returning.Kind): Pair<XR.Returning.Kind, StatefulTransformer<T>> =
     when (xr) {
-      is Delete -> TODO()
-      is Insert -> TODO()
-      is OnConflict -> TODO()
-      is Returning -> TODO()
-      is Update -> TODO()
+      is Returning.Kind.Expression -> {
+        val (at, att) = invoke(xr.expr)
+        Returning.Kind.Expression(at) to att
+      }
+      is Returning.Kind.Keys -> {
+        val (at, att) = applyList(xr.keys) { t, v -> t.invoke(v) }
+        Returning.Kind.Keys(at) to att
+      }
     }
 
   operator fun invoke(xr: XR.Assignment): Pair<XR.Assignment, StatefulTransformer<T>> =
     with(xr) {
       val (bt, btt) = invoke(property)
       val (ct, ctt) = btt.invoke(value)
-      Assignment.cs(bt as? Property ?: throw IllegalStateException("Expected Property when converting ${property.showRaw()}"), ct) to ctt
+      Assignment.cs(bt, ct) to ctt
     }
-
-// Scala
-//    def apply(e: Assignment): (Assignment, StatefulTransformer[T]) =
-//    e match {
-//      case Assignment(a, b, c) =>
-//        val (bt, btt) = apply(b)
-//        val (ct, ctt) = btt.apply(c)
-//        (Assignment(a, bt, ct), ctt)
-//    }
-
 
   fun <U, R> applyList(list: List<U>, f: (StatefulTransformer<T>, U) -> Pair<R, StatefulTransformer<T>>): Pair<List<R>, StatefulTransformer<T>> {
     val (newList, transformer) =

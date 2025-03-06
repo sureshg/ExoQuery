@@ -980,16 +980,29 @@ sealed interface XR {
 //  def property: Ast
 //}
 
+  /**
+   * For Postgres and SqlServer `property` can actually be an expression
+   */
   @Serializable
   @Mat
-  data class Returning(@Slot val action: XR.Action, @MSlot val alias: XR.Ident, @Slot val property: XR.Expression, override val loc: Location = Location.Synth): Action, PC<Returning> {
-    @Transient override val productComponents = productOf(this, action, alias, property)
-    override val type: XRType get() = property.type
+  data class Returning(@Slot val action: XR.Action, @MSlot val alias: XR.Ident, @Slot val output: Kind, override val loc: Location = Location.Synth): Action, PC<Returning> {
+    @Transient override val productComponents = productOf(this, action, alias, output)
+    override val type: XRType get() = output.type
     companion object {}
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Returning && other.id() == cid
+
+
+    @Serializable sealed interface Kind {
+      val type: XRType
+
+      @Serializable data class Expression(val expr: XR.Expression): Kind { override val type get() = expr.type }
+
+      // Specifically when APIs that IMPLICITLY return columns are used e.g. PreparedStatement.generatedKeys
+      @Serializable data class Keys(val keys: List<XR.Property>): Kind { override val type by lazy { XR.Product.TupleSmartN(keys).type } }
+    }
   }
 
 
@@ -1019,7 +1032,7 @@ sealed interface XR {
   // The 'core' of every property should be <this> pointer coming from the insert<Person> { this:Person ... }/ update<Person> { this:Person  ... } clause
   @Serializable
   @Mat
-  data class Assignment(@Slot val property: XR.Expression, @Slot val value: XR.Expression, override val loc: Location = Location.Synth): XR, PC<Assignment> {
+  data class Assignment(@Slot val property: XR.Property, @Slot val value: XR.Expression, override val loc: Location = Location.Synth): XR, PC<Assignment> {
     @Transient override val productComponents = productOf(this, property, value)
     override val type: XRType get() = value.type
     companion object {}
@@ -1041,12 +1054,9 @@ sealed interface XR {
 //) extends Action { override def quat: Quat = insert.quat; override def bestQuat: Quat = insert.bestQuat }
 //
 
-  /**
-   * In practice `insert` will always be XR.Insert but using Action meanwhile for the sake of the transformers
-   */
   @Serializable
   @Mat
-  data class OnConflict(@Slot val insert: XR.Action, @CS val target: XR.OnConflict.Target, @CS val resolution: XR.OnConflict.Resolution): XR.Action, PC<OnConflict> {
+  data class OnConflict(@Slot val insert: XR.Insert, @CS val target: XR.OnConflict.Target, @CS val resolution: XR.OnConflict.Resolution): XR.Action, PC<OnConflict> {
     @Transient override val productComponents = productOf(this, insert)
     override val type: XRType get() = insert.type
     override val loc: Location = Location.Synth
@@ -1061,13 +1071,16 @@ sealed interface XR {
     // These will be embedded directly in the Assignment/AssignmentDual value clause
     // e.g. `insert<Person> { set(...).onConflict(name) { excluded -> set(something to something + excluded.something) } }`
     // In this case it will be something like OnConflict(..., OnConflict.Update(excludedId = Id(excluded), assignments = [Assignment(Id(something), Id(something)])
-    @Serializable sealed interface Target
-    @Serializable object NoTarget: Target
-    @Serializable data class Properties(val props: List<XR.Property>): Target
+    @Serializable sealed interface Target {
+      @Serializable object NoTarget: Target
+      @Serializable data class Properties(val props: List<XR.Property>): Target
+    }
 
-    @Serializable sealed interface Resolution
-    @Serializable object Ignore: Resolution
-    @Serializable data class Update(val excludedId: Ident, val assignments: List<XR.Assignment>): Resolution
+
+    @Serializable sealed interface Resolution {
+      @Serializable object Ignore: Resolution
+      @Serializable data class Update(val excludedId: Ident, val assignments: List<XR.Assignment>): Resolution
+    }
   }
 }
 

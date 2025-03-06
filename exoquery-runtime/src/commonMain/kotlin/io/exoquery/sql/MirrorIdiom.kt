@@ -65,7 +65,7 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
       is XR.Update -> stmt("${query.token}.update(${assignments.token { it.token }})")
       is XR.Insert -> stmt("${query.token}.insert(${assignments.token { it.token }})")
       is XR.Delete -> stmt("${query.token}.delete")
-      is XR.Returning -> stmt("${action.token}.returning((${alias.token}) => ${property.token})")
+      is XR.Returning -> this.token
       is XR.OnConflict -> stmt("${this.token}")
     }
 
@@ -77,10 +77,16 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
 //    stmt"${ident.token} => ${property.token} -> ${value.token}"
 //  }
 
+  val XR.Returning.token: Token get() =
+    when (this.output) {
+      is XR.Returning.Kind.Expression -> stmt("${action.token}.returning((${alias.token}) => ${this.output.expr.token})")
+      is XR.Returning.Kind.Keys -> stmt("${action.token}.returningKeys(${this.output.keys.token { it.token }})")
+    }
+
   val XR.OnConflict.token: Token get() =
     when(this.resolution) {
-      is XR.OnConflict.Update -> stmt("${insert.token}.onConflictUpdate${target.token}(${this.resolution.assignments.token { it.token }})")
-      is XR.OnConflict.Ignore -> stmt("${insert.token}.onConflictIgnore${target.token}")
+      is XR.OnConflict.Resolution.Update -> stmt("${insert.token}.onConflictUpdate${target.token}(${this.resolution.assignments.token { it.token }})")
+      is XR.OnConflict.Resolution.Ignore -> stmt("${insert.token}.onConflictIgnore${target.token}")
     }
 
 //    Tokenizer[OnConflict] {
@@ -92,8 +98,8 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
 
   val XR.OnConflict.Target.token: Token get() =
     when(this) {
-      is XR.OnConflict.NoTarget -> stmt("")
-      is XR.OnConflict.Properties -> stmt("(${props.token { it.token }})")
+      is XR.OnConflict.Target.NoTarget -> stmt("")
+      is XR.OnConflict.Target.Properties -> stmt("(${props.token { it.token }})")
     }
 
 //  implicit val conflictTargetTokenizer: Tokenizer[OnConflict.Target] = Tokenizer[OnConflict.Target] {

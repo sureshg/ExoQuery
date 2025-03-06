@@ -150,7 +150,7 @@ class EncodingSpecXR: FreeSpec({
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Insert" {
-      val xr = XR.Insert(people, listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))))
+      val xr = XR.Insert(people, listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))), listOf(XR.Property(XR.Ident("this"), "name")))
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Update" {
@@ -162,8 +162,8 @@ class EncodingSpecXR: FreeSpec({
       xr.encode().decodeXR() shouldBeXR xr
     }
     "OnConflict - Update" {
-      val insert = XR.Insert(people, listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))))
-      val xr = XR.OnConflict(insert, XR.OnConflict.Properties(listOf(XR.Property(XR.Ident("this"), "name"))), XR.OnConflict.Update(XR.Ident("exclude"), listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe")))))
+      val insert = XR.Insert(people, listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))), listOf(XR.Property(XR.Ident("this"), "name")))
+      val xr = XR.OnConflict(insert, XR.OnConflict.Target.Properties(listOf(XR.Property(XR.Ident("this"), "name"))), XR.OnConflict.Resolution.Update(XR.Ident("exclude"), listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe")))))
       xr.encode().decodeXR() shouldBeXR xr
     }
   }

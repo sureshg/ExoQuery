@@ -1,6 +1,6 @@
 package io.exoquery.xr
 
-import io.exoquery.ContainerOfXR
+import io.exoquery.ContainerOfFunXR
 import io.exoquery.ParamSet
 import io.exoquery.Phase
 import io.exoquery.SqlCompiledQuery
@@ -46,7 +46,7 @@ class RuntimeQueryBuilder<T>(val query: SqlQuery<T>, val dialect: SqlIdiom, val 
   // TODO will need to gather the Params from all of the nested query containers when lifting system is introduced
 
   fun spliceQuotations(quoted: SqlQuery<*>): XR.U.QueryOrExpression {
-    fun spliceQuotationsRecurse(quoted: ContainerOfXR): XR.U.QueryOrExpression {
+    fun spliceQuotationsRecurse(quoted: ContainerOfFunXR): XR.U.QueryOrExpression {
       val quotationVases = quoted.runtimes.runtimes
       val ast = quoted.xr
       // Get all the quotation tags
