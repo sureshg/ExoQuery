@@ -76,16 +76,8 @@ interface StringSqlDsl {
 // Use for interpolate blocks e.g. free("foo bar").<String>() where free("foo bar") is a FreeBlock instance
 // no values of this should ever be created (that is called a "phantom type" in various circles)
 
-sealed interface Values
+sealed interface SetValues
 sealed interface SqlActionWithFilter<T>
-interface ActionCapturedBlock: CapturedBlock {
-  fun <T> insert(valueBlock: (T).() -> Values): SqlAction<T> = errorCap("The `insertValues` expression of the Query was not inlined")
-  fun <T> update(valueBlock: (T).() -> Values): SqlActionWithFilter<T> = errorCap("The `insertValues` expression of the Query was not inlined")
-
-  fun <T> SqlActionWithFilter<T>.filter(block: (T) -> Boolean): SqlAction<T> = errorCap("The `where` expression of the Query was not inlined")
-
-  fun values(vararg values: Pair<Any, Any>): Values = errorCap("The `values` expression of the Query was not inlined")
-}
 
 
 sealed interface CapturedBlockInternal {
@@ -98,6 +90,12 @@ interface CapturedBlock {
   @Dsl fun free(block: String): FreeBlock = errorCap("Compile time plugin did not transform the tree")
 
   @Dsl fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
+
+  @Dsl fun <T> insert(valueBlock: (T).() -> SetValues): SqlAction<T> = errorCap("The `insertValues` expression of the Query was not inlined")
+  @Dsl fun <T> update(valueBlock: (T).() -> SetValues): SqlActionWithFilter<T> = errorCap("The `insertValues` expression of the Query was not inlined")
+  @Dsl fun <T> SqlActionWithFilter<T>.filter(block: (T) -> Boolean): SqlAction<T> = errorCap("The `where` expression of the Query was not inlined")
+  /** Only for insert and update */
+  @Dsl fun set(vararg values: Pair<Any, Any>): SetValues = errorCap("The `values` expression of the Query was not inlined")
 
   operator fun <T> FreeBlock.invoke(): T = errorCap("The `invoke` expression of the Query was not inlined")
   fun <T> FreeBlock.asPure(): T = errorCap("The `invoke` expression of the Query was not inlined")

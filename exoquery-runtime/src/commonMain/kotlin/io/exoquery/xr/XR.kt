@@ -914,6 +914,161 @@ sealed interface XR {
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Variable && other.id() == cid
   }
+
+  // ***********************************************************************************************************
+  // ********************************************** Action *****************************************************
+  // ***********************************************************************************************************
+
+  @Serializable
+  sealed interface Action: XR
+
+  @Serializable
+  @Mat
+  data class Update(@Slot val query: XR.Query, @Slot val assignments: List<Assignment>, override val loc: Location = Location.Synth): Action, PC<Update> {
+    @Transient override val productComponents = productOf(this, query, assignments)
+    override val type: XRType get() = query.type
+    companion object {}
+    override fun toString() = show()
+    @Transient private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is Update && other.id() == cid
+  }
+
+// Scala:
+//sealed trait Action extends Ast
+//
+//// Note, technically return type of Actions for most Actions is a Int value but Quat here is used for Returning Quat types
+//final case class Update(query: Ast, assignments: List[Assignment]) extends Action {
+//  override def quat: Quat = query.quat; override def bestQuat: Quat = query.bestQuat
+//}
+
+  // TODO add 'exlucsions: List<Property>' for excluding columns (the extra action.exclude(col1, col2) should do a .copy on the inner parsed action and add the data as opposed to creating yet another clause for it)
+  // Note that XR.Query will always be a XR.Entity here
+  @Serializable
+  @Mat
+  data class Insert(@Slot val query: XR.Query, @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, PC<Insert> {
+    @Transient override val productComponents = productOf(this, query, assignments)
+    override val type: XRType get() = query.type
+    companion object {}
+    override fun toString() = show()
+    @Transient private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is Insert && other.id() == cid
+  }
+
+
+//final case class Insert(query: Ast, assignments: List[Assignment]) extends Action {
+//  override def quat: Quat = query.quat; override def bestQuat: Quat = query.bestQuat
+//}
+
+  @Serializable
+  @Mat
+  data class Delete(@Slot val query: XR.Query, override val loc: Location = Location.Synth): Action, PC<Delete> {
+    @Transient override val productComponents = productOf(this, query)
+    override val type: XRType get() = query.type
+    companion object {}
+    override fun toString() = show()
+    @Transient private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is Delete && other.id() == cid
+  }
+
+
+//sealed trait ReturningAction extends Action {
+//  def action: Ast
+//  def alias: Ident
+//  def property: Ast
+//}
+
+  @Serializable
+  @Mat
+  data class Returning(@Slot val action: XR.Action, @MSlot val alias: XR.Ident, @Slot val property: XR.Expression, override val loc: Location = Location.Synth): Action, PC<Returning> {
+    @Transient override val productComponents = productOf(this, action, alias, property)
+    override val type: XRType get() = property.type
+    companion object {}
+    override fun toString() = show()
+    @Transient private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is Returning && other.id() == cid
+  }
+
+
+
+//final case class Foreach(query: Ast, alias: Ident, body: Ast) extends Action {
+//  override def quat: Quat = body.quat; override def bestQuat: Quat = body.bestQuat
+//}
+
+// TODO I don't think we need a batch action. We can just do SqlBatchInsert/Update/Delete and store the inner action and batchIdentifier directly (as well as the batch-parameter)
+//  @Serializable
+//  @Mat
+//  data class Foreach(@Slot val alias: XR.Ident, @Slot val body: XR.Action, override val loc: Location = Location.Synth): Action, PC<Foreach> {
+//    @Transient override val productComponents = productOf(this, alias, body)
+//    override val type: XRType get() = body.type
+//    companion object {}
+//    override fun toString() = show()
+//    @Transient private val cid = id()
+//    override fun hashCode() = cid.hashCode()
+//    override fun equals(other: Any?) = other is Foreach && other.id() == cid
+//  }
+
+
+//  final case class Assignment(alias: Ident, property: Ast, value: Ast) extends Ast {
+//    override def quat: Quat = Quat.Value; override def bestQuat: Quat = quat
+//  }
+
+  // The 'core' of every property should be <this> pointer coming from the insert<Person> { this:Person ... }/ update<Person> { this:Person  ... } clause
+  @Serializable
+  @Mat
+  data class Assignment(@Slot val property: XR.Expression, @Slot val value: XR.Expression, override val loc: Location = Location.Synth): XR, PC<Assignment> {
+    @Transient override val productComponents = productOf(this, property, value)
+    override val type: XRType get() = value.type
+    companion object {}
+    override fun toString() = show()
+    @Transient private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is Assignment && other.id() == cid
+  }
+
+//  final case class AssignmentDual(alias1: Ident, alias2: Ident, property: Ast, value: Ast) extends Ast {
+//    override def quat: Quat = Quat.Value; override def bestQuat: Quat = quat
+//  }
+
+// Scala
+//final case class OnConflict(
+//  insert: Ast,
+//  target: OnConflict.Target,
+//  action: OnConflict.Action
+//) extends Action { override def quat: Quat = insert.quat; override def bestQuat: Quat = insert.bestQuat }
+//
+
+  /**
+   * In practice `insert` will always be XR.Insert but using Action meanwhile for the sake of the transformers
+   */
+  @Serializable
+  @Mat
+  data class OnConflict(@Slot val insert: XR.Action, @CS val target: XR.OnConflict.Target, @CS val resolution: XR.OnConflict.Resolution): XR.Action, PC<OnConflict> {
+    @Transient override val productComponents = productOf(this, insert)
+    override val type: XRType get() = insert.type
+    override val loc: Location = Location.Synth
+    override fun toString() = show()
+    @Transient private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is OnConflict && other.id() == cid
+
+    // I don't think these to extend the XR and if we need to transform them we can transform based on the OnConflict
+    // if they do need to be parts of XR the should have a special sub-IR clause so that XR doesn't have too many unrelated things at the top level.
+
+    // These will be embedded directly in the Assignment/AssignmentDual value clause
+    // e.g. `insert<Person> { set(...).onConflict(name) { excluded -> set(something to something + excluded.something) } }`
+    // In this case it will be something like OnConflict(..., OnConflict.Update(excludedId = Id(excluded), assignments = [Assignment(Id(something), Id(something)])
+    @Serializable sealed interface Target
+    @Serializable object NoTarget: Target
+    @Serializable data class Properties(val props: List<XR.Property>): Target
+
+    @Serializable sealed interface Resolution
+    @Serializable object Ignore: Resolution
+    @Serializable data class Update(val excludedId: Ident, val assignments: List<XR.Assignment>): Resolution
+  }
 }
 
 fun XR.isBottomTypedTerminal() =

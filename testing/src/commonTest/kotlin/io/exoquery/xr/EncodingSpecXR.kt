@@ -149,5 +149,22 @@ class EncodingSpecXR: FreeSpec({
       val xr = XR.CustomQueryRef(clause)
       xr.encode().decodeXR() shouldBeXR xr
     }
+    "Insert" {
+      val xr = XR.Insert(people, listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))))
+      xr.encode().decodeXR() shouldBeXR xr
+    }
+    "Update" {
+      val xr = XR.Update(people, listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))))
+      xr.encode().decodeXR() shouldBeXR xr
+    }
+    "Delete" {
+      val xr = XR.Delete(XR.Entity("BadPeople", peopleType))
+      xr.encode().decodeXR() shouldBeXR xr
+    }
+    "OnConflict - Update" {
+      val insert = XR.Insert(people, listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))))
+      val xr = XR.OnConflict(insert, XR.OnConflict.Properties(listOf(XR.Property(XR.Ident("this"), "name"))), XR.OnConflict.Update(XR.Ident("exclude"), listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe")))))
+      xr.encode().decodeXR() shouldBeXR xr
+    }
   }
 })

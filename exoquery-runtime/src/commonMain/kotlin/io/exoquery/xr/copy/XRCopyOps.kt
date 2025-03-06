@@ -5,6 +5,7 @@ package io.exoquery.xr.copy
 
 import io.exoquery.BID
 import io.exoquery.xr.*
+import io.exoquery.xr.XR.Assignment
 import io.exoquery.xr.XR.ConcatMap
 import io.exoquery.xr.XR.Entity
 import io.exoquery.xr.XR.Filter
@@ -41,6 +42,9 @@ import io.exoquery.xr.XR.Block
 import io.exoquery.xr.XR.When
 import io.exoquery.xr.XR.Branch
 import io.exoquery.xr.XR.CustomQueryRef
+import io.exoquery.xr.XR.Insert
+import io.exoquery.xr.XR.OnConflict
+import io.exoquery.xr.XR.Update
 import io.exoquery.xr.XR.Variable
 
 val Entity.Entity get() = this
@@ -150,6 +154,18 @@ fun Branch.cs(cond: XR.Expression, then: XR.Expression) = io.exoquery.xr.XR.Bran
 
 val Variable.Variable get() = this
 fun Variable.cs(name: XR.Ident, rhs: XR.Expression) = io.exoquery.xr.XR.Variable.csf(name, rhs)(this)
+
+val Assignment.Assignment get() = this
+fun Assignment.cs(property: XR.Property, value: XR.Expression) = io.exoquery.xr.XR.Assignment.csf(property, value)(this)
+
+val Insert.Insert get() = this
+fun Insert.cs(query: XR.Query, assignments: List<XR.Assignment>, exclusions: List<XR.Property>) = io.exoquery.xr.XR.Insert.csf(query, assignments, exclusions)(this)
+
+val Update.Update get() = this
+fun Update.cs(query: XR.Query, assignments: List<XR.Assignment>) = io.exoquery.xr.XR.Update.csf(query, assignments)(this)
+
+val OnConflict.OnConflict get() = this
+fun OnConflict.cs(action: XR.Action, target: XR.OnConflict.Target, resolution: XR.OnConflict.Resolution) = io.exoquery.xr.XR.OnConflict.csf(action, target, resolution)(this)
 
 val CustomQueryRef.CustomQueryRef get() = this
 fun CustomQueryRef.cs(customQuery: XR.CustomQuery) = io.exoquery.xr.XR.CustomQueryRef.csf(customQuery)(this)

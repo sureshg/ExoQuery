@@ -63,11 +63,13 @@ interface StatefulTransformer<T> {
   operator fun invoke(xr: XR): Pair<XR, StatefulTransformer<T>> =
     with(xr) {
       when (this) {
-        is XR.Expression -> invoke(this)
-        is XR.Query -> invoke(this)
+        is Expression -> invoke(this)
+        is Query -> invoke(this)
         // is XR.Action -> this.lift()
-        is XR.Branch -> invoke(this)
-        is XR.Variable -> invoke(this)
+        is Branch -> invoke(this)
+        is Variable -> invoke(this)
+        is Action -> invoke(this)
+        is Assignment -> invoke(this)
       }
     }
 
@@ -282,6 +284,32 @@ interface StatefulTransformer<T> {
       val (rhsA, stateA) = invoke(rhs)
       Variable.cs(name, rhsA) to stateA
     }
+
+  operator fun invoke(xr: XR.Action): Pair<XR.Action, StatefulTransformer<T>> =
+    when (xr) {
+      is Delete -> TODO()
+      is Insert -> TODO()
+      is OnConflict -> TODO()
+      is Returning -> TODO()
+      is Update -> TODO()
+    }
+
+  operator fun invoke(xr: XR.Assignment): Pair<XR.Assignment, StatefulTransformer<T>> =
+    with(xr) {
+      val (bt, btt) = invoke(property)
+      val (ct, ctt) = btt.invoke(value)
+      Assignment.cs(bt as? Property ?: throw IllegalStateException("Expected Property when converting ${property.showRaw()}"), ct) to ctt
+    }
+
+// Scala
+//    def apply(e: Assignment): (Assignment, StatefulTransformer[T]) =
+//    e match {
+//      case Assignment(a, b, c) =>
+//        val (bt, btt) = apply(b)
+//        val (ct, ctt) = btt.apply(c)
+//        (Assignment(a, bt, ct), ctt)
+//    }
+
 
   fun <U, R> applyList(list: List<U>, f: (StatefulTransformer<T>, U) -> Pair<R, StatefulTransformer<T>>): Pair<List<R>, StatefulTransformer<T>> {
     val (newList, transformer) =

@@ -44,7 +44,63 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
       is XR.Expression -> this.token
       is XR.Branch -> this.token
       is XR.Variable -> this.token
+      is XR.Action -> this.token
+      is XR.Assignment -> this.token
     }
+
+//  implicit final def actionTokenizer(implicit externalTokenizer: Tokenizer[External]): Tokenizer[AstAction] =
+//  Tokenizer[AstAction] {
+//    case Update(query, assignments)    => stmt"${query.token}.update(${assignments.token})"
+//    case Insert(query, assignments)    => stmt"${query.token}.insert(${assignments.token})"
+//    case Delete(query)                 => stmt"${query.token}.delete"
+//    case Returning(query, alias, body) => stmt"${query.token}.returning((${alias.token}) => ${body.token})"
+//    case ReturningGenerated(query, alias, body) =>
+//    stmt"${query.token}.returningGenerated((${alias.token}) => ${body.token})"
+//    case Foreach(query, alias, body) => stmt"${query.token}.foreach((${alias.token}) => ${body.token})"
+//    case c: OnConflict               => stmt"${c.token}"
+//  }
+
+  val XR.Action.token: Token get() =
+    when (this) {
+      is XR.Update -> stmt("${query.token}.update(${assignments.token { it.token }})")
+      is XR.Insert -> stmt("${query.token}.insert(${assignments.token { it.token }})")
+      is XR.Delete -> stmt("${query.token}.delete")
+      is XR.Returning -> stmt("${action.token}.returning((${alias.token}) => ${property.token})")
+      is XR.OnConflict -> stmt("${this.token}")
+    }
+
+  val XR.Assignment.token: Token get() =
+    stmt("${property.token} -> ${value.token}")
+
+//  implicit final def assignmentTokenizer(implicit externalTokenizer: Tokenizer[External]): Tokenizer[Assignment] =
+//  Tokenizer[Assignment] { case Assignment(ident, property, value) =>
+//    stmt"${ident.token} => ${property.token} -> ${value.token}"
+//  }
+
+  val XR.OnConflict.token: Token get() =
+    when(this.resolution) {
+      is XR.OnConflict.Update -> stmt("${insert.token}.onConflictUpdate${target.token}(${this.resolution.assignments.token { it.token }})")
+      is XR.OnConflict.Ignore -> stmt("${insert.token}.onConflictIgnore${target.token}")
+    }
+
+//    Tokenizer[OnConflict] {
+//      case OnConflict(i, t, OnConflict.Update(assign)) =>
+//        stmt"${i.token}.onConflictUpdate${t.token}(${assign.map(updateAssignsTokenizer.token).mkStmt()})"
+//      case OnConflict(i, t, OnConflict.Ignore) =>
+//        stmt"${i.token}.onConflictIgnore${t.token}"
+//    }
+
+  val XR.OnConflict.Target.token: Token get() =
+    when(this) {
+      is XR.OnConflict.NoTarget -> stmt("")
+      is XR.OnConflict.Properties -> stmt("(${props.token { it.token }})")
+    }
+
+//  implicit val conflictTargetTokenizer: Tokenizer[OnConflict.Target] = Tokenizer[OnConflict.Target] {
+//    case OnConflict.NoTarget          => emptyStatement
+//    case OnConflict.Properties(props) => stmt"(${targetProps(props).token})"
+//  }
+
 
   val XR.Variable.token: Token get() = stmt("val ${name.token} = ${this.rhs.token}")
   val XR.Branch.token: Token get() = stmt("${cond.token} -> ${then.token}")
