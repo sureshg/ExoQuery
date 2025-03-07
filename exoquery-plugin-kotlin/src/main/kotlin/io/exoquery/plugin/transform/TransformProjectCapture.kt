@@ -27,7 +27,7 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions): 
 
   context(CX.Scope, CX.Builder)
   private fun IrExpression.isContainerOfXR(): Boolean =
-    this.type.isClass<SqlExpression<*>>() || this.type.isClass<SqlQuery<*>>()
+    this.type.isClass<SqlExpression<*>>() || this.type.isClass<SqlQuery<*>>() || this.type.isClass<SqlAction<*, *>>() || this.type.isClass<SqlActionBatch<*, *>>()
 
   sealed interface ExprType {
     data object Expr: ExprType

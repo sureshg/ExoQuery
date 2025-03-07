@@ -13,9 +13,9 @@ import io.exoquery.plugin.isClass
 import io.exoquery.plugin.location
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.show
-import io.exoquery.plugin.transform.TransformCompileQuery.ContainerType.Action.buildContainerCompiletime
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.Lifter
+import io.exoquery.plugin.trees.SqlActionExpr
 import io.exoquery.plugin.trees.SqlQueryExpr
 import io.exoquery.plugin.trees.simpleTypeArgs
 import io.exoquery.sql.Renderer
@@ -23,6 +23,7 @@ import io.exoquery.sql.SqlIdiom
 import io.exoquery.sql.Token
 import io.exoquery.sql.token
 import io.exoquery.util.TraceConfig
+import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.builders.irBoolean
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -90,45 +91,73 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
         // and is something like `val cap = SqlQuery(xr=...)`. That means that we need to do a TransformProjectCapture on the `cap` varaible that is being called
         // which is invoked by the `superTransformer.visitExpression`.
         // In both of these cases superTransformer.recurse delegates-out to the correct transformer based on the type-match of the expression.
-        val sqlQueryExpr = superTransformer.recurse(sqlQueryExprRaw)
+        val sqlExpr = superTransformer.recurse(sqlQueryExprRaw)
         val containerType = expr.dispatchReceiver?.type ?: parseError("Invalid container type ${expr.dispatchReceiver?.type?.dumpKotlinLike()}. (Reciver ${expr.dispatchReceiver?.dumpKotlinLike()})", expr)
+        val dialect = ConstructCompiletimeDialect.of(clsPackageName, traceConfig)
 
-        sqlQueryExpr.match(
-          // .thenIf { _ -> false }
-          case(SqlQueryExpr.Uprootable[Is()]).then { uprootable ->
-            val xr = uprootable.xr // deserialize the XR, TODO need to handle deserialization failures here
-            val dialect = ConstructCompiletimeDialect.of(clsPackageName, traceConfig) // TODO compiler-arg or file-annotation to add a trace config to trace phases during compile-time?
-
-            val (queryTokenized, compileTime) = measureTimedValue {
-              try {
-                dialect.processQuery(xr) // TODO catch any potential errors coming from the query compiler
-              } finally {
-                // close file writing if it was happening
-                writeSource?.close()
-              }
+        fun Token.renderQueryString(pretty: Boolean, xr: XR) = run {
+          val queryStringRaw =
+            try {
+              this.show(Renderer(false, false))
+            } catch (e: Exception) {
+              parseError("The query could not be rendered: ${e.message}\n------------------\n${xr.showRaw()}", expr)
             }
+          if (isPretty)
+            SqlFormatter.format(queryStringRaw)
+          else
+            queryStringRaw
+        }
 
-            // Can include the sql-formatting library here since the compiler is always on the JVM!
-            val queryStringRaw =
-              try {
-                queryTokenized.show(Renderer(false, false))
-              } catch (e: Exception) {
-                parseError("The query could not be compiled: ${e.message}\n------------------\n${xr.showRaw()}", expr)
+        when (ContainerType.determine(containerType)) {
+          is ContainerType.Query -> {
+            sqlExpr.match(
+              case(SqlQueryExpr.Uprootable[Is()]).then { uprootable ->
+                val xr = uprootable.xr // deserialize the XR, TODO need to handle deserialization failures here
+                val (queryTokenized, compileTime) = measureTimedValue {
+                  try {
+                    dialect.processQuery(xr)
+                  } finally {
+                    // close file writing if it was happening
+                    writeSource?.close()
+                  }
+                }
+
+                // Can include the sql-formatting library here since the compiler is always on the JVM!
+                val queryString = queryTokenized.renderQueryString(isPretty, xr)
+                accum.addQuery(PrintableQuery(queryString, compileLocation, queryLabel))
+                this@Scope.logger.report("Compiled query in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)
+                ContainerType.Query.buildContainerCompiletime(queryLabel, queryString, queryTokenized, sqlExpr)
               }
-
-            val queryString =
-              if (isPretty)
-                SqlFormatter.format(queryStringRaw)
-              else
-                queryStringRaw
-
-            accum.addQuery(PrintableQuery(queryString, compileLocation, queryLabel))
-            this@Scope.logger.report("Compiled query in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)
-            ContainerType.determine(containerType).buildContainerCompiletime(queryLabel, queryString, queryTokenized, sqlQueryExpr)
+            ) ?: run {
+              logger.warn("The query could not be transformed at compile-time", expr.location())
+              ContainerType.Query.buildContainerRuntime(construct, traceConfig, queryLabel, isPretty, sqlExpr)
+            }
           }
-        ) ?: run {
-          logger.warn("The query could not be transformed at compile-time", expr.location())
-          ContainerType.determine(containerType).buildContainerRuntime(construct, traceConfig, queryLabel, isPretty, sqlQueryExpr)
+          is ContainerType.Action -> {
+            sqlExpr.match(
+              case(SqlActionExpr.Uprootable[Is()]).then { uprootable ->
+                val xr = uprootable.xr // deserialize the XR, TODO need to handle deserialization failures here
+                val (queryTokenized, compileTime) = measureTimedValue {
+                  try {
+                    dialect.processAction(xr)
+                  } finally {
+                    // close file writing if it was happening
+                    writeSource?.close()
+                  }
+                }
+
+                // Can include the sql-formatting library here since the compiler is always on the JVM!
+                val queryString = queryTokenized.renderQueryString(isPretty, xr)
+                accum.addQuery(PrintableQuery(queryString, compileLocation, queryLabel))
+                this@Scope.logger.report("Compiled action in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)
+                ContainerType.Action.buildContainerCompiletime(queryLabel, queryString, queryTokenized, sqlExpr)
+              }
+            ) ?: run {
+              //logger.warn("The action could not be transformed at compile-time", expr.location())
+              parseError("The action could not be transformed at compile-time", expr)
+              ContainerType.Action.buildContainerRuntime(construct, traceConfig, queryLabel, isPretty, sqlExpr)
+            }
+          }
         }
       }
     ) ?: run {

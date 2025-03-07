@@ -18,6 +18,7 @@ fun main() {
 
   println("--------------- XR ---------------\n${act.xr.showRaw()}")
 
+  println("hellooooo")
   println(act.build<PostgresDialect>().value)
 
 }
