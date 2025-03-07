@@ -10,6 +10,10 @@ fun main() {
   data class Address(val ownerId: Int, val street: String, val city: String)
 
   // why does this not work when I use @CapturedFunction? Does the projection not work with scaffolding? need to look into that
+  // TODO make a warning about how .build cannot be called on a @Captured function?
+  // TODO when a scaffolded function has no query-containers in it's positions make a warning (or error?)
+
+
   fun peopleAndAddresses() =
     capture.select {
       val p = from(Table<People>())

@@ -1,6 +1,7 @@
 package io.exoquery.plugin.transform
 
 import io.decomat.*
+import io.exoquery.ContainerOfXR
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.annotation.CapturedFunction
@@ -8,6 +9,7 @@ import io.exoquery.parseError
 import io.exoquery.plugin.funName
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.isClass
+import io.exoquery.plugin.location
 import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.printing.dumpSimple
@@ -86,6 +88,9 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun transform(capFunRaw: IrFunction): IrFunction {
     val capFun = capFunRaw as? IrSimpleFunction ?: parseError("The function annotated with @CapturedFunction must be a simple function.", capFunRaw)
+
+    if (capFun.valueParameters.isEmpty())
+      parseError("The function annotated with @CapturedFunction must have at least one parameter but none were found. In this case it is not necessary to mark the function with the @CapturedFunction annotation. Remove it and treat the function as a static query splice.", capFun.location())
 
     val errorText = "A function annotated with @CapturedFunction must return a single, single SqlQuery<T> or SqlExpression<T> instance"
 
