@@ -18,6 +18,15 @@ import org.jetbrains.kotlin.ir.util.*
 
 object Messages {
 
+fun InvalidSqlActionFunctionBody() =
+"""
+The SqlAction expression has an invalid structure. An SqlAction expression should be a lambda with a single expression. For example:
+
+val insertPerson = capture {
+  insert<Person> { set(name to "Joe", age to 123) }
+}
+""".trimIndent()
+
 fun CannotCallUseOnAnArbitraryDynamic() =
 """
 Could not understand the SqlExpression (from the scaffold-call) that you are attempting to call `.use` on. You can only call `.use` on a variable type as SqlExpression.

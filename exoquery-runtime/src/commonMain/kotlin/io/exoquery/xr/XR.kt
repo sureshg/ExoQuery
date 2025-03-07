@@ -649,6 +649,9 @@ sealed interface XR {
       //@Transient val Unused = XR.Ident("unused", XRType.Unknown, XR.Location.Synth)
     }
 
+    private val dol: Char = '$'
+    fun isThisRef() = name.startsWith("${dol}this")
+
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
@@ -924,7 +927,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class Update(@Slot val query: XR.Query, @Slot val assignments: List<Assignment>, override val loc: Location = Location.Synth): Action, PC<Update> {
+  data class Update(@Slot val query: XR.Query, @CS val alias: XR.Ident, @Slot val assignments: List<Assignment>, override val loc: Location = Location.Synth): Action, PC<Update> {
     @Transient override val productComponents = productOf(this, query, assignments)
     override val type: XRType get() = query.type
     companion object {}
@@ -946,7 +949,7 @@ sealed interface XR {
   // Note that XR.Query will always be a XR.Entity here
   @Serializable
   @Mat
-  data class Insert(@Slot val query: XR.Query, @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, PC<Insert> {
+  data class Insert(@Slot val query: XR.Query, @CS val alias: XR.Ident,  @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, PC<Insert> {
     @Transient override val productComponents = productOf(this, query, assignments)
     override val type: XRType get() = query.type
     companion object {}

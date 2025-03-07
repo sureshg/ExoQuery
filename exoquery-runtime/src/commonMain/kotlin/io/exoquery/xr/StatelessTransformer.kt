@@ -107,7 +107,7 @@ interface StatelessTransformer {
     with(xr) {
       when (this) {
         is Insert -> invoke(this)
-        is Update -> Update.csf(invoke(query), assignments.map { invoke(it) })(this)
+        is Update -> Update.csf(invoke(query), alias, assignments.map { invoke(it) })(this)
         is Delete -> Delete.csf(invoke(query))(this)
         is OnConflict -> invoke(this)
         is Returning -> Returning.csf(invoke(action), alias, invoke(output))(this)
@@ -121,7 +121,7 @@ interface StatelessTransformer {
     }
 
   operator fun invoke(xr: XR.Insert): XR.Insert =
-    Insert.csf(invoke(xr.query), xr.assignments.map { invoke(it) }, xr.exclusions.map { invoke(it) })(xr)
+    Insert.csf(invoke(xr.query), xr.alias, xr.assignments.map { invoke(it) }, xr.exclusions.map { invoke(it) })(xr)
 
   operator fun invoke(xr: XR.Assignment): XR.Assignment =
     Assignment.csf(invoke(xr.property), invoke(xr.value))(xr)

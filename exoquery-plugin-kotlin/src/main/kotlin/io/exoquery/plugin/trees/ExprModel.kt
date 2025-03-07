@@ -225,9 +225,7 @@ object SqlExpressionExpr {
             case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is(PT.io_exoquery_SqlExpression), Ir.Call.FunctionUntethered1[Is(PT.io_exoquery_unpackExpr), Is()]])
               .thenIf { _, _ ->
                 // Check that the 2nd argument to SqlExpression is Runtimes.Empty i.e. SqlExpression(xr=unpackExpr(str), runtimes=Runtimes.Empty, ...)
-                comp.valueArguments[1].match(
-                  case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<RuntimeSet.Companion>(), Is("Empty")]).then { expr, _ -> true }
-                ) ?: false
+                comp.valueArguments[1].isEmptyRuntimes()
               }
               .then { _, (_, irStr) ->
                 // The 1st argument to SqlExpression in the unpackExpr ie. SqlExpression(unpackExpr(str), ...)
@@ -280,9 +278,7 @@ object SqlQueryExpr {
           it.match(
             case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is(PT.io_exoquery_SqlQuery), Ir.Call.FunctionUntethered1[Is(PT.io_exoquery_unpackQuery), Is()]])
               .thenIf { _, _ ->
-                comp.valueArguments[1].match(
-                  case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<RuntimeSet.Companion>(), Is(PT.EmptyRuntimes)]).then { expr, _ -> true }
-                ) ?: false
+                comp.valueArguments[1].isEmptyRuntimes()
               }
               .then { _, (_, irStr) ->
                 val constPackedXR = irStr as? IrConst ?: throw IllegalArgumentException("value passed to unpackQuery was not a constant-string in:\n${it.dumpKotlinLike()}")
@@ -307,3 +303,58 @@ object SqlQueryExpr {
     }
   }
 }
+
+
+object SqlActionExpr {
+  data class Uprootable(val packedXR: String) {
+    val xr by lazy {
+      try {
+        EncodingXR.protoBuf.decodeFromHexString<XR.Action>(packedXR)
+      } catch (e: Throwable) {
+        throw IllegalArgumentException("Could not decode the XR.Action from the packed string: $packedXR", e)
+      }
+    }
+
+    context(CX.Scope, CX.Builder)
+    fun replant(paramsFrom: IrExpression): IrExpression {
+      val strExpr = call(PT.io_exoquery_unpackAction).invoke(builder.irString(packedXR))
+      val callParams = paramsFrom.callDispatch("params").invoke()
+      val make = makeClassFromString(PT.io_exoquery_SqlAction, listOf(strExpr, RuntimeEmpty(), callParams))
+      return make
+    }
+
+    companion object {
+      context (CX.Scope) operator fun <AP : Pattern<Uprootable>> get(x: AP) =
+        customPattern1("SqlActionExpr.Uprootable", x) { it: IrExpression ->
+          it.match(
+            case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is(PT.io_exoquery_SqlAction), Ir.Call.FunctionUntethered1[Is(PT.io_exoquery_unpackAction), Is()]])
+              .thenIf { _, _ -> comp.valueArguments[1].isEmptyRuntimes() }
+              .then { _, (_, irStr) ->
+                val constPackedXR = irStr as? IrConst ?: throw IllegalArgumentException("value passed to unpackAction was not a constant-string in:\n${it.dumpKotlinLike()}")
+                Components1(Uprootable(constPackedXR.value.toString()))
+              }
+          )
+        }
+
+      context(CX.Scope, CX.Builder) fun plantNewUprootable(xr: XR.Action, params: ParamsExpr): IrExpression {
+        val packedXR = xr.encode()
+        val strExpr = call(PT.io_exoquery_unpackAction).invoke(builder.irString(packedXR))
+        val make = makeClassFromString(PT.io_exoquery_SqlAction, listOf(strExpr, RuntimeEmpty(), params.lift()))
+        return make
+      }
+
+      context(CX.Scope, CX.Builder) fun plantNewPluckable(xr: XR.Action, runtimes: RuntimesExpr, params: ParamsExpr): IrExpression {
+        val packedXR = xr.encode()
+        val strExpr = call(PT.io_exoquery_unpackAction).invoke(builder.irString(packedXR))
+        val make = makeClassFromString(PT.io_exoquery_SqlAction, listOf(strExpr, runtimes.lift(), params.lift()))
+        return make
+      }
+    }
+  }
+}
+
+context(CX.Scope)
+private fun IrExpression?.isEmptyRuntimes(): Boolean =
+  this?.match(
+    case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<RuntimeSet.Companion>(), Is(PT.EmptyRuntimes)]).then { _, _ -> true }
+  ) ?: false

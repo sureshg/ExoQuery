@@ -69,7 +69,7 @@ object ParseSelectClause {
         joinCondLambda.match(
           case(Ir.FunctionExpression.withBlock[Is(), Is()]).then { lambdaParams, stmtsAndReturn ->
             val lambdaParam = lambdaParams.first()
-            val lambdaVarName = lambdaParam.name.asString() /* join lambda should have only one element e.g. join(Table<Addresses>()){addressesLambdaVar ->addressesLambdaVar == 123} */
+            val lambdaVarName = lambdaParam.sanitizedSymbolName() /* join lambda should have only one element e.g. join(Table<Addresses>()){addressesLambdaVar ->addressesLambdaVar == 123} */
             val lambdaVarIdent = XR.Ident(lambdaVarName.sanitizeIdentName(), TypeParser.of(lambdaParam), lambdaParam.loc)
             val joinCond = ParseExpression.parseFunctionBlockBody(stmtsAndReturn)
             SX.Join(joinType, varNameIdent, ParseQuery.parse(onTable), lambdaVarIdent, joinCond, joinFunc.loc).swapItVariableForOuter()

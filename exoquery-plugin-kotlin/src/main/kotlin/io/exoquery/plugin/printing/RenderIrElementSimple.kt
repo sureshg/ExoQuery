@@ -348,7 +348,7 @@ class RenderIrElementVisitorSimple(normalizeNames: Boolean = false, private val 
     "[IrInstanceInitializerCall] classDescriptor='${expression.classSymbol.renderReference()}'"
 
   override fun visitGetValue(expression: IrGetValue, data: Nothing?): String =
-    "[IrGetValue] ${expression.symbol.renderReference()}" //:${expression.type.render()} (orig=${expression.origin})
+    "[IrGetValue] ${expression.symbol.renderReference()} (param=${(expression.symbol.owner as? IrValueParameter)?.let { it.symbol }})" //:${expression.type.render()} (orig=${expression.origin})
 
   override fun visitSetValue(expression: IrSetValue, data: Nothing?): String =
     "[IrSetValue] ${expression.symbol.renderReference()}:${expression.type.render()} (orig=${expression.origin})"

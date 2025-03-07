@@ -1,12 +1,25 @@
 package io.exoquery
 
 import io.exoquery.printing.PrintMisc
+import io.exoquery.sql.SqlIdiom
+import io.exoquery.xr.RuntimeBuilder
 import io.exoquery.xr.XR
 
 data class SqlAction<Input, Output>(override val xr: XR.Action, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfActionXR {
   fun show() = PrintMisc().invoke(this)
   override fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): SqlAction<Input, Output> =
     copy(xr = xr as? XR.Action ?: xrError("Failed to rebuild SqlAction with XR of type ${xr::class} which was: ${xr.show()}"), runtimes = runtimes, params = params)
+
+  fun buildRuntime(dialect: SqlIdiom, label: String?, pretty: Boolean = false): SqlCompiledAction<Input, Output> = run {
+    val containerBuild = RuntimeBuilder(this, dialect, label, pretty).invoke()
+    SqlCompiledAction(containerBuild.queryString, containerBuild.queryTokenized, true, containerBuild.label, Phase.Runtime)
+  }
+
+  fun <Dialect: SqlIdiom> build(): SqlCompiledAction<Input, Output> = errorCap("The build function body was not inlined")
+  fun <Dialect: SqlIdiom> build(label: String): SqlCompiledAction<Input, Output> = errorCap("The build function body was not inlined")
+
+  fun <Dialect: SqlIdiom> buildPretty(): SqlCompiledAction<Input, Output> = errorCap("The buildPretty function body was not inlined")
+  fun <Dialect: SqlIdiom> buildPretty(label: String): SqlCompiledAction<Input, Output> = errorCap("The buildPretty function body was not inlined")
 
   override fun withNonStrictEquality(): SqlAction<Input, Output> = copy(params = params.withNonStrictEquality())
 }

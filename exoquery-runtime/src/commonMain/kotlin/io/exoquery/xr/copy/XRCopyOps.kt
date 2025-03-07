@@ -161,10 +161,10 @@ val Assignment.Assignment get() = this
 fun Assignment.cs(property: XR.Property, value: XR.Expression) = io.exoquery.xr.XR.Assignment.csf(property, value)(this)
 
 val Insert.Insert get() = this
-fun Insert.cs(query: XR.Query, assignments: List<XR.Assignment>, exclusions: List<XR.Property>) = io.exoquery.xr.XR.Insert.csf(query, assignments, exclusions)(this)
+fun Insert.cs(query: XR.Query, alias: XR.Ident, assignments: List<XR.Assignment>, exclusions: List<XR.Property>) = io.exoquery.xr.XR.Insert.csf(query, alias, assignments, exclusions)(this)
 
 val Update.Update get() = this
-fun Update.cs(query: XR.Query, assignments: List<XR.Assignment>) = io.exoquery.xr.XR.Update.csf(query, assignments)(this)
+fun Update.cs(query: XR.Query, alias: XR.Ident, assignments: List<XR.Assignment>) = io.exoquery.xr.XR.Update.csf(query, alias, assignments)(this)
 
 val Delete.Delete get() = this
 fun Delete.cs(query: XR.Query) = io.exoquery.xr.XR.Delete.csf(query)(this)

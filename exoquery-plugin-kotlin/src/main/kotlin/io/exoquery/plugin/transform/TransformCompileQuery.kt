@@ -4,6 +4,8 @@ import com.github.vertical_blank.sqlformatter.SqlFormatter
 import io.decomat.*
 import io.exoquery.Phase
 import io.exoquery.PostgresDialect
+import io.exoquery.SqlAction
+import io.exoquery.SqlCompiledAction
 import io.exoquery.SqlCompiledQuery
 import io.exoquery.SqlQuery
 import io.exoquery.parseError
@@ -11,12 +13,14 @@ import io.exoquery.plugin.isClass
 import io.exoquery.plugin.location
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.show
+import io.exoquery.plugin.transform.TransformCompileQuery.ContainerType.Action.buildContainerCompiletime
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.Lifter
 import io.exoquery.plugin.trees.SqlQueryExpr
 import io.exoquery.plugin.trees.simpleTypeArgs
 import io.exoquery.sql.Renderer
 import io.exoquery.sql.SqlIdiom
+import io.exoquery.sql.Token
 import io.exoquery.sql.token
 import io.exoquery.util.TraceConfig
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
@@ -40,7 +44,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
 
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun matches(expr: IrCall): Boolean =
-    (expr.dispatchReceiver?.type?.isClass<SqlQuery<*>>() ?: false) && isNamedBuild(expr.symbol.safeName)
+    (expr.dispatchReceiver?.type?.let { it.isClass<SqlQuery<*>>() || it.isClass<SqlAction<*, *>>() } ?: false) && isNamedBuild(expr.symbol.safeName)
 
   // TODO need lots of cleanup and separation of concerns here
   // TODO propagate labels into the trace logger
@@ -57,13 +61,6 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
       val clsPackageName = dialectCls.owner.kotlinFqName.asString() ?: parseError("The dialect class ${dialectType.dumpKotlinLike()} must have a package name but it did not", expr)
       construct to clsPackageName
     }
-
-    fun buildRuntimeDialect(construct: IrConstructorSymbol, traceConfig: TraceConfig) =
-      builder.irCall(construct).apply {
-        with (makeLifter()) {
-          putValueArgument(0, traceConfig.lift(options.projectDir))
-        }
-      }
 
     val transfomerScope = symbolSet
 
@@ -94,6 +91,8 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
         // which is invoked by the `superTransformer.visitExpression`.
         // In both of these cases superTransformer.recurse delegates-out to the correct transformer based on the type-match of the expression.
         val sqlQueryExpr = superTransformer.recurse(sqlQueryExprRaw)
+        val containerType = expr.dispatchReceiver?.type ?: parseError("Invalid container type ${expr.dispatchReceiver?.type?.dumpKotlinLike()}. (Reciver ${expr.dispatchReceiver?.dumpKotlinLike()})", expr)
+
         sqlQueryExpr.match(
           // .thenIf { _ -> false }
           case(SqlQueryExpr.Uprootable[Is()]).then { uprootable ->
@@ -125,46 +124,115 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
 
             accum.addQuery(PrintableQuery(queryString, compileLocation, queryLabel))
             this@Scope.logger.report("Compiled query in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)
-
-            val lifter = Lifter(this@Builder)
-            // Gete the type T of the SqlQuery<T> that .build is called on
-            val queryOutputType = sqlQueryExpr.type.simpleTypeArgs[0]
-
-            // i.e. this is the SqlQuery.params call
-            val callParamsFromSqlQuery = sqlQueryExpr.callDispatch("params").invoke()
-
-            // TODO also need to add filtered ParamSet (i.e. making sure we have everything we need from the Token params, filtered and in the right order) to the SqlCompiledQuery
-            with (lifter) {
-              val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
-              makeWithTypes<SqlCompiledQuery<*>>(
-                listOf(queryOutputType),
-                listOf(
-                  queryString.lift(), // value
-                  queryTokenized.token.lift(callParamsFromSqlQuery), // token
-                  // If there are no ParamMulti values then we know that we can use the original query built with the .build function.
-                  // Now we can't check what the values in ParamSet are but we have this value in the TagForParam.paramType field
-                  // which shows us if the Param is a ParamSingle or ParamMulti. We need to check that in the AST in order to know that this
-                  // value is supposed to be.
-                  irBuilder.irBoolean(false), // needsTokenization (todo need to determine this from the tokenized value i.e. only `true` if there are no ParamMulti values)
-                  labelExpr,
-                  Phase.CompileTime.lift()
-                )
-              )
-            }
+            ContainerType.determine(containerType).buildContainerCompiletime(queryLabel, queryString, queryTokenized, sqlQueryExpr)
           }
         ) ?: run {
           logger.warn("The query could not be transformed at compile-time", expr.location())
-          with (Lifter(this@Builder)) {
-            val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
-            // we still know it's x.build or x.buildPretty so just use that (for now ignore formatting if it is at runtime)
-            val dialect = buildRuntimeDialect(construct, traceConfig)
-            // TODO find a way to lift TraceTypes so can pass file:TraceTypes to the runtime configs
-            expr.dispatchReceiver!!.callDispatch("buildRuntime")(dialect, labelExpr, isPretty.lift())
-          }
+          ContainerType.determine(containerType).buildContainerRuntime(construct, traceConfig, queryLabel, isPretty, sqlQueryExpr)
         }
       }
     ) ?: run {
       expr
+    }
+  }
+
+
+  sealed interface ContainerType {
+    context(CX.Scope, CX.Builder)
+    fun buildContainerCompiletime(queryLabel: String?, queryString: String, queryTokenized: Token, sqlQueryExpr: IrExpression): IrExpression
+
+    context(CX.Scope, CX.Builder)
+    fun buildRuntimeDialect(construct: IrConstructorSymbol, traceConfig: TraceConfig) =
+      builder.irCall(construct).apply {
+        with (makeLifter()) {
+          putValueArgument(0, traceConfig.lift(options.projectDir))
+        }
+      }
+
+    context(CX.Scope, CX.Builder)
+    fun buildContainerRuntime(construct: IrConstructorSymbol, traceConfig: TraceConfig, queryLabel: String?, isPretty: Boolean, sqlQueryExpr: IrExpression): IrExpression
+
+    data object Query: ContainerType {
+      context(CX.Scope, CX.Builder)
+      override fun buildContainerCompiletime(queryLabel: String?, queryString: String, queryTokenized: Token, sqlQueryExpr: IrExpression) = run {
+        val lifter = Lifter(this@Builder)
+
+        // Gete the type T of the SqlQuery<T> that .build is called on
+        val queryOutputType = sqlQueryExpr.type.simpleTypeArgs[0]
+        // i.e. this is the SqlQuery.params call
+        val callParamsFromSqlQuery = sqlQueryExpr.callDispatch("params").invoke()
+
+        with (lifter) {
+          val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
+          makeWithTypes<SqlCompiledQuery<*>>(
+            listOf(queryOutputType),
+            listOf(
+              queryString.lift(), // value
+              queryTokenized.token.lift(callParamsFromSqlQuery), // token
+              // If there are no ParamMulti values then we know that we can use the original query built with the .build function.
+              // Now we can't check what the values in ParamSet are but we have this value in the TagForParam.paramType field
+              // which shows us if the Param is a ParamSingle or ParamMulti. We need to check that in the AST in order to know that this
+              // value is supposed to be.
+              irBuilder.irBoolean(false), // needsTokenization (todo need to determine this from the tokenized value i.e. only `true` if there are no ParamMulti values)
+              labelExpr,
+              Phase.CompileTime.lift()
+            )
+          )
+        }
+      }
+
+      context(CX.Scope, CX.Builder)
+      override fun buildContainerRuntime(construct: IrConstructorSymbol, traceConfig: TraceConfig, queryLabel: String?, isPretty: Boolean, sqlQueryExpr: IrExpression): IrExpression = run {
+        with (Lifter(this@Builder)) {
+          val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
+          // we still know it's x.build or x.buildPretty so just use that (for now ignore formatting if it is at runtime)
+          val dialect = buildRuntimeDialect(construct, traceConfig)
+          sqlQueryExpr.callDispatch("buildRuntime")(dialect, labelExpr, isPretty.lift())
+        }
+      }
+    }
+    data object Action: ContainerType {
+      context(CX.Scope, CX.Builder)
+      override fun buildContainerCompiletime(queryLabel: String?, queryString: String, queryTokenized: Token, sqlQueryExpr: IrExpression) = run {
+        val lifter = Lifter(this@Builder)
+        val callParamsFromSqlQuery = sqlQueryExpr.callDispatch("params").invoke()
+        val inputType = sqlQueryExpr.type.simpleTypeArgs[0]
+        val outputType = sqlQueryExpr.type.simpleTypeArgs[1]
+
+        with (lifter) {
+          val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
+          makeWithTypes<SqlCompiledAction<*, *>>(
+            listOf(inputType, outputType),
+            listOf(
+              queryString.lift(), // value
+              queryTokenized.token.lift(callParamsFromSqlQuery), // token
+              irBuilder.irBoolean(false), // needsTokenization
+              labelExpr,
+              Phase.CompileTime.lift()
+            )
+          )
+        }
+      }
+
+      context(CX.Scope, CX.Builder)
+      override fun buildContainerRuntime(construct: IrConstructorSymbol, traceConfig: TraceConfig, queryLabel: String?, isPretty: Boolean, sqlQueryExpr: IrExpression): IrExpression = run {
+        with (Lifter(this@Builder)) {
+          val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
+          // we still know it's x.build or x.buildPretty so just use that (for now ignore formatting if it is at runtime)
+          val dialect = buildRuntimeDialect(construct, traceConfig)
+          sqlQueryExpr.callDispatch("buildRuntime")(dialect, labelExpr, isPretty.lift())
+        }
+      }
+    }
+
+    companion object {
+      context(CX.Scope)
+      fun determine(type: IrType) =
+        when {
+          type.isClass<SqlQuery<*>>() -> Query
+          type.isClass<SqlAction<*, *>>() -> Action
+          else -> parseError("The type ${type.dumpKotlinLike()} must be a SqlQuery or SqlAction but it was not")
+        }
     }
   }
 }

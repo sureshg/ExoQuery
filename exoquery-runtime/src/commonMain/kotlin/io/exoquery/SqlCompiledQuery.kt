@@ -15,13 +15,28 @@ sealed interface Phase {
 // can just use the value-string. Typically we cannot use the value-string because there is a paramList (since we don't know how many instances of "?" to use)
 // This needs to be checked from the Token at compile-time (also if the dialect requires numbered parameters
 // it is also useful to use Token)
-data class SqlCompiledQuery<T>(val value: String, val token: Token, val needsTokenization: Boolean, val label: String?, val phase: Phase) {
-  val params: List<Param<*>> by lazy { token.extractParams() }
+data class SqlCompiledQuery<T>(val value: String, override val token: Token, val needsTokenization: Boolean, val label: String?, val phase: Phase): ExoCompiled() {
+  override val params: List<Param<*>> by lazy { token.extractParams() }
 
   // Similar concept tot the SqlQuery/SqlExpression.determinizeDynamics but it does not need to consider any nesting constructs
   // because the Params in the `params` variable are already determined to be the complete set in the tokenization
   // (determined by Lifter.liftToken + realization for compile-time and buildRuntime + realization for runtime)
-  fun determinizeDynamics(): SqlCompiledQuery<T> {
+  fun determinizeDynamics(): SqlCompiledQuery<T> =
+    this.copy(token = determinizedToken())
+}
+
+data class SqlCompiledAction<Input, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val label: String?, val phase: Phase): ExoCompiled() {
+  override val params: List<Param<*>> by lazy { token.extractParams() }
+
+  fun determinizeDynamics(): SqlCompiledAction<Input, Output> =
+    this.copy(token = determinizedToken())
+}
+
+abstract class ExoCompiled {
+  abstract val params: List<Param<*>>
+  abstract val token: Token
+
+  protected fun determinizedToken() = run {
     var id = 0
     fun nextId() = "$id".also { id++ }
     val bids = params.map { param ->
@@ -29,7 +44,6 @@ data class SqlCompiledQuery<T>(val value: String, val token: Token, val needsTok
       (param.id to newId) to param.withNewBid(newId)
     }
     val (bidMap, newParams) = bids.unzip()
-    val newToken = token.mapBids(bidMap.toMap())
-    return this.copy(token = newToken)
+    token.mapBids(bidMap.toMap())
   }
 }

@@ -295,7 +295,7 @@ interface StatefulTransformer<T> {
       val (at, att) = invoke(query)
       val (bt, btt) = att.applyList(assignments) { t, v -> t.invoke(v) }
       val (ct, ctt) = btt.applyList(exclusions) { t, v -> t.invoke(v) }
-      Insert.cs(at, bt, ct) to btt
+      Insert.cs(at, alias, bt, ct) to btt
     }
 
   operator fun invoke(xr: XR.OnConflict.Target): Pair<XR.OnConflict.Target, StatefulTransformer<T>> =
@@ -327,7 +327,7 @@ interface StatefulTransformer<T> {
         is Update -> {
           val (at, att) = invoke(query)
           val (bt, btt) = att.applyList(assignments) { t, v -> t.invoke(v) }
-          Update.cs(at, bt) to btt
+          Update.cs(at, alias, bt) to btt
         }
         is Delete -> {
           val (at, att) = invoke(query)

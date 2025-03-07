@@ -7,6 +7,9 @@ import io.exoquery.annotation.DslNestingIgnore
 import io.exoquery.annotation.ExoCapture
 import io.exoquery.annotation.ExoCaptureExpression
 import io.exoquery.annotation.ExoCaptureSelect
+import io.exoquery.annotation.ExoDelete
+import io.exoquery.annotation.ExoInsert
+import io.exoquery.annotation.ExoUpdate
 import io.exoquery.annotation.ExoUseExpression
 import io.exoquery.annotation.ExoValue
 import io.exoquery.annotation.FlatJoin
@@ -30,6 +33,8 @@ fun unpackExpr(expr: String): XR.Expression =
 fun unpackQuery(query: String): XR.Query =
   EncodingXR.protoBuf.decodeFromHexString<XR.Query>(query)
 
+fun unpackAction(action: String): XR.Action =
+  EncodingXR.protoBuf.decodeFromHexString<XR.Action>(action)
 
 
 // data class Person(val name: String, val age: Int)
@@ -91,8 +96,9 @@ interface CapturedBlock {
 
   @Dsl fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
 
-  @Dsl fun <T> insert(valueBlock: (T).() -> SetValues): SqlAction<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
-  @Dsl fun <T> update(valueBlock: (T).() -> SetValues): SqlActionFilterable<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
+  @Dsl @ExoInsert fun <T> insert(valueBlock: (T).() -> SetValues): SqlAction<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
+  @Dsl @ExoUpdate fun <T> update(valueBlock: (T).() -> SetValues): SqlActionFilterable<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
+  @Dsl @ExoDelete fun <T> delete(): SqlActionFilterable<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
 
   @Dsl fun <T, R> SqlAction<T, Long>.returning(expression: (T) -> R): SqlAction<T, R> = errorCap("The `returning` expression of the Query was not inlined")
 

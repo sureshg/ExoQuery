@@ -7,7 +7,6 @@ import io.decomat.on
 import io.exoquery.BID
 import io.exoquery.CapturedBlock
 import io.exoquery.SqlQuery
-import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.annotation.Dsl
 import io.exoquery.annotation.DslFunctionCall
 import io.exoquery.annotation.DslNestingIgnore
@@ -21,7 +20,6 @@ import io.exoquery.plugin.isSqlQuery
 import io.exoquery.plugin.loc
 import io.exoquery.plugin.location
 import io.exoquery.plugin.locationXR
-import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.ownerFunName
 import io.exoquery.plugin.ownerHasAnnotation
@@ -33,7 +31,6 @@ import io.exoquery.plugin.transform.CX
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
-import org.jetbrains.kotlin.com.intellij.lang.java.parser.ExpressionParser
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -42,63 +39,6 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.hasAnnotation
-import org.jetbrains.kotlin.name.FqName
-
-object ParseAction {
-  context(CX.Scope, CX.Parsing, CX.Symbology)
-  fun parse(expr: IrExpression) =
-    on(expr).match<XR.Action> (
-      // the `insert` part of capture { insert<Person> { set ... } }
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is.of("insert", "update"), Is()]).thenThis { _, lambdaRaw ->
-        val insertType = this.typeArguments.first() ?: parseError("Could not find the type argument of the insert/update call", expr)
-        on(lambdaRaw).match(
-          case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).then { blockBody ->
-            val compositeType = CompositeType.from(symName) ?: parseError("Unknown composite type: ${symName}", expr)
-            parseActionComposite(blockBody, insertType, compositeType)
-          }
-        ) ?: parseError("The statement inside of a insert/update block must be a single `set` or `setParams` expression followed by excluded, returning/Keys, or onConflict", lambdaRaw)
-      },
-    )
-
-  // TODO when going back to the Expression parser the 'this' pointer needs to be on the list of local symbols
-  context(CX.Scope, CX.Parsing, CX.Symbology)
-  private fun parseActionComposite(expr: IrExpression, inputType: IrType, compositeType: CompositeType): XR.Action =
-    // the i.e. insert { set(...) } or update { set(...) }
-    on(expr).match<XR.Action>(
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is("set"), Ir.Vararg[Is()]]).then { _, (assignments) ->
-        val ent = ParseQuery.parseEntity(inputType, expr.location())
-        val parsedAssignments = assignments.map { ParseAction.parseAssignment(it) }
-        when (compositeType) {
-          CompositeType.Insert -> XR.Insert(ent, parsedAssignments, listOf(), expr.loc)
-          CompositeType.Update -> XR.Update(ent, parsedAssignments, expr.loc)
-        }
-      }
-    ) ?: parseError("Could not parse the expression inside of the action", expr)
-
-  context(CX.Scope, CX.Parsing, CX.Symbology)
-  private fun parseAssignment(expr: IrExpression): XR.Assignment =
-    on(expr).match<XR.Assignment>(
-      case(ExtractorsDomain.Call.`x to y`[Is(), Is()]).thenThis { left, right ->
-        val property = ParseExpression.parse(left).let { it as? XR.Property ?: parseError("Could not parse the left side of the assignment: ${it.showRaw()}", left) }
-        XR.Assignment(property, ParseExpression.parse(right), expr.loc)
-      }
-    ) ?: parseError("Could not parse the assignment", expr)
-
-  sealed interface CompositeType {
-    object Insert: CompositeType; object Update: CompositeType
-
-    companion object {
-      fun from(str: String) =
-        when (str) {
-          "insert" -> ParseAction.CompositeType.Insert
-          "update" -> ParseAction.CompositeType.Update
-          else -> null
-        }
-    }
-  }
-
-}
 
 object ParseQuery {
 
@@ -158,7 +98,7 @@ object ParseQuery {
           },
 
           case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym->
-            XR.Ident(sym.safeName, TypeParser.of(this), this.locationXR())
+            XR.Ident(sym.sanitizedSymbolName(), TypeParser.of(this), this.locationXR())
           },
           // If we couldn't parse the expression treat (and it is indeed a SqlQuery<*> treat it as dynamic i.e. non-uprootable
           // Since there's no splice-operator for SqlQuery like there is .use for SqlExpression (i.e. the variable/function-call is used directly)

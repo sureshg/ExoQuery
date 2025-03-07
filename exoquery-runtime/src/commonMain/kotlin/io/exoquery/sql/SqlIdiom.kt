@@ -59,6 +59,10 @@ abstract class SqlIdiom: HasPhasePrinting {
     return q.token
   }
 
+  fun processAction(xr: XR.Action): Token {
+    return xr.token
+  }
+
   fun translate(xr: XR.Query) =
     prepareQuery(xr).token.show(Renderer(true, true, null))
 
@@ -714,4 +718,91 @@ abstract class SqlIdiom: HasPhasePrinting {
 //      stmt"${scopedTokenizer(ast)}.${TokenizeProperty(name, prefix, strategy, renameable)}"
 //    }
 // }
+
+  val XR.Action.token get(): Token =
+    when (this) {
+      is XR.Insert -> this.token
+      is XR.Update -> TODO()
+      is XR.Delete -> TODO()
+      is XR.OnConflict -> TODO()
+      is XR.Returning -> TODO()
+    }
+
+  val XR.Insert.token get(): Token = run {
+    val query = this.query as? XR.Entity ?: xrError("Insert query must be an entity but found: ${this.query}")
+    val (columns, values) = columnsAndValues(assignments)
+    +"INSERT INTO ${query.token}${` AS (table)`(alias)} (${columns.mkStmt(", ")}) VALUES (${values.mkStmt(", ")})"
+
+//    case Insert(entity: Entity, assignments) =>
+//        val (table, columns, values) = insertInfo(insertEntityTokenizer, entity, assignments)
+//        stmt"INSERT INTO $table${` AS [table]`} (${columns
+//            .mkStmt(",")}) VALUES ${ValuesClauseToken(stmt"(${values.mkStmt(", ")})")}"
+  }
+
+  // AS [table] specifically for actions (where for some dialects it shouldn't even be there)
+  fun ` AS (table)`(alias: XR.Ident): Token =
+    if (alias.isThisRef()) emptyStatement
+    else
+      when (useActionTableAliasAs) {
+        ActionTableAliasBehavior.UseAs -> +" AS ${alias.token}"
+        ActionTableAliasBehavior.SkipAs -> +" ${alias.token}"
+        ActionTableAliasBehavior.Hide -> emptyStatement
+      }
+
+  // Scala
+//  private[getquill] def ` AS [table]`(implicit astTokenizer: Tokenizer[Ast], strategy: NamingStrategy) =
+//  useActionTableAliasAs match {
+//    case ActionTableAliasBehavior.UseAs =>
+//    actionAlias.map(alias => stmt" AS ${alias.token}").getOrElse(emptyStatement)
+//    case ActionTableAliasBehavior.SkipAs => actionAlias.map(alias => stmt" ${alias.token}").getOrElse(emptyStatement)
+//    case ActionTableAliasBehavior.Hide   => emptyStatement
+//  }
+
+
+  fun columnsAndValues(assignments: List<XR.Assignment>): Pair<List<Token>, List<Token>> {
+    val columns = assignments.map { assignment ->
+      when (val property = assignment.property) {
+        is XR.Property -> tokenizeColumn(property)
+        else -> xrError("Invalid assignment value of ${assignment}. Must be a Property object.")
+      }
+    }
+    val values = assignments.map { assignment -> scopedTokenizer(assignment.value) }
+    return columns to values
+  }
+
+  fun tokenizeColumn(property: XR.Property): Token =
+    when {
+      property.of is XR.Ident && property.of.isThisRef() -> property.name.token
+      property.of is XR.Property -> "${tokenizeColumn(property.of)}.${property.name}".token
+      else -> xrError("Invalid column setter: ${property.showRaw()}")
+    }
+
+// Scala
+//  private[getquill] def columnsAndValues(
+//  assignments: List[Assignment]
+//  )(implicit astTokenizer: Tokenizer[Ast], strategy: NamingStrategy) = {
+//    val columns =
+//      assignments.map(assignment =>
+//    assignment.property match {
+//      case Property.Opinionated(_, key, renameable, visibility) => tokenizeColumn(strategy, key, renameable).token
+//      case _                                                    => fail(s"Invalid assignment value of ${assignment}. Must be a Property object.")
+//    }
+//    )
+//    val values = assignments.map(assignment => scopedTokenizer(assignment.value))
+//    (columns, values)
+//  }
+
+
+
+  // Scala
+//  private def insertInfo(
+//  insertEntityTokenizer: Tokenizer[Entity],
+//  entity: Entity,
+//  assignments: List[Assignment]
+//  )(implicit astTokenizer: Tokenizer[Ast], strategy: NamingStrategy) = {
+//    val table             = insertEntityTokenizer.token(entity)
+//    val (columns, values) = columnsAndValues(assignments)
+//    (table, columns, values)
+//  }
+
 }

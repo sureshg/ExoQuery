@@ -7,8 +7,6 @@ import io.exoquery.parseError
 import io.exoquery.plugin.trees.*
 import io.exoquery.plugin.printing.dumpSimple
 import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 
 class TransformCapturedQuery(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
@@ -55,12 +53,7 @@ class TransformCapturedQuery(val superTransformer: VisitTransformExpressions): T
       // val y = capture { SqlExpression(XR.Int(123), ...).use + 1 } which will be done by TransformProjectCapture
       // which is called by the superTransformer.visitBlockBody
       val body = superTransformer.recurse(bodyExpr)
-
-      // TODO Needs to convey SourceLocation coordinates, think I did this in terpal-sql somehow
-      val p = Parser.scoped { Parser.parseQueryFromBlock(body) }
-
-      //warn("------------ Parsed Query: ------------\n${p.first.showRaw()}\n--------------------------\n${body.dumpSimple()}")
-      p
+      Parser.scoped { Parser.parseQueryFromBlock(body) }
     }
   }
 }

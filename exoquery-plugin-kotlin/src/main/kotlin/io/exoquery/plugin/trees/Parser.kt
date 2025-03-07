@@ -10,7 +10,6 @@ import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.transform.CX
 import io.exoquery.xr.*
-import org.jetbrains.kotlin.com.intellij.lang.java.parser.ExpressionParser
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
@@ -27,6 +26,9 @@ object Parser {
   fun <X> scoped(parse: context(CX.Scope, CX.Symbology, CX.Parsing) () -> X): X =
     parse(this@Scope, this@Symbology, CX.Parsing())
 
+  context(CX.Scope, CX.Symbology, CX.Parsing)
+  fun parseAction(expr: IrExpression): Pair<XR.Action, DynamicsAccum> =
+    ParseAction.parse(expr) to binds
 
   context(CX.Scope, CX.Symbology, CX.Parsing) fun parseFunctionBlockBody(blockBody: IrBlockBody): Pair<XR.Expression, DynamicsAccum> =
     ParseExpression.parseFunctionBlockBody(blockBody) to binds
@@ -65,7 +67,9 @@ object Parser {
 
 context(CX.Scope, CX.Parsing, CX.Symbology)
 fun IrValueParameter.makeIdent() =
-  XR.Ident(this.name.asString().sanitizeIdentName(), TypeParser.of(this), this.locationXR())
+  XR.Ident(this.unadulteratedName.sanitizeIdentName(), TypeParser.of(this), this.locationXR())
+
+
 
 fun IrFunctionExpression.firstParam() =
   this.function.simpleValueParams[0]

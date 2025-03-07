@@ -49,6 +49,7 @@ import io.exoquery.xr.isNumeric
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
+import org.jetbrains.kotlin.backend.common.lower.loops.isInductionVariable
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
@@ -319,7 +320,7 @@ object ParseExpression {
 
       // Other situations where you might have an identifier which is not an SqlVar e.g. with variable bindings in a Block (inside an expression)
       case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym ->
-        XR.Ident(sym.safeName.sanitizeIdentName(), TypeParser.of(this), this.locationXR()) // this.symbol.owner.type
+        XR.Ident(sym.sanitizedSymbolName(), TypeParser.of(this), this.locationXR()) // this.symbol.owner.type
       },
       case(Ir.Const[Is()]).thenThis {
         parseConst(this)

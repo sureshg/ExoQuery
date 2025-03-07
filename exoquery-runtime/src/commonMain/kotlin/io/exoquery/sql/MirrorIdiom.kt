@@ -14,11 +14,6 @@ import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import io.exoquery.xr.id
 
-fun String.sanitizeName() =
-  if (this.contains("<") || this.contains(">"))
-    "`${this}`"
-  else
-    this
 
 fun String.uncapitalize() = replaceFirstChar { it.lowercaseChar() }
 
@@ -111,7 +106,8 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
   val XR.Variable.token: Token get() = stmt("val ${name.token} = ${this.rhs.token}")
   val XR.Branch.token: Token get() = stmt("${cond.token} -> ${then.token}")
 
-  val XR.Ident.token: Token get() = name.sanitizeName().token
+  val XR.Ident.token: Token get() = name
+    .token
 
   val XR.JoinType.token: Token get() = simpleName.token
 

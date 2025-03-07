@@ -257,14 +257,14 @@ object Ir {
   object Variable {
     context (CX.Scope) operator fun <AP: Pattern<String>, BP: Pattern<B>, B: IrExpression> get(name: AP, rhs: BP) =
       customPattern2("Ir.Variable", name, rhs) { it: IrVariable ->
-        it.initializer?.let { init -> Components2(it.name.asString(), init) }
+        it.initializer?.let { init -> Components2(it.name.sanitizedSymbolName(), init) }
       }
   }
 
   object Field {
     context (CX.Scope) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(name: AP, rhs: BP) =
       customPattern2("Ir.Field", name, rhs) { it: IrField ->
-        it.initializer?.let { initExprBody -> Components2(it.name.asString(), initExprBody.expression) }
+        it.initializer?.let { initExprBody -> Components2(it.name.sanitizedSymbolName(), initExprBody.expression) }
       }
   }
 
@@ -672,7 +672,7 @@ object Ir {
           // if there is a reciever and a single value property then this is a property call and we return it, otherwise it is not
           when {
             isProperty && reciever != null && it.simpleValueArgs.all { it != null } ->
-              Components2(reciever, PropertyKind.Named(it.symbol.safeName))
+              Components2(reciever, PropertyKind.Named(it.symbol.sanitizedSymbolName()))
 
             isComponent() ->
               // Note that component is actually a 1-based index so need to subtract 1 to make it line up XRType field names (which we choose from based on it)

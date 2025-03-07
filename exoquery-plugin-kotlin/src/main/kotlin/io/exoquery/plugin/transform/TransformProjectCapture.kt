@@ -4,6 +4,8 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.caseEarly
 import io.decomat.match
+import io.exoquery.SqlAction
+import io.exoquery.SqlActionBatch
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.parseError
@@ -11,6 +13,7 @@ import io.exoquery.plugin.isClass
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.trees.Ir
+import io.exoquery.plugin.trees.SqlActionExpr
 import io.exoquery.plugin.trees.SqlExpressionExpr
 import io.exoquery.plugin.trees.SqlQueryExpr
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
@@ -29,6 +32,8 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions): 
   sealed interface ExprType {
     data object Expr: ExprType
     data object Query: ExprType
+    data object Action: ExprType
+    data object ActionBatch: ExprType
   }
 
   context(CX.Scope, CX.Builder, CX.Symbology)
@@ -36,6 +41,8 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions): 
     when {
       this.type.isClass<SqlExpression<*>>() -> ExprType.Expr
       this.type.isClass<SqlQuery<*>>() -> ExprType.Query
+      this.type.isClass<SqlAction<*, *>>() -> ExprType.Action
+      this.type.isClass<SqlActionBatch<*, *>>() -> ExprType.ActionBatch // Don't have the uprootable yet
       //else -> parseError("The expression is not a SqlExpression or SqlQuery, (its type is ${this.type.dumpKotlinLike()} which cannot be projected)", this)
       else -> null
     }
@@ -77,6 +84,12 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions): 
           },
           caseEarly(exprType == ExprType.Query)(Ir.SimpleFunction.withReturnExpression[SqlQueryExpr.Uprootable[Is()]]).then { (uprootableExpr) ->
             uprootableExpr.replant(expression)
+          },
+          caseEarly(exprType == ExprType.Action)(Ir.SimpleFunction.withReturnExpression[SqlActionExpr.Uprootable[Is()]]).then { (uprootableExpr) ->
+            uprootableExpr.replant(expression)
+          },
+          caseEarly(exprType == ExprType.ActionBatch)(Ir.SimpleFunction.withReturnExpression[SqlActionExpr.Uprootable[Is()]]).then { (uprootableExpr) ->
+            uprootableExpr.replant(expression)
           }
         )
       },
@@ -95,7 +108,10 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions): 
           },
           caseEarly(exprType == ExprType.Query)(Ir.Field[Is(), SqlQueryExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
             uprootableExpr.replant(expression)
-          }
+          },
+          caseEarly(exprType == ExprType.Action)(Ir.Field[Is(), SqlActionExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
+            uprootableExpr.replant(expression)
+          },
         )
       },
       case(Ir.GetValue[Is()]).thenIf { expression.isContainerOfXR() }.then { symbol ->
@@ -118,7 +134,10 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions): 
           },
           caseEarly(exprType == ExprType.Query)(Ir.Variable[Is(), SqlQueryExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
             uprootableExpr.replant(expression)
-          }
+          },
+          caseEarly(exprType == ExprType.Action)(Ir.Variable[Is(), SqlActionExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
+            uprootableExpr.replant(expression)
+          },
         )
       }
     ) ?: run {

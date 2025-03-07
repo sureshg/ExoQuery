@@ -17,6 +17,9 @@ fun XR.Query.swapTags(tagMap: Map<BID, BID>): XR.Query =
 fun XR.Expression.swapTags(tagMap: Map<BID, BID>): XR.Expression =
   SwapTagsTransformer(tagMap).invoke(this)
 
+fun XR.Action.swapTags(tagMap: Map<BID, BID>): XR.Action =
+  SwapTagsTransformer(tagMap).invoke(this)
+
 internal class SwapTagsTransformer(tagMap: Map<BID, BID>): TransformXR(
   transformExpression = {
     with (it) {

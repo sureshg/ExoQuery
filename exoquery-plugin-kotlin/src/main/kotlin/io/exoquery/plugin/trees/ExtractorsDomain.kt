@@ -9,23 +9,18 @@ import io.exoquery.annotation.ExoCaptureExpression
 import io.exoquery.annotation.ExoCaptureSelect
 import io.exoquery.annotation.ExoUseExpression
 import io.exoquery.plugin.*
-import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.transform.BinaryOperators
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.plugin.transform.UnaryOperators
-import io.exoquery.terpal.Interpolator
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.UnaryOperator
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
-import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.classFqName
-import kotlin.collections.get
-import kotlin.comparisons.then
 
 object ExtractorsDomain {
 
@@ -196,6 +191,45 @@ object ExtractorsDomain {
       context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
         customPattern1("Call.CaptureSelect", call) { it: IrCall ->
           if (it.ownerHasAnnotation<ExoCaptureSelect>() && it.type.isClass<SqlQuery<*>>()) {
+            Components1(it)
+          } else {
+            null
+          }
+        }
+    }
+
+    object CaptureAction {
+      object LambdaOutput {
+        context(CX.Scope) operator fun <AP: Pattern<IrExpression>> get(call: AP) =
+          customPattern1("Call.CaptureAction.LambdaBody", call) { it: IrCall ->
+            if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlAction<*, *>>()) {
+              val arg = it.simpleValueArgs.first() ?: parseError("CaptureAction must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
+              arg.match(
+                // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
+                case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { output ->
+                  Components1(output)
+                }
+              )
+            } else {
+              null
+            }
+          }
+      }
+
+      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+        customPattern1("Call.CaptureAction", call) { it: IrCall ->
+          if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlAction<*, *>>()) {
+            Components1(it)
+          } else {
+            null
+          }
+        }
+    }
+
+    object CaptureActionBatch {
+      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+        customPattern1("Call.CaptureBatchAction", call) { it: IrCall ->
+          if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlActionBatch<*, *>>()) {
             Components1(it)
           } else {
             null
