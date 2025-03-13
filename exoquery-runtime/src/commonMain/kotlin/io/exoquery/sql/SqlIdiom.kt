@@ -739,6 +739,51 @@ abstract class SqlIdiom: HasPhasePrinting {
 //            .mkStmt(",")}) VALUES ${ValuesClauseToken(stmt"(${values.mkStmt(", ")})")}"
   }
 
+  val List<XR.Assignment>.token get(): Token = run {
+    val (columns, values) = columnsAndValues(this)
+    (columns zip values).map { (column, value) -> +"${column.token} = ${value.token}" }.mkStmt(", ")
+  }
+
+  // TODO possible variable-shadowing issues might require beta-reducing out the alias of the inner query first.
+  //      Do that instead of creating an ExternalIdent like was done in Quill #1509.
+  val XR.Returning.token get(): Token =
+    when (output) {
+      // In Postgres-style RETURNING clause the RETURNING is always the last thing to be used so we can
+      // use the action renderes first. In SQL-server that uses an OUTPUT clause this is not the case
+      // and we need to repeat some logic here.
+      is XR.Returning.Kind.Expression ->
+        +"${action.token} RETURNING ${scopedTokenizer(output.expr)}"
+      // This is when an API like insert(...).returningColumns(...) is used.
+      // In this case the PrepareStatement.getGeneratedKeys() should be used but there should
+      // be no specific RETURNING clause in the SQL.
+      is XR.Returning.Kind.Keys ->
+        action.token
+    }
+
+  val XR.Delete.token get(): Token = run {
+    fun deleteBase() = +"DELETE FROM ${query.token}${` AS (table)`(alias)}"
+    when {
+      query is XR.Filter && query.head is XR.Entity ->
+        deleteBase()
+      query is XR.Entity ->
+        +"${deleteBase()} WHERE ${query.token}"
+      else ->
+        xrError("Invalid query-clause in a Delete. It can only be a XR Filter or Entity but was:\n${query.showRaw()}")
+    }
+  }
+
+  val XR.Update.token get(): Token = run {
+    fun updateBase() = +"UPDATE ${query.token}${` AS (table)`(alias)} SET ${assignments.token}"
+    when {
+      query is XR.Filter && query.head is XR.Entity ->
+        updateBase()
+      query is XR.Entity ->
+        +"${updateBase()} WHERE ${query.token}"
+      else ->
+        xrError("Invalid query-clause in an Update. It can only be a XR Filter or Entity but was:\n${query.showRaw()}")
+    }
+  }
+
   // AS [table] specifically for actions (where for some dialects it shouldn't even be there)
   fun ` AS (table)`(alias: XR.Ident): Token =
     if (alias.isThisRef()) emptyStatement

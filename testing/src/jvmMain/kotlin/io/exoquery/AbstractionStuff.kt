@@ -2,41 +2,78 @@ package io.exoquery
 
 import io.exoquery.annotation.CapturedFunction
 
+//hello
+
+
+
+
+interface HasId { val id: Int }
+data class Person(override val id: Int, val name: String, val age: Int): HasId
+data class Martian(override val id: Int, val title: String): HasId
+data class Address(val ownerId: Int, val street: String, val zip: Int)
 
 fun main() {
-  println("helloo")
-
-  data class People(val id: Int, val name: String, val age: Int)
-  data class Address(val ownerId: Int, val street: String, val city: String)
-
-  // why does this not work when I use @CapturedFunction? Does the projection not work with scaffolding? need to look into that
-  // TODO make a warning about how .build cannot be called on a @Captured function?
-  // TODO when a scaffolded function has no query-containers in it's positions make a warning (or error?)
-
-
-  fun peopleAndAddresses() =
+  @CapturedFunction
+  fun <T: HasId> myFunction(input: SqlQuery<T>, selector: (T) -> String) =
     capture.select {
-      val p = from(Table<People>())
+      val p = from(input)
       val a = join(Table<Address>()) { a -> a.ownerId == p.id }
-      p to a
+      selector(p) to a
     }
-
-  peopleAndAddresses().build<PostgresDialect>()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  val myQuery = capture {
+    val martians =
+      myFunction(Table<Martian>().filter { it.title == "Maartok" }) { m -> m.title }
+    val people =
+      myFunction(Table<Person>().filter { it.name == "Joe" }) { p -> p.name }
+    martians unionAll people
+  }
+  println(myQuery.buildPretty<PostgresDialect>().value)
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// hello

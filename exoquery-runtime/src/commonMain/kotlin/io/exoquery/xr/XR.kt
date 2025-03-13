@@ -966,7 +966,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class Delete(@Slot val query: XR.Query, override val loc: Location = Location.Synth): Action, PC<Delete> {
+  data class Delete(@Slot val query: XR.Query, @CS val alias: XR.Ident, override val loc: Location = Location.Synth): Action, PC<Delete> {
     @Transient override val productComponents = productOf(this, query)
     override val type: XRType get() = query.type
     companion object {}
