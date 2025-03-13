@@ -988,8 +988,8 @@ sealed interface XR {
    */
   @Serializable
   @Mat
-  data class Returning(@Slot val action: XR.Action, @MSlot val alias: XR.Ident, @Slot val output: Kind, override val loc: Location = Location.Synth): Action, PC<Returning> {
-    @Transient override val productComponents = productOf(this, action, alias, output)
+  data class Returning(@Slot val action: XR.Action, @Slot val output: Kind, override val loc: Location = Location.Synth): Action, PC<Returning> {
+    @Transient override val productComponents = productOf(this, action, output)
     override val type: XRType get() = output.type
     companion object {}
     override fun toString() = show()
@@ -1001,7 +1001,8 @@ sealed interface XR {
     @Serializable sealed interface Kind {
       val type: XRType
 
-      @Serializable data class Expression(val expr: XR.Expression): Kind { override val type get() = expr.type }
+      // the .returning { col -> stuff } clause
+      @Serializable data class Expression(val alias: XR.Ident, val expr: XR.Expression): Kind { override val type get() = expr.type }
 
       // Specifically when APIs that IMPLICITLY return columns are used e.g. PreparedStatement.generatedKeys
       @Serializable data class Keys(val keys: List<XR.Property>): Kind { override val type by lazy { XR.Product.TupleSmartN(keys).type } }

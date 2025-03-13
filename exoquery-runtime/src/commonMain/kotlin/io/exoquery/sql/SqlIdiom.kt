@@ -50,6 +50,8 @@ abstract class SqlIdiom: HasPhasePrinting {
         .andThen("RemoveExtraAlias") { RemoveExtraAlias()(it) }
         .invoke(sqlQuery)
 
+    // TODO need to implement free-variables checking
+
     return output
   }
 

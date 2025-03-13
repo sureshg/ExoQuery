@@ -41,7 +41,7 @@ object ParseAction {
   private fun parseActionComposite(expr: IrExpression, inputType: IrType, actionAlias: XR.Ident, compositeType: CompositeType): XR.Action =
     // the i.e. insert { set(...) } or update { set(...) }
     on(expr).match<XR.Action>(
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is.Companion("set"), Ir.Vararg[Is.Companion()]]).then { _, (assignments) ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is("set"), Ir.Vararg[Is.Companion()]]).then { _, (assignments) ->
         val ent = ParseQuery.parseEntity(inputType, expr.location())
         val parsedAssignments = assignments.map { parseAssignment(it) }
         when (compositeType) {
