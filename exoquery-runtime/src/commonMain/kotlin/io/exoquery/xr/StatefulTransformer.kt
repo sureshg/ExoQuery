@@ -327,11 +327,12 @@ interface StatefulTransformer<T> {
         is Update -> {
           val (at, att) = invoke(query)
           val (bt, btt) = att.applyList(assignments) { t, v -> t.invoke(v) }
-          Update.cs(at, alias, bt) to btt
+          val (ct, ctt) = btt.applyList(exclusions) { t, v -> t.invoke(v) }
+          Update.cs(at, alias, bt, ct) to btt
         }
         is Delete -> {
           val (at, att) = invoke(query)
-          Delete.cs(at) to att
+          Delete.cs(at, alias) to att
         }
         is OnConflict -> {
           val (at, att) = invoke(insert)
@@ -342,7 +343,7 @@ interface StatefulTransformer<T> {
         is Returning -> {
           val (at, att) = invoke(action)
           val (bt, btt) = invoke(output)
-          Returning.cs(at, alias, bt) to btt
+          Returning.cs(at, bt) to btt
         }
       }
     }
@@ -350,8 +351,9 @@ interface StatefulTransformer<T> {
   operator fun invoke(xr: XR.Returning.Kind): Pair<XR.Returning.Kind, StatefulTransformer<T>> =
     when (xr) {
       is Returning.Kind.Expression -> {
-        val (at, att) = invoke(xr.expr)
-        Returning.Kind.Expression(at) to att
+        val (at, att) = invokeIdent(xr.alias)
+        val (bt, btt) = invoke(xr.expr)
+        Returning.Kind.Expression(at, bt) to btt
       }
       is Returning.Kind.Keys -> {
         val (at, att) = applyList(xr.keys) { t, v -> t.invoke(v) }

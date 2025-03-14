@@ -724,10 +724,10 @@ abstract class SqlIdiom: HasPhasePrinting {
   val XR.Action.token get(): Token =
     when (this) {
       is XR.Insert -> this.token
-      is XR.Update -> TODO()
-      is XR.Delete -> TODO()
+      is XR.Update -> this.token
+      is XR.Delete -> this.token
       is XR.OnConflict -> TODO()
-      is XR.Returning -> TODO()
+      is XR.Returning -> this.token
     }
 
   val XR.Insert.token get(): Token = run {

@@ -164,16 +164,16 @@ val Insert.Insert get() = this
 fun Insert.cs(query: XR.Query, alias: XR.Ident, assignments: List<XR.Assignment>, exclusions: List<XR.Property>) = io.exoquery.xr.XR.Insert.csf(query, alias, assignments, exclusions)(this)
 
 val Update.Update get() = this
-fun Update.cs(query: XR.Query, alias: XR.Ident, assignments: List<XR.Assignment>) = io.exoquery.xr.XR.Update.csf(query, alias, assignments)(this)
+fun Update.cs(query: XR.Query, alias: XR.Ident, assignments: List<XR.Assignment>, exclusions: List<XR.Property>) = io.exoquery.xr.XR.Update.csf(query, alias, assignments, exclusions)(this)
 
 val Delete.Delete get() = this
-fun Delete.cs(query: XR.Query) = io.exoquery.xr.XR.Delete.csf(query)(this)
+fun Delete.cs(query: XR.Query, alias: XR.Ident) = io.exoquery.xr.XR.Delete.csf(query, alias)(this)
 
 val OnConflict.OnConflict get() = this
 fun OnConflict.cs(action: XR.Insert, target: XR.OnConflict.Target, resolution: XR.OnConflict.Resolution) = io.exoquery.xr.XR.OnConflict.csf(action, target, resolution)(this)
 
 val Returning.Returning get() = this
-fun Returning.cs(action: XR.Action, alias: XR.Ident, output: Returning.Kind) = io.exoquery.xr.XR.Returning.csf(action, alias, output)(this)
+fun Returning.cs(action: XR.Action, output: Returning.Kind) = io.exoquery.xr.XR.Returning.csf(action, output)(this)
 
 val CustomQueryRef.CustomQueryRef get() = this
 fun CustomQueryRef.cs(customQuery: XR.CustomQuery) = io.exoquery.xr.XR.CustomQueryRef.csf(customQuery)(this)

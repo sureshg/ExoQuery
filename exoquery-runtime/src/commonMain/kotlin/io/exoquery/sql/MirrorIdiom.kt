@@ -74,7 +74,7 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
 
   val XR.Returning.token: Token get() =
     when (this.output) {
-      is XR.Returning.Kind.Expression -> stmt("${action.token}.returning((${alias.token}) => ${this.output.expr.token})")
+      is XR.Returning.Kind.Expression -> stmt("${action.token}.returning((${this.output.alias.token}) => ${this.output.expr.token})")
       is XR.Returning.Kind.Keys -> stmt("${action.token}.returningKeys(${this.output.keys.token { it.token }})")
     }
 

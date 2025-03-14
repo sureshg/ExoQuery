@@ -13,7 +13,9 @@ fun main() {
 
   val act =
     capture {
-      insert<Person> { set(name to "Joe", age to 123) }
+      // TODO need to elimiate the "p" in p.id because it does not render in the action
+      //      or need to add it to the action itself
+      insert<Person> { set(name to "Joe", age to 123) }.returning { p -> p.id }
     }
 
   println("--------------- XR ---------------\n${act.xr.showRaw()}")

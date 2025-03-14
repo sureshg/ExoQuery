@@ -107,21 +107,21 @@ interface StatelessTransformer {
     with(xr) {
       when (this) {
         is Insert -> invoke(this)
-        is Update -> Update.csf(invoke(query), alias, assignments.map { invoke(it) })(this)
-        is Delete -> Delete.csf(invoke(query))(this)
+        is Update -> Update.csf(invoke(query), invokeIdent(alias), assignments.map { invoke(it) }, exclusions.map { invoke(it)})(this)
+        is Delete -> Delete.csf(invoke(query), invokeIdent(alias))(this)
         is OnConflict -> invoke(this)
-        is Returning -> Returning.csf(invoke(action), alias, invoke(output))(this)
+        is Returning -> Returning.csf(invoke(action), invoke(output))(this)
       }
     }
 
   operator fun invoke(xr: XR.Returning.Kind): XR.Returning.Kind =
     when (xr) {
-      is XR.Returning.Kind.Expression -> XR.Returning.Kind.Expression(invoke(xr.expr))
+      is XR.Returning.Kind.Expression -> XR.Returning.Kind.Expression(invokeIdent(xr.alias), invoke(xr.expr))
       is XR.Returning.Kind.Keys -> XR.Returning.Kind.Keys(xr.keys.map { invoke(it) })
     }
 
   operator fun invoke(xr: XR.Insert): XR.Insert =
-    Insert.csf(invoke(xr.query), xr.alias, xr.assignments.map { invoke(it) }, xr.exclusions.map { invoke(it) })(xr)
+    Insert.csf(invoke(xr.query), invokeIdent(xr.alias), xr.assignments.map { invoke(it) }, xr.exclusions.map { invoke(it) })(xr)
 
   operator fun invoke(xr: XR.Assignment): XR.Assignment =
     Assignment.csf(invoke(xr.property), invoke(xr.value))(xr)
