@@ -19,6 +19,9 @@ import io.exoquery.annotation.ParamCustom
 import io.exoquery.annotation.ParamCustomValue
 import io.exoquery.annotation.ParamPrimitive
 import io.exoquery.annotation.ParamStatic
+import io.exoquery.innerdsl.SqlActionFilterable
+import io.exoquery.innerdsl.set
+import io.exoquery.innerdsl.setParams
 import io.exoquery.serial.ParamSerializer
 import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
@@ -81,8 +84,7 @@ interface StringSqlDsl {
 // Use for interpolate blocks e.g. free("foo bar").<String>() where free("foo bar") is a FreeBlock instance
 // no values of this should ever be created (that is called a "phantom type" in various circles)
 
-sealed interface SetValues
-sealed interface SqlActionFilterable<Input, Output>
+
 
 
 sealed interface CapturedBlockInternal {
@@ -92,32 +94,26 @@ sealed interface CapturedBlockInternal {
 
 sealed interface FreeBlock
 interface CapturedBlock {
+
   @Dsl fun free(block: String): FreeBlock = errorCap("Compile time plugin did not transform the tree")
 
   @Dsl fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
 
-  @Dsl @ExoInsert fun <T> insert(valueBlock: (T).() -> SetValues): SqlAction<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
-  @Dsl @ExoUpdate fun <T> update(valueBlock: (T).() -> SetValues): SqlActionFilterable<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
+  @Dsl @ExoInsert fun <T> insert(valueBlock: (T).() -> set): SqlAction<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
+  @Dsl @ExoUpdate fun <T> update(valueBlock: (T).() -> set): SqlActionFilterable<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
   @Dsl @ExoDelete fun <T> delete(): SqlActionFilterable<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
 
   @Dsl fun <T, R> SqlAction<T, Long>.returning(expression: (T) -> R): SqlAction<T, R> = errorCap("The `returning` expression of the Query was not inlined")
 
   // Specifically for doing generated-key return that is implicit i.e. where you use PreparedStatement.getGeneratedKeys() without an explicit RETURNING/OUTPUT clause in the SQL
-  @Dsl fun <Input, Output, R1> SqlAction<Input, Output>.retruningKeys(column1: R1): SqlAction<Input, R1> = errorCap("The `returning` expression of the Query was not inlined")
-  @Dsl fun <Input, Output, R1, R2> SqlAction<Input, Output>.retruningKeys(column1: R1, column2: R2): SqlAction<Input, Pair<R1, R2>> = errorCap("The `returning` expression of the Query was not inlined")
-  @Dsl fun <Input, Output, R1, R2, R3> SqlAction<Input, Output>.retruningKeys(column1: R1, column2: R2, column3: R3): SqlAction<Input, Triple<R1, R2, R3>> = errorCap("The `returning` expression of the Query was not inlined")
-  @Dsl fun <Input, Output, R1, R2, R3, R4> SqlAction<Input, Output>.retruningKeys(column1: R1, column2: R2, column3: R3, column4: R4): SqlAction<Input, Tuple4<R1, R2, R3, R4>> = errorCap("The `returning` expression of the Query was not inlined")
-  @Dsl fun <Input, Output, R1, R2, R3, R4, R5> SqlAction<Input, Output>.retruningKeys(column1: R1, column2: R2, column3: R3, column4: R4, column5: R5): SqlAction<Input, Tuple5<R1, R2, R3, R4, R5>> = errorCap("The `returning` expression of the Query was not inlined")
-  @Dsl fun <Input, Output, R1, R2, R3, R4, R5, R6> SqlAction<Input, Output>.retruningKeys(column1: R1, column2: R2, column3: R3, column4: R4, column5: R5, column6: R6): SqlAction<Input, Tuple6<R1, R2, R3, R4, R5, R6>> = errorCap("The `returning` expression of the Query was not inlined")
-  @Dsl fun <Input, Output, R1, R2, R3, R4, R5, R6, R7> SqlAction<Input, Output>.retruningKeys(column1: R1, column2: R2, column3: R3, column4: R4, column5: R5, column6: R6, column7: R7): SqlAction<Input, Tuple7<R1, R2, R3, R4, R5, R6, R7>> = errorCap("The `returning` expression of the Query was not inlined")
-
+  @Dsl fun <Input, Output, R1> SqlAction<Input, Output>.retruningKeys(columns: List<Any>): SqlAction<Input, R1> = errorCap("The `returning` expression of the Query was not inlined")
   @Dsl fun <Input, Output> SqlActionFilterable<Input, Output>.filter(block: (Input) -> Boolean): SqlAction<Input, Output> = errorCap("The `where` expression of the Query was not inlined")
   // If the user is performing a Update without a filter we want this to be stated explicitly
   @Dsl fun <Input, Output> SqlActionFilterable<Input, Output>.all(): SqlAction<Input, Output> = errorCap("The `where` expression of the Query was not inlined")
 
   /** Only for insert and update */
-  @Dsl fun set(vararg values: Pair<Any, Any>): SetValues = errorCap("The `values` expression of the Query was not inlined")
-  @Dsl fun <T> setParamsFrom(value: T): SetValues = errorCap("The `values` expression of the Query was not inlined")
+  @Dsl fun set(vararg values: Pair<Any, Any>): set = errorCap("The `values` expression of the Query was not inlined")
+  @Dsl fun <T> setParams(value: T): setParams = errorCap("The `values` expression of the Query was not inlined")
 
   operator fun <T> FreeBlock.invoke(): T = errorCap("The `invoke` expression of the Query was not inlined")
   fun <T> FreeBlock.asPure(): T = errorCap("The `invoke` expression of the Query was not inlined")

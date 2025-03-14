@@ -26,7 +26,8 @@ object Parser {
   fun <X> scoped(parse: context(CX.Scope, CX.Symbology, CX.Parsing) () -> X): X =
     parse(this@Scope, this@Symbology, CX.Parsing())
 
-  context(CX.Scope, CX.Symbology, CX.Parsing)
+  // The action-parser requires a builder context to build the entity from setParams
+  context(CX.Scope, CX.Symbology, CX.Parsing, CX.Builder)
   fun parseAction(expr: IrExpression): Pair<XR.Action, DynamicsAccum> =
     ParseAction.parse(expr) to binds
 

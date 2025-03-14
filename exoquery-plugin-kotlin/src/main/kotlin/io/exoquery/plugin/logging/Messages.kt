@@ -18,6 +18,25 @@ import org.jetbrains.kotlin.ir.util.*
 
 object Messages {
 
+val InvalidColumnExclusions =
+"""
+Invalid columns were used in the `excluding` function.
+The `excluding` function is called from an `insert` or `update` action when a setParams function
+is used, in order to exlcude generated-columns from the insert or update query. For example:
+
+data class Person(val id: Int, val name: String, val age: Int)
+val joe = Person(1, "Joe", 123)
+
+val insertPerson = capture {
+  insert<Person> {
+    setParams(joe).excluding(id)
+  }
+}
+
+This will generate a insert query that skips the `id` column.
+INSERT INTO Person (name, age) VALUES (?, ?)
+""".trimIndent()
+
 fun InvalidSqlActionFunctionBody() =
 """
 The SqlAction expression has an invalid structure. An SqlAction expression should be a lambda with a single expression. For example:

@@ -863,7 +863,10 @@ sealed interface XR {
         else -> XRType.Unknown
       }
     }
-    companion object {}
+    companion object {
+      fun fromCoreAndPaths(core: XR.Expression, paths: List<String>, loc: Location = Location.Synth): XR.Expression =
+        paths.fold(core) { acc, path -> Property(acc, path, Visibility.Visible, loc) }
+    }
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode() = cid.hashCode()
@@ -927,7 +930,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class Update(@Slot val query: XR.Query, @CS val alias: XR.Ident, @Slot val assignments: List<Assignment>, override val loc: Location = Location.Synth): Action, PC<Update> {
+  data class Update(@Slot val query: XR.Query, @CS val alias: XR.Ident, @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, PC<Update> {
     @Transient override val productComponents = productOf(this, query, assignments)
     override val type: XRType get() = query.type
     companion object {}

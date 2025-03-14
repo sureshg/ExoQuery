@@ -200,7 +200,7 @@ object ParseExpression {
             else -> parseError("Could not find Param annotation on the param function of the call", this)
           }
 
-        val bid = BID.Companion.new()
+        val bid = BID.new()
         binds.addParam(bid, paramValue, paramBindType)
         XR.TagForParam(bid, XR.ParamType.Single, TypeParser.of(this), paramValue.loc)
       },

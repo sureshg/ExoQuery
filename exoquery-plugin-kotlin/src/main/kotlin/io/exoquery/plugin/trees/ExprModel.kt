@@ -8,6 +8,7 @@ import io.exoquery.ParamSingle
 import io.exoquery.ParamSet
 import io.exoquery.RuntimeSet
 import io.exoquery.parseError
+import io.exoquery.plugin.classId
 import io.exoquery.plugin.classIdOf
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
@@ -22,6 +23,7 @@ import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.isPrimitiveType
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.name.ClassId
 
@@ -56,6 +58,15 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
    * ```
    */
   sealed interface Type {
+    companion object {
+      context(CX.Scope)
+      fun auto(expr: IrExpression) =
+        if (expr.type.isPrimitiveType())
+          ParamStatic(expr.type.classId() ?: parseError("Could not get the classId of the primitive type", expr))
+        else
+          ParamCtx(expr.type)
+    }
+
     context (CX.Scope, CX.Builder) fun build(bid: BID, originalValue: IrExpression, lifter: Lifter): IrExpression
 
     /**
