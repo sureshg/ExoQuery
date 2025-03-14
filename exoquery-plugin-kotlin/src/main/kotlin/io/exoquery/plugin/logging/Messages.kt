@@ -18,6 +18,27 @@ import org.jetbrains.kotlin.ir.util.*
 
 object Messages {
 
+val ProductTypeInsertInstructions =
+"""
+The `set` function used inside of an Insert and an Update query can only be used to update leaf-level values. These are values
+that are either Kotlin primitives (e.g. String, Int, Boolean, etc...) or type that are explicitly marked with @ExoValue (or @Contextual).
+You cannot set who product types in a set-clause. That is to say, you cannot do this:
+
+data class Name(first: String, last: String)
+data class Person(name: Name, age: Int)
+insert<Person> { set(name to Name("Joe", "Smith") <- This is Illegal, ...) }  
+
+Instead  you can either:
+
+1. Set all of the individual fields of the product type separately e.g:  
+  insert<Person> { set(name.first to "Joe", name.last to "Smith", age to 123) }
+  
+2. Set the entire outer-product using the `setParams` command e.g:
+  val joe = Person(Name("Joe", "Smith"), 123)
+  insert<Person> { setParams(joe) }
+
+""".trimIndent()
+
 val InvalidColumnExclusions =
 """
 Invalid columns were used in the `excluding` function.

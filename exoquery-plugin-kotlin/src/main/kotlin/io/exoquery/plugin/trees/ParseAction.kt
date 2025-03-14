@@ -14,12 +14,15 @@ import io.exoquery.plugin.loc
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.ownerHasAnnotation
+import io.exoquery.plugin.source
 import io.exoquery.plugin.symName
 import io.exoquery.plugin.transform.CX
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.isSubtypeOf
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 object ParseAction {
   context(CX.Scope, CX.Parsing, CX.Symbology, CX.Builder)
@@ -96,6 +99,11 @@ object ParseAction {
     on(expr).match<XR.Assignment>(
       case(ExtractorsDomain.Call.`x to y`[Is.Companion(), Is.Companion()]).thenThis { left, right ->
         val property = ParseExpression.parse(left).let { it as? XR.Property ?: parseError("Could not parse the left side of the assignment: ${it.showRaw()}", left) }
+        if (!right.type.isSubtypeOf(left.type, typeSystem))
+          parseError("Invalid assignment expression `${expr.source()}`. The left-hand type `${left.type.dumpKotlinLike()}` is different from the right-hand type `${right.type.dumpKotlinLike()}`", expr)
+        if (property.type.isProduct())
+          parseError("Invalid assignment expression `${expr.source()}`. The left-hand type `${left.type.dumpKotlinLike()}` is a product-type which is not allowed.\n${Messages.ProductTypeInsertInstructions}", expr)
+
         XR.Assignment(property, ParseExpression.parse(right), expr.loc)
       }
     ) ?: parseError("Could not parse the assignment", expr)

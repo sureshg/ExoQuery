@@ -755,8 +755,23 @@ abstract class SqlIdiom: HasPhasePrinting {
       output is XR.Returning.Kind.Expression && action is XR.U.CoreAction -> {
         // TODO If the output is a product type we need to do expansion similar to SelectValue I.e. use SelectValue here
         //      note selections of single values similar to `as value` need to function for this as well
-        val reducedExpr = BetaReduction(output.expr, output.alias to action.alias)
-        +"${action.token} RETURNING ${scopedTokenizer(output.expr)}"
+        val reducedExpr = BetaReduction(output.expr, output.alias to action.alias).asExpr()
+
+        val returningClauseToken =
+          when (val tpe = reducedExpr.type) {
+            is XRType.Product ->
+              // Some crazy things can happen if you do something like
+              // data class Name(val first: String, val last: String), data class Person(val id: Int, val name: Name, val age: Int)
+              // insert<Person> { ... }.returning { p -> Name(p.name.first + "-stuff", p.name.last + "-otherStuff") } i.e. something like:
+              // SELECT ... RETURNING (first + '-stuff', last + '-otherStuff').first, (first + '-stuff', last + '-otherStuff').last
+              // So we need to make sure to beta-reduce all of the output clauses individually when a product is expanded
+              ProtractQuat(true).invoke(tpe, reducedExpr).map { BetaReduction(it.first).token }.mkStmt(", ")
+            else ->
+              scopedTokenizer(reducedExpr).token
+          }
+
+
+        +"${action.token} RETURNING ${returningClauseToken}"
       }
       // This is when an API like insert(...).returningColumns(...) is used.
       // In this case the PrepareStatement.getGeneratedKeys() should be used but there should
