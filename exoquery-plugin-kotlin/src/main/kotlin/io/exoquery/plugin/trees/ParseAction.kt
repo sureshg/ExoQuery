@@ -80,7 +80,7 @@ object ParseAction {
           CompositeType.Update -> XR.Update(ent, actionAlias, assignments, listOf(), expr.loc)
         }
       },
-      case(Ir.Call.FunctionMemVararg[Ir.Expr.ClassOf<setParams>(), Is("excluding"), Is(), Is()]).thenThis { head, columnExprs ->
+      case(Ir.Call.FunctionMemVararg[Ir.Expr.ClassOf<setParams<*>>(), Is("excluding"), Is(), Is()]).thenThis { head, columnExprs ->
         val headAction = parseActionComposite(head, inputType, actionAlias, compositeType)
         val columns =
           columnExprs.map { columnExpr ->

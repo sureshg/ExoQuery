@@ -99,8 +99,8 @@ interface CapturedBlock {
 
   @Dsl fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
 
-  @Dsl @ExoInsert fun <T> insert(valueBlock: (T).() -> set): SqlAction<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
-  @Dsl @ExoUpdate fun <T> update(valueBlock: (T).() -> set): SqlActionFilterable<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
+  @Dsl @ExoInsert fun <T> insert(valueBlock: (T).() -> set<T>): SqlAction<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
+  @Dsl @ExoUpdate fun <T> update(valueBlock: (T).() -> set<T>): SqlActionFilterable<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
   @Dsl @ExoDelete fun <T> delete(): SqlActionFilterable<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
 
   @Dsl fun <T, R> SqlAction<T, Long>.returning(expression: (T) -> R): SqlAction<T, R> = errorCap("The `returning` expression of the Query was not inlined")
@@ -112,8 +112,8 @@ interface CapturedBlock {
   @Dsl fun <Input, Output> SqlActionFilterable<Input, Output>.all(): SqlAction<Input, Output> = errorCap("The `where` expression of the Query was not inlined")
 
   /** Only for insert and update */
-  @Dsl fun set(vararg values: Pair<Any, Any>): set = errorCap("The `values` expression of the Query was not inlined")
-  @Dsl fun <T> setParams(value: T): setParams = errorCap("The `values` expression of the Query was not inlined")
+  @Dsl fun <T> set(vararg values: Pair<Any, Any>): set<T> = errorCap("The `values` expression of the Query was not inlined")
+  @Dsl fun <T> setParams(value: T): setParams<T> = errorCap("The `values` expression of the Query was not inlined")
 
   operator fun <T> FreeBlock.invoke(): T = errorCap("The `invoke` expression of the Query was not inlined")
   fun <T> FreeBlock.asPure(): T = errorCap("The `invoke` expression of the Query was not inlined")
