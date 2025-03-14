@@ -110,8 +110,8 @@ abstract class SqlIdiom: HasPhasePrinting {
       // is XR.Action -> this.lift()
       is XR.Branch, is XR.Variable ->
         xrError("All instances of ${this::class.qualifiedName} should have been beta-reduced out by now.")
-      is XR.Action -> TODO()
-      is XR.Assignment -> TODO()
+      is XR.Action -> token
+      is XR.Assignment -> token
     }
 
   val XR.Expression.token get(): Token =
@@ -699,7 +699,7 @@ abstract class SqlIdiom: HasPhasePrinting {
         // This is the typical case. It happens on the outer (i.e. top-level) clause of a multi-level select e.g.
         // SELECT /*this ->*/ foobar... FROM (SELECT foo.bar AS foobar ...)
         // When it's just a top-level select the prefix will be empty
-        ast is Ident && ast.visibility == Hidden ->
+        ast is Ident && (ast.visibility == Hidden || ast.isThisRef())  ->
           joinAlias(prefix).token
         // This happens when the SQL dialect supports some notion of structured-data
         // and we are selecting something from a nested expression
@@ -732,7 +732,7 @@ abstract class SqlIdiom: HasPhasePrinting {
 
   val XR.Insert.token get(): Token = run {
     val query = this.query as? XR.Entity ?: xrError("Insert query must be an entity but found: ${this.query}")
-    val (columns, values) = columnsAndValues(assignments)
+    val (columns, values) = columnsAndValues(assignments).unzip()
     +"INSERT INTO ${query.token}${` AS (table)`(alias)} (${columns.mkStmt(", ")}) VALUES (${values.mkStmt(", ")})"
 
 //    case Insert(entity: Entity, assignments) =>
@@ -742,24 +742,29 @@ abstract class SqlIdiom: HasPhasePrinting {
   }
 
   val List<XR.Assignment>.token get(): Token = run {
-    val (columns, values) = columnsAndValues(this)
-    (columns zip values).map { (column, value) -> +"${column.token} = ${value.token}" }.mkStmt(", ")
+    columnsAndValues(this).map { (column, value) -> +"${column.token} = ${value.token}" }.mkStmt(", ")
   }
 
   // TODO possible variable-shadowing issues might require beta-reducing out the alias of the inner query first.
   //      Do that instead of creating an ExternalIdent like was done in Quill #1509.
   val XR.Returning.token get(): Token =
-    when (output) {
+    when {
       // In Postgres-style RETURNING clause the RETURNING is always the last thing to be used so we can
       // use the action renderes first. In SQL-server that uses an OUTPUT clause this is not the case
       // and we need to repeat some logic here.
-      is XR.Returning.Kind.Expression ->
+      output is XR.Returning.Kind.Expression && action is XR.U.CoreAction -> {
+        // TODO If the output is a product type we need to do expansion similar to SelectValue I.e. use SelectValue here
+        //      note selections of single values similar to `as value` need to function for this as well
+        val reducedExpr = BetaReduction(output.expr, output.alias to action.alias)
         +"${action.token} RETURNING ${scopedTokenizer(output.expr)}"
+      }
       // This is when an API like insert(...).returningColumns(...) is used.
       // In this case the PrepareStatement.getGeneratedKeys() should be used but there should
       // be no specific RETURNING clause in the SQL.
-      is XR.Returning.Kind.Keys ->
+      output is XR.Returning.Kind.Keys && action is XR.U.CoreAction ->
         action.token
+      else ->
+        xrError("Returning clauses are only allowed on core-actions i.e. insert, update, delete but found:\n${showRaw()}")
     }
 
   val XR.Delete.token get(): Token = run {
@@ -806,23 +811,29 @@ abstract class SqlIdiom: HasPhasePrinting {
 //  }
 
 
-  fun columnsAndValues(assignments: List<XR.Assignment>): Pair<List<Token>, List<Token>> {
-    val columns = assignments.map { assignment ->
-      when (val property = assignment.property) {
-        is XR.Property -> tokenizeColumn(property)
-        else -> xrError("Invalid assignment value of ${assignment}. Must be a Property object.")
-      }
+  val XR.Assignment.token get(): Token =
+    columnAndValue(this).let { (column, value) -> +"${column.token} = ${value.token}" }
+
+
+  fun columnAndValue(assignment: XR.Assignment): Pair<Token, Token> {
+    val column = when (val property = assignment.property) {
+      is XR.Property -> property.token
+      else -> xrError("Invalid assignment value of ${assignment}. Must be a Property object.")
     }
-    val values = assignments.map { assignment -> scopedTokenizer(assignment.value) }
-    return columns to values
+    val value = scopedTokenizer(assignment.value)
+    return column to value
   }
 
-  fun tokenizeColumn(property: XR.Property): Token =
-    when {
-      property.of is XR.Ident && property.of.isThisRef() -> property.name.token
-      property.of is XR.Property -> "${tokenizeColumn(property.of)}.${property.name}".token
-      else -> xrError("Invalid column setter: ${property.showRaw()}")
-    }
+  fun columnsAndValues(assignments: List<XR.Assignment>): List<Pair<Token, Token>> =
+    assignments.map { columnAndValue(it) }
+
+  // The regular property tokenizer now does this
+//  fun tokenizeColumn(property: XR.Property): Token =
+//    when {
+//      property.of is XR.Ident && property.of.isThisRef() -> property.name.token
+//      property.of is XR.Property -> "${tokenizeColumn(property.of)}.${property.name}".token
+//      else -> xrError("Invalid column setter: ${property.showRaw()}")
+//    }
 
 // Scala
 //  private[getquill] def columnsAndValues(

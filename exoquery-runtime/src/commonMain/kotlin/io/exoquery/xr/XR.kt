@@ -58,6 +58,11 @@ sealed interface XR {
       fun isAggregation(): Boolean
     }
 
+    @Serializable
+    sealed interface CoreAction: Action, XR {
+      val alias: Ident
+    }
+
     /**
      * This is used specifically for detecting situations where there is a FlatJoin
      * in both head and tail position. Something like:
@@ -930,7 +935,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class Update(@Slot val query: XR.Query, @CS val alias: XR.Ident, @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, PC<Update> {
+  data class Update(@Slot val query: XR.Query, @CS override val alias: XR.Ident, @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, U.CoreAction, PC<Update> {
     @Transient override val productComponents = productOf(this, query, assignments)
     override val type: XRType get() = query.type
     companion object {}
@@ -952,7 +957,7 @@ sealed interface XR {
   // Note that XR.Query will always be a XR.Entity here
   @Serializable
   @Mat
-  data class Insert(@Slot val query: XR.Query, @CS val alias: XR.Ident,  @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, PC<Insert> {
+  data class Insert(@Slot val query: XR.Query, @CS override val alias: XR.Ident,  @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, U.CoreAction, PC<Insert> {
     @Transient override val productComponents = productOf(this, query, assignments)
     override val type: XRType get() = query.type
     companion object {}
@@ -969,7 +974,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class Delete(@Slot val query: XR.Query, @CS val alias: XR.Ident, override val loc: Location = Location.Synth): Action, PC<Delete> {
+  data class Delete(@Slot val query: XR.Query, @CS override val alias: XR.Ident, override val loc: Location = Location.Synth): Action, U.CoreAction, PC<Delete> {
     @Transient override val productComponents = productOf(this, query)
     override val type: XRType get() = query.type
     companion object {}

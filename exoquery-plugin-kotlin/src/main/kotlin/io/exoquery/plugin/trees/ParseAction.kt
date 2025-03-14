@@ -41,7 +41,8 @@ object ParseAction {
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlAction<*, *>>(), Is("returning"), Ir.FunctionExpression.withBlock[Is(), Is()]]).thenThis { actionExpr, (args, lambdaBody) ->
         val returningAlias = args.first().makeIdent()
         val returningExpr = ParseExpression.parseFunctionBlockBody(lambdaBody)
-        XR.Returning(parse(actionExpr), XR.Returning.Kind.Expression(returningAlias, returningExpr), expr.loc)
+        val core = parse(actionExpr) as? XR.U.CoreAction ?: parseError("The `.returning` function can only be called on a basic action i.e. insert, update, ro delete", actionExpr)
+        XR.Returning(core, XR.Returning.Kind.Expression(returningAlias, returningExpr), expr.loc)
       }
       // TODO parse returning columns
     ) ?: parseError("Could not parse the action", expr)
