@@ -10,7 +10,9 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetObjectValue
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.isClass
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.js.parser.parse
 import org.jetbrains.kotlin.name.ClassId
@@ -47,8 +49,15 @@ context(CX.Scope, CX.Builder) inline fun <reified T> makeObject(): IrGetObjectVa
 context(CX.Scope, CX.Builder) fun makeClassFromString(fullPath: String, args: List<IrExpression>, types: List<IrType> = listOf(), overrideType: IrType? = null) =
   makeClassFromId(ClassId.topLevel(FqName(fullPath)), args, types, overrideType)
 
-context(CX.Scope, CX.Builder) fun makeClassFromId(fullPath: ClassId, args: List<IrExpression>, types: List<IrType> = listOf(), overrideType: IrType? = null) =
-  (pluginCtx.referenceConstructors(fullPath).firstOrNull() ?: liftingError("Could not find a constructor for a class in the context: $fullPath"))
+// Blows up here with a strange error if you put 'run' for the body of the function without specifying a return type
+// Caused by: java.lang.IllegalStateException: Arguments and parameters size mismatch: arguments.size = 1, parameters.size = 2
+context(CX.Scope, CX.Builder) fun makeClassFromId(fullPath: ClassId, args: List<IrExpression>, types: List<IrType> = listOf(), overrideType: IrType? = null): IrConstructorCall {
+  val cls = pluginCtx.referenceClass(fullPath) ?: parseError("Could not find the reference for a class in the context: $fullPath")
+
+  if (!cls.owner.isClass)
+    parseError("Attempting to create an instance of $fullPath which is not a class")
+
+  return (cls.constructors.firstOrNull() ?: liftingError("Could not find a constructor for a class in the context: $fullPath"))
     .let { ctor ->
       overrideType?.let { builder.irCall(ctor, it) } ?: builder.irCall(ctor)
     }
@@ -60,9 +69,10 @@ context(CX.Scope, CX.Builder) fun makeClassFromId(fullPath: ClassId, args: List<
         ctorCall.putTypeArgument(i, arg)
       }
     }
+}
 
 context(CX.Scope, CX.Builder) fun makeObjectFromId(id: ClassId): IrGetObjectValue {
-  val clsSym = pluginCtx.referenceClass(id) ?: throw RuntimeException("Could not find the reference for a class in the context: $id")
+  val clsSym = pluginCtx.referenceClass(id) ?: parseError("Could not find the reference for a class in the context: $id")
 
   if (!clsSym.owner.isObject)
     parseError("Attempting to create an object-instance of $id which is not an object")
