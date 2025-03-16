@@ -24,21 +24,21 @@ fun main() {
   val ps2 = PersonSimple2("joe")
   val ps3 = PersonSimple3(123)
 
-  val s = run {
+  val s =
     capture {
       //insert<Person> { set(name.first to param(n.first), age to 123) }.returning { p -> Name(p.name.first + "-stuff", p.name.last + "-otherStuff") }
       // TODO Odd error need to figure out: Exception in thread "main" java.lang.NoClassDefFoundError: I
       //insert<Person> { setParams(p) }.returning { p -> Name(p.name.first + "-stuff", p.name.last + "-otherStuff") }
-      insert<PersonSimple3> { setParams(ps3) }
+      insert<Person> { setParams(p) }
       //insert<PersonSimple> { set(name to "Joe", age to 123) }
     }
       // This is fine .xr, .params, .runtimes
-  }
 
-  println(s)
+
+  //println(s)
 
 //  println("--------------- XR ---------------\n${act.xr.showRaw()}")
 //  println("hellooooooooo")
-//  println(act.build<PostgresDialect>().value)
+  println(s.build<PostgresDialect>())
 
 }

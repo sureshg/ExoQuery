@@ -154,7 +154,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
               }
             ) ?: run {
               //logger.warn("The action could not be transformed at compile-time", expr.location())
-              parseError("The action could not be transformed at compile-time", expr)
+              logger.warn("The action could not be transformed at compile-time", expr)
               ContainerType.Action.buildContainerRuntime(construct, traceConfig, queryLabel, isPretty, sqlExpr)
             }
           }
