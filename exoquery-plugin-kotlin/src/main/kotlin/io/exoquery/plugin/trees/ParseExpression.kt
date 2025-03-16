@@ -443,22 +443,6 @@ object ParseExpression {
       else -> Unit
     }
 
-  private fun getSerializerForType(type: IrType): ClassId? =
-    when {
-      type.isString() -> classIdOf<ParamSerializer.String>()
-      type.isChar() -> classIdOf<ParamSerializer.Char>()
-      type.isInt() -> classIdOf<ParamSerializer.Int>()
-      type.isShort() -> classIdOf<ParamSerializer.Short>()
-      type.isLong() -> classIdOf<ParamSerializer.Long>()
-      type.isFloat() -> classIdOf<ParamSerializer.Float>()
-      type.isDouble() -> classIdOf<ParamSerializer.Double>()
-      type.isBoolean() -> classIdOf<ParamSerializer.Boolean>()
-      type.isClassStrict<LocalDate>() -> classIdOf<LocalDate>()
-      type.isClassStrict<LocalTime>() -> classIdOf<LocalTime>()
-      type.isClassStrict<LocalDateTime>() -> classIdOf<LocalDateTime>()
-      else -> null
-    }
-
   context(CX.Scope) fun parseConst(irConst: IrConst): XR.Expression =
     if (irConst.value == null) XR.Const.Null(irConst.loc)
     else when (irConst.kind) {

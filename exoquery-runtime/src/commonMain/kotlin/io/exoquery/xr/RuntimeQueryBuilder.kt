@@ -30,9 +30,11 @@ class RuntimeBuilder(val container: ContainerOfXR, val dialect: SqlIdiom, val la
 
     val queryTokenizedRaw =
       when (splicedAst) {
+        // If it is an expression attempt to convert into a query-type and run it. There are situations in which toExpr is introduced around a query etc... and we can handle that in SqlQuery processing
+        is XR.Expression -> dialect.processQuery(splicedAst.asQuery())
         is XR.Query -> dialect.processQuery(splicedAst)
         is XR.Action -> dialect.processAction(splicedAst)
-        else -> throw IllegalArgumentException("Unsupported XR type. Can only be a XR.Query or XR.Action: ${splicedAst::class}")
+        else -> throw IllegalArgumentException("Unsupported XR type. Can only be a XR.Query or XR.Action: ${splicedAst::class}\n${splicedAst.showRaw()}")
       }
 
     // "realize" the tokens converting params clauses to actual list-values

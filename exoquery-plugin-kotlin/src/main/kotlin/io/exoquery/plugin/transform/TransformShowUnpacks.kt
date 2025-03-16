@@ -3,6 +3,7 @@ package io.exoquery.plugin.transform
 import io.exoquery.plugin.fullName
 import io.exoquery.plugin.trees.PT
 import io.exoquery.plugin.trees.simpleValueArgs
+import io.exoquery.unpackAction
 import io.exoquery.unpackExpr
 import io.exoquery.unpackQuery
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
@@ -27,7 +28,7 @@ fun IrElement.dumpKotlinLikePretty() = prepareForPrinting().dumpKotlinLike()
 
 private class TransformShowUnpacks(val scopeContext: CX.Scope): IrElementTransformer<Unit> {
   override fun visitCall(call: IrCall, data: Unit): IrElement =
-    if (call.symbol.fullName == PT.io_exoquery_unpackQuery || call.symbol.fullName == PT.io_exoquery_unpackExpr) {
+    if (call.symbol.fullName == PT.io_exoquery_unpackQuery || call.symbol.fullName == PT.io_exoquery_unpackExpr || call.symbol.fullName == PT.io_exoquery_unpackAction) {
       // I don't think this declaration builder has a real scope so it cannot create lambdas (need a proper scope-stack for that) everything else should be fine.
       val builder = DeclarationIrBuilder(scopeContext.pluginCtx, call.symbol, scopeContext.currentExpr.startOffset, scopeContext.currentExpr.endOffset)
       with (builder) {
@@ -42,6 +43,8 @@ private class TransformShowUnpacks(val scopeContext: CX.Scope): IrElementTransfo
                    unpackQuery(encodedValue).show()
                  else if (call.symbol.fullName == PT.io_exoquery_unpackExpr)
                    unpackExpr(encodedValue).show()
+                 else if (call.symbol.fullName == PT.io_exoquery_unpackAction)
+                   unpackAction(encodedValue).show()
                  else
                    "<ERROR_UNPACKING>"
               } ?: "<ERROR_EXTRACTING>"

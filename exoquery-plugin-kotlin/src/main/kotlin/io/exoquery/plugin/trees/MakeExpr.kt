@@ -11,6 +11,8 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetObjectValue
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.js.parser.parse
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import kotlin.reflect.KClass
@@ -61,6 +63,10 @@ context(CX.Scope, CX.Builder) fun makeClassFromId(fullPath: ClassId, args: List<
 
 context(CX.Scope, CX.Builder) fun makeObjectFromId(id: ClassId): IrGetObjectValue {
   val clsSym = pluginCtx.referenceClass(id) ?: throw RuntimeException("Could not find the reference for a class in the context: $id")
+
+  if (!clsSym.owner.isObject)
+    parseError("Attempting to create an object-instance of $id which is not an object")
+
   val tpe = clsSym.owner.defaultType
   return builder.irGetObjectValue(tpe, clsSym)
 }

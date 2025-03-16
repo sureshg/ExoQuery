@@ -89,8 +89,8 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
   override fun transform(capFunRaw: IrFunction): IrFunction {
     val capFun = capFunRaw as? IrSimpleFunction ?: parseError("The function annotated with @CapturedFunction must be a simple function.", capFunRaw)
 
-    if (capFun.valueParameters.isEmpty())
-      parseError("The function annotated with @CapturedFunction must have at least one parameter but none were found. In this case it is not necessary to mark the function with the @CapturedFunction annotation. Remove it and treat the function as a static query splice.", capFun.location())
+    if (capFun.valueParameters.isEmpty() && capFun.extensionReceiverParameter == null)
+      parseError("The function annotated with @CapturedFunction must have at least one parameter but none were found (and a extension-reciever parameter -that is treated as an argument- was not found either). In this case it is not necessary to mark the function with the @CapturedFunction annotation. Remove it and treat the function as a static query splice.", capFun.location())
 
     val errorText = "A function annotated with @CapturedFunction must return a single, single SqlQuery<T> or SqlExpression<T> instance"
 

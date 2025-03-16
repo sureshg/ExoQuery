@@ -1,5 +1,6 @@
 package io.exoquery.plugin.trees
 
+import io.decomat.Is
 import io.exoquery.parseError
 import io.exoquery.plugin.dataClassProperties
 import io.exoquery.plugin.isDataClass
@@ -33,8 +34,13 @@ object Elaborate {
   // Same pattern for futher nested nullables
   context(CX.Scope, CX.Builder)
   private fun invokeRecurse(currPath: List<String>, parent: IrExpression, type: IrType): List<Path> = run {
-    if (type.isDataClass()) {
-      type.classOrNull!!.dataClassProperties().flatMap { (propertyName, propertyType) ->
+    if (
+        type.isDataClass() &&
+          // Double-check the type parser to make sure the type is not actually supposed to be used as a leaf (I.e. make sure it has no ExoValue or Contextual annotation)
+          !Ir.Type.Value[Is()].matchesAny(type)
+      ) {
+      val cls = type.classOrNull ?: parseError("Expected a class to elaborate, got ${type} which is invalid", parent)
+      cls.dataClassProperties().flatMap { (propertyName, propertyType) ->
         invokeRecurse(currPath + propertyName, callNullSafe(parent, type, propertyType, propertyName), propertyType)
       }
     } else {

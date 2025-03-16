@@ -154,11 +154,11 @@ class EncodingSpecXR: FreeSpec({
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Update" {
-      val xr = XR.Update(people, XR.Ident("this"), listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))))
+      val xr = XR.Update(people, XR.Ident("this"), listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))), listOf())
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Delete" {
-      val xr = XR.Delete(XR.Entity("BadPeople", peopleType))
+      val xr = XR.Delete(XR.Entity("BadPeople", peopleType), XR.Ident("this"))
       xr.encode().decodeXR() shouldBeXR xr
     }
     "OnConflict - Update" {

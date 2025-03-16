@@ -1,9 +1,15 @@
 package io.exoquery.plugin.trees
 
 import io.exoquery.CapturedBlock
+import io.exoquery.plugin.classIdOf
 import io.exoquery.plugin.isClass
+import io.exoquery.plugin.isClassStrict
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.transform.CX
+import io.exoquery.serial.ParamSerializer
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -13,8 +19,18 @@ import org.jetbrains.kotlin.ir.declarations.nameWithPackage
 import org.jetbrains.kotlin.ir.expressions.IrDeclarationReference
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.IrValueAccessExpression
+import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.isBoolean
+import org.jetbrains.kotlin.ir.types.isChar
+import org.jetbrains.kotlin.ir.types.isDouble
+import org.jetbrains.kotlin.ir.types.isFloat
+import org.jetbrains.kotlin.ir.types.isInt
+import org.jetbrains.kotlin.ir.types.isLong
+import org.jetbrains.kotlin.ir.types.isShort
+import org.jetbrains.kotlin.ir.types.isString
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.name.ClassId
 
 
 context(CX.Symbology)
@@ -85,3 +101,19 @@ fun IrGetValue.showLineage(): String {
   rec(this.symbol.owner, 100)
   return collect.map { "[${it}]" }.joinToString("->")
 }
+
+fun getSerializerForType(type: IrType): ClassId? =
+  when {
+    type.isString() -> classIdOf<ParamSerializer.String>()
+    type.isChar() -> classIdOf<ParamSerializer.Char>()
+    type.isInt() -> classIdOf<ParamSerializer.Int>()
+    type.isShort() -> classIdOf<ParamSerializer.Short>()
+    type.isLong() -> classIdOf<ParamSerializer.Long>()
+    type.isFloat() -> classIdOf<ParamSerializer.Float>()
+    type.isDouble() -> classIdOf<ParamSerializer.Double>()
+    type.isBoolean() -> classIdOf<ParamSerializer.Boolean>()
+    type.isClassStrict<LocalDate>() -> classIdOf<LocalDate>()
+    type.isClassStrict<LocalTime>() -> classIdOf<LocalTime>()
+    type.isClassStrict<LocalDateTime>() -> classIdOf<LocalDateTime>()
+    else -> null
+  }

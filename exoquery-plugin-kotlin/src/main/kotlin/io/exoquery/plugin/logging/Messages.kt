@@ -7,6 +7,7 @@ import io.exoquery.plugin.safeName
 import io.exoquery.plugin.source
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.dumpKotlinLikePretty
+import io.exoquery.plugin.transform.prepareForPrinting
 import io.exoquery.plugin.trees.showLineage
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -160,6 +161,8 @@ ${ir?.dumpKotlinLikePretty()}
 ${ir?.dumpSimple()}
 """.trimIndent()
 
+
+  context(CX.Scope)
   fun PrintingMessageMulti(ir: List<IrElement>?, additionalHeading: String = ""): String {
     fun writeOutput(ir: IrElement?): String =
       when(ir) {
@@ -181,19 +184,22 @@ ${ir?.dumpSimple()}
 
 val additionalPrint = if (additionalHeading.isNotEmpty()) " ($additionalHeading)" else ""
 
+val irsWithUnpacks = ir?.map { elem -> elem.prepareForPrinting() }
+
 return """
 ***
 ***************************************** Print Source *****************************************
 ***
 ================ Kotlin-Like:${additionalPrint} ================
-${ir?.withIndex()?.map { (i, it) -> "($i) " + it.dumpKotlinLike() }?.joinToString("\n")}
+${irsWithUnpacks?.withIndex()?.map { (i, it) -> "($i) " + it.dumpKotlinLike() }?.joinToString("\n")}
 ================= IR: ========================
-${ir?.withIndex()?.map { (i, it) -> "($i) " +  it.dumpSimple() }?.joinToString("\n")}
+${irsWithUnpacks?.withIndex()?.map { (i, it) -> "($i) " +  it.dumpSimple() }?.joinToString("\n")}
 ================= Output Type: ========================
 ${ir?.withIndex()?.map { (i, it) -> "($i) " + writeOutput(it) }?.joinToString("\n")}
 """.trimIndent()
 }
 
+  context(CX.Scope)
   fun PrintingMessageSingle(ir: IrElement, additionalHeading: String = ""): String {
     fun writeOutput(ir: IrElement): String =
       when(ir) {
@@ -215,11 +221,13 @@ ${ir?.withIndex()?.map { (i, it) -> "($i) " + writeOutput(it) }?.joinToString("\
 
 val additionalPrint = if (additionalHeading.isNotEmpty()) " ($additionalHeading)" else ""
 
+val irWithUnpacks = ir.prepareForPrinting()
+
 return """
 ================ Kotlin-Like:${additionalPrint} ================
-${ir.dumpKotlinLike()}
+${irWithUnpacks.dumpKotlinLike()}
 ================= IR: ========================
-${ir.dumpSimple()}
+${irWithUnpacks.dumpSimple()}
 ================= Output Type: ========================
 ${writeOutput(ir)}
 """.trimIndent()

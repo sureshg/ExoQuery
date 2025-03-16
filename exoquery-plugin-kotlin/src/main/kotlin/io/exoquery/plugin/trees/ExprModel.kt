@@ -60,11 +60,14 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
   sealed interface Type {
     companion object {
       context(CX.Scope)
-      fun auto(expr: IrExpression) =
+      fun auto(expr: IrExpression) = run {
+        //logger.error("--------------- Process Paramter ${expr.dumpKotlinLike()} for type: ${expr.type.classId()}")
         if (expr.type.isPrimitiveType())
-          ParamStatic(expr.type.classId() ?: parseError("Could not get the classId of the primitive type", expr))
+          ParamStatic(getSerializerForType(expr.type) ?: parseError("Could not create a primitive-type parser ofr the type ${expr.type.dumpKotlinLike()} whose class-id is ${expr.type.classId()}", expr))
+          //ParamStatic(expr.type.classId()!!)
         else
           ParamCtx(expr.type)
+      }
     }
 
     context (CX.Scope, CX.Builder) fun build(bid: BID, originalValue: IrExpression, lifter: Lifter): IrExpression
