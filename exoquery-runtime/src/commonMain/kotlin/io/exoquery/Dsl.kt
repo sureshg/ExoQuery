@@ -127,6 +127,7 @@ interface CapturedBlock {
   /** Only for insert and update */
   @Dsl fun <T> set(vararg values: Pair<Any, Any>): set<T> = errorCap("The `set` expression of the Query was not inlined")
   @Dsl fun <T> setParams(value: T): setParams<T> = errorCap("The `setParams` expression of the Query was not inlined")
+  @Dsl fun <T> setParams<T>.excluding(vararg columns: Any): set<T> = errorCap("The `excluding` expression of the Query was not inlined")
 
   operator fun <T> FreeBlock.invoke(): T = errorCap("The `invoke` expression of the Query was not inlined")
   fun <T> FreeBlock.asPure(): T = errorCap("The `invoke` expression of the Query was not inlined")

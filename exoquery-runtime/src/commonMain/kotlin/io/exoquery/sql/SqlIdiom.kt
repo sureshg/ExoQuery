@@ -732,7 +732,7 @@ abstract class SqlIdiom: HasPhasePrinting {
 
   val XR.Insert.token get(): Token = run {
     val query = this.query as? XR.Entity ?: xrError("Insert query must be an entity but found: ${this.query}")
-    val (columns, values) = columnsAndValues(assignments).unzip()
+    val (columns, values) = columnsAndValues(assignments, exclusions).unzip()
     +"INSERT INTO ${query.token}${` AS table`(alias)} (${columns.mkStmt(", ")}) VALUES (${values.mkStmt(", ")})"
 
 //    case Insert(entity: Entity, assignments) =>
@@ -741,9 +741,8 @@ abstract class SqlIdiom: HasPhasePrinting {
 //            .mkStmt(",")}) VALUES ${ValuesClauseToken(stmt"(${values.mkStmt(", ")})")}"
   }
 
-  val List<XR.Assignment>.token get(): Token = run {
-    columnsAndValues(this).map { (column, value) -> +"${column.token} = ${value.token}" }.mkStmt(", ")
-  }
+  val List<XR.Assignment>.token get(): Token =
+    this.map { it.token }.mkStmt(", ")
 
   // TODO possible variable-shadowing issues might require beta-reducing out the alias of the inner query first.
   //      Do that instead of creating an ExternalIdent like was done in Quill #1509.
@@ -795,7 +794,7 @@ abstract class SqlIdiom: HasPhasePrinting {
   }
 
   val XR.Update.token get(): Token = run {
-    fun updateBase() = +"UPDATE ${query.token}${` AS table`(alias)} SET ${assignments.token}"
+    fun updateBase() = +"UPDATE ${query.token}${` AS table`(alias)} SET ${assignments.filterNot { exclusions.contains(it.property) }.token}"
     when {
       query is XR.Filter && query.head is XR.Entity ->
         updateBase()
@@ -839,8 +838,8 @@ abstract class SqlIdiom: HasPhasePrinting {
     return column to value
   }
 
-  fun columnsAndValues(assignments: List<XR.Assignment>): List<Pair<Token, Token>> =
-    assignments.map { columnAndValue(it) }
+  fun columnsAndValues(assignments: List<XR.Assignment>, exlcusions: List<XR.Property>): List<Pair<Token, Token>> =
+    assignments.filterNot { exlcusions.contains(it.property) }.map { columnAndValue(it) }
 
   // The regular property tokenizer now does this
 //  fun tokenizeColumn(property: XR.Property): Token =

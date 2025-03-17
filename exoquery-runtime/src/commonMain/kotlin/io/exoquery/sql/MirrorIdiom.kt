@@ -55,10 +55,22 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
 //    case c: OnConflict               => stmt"${c.token}"
 //  }
 
+  val XR.Insert.exclusionsClause: Token get() =
+    if (this.exclusions.isEmpty())
+      stmt("")
+    else
+      stmt(".excluding(${this.exclusions.token { it.token }})")
+
+  val XR.Update.exclusionsClause: Token get() =
+    if (this.exclusions.isEmpty())
+      stmt("")
+    else
+      stmt(".excluding(${this.exclusions.token { it.token }})")
+
   val XR.Action.token: Token get() =
     when (this) {
-      is XR.Update -> stmt("${query.token}.update(${assignments.token { it.token }})")
-      is XR.Insert -> stmt("${query.token}.insert(${assignments.token { it.token }})")
+      is XR.Update -> stmt("${query.token}.update { set(${assignments.map { it.token }.mkStmt()})${exclusionsClause} }")
+      is XR.Insert -> stmt("${query.token}.insert { set(${assignments.map { it.token }.mkStmt()})${exclusionsClause} }")
       is XR.Delete -> stmt("${query.token}.delete")
       is XR.Returning -> this.token
       is XR.OnConflict -> stmt("${this.token}")
