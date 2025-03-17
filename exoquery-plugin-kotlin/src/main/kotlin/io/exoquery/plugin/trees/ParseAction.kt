@@ -20,6 +20,7 @@ import io.exoquery.plugin.transform.CX
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -46,8 +47,33 @@ object ParseAction {
         val returningExpr = ParseExpression.parseFunctionBlockBody(lambdaBody)
         val core = parse(actionExpr) as? XR.U.CoreAction ?: parseError("The `.returning` function can only be called on a basic action i.e. insert, update, ro delete", actionExpr)
         XR.Returning(core, XR.Returning.Kind.Expression(returningAlias, returningExpr), expr.loc)
+      },
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlAction<*, *>>(), Is("returningKeys"), Ir.FunctionExpression.withBlock[Is(), Is()]]).then { actionExpr, (_, lambdaBody) ->
+        val explain = "\n${Messages.ReturningKeysExplanation}"
+        val alias = (compRight as IrFunctionExpression).function.symbol.owner.extensionReceiverParameter?.makeIdent() ?: parseError("Could not find the extension receiver parameter of the returningKeys call.${explain}", expr)
+        fun validateProperty(prop: XR.Property) {
+          if (prop.core() != alias)
+            parseError("The returningKeys used a value that was not a column of the entity: ${prop.show(sanitzeIdents = false)} (it's core should have been ${alias.show(sanitzeIdents = false)}).${explain}", lambdaBody)
+        }
+        val returningExpr = ParseExpression.parseFunctionBlockBody(lambdaBody)
+        //logger.error("------------------ HERE: ${returningExpr.showRaw()}")
+        val props =
+          when (val ret = returningExpr) {
+            is XR.Product ->
+              ret.fields.map {
+                val prop = it.second as? XR.Property ?: parseError("Invalid returning-keys value `${ret.show()}`${explain}", lambdaBody)
+                validateProperty(prop)
+                prop
+              }
+          is XR.Property -> {
+            validateProperty(ret)
+            listOf(ret)
+          }
+          else -> parseError("The returningKeys block must return a product type or a single property.${explain}", lambdaBody)
+        }
+        val core = parse(actionExpr) as? XR.U.CoreAction ?: parseError("The `.returningKeys` function can only be called on a basic action i.e. insert, update, or delete", actionExpr)
+        XR.Returning(core, XR.Returning.Kind.Keys(alias, props), expr.loc)
       }
-      // TODO parse returning columns
     ) ?: parseError("Could not parse the action", expr)
 
   // TODO when going back to the Expression parser the 'this' pointer needs to be on the list of local symbols

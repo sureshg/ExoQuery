@@ -5,6 +5,8 @@ import io.exoquery.Param
 import io.exoquery.ParamMulti
 import io.exoquery.ParamSet
 import io.exoquery.ParamSingle
+import io.exoquery.pprint.PPrinterConfig
+import io.exoquery.printing.PrintToken
 import io.exoquery.util.intersperseWith
 import io.exoquery.util.mkString
 import io.exoquery.xrError
@@ -13,7 +15,8 @@ sealed interface Token {
   // Builds the actual string to be used as the SQL query as opposed to just for display purposes
   fun   build(): String
   // For cases where it is a Param actually plugin the value i.e. stringify it
-  fun show(renderer: Renderer): String
+  fun renderWith(renderer: Renderer): String
+  fun showRaw(config: PPrinterConfig): String = PrintToken(config).invoke(this).toString()
 
   fun simplify(): Token = this
 
@@ -27,8 +30,8 @@ sealed interface Token {
 
   fun extractParams(): List<Param<*>> {
     val accum = mutableListOf<Param<*>>()
-    fun errorNotFound(bid: BID): Nothing = xrError("Param not found for bid: ${bid} in tokenization:\n${this.show(Renderer(true, true, null))}")
-    fun errorUnrealizedFound(bid: BID): Nothing = xrError("Unrealized Param found for bid: ${bid} in tokenization:\n${this.show(Renderer(true, true, null))}")
+    fun errorNotFound(bid: BID): Nothing = xrError("Param not found for bid: ${bid} in tokenization:\n${this.renderWith(Renderer(true, true, null))}")
+    fun errorUnrealizedFound(bid: BID): Nothing = xrError("Unrealized Param found for bid: ${bid} in tokenization:\n${this.renderWith(Renderer(true, true, null))}")
 
     // Depth-first search of the tree to find all the params
     val toExplore = ArrayDeque<Token>(listOf(this))
@@ -51,14 +54,14 @@ sealed interface TagToken: Token
 
 final data class StringToken(val string: String): Token {
   override fun build(): String = string
-  override fun show(renderer: Renderer): String = string
+  override fun renderWith(renderer: Renderer): String = string
 }
 
 final data class ParamSingleToken(val bid: BID): Token {
   override fun build() = "<UNR?>"
   fun realize(paramSet: ParamSet) =
     ParamSingleTokenRealized(bid, paramSet.lifts.asSequence().filterIsInstance<ParamSingle<*>>().find { p -> p.id == bid })
-  override fun show(renderer: Renderer): String = renderer.invoke(bid, null, false)
+  override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, null, false)
   fun withBid(bid: BID) = ParamSingleToken(bid)
 }
 
@@ -66,7 +69,7 @@ final data class ParamSingleToken(val bid: BID): Token {
 // withiout immediately failing on creation
 final data class ParamSingleTokenRealized(val bid: BID, val param: ParamSingle<*>?): Token {
   override fun build(): String = param?.let { "?" } ?: xrError("Param not found for bid: ${bid}")
-  override fun show(renderer: Renderer): String = renderer.invoke(bid, param, true)
+  override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, param, true)
   fun withBid(bid: BID) = ParamSingleTokenRealized(bid, param?.withNewBid(bid))
 }
 
@@ -74,20 +77,20 @@ final data class ParamMultiToken(val bid: BID): Token {
   override fun build() = "<UNRS?>"
   fun realize(paramSet: ParamSet) =
     ParamMultiTokenRealized(bid, paramSet.lifts.asSequence().filterIsInstance<ParamMulti<*>>().find { p -> p.id == bid })
-  override fun show(renderer: Renderer): String = renderer.invoke(bid, null, false)
+  override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, null, false)
   fun withBid(bid: BID) = ParamMultiToken(bid)
 }
 
 final data class ParamMultiTokenRealized(val bid: BID, val param: ParamMulti<*>?): Token {
   // NOTE probably more efficient to just count the param values and use .repeat() to get a list of "?"s
   override fun build(): String = param?.value?.map { _ -> "?" }?.joinToString(", ") ?: xrError("Param not found for bid: ${bid}")
-  override fun show(renderer: Renderer): String = renderer.invoke(bid, param, true)
+  override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, param, true)
   fun withBid(bid: BID) = ParamMultiTokenRealized(bid, param?.withNewBid(bid))
 }
 
 final data class Statement(val tokens: List<Token>): Token {
   override fun build(): String = tokens.map { it.build() }.mkString()
-  override fun show(renderer: Renderer): String = tokens.map { it.show(renderer) }.mkString()
+  override fun renderWith(renderer: Renderer): String = tokens.map { it.renderWith(renderer) }.mkString()
 
   override fun simplify(): Token {
     val accum = mutableListOf<Token>()
@@ -110,7 +113,7 @@ final data class Statement(val tokens: List<Token>): Token {
 
 final data class SetContainsToken(val a: Token, val op: Token, val b: Token): Token {
   override fun build(): String = "${a.build()} ${op.build()} parser(${b.build()})"
-  override fun show(renderer: Renderer): String = "${a.show(renderer)} ${op.show(renderer)} (${b.show(renderer)})"
+  override fun renderWith(renderer: Renderer): String = "${a.renderWith(renderer)} ${op.renderWith(renderer)} (${b.renderWith(renderer)})"
 }
 
 val Token.token get(): Token = this

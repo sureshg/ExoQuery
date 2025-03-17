@@ -1,6 +1,8 @@
 package io.exoquery
 
+import io.exoquery.printing.PrintMisc
 import io.exoquery.sql.Token
+import io.exoquery.xr.XR
 
 sealed interface Phase {
   object CompileTime : Phase
@@ -21,20 +23,24 @@ data class SqlCompiledQuery<T>(val value: String, override val token: Token, val
   // Similar concept tot the SqlQuery/SqlExpression.determinizeDynamics but it does not need to consider any nesting constructs
   // because the Params in the `params` variable are already determined to be the complete set in the tokenization
   // (determined by Lifter.liftToken + realization for compile-time and buildRuntime + realization for runtime)
-  fun determinizeDynamics(): SqlCompiledQuery<T> =
+  override fun determinizeDynamics(): SqlCompiledQuery<T> =
     this.copy(token = determinizedToken())
 }
 
-data class SqlCompiledAction<Input, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val label: String?, val phase: Phase): ExoCompiled() {
+data class SqlCompiledAction<Input, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val returningType: ReturningType, val label: String?, val phase: Phase, val originalXR: () -> XR.Action): ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
 
-  fun determinizeDynamics(): SqlCompiledAction<Input, Output> =
+  override fun determinizeDynamics(): SqlCompiledAction<Input, Output> =
     this.copy(token = determinizedToken())
+
+  fun show() = PrintMisc().invoke(this)
 }
 
 abstract class ExoCompiled {
   abstract val params: List<Param<*>>
   abstract val token: Token
+
+  abstract fun determinizeDynamics(): ExoCompiled
 
   protected fun determinizedToken() = run {
     var id = 0

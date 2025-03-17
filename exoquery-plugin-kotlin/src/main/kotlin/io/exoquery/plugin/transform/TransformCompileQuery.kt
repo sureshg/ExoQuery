@@ -4,6 +4,7 @@ import com.github.vertical_blank.sqlformatter.SqlFormatter
 import io.decomat.*
 import io.exoquery.Phase
 import io.exoquery.PostgresDialect
+import io.exoquery.ReturningType
 import io.exoquery.SqlAction
 import io.exoquery.SqlCompiledAction
 import io.exoquery.SqlCompiledQuery
@@ -98,7 +99,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
         fun Token.renderQueryString(pretty: Boolean, xr: XR) = run {
           val queryStringRaw =
             try {
-              this.show(Renderer(false, false))
+              this.renderWith(Renderer(false, false))
             } catch (e: Exception) {
               parseError("The query could not be rendered: ${e.message}\n------------------\n${xr.showRaw()}", expr)
             }
@@ -148,9 +149,11 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
 
                 // Can include the sql-formatting library here since the compiler is always on the JVM!
                 val queryString = queryTokenized.renderQueryString(isPretty, xr)
+                val returningType = ReturningType.fromActionXR(xr)
                 accum.addQuery(PrintableQuery(queryString, compileLocation, queryLabel))
                 this@Scope.logger.report("Compiled action in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)
-                ContainerType.Action.buildContainerCompiletime(queryLabel, queryString, queryTokenized, sqlExpr)
+                val unpackActionLazyLambda = uprootable.replantUnpackLambda()
+                ContainerType.Action.buildContainerCompiletime(queryLabel, queryString, queryTokenized, sqlExpr, returningType, unpackActionLazyLambda)
               }
             ) ?: run {
               //logger.warn("The action could not be transformed at compile-time", expr.location())
@@ -167,8 +170,6 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
 
 
   sealed interface ContainerType {
-    context(CX.Scope, CX.Builder)
-    fun buildContainerCompiletime(queryLabel: String?, queryString: String, queryTokenized: Token, sqlQueryExpr: IrExpression): IrExpression
 
     context(CX.Scope, CX.Builder)
     fun buildRuntimeDialect(construct: IrConstructorSymbol, traceConfig: TraceConfig) =
@@ -178,12 +179,9 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
         }
       }
 
-    context(CX.Scope, CX.Builder)
-    fun buildContainerRuntime(construct: IrConstructorSymbol, traceConfig: TraceConfig, queryLabel: String?, isPretty: Boolean, sqlQueryExpr: IrExpression): IrExpression
-
     data object Query: ContainerType {
       context(CX.Scope, CX.Builder)
-      override fun buildContainerCompiletime(queryLabel: String?, queryString: String, queryTokenized: Token, sqlQueryExpr: IrExpression) = run {
+      fun buildContainerCompiletime(queryLabel: String?, queryString: String, queryTokenized: Token, sqlQueryExpr: IrExpression) = run {
         val lifter = Lifter(this@Builder)
 
         // Gete the type T of the SqlQuery<T> that .build is called on
@@ -211,7 +209,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
       }
 
       context(CX.Scope, CX.Builder)
-      override fun buildContainerRuntime(construct: IrConstructorSymbol, traceConfig: TraceConfig, queryLabel: String?, isPretty: Boolean, sqlQueryExpr: IrExpression): IrExpression = run {
+      fun buildContainerRuntime(construct: IrConstructorSymbol, traceConfig: TraceConfig, queryLabel: String?, isPretty: Boolean, sqlQueryExpr: IrExpression): IrExpression = run {
         with (Lifter(this@Builder)) {
           val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
           // we still know it's x.build or x.buildPretty so just use that (for now ignore formatting if it is at runtime)
@@ -222,7 +220,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
     }
     data object Action: ContainerType {
       context(CX.Scope, CX.Builder)
-      override fun buildContainerCompiletime(queryLabel: String?, queryString: String, queryTokenized: Token, sqlQueryExpr: IrExpression) = run {
+      fun buildContainerCompiletime(queryLabel: String?, queryString: String, queryTokenized: Token, sqlQueryExpr: IrExpression, returningType: ReturningType, unpackActionLazy: IrExpression) = run {
         val lifter = Lifter(this@Builder)
         val callParamsFromSqlQuery = sqlQueryExpr.callDispatch("params").invoke()
         val inputType = sqlQueryExpr.type.simpleTypeArgs[0]
@@ -236,15 +234,17 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
               queryString.lift(), // value
               queryTokenized.token.lift(callParamsFromSqlQuery), // token
               irBuilder.irBoolean(false), // needsTokenization
+              returningType.lift(), // returningType
               labelExpr,
-              Phase.CompileTime.lift()
+              Phase.CompileTime.lift(),
+              unpackActionLazy
             )
           )
         }
       }
 
       context(CX.Scope, CX.Builder)
-      override fun buildContainerRuntime(construct: IrConstructorSymbol, traceConfig: TraceConfig, queryLabel: String?, isPretty: Boolean, sqlQueryExpr: IrExpression): IrExpression = run {
+      fun buildContainerRuntime(construct: IrConstructorSymbol, traceConfig: TraceConfig, queryLabel: String?, isPretty: Boolean, sqlQueryExpr: IrExpression): IrExpression = run {
         with (Lifter(this@Builder)) {
           val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
           // we still know it's x.build or x.buildPretty so just use that (for now ignore formatting if it is at runtime)

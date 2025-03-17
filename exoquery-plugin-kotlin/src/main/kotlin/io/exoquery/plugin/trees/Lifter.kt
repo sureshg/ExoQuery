@@ -175,6 +175,13 @@ class Lifter(val builderCtx: CX.Builder) {
       is StringToken -> make<StringToken>(string.lift())
     }
 
+  fun ReturningType.lift(): IrExpression =
+    when (this) {
+      ReturningType.None -> makeObject<ReturningType.None>()
+      is ReturningType.Explicit -> make<ReturningType.Explicit>(columns.lift { it.lift() })
+      ReturningType.ClauseInQuery -> makeObject<ReturningType.ClauseInQuery>()
+    }
+
   fun Phase.lift(): IrExpression =
     when (this) {
       Phase.CompileTime -> makeObject<Phase.CompileTime>()

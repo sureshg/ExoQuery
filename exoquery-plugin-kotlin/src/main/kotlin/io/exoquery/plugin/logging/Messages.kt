@@ -19,6 +19,27 @@ import org.jetbrains.kotlin.ir.util.*
 
 object Messages {
 
+val ReturningKeysExplanation =
+"""
+The returningKeys function is designed to be used with the JDBC PreparedStatement.generatedKeys (and similar APIs) that allow
+you to retrieved generated keys from a insert statement but does NOT actually have a specific construct in the SQL 
+(such as a Postgres, RETURNING clause, a SQL Server OUTPUT clause etc...). This is necessary for cases where you want to
+get back IDs being returned by a Query implicitly which has broader support across different databases. Also there are some edge-cases
+where explicit returning-clauses are not supported for in all situations (e.g. of SQL Server, the OUTPUT clause cannot be propertly used
+with database-tables that have triggers in some situations). Due to these limitations, the `returningKeys` function is more strictly controlled
+than the `returning` function. It can only be used in one of two scenarios:
+
+1. The returningKeys function can contain a single column of the inserted entity:
+    insert<Person> { setParams(joe).returningKeys { it.id } }
+    
+2. The returningKeys function can contain a product-type that contains only columns of the inserted entity:
+    insert<Person> { setParams(joe).returningKeys { Pair(it.id, it.name) } }
+
+In either situation, it is assumed that the columns being mentioned inside the single-column or product-type are columns that are being generated.
+If this is not the case, decoding errors will result.
+
+""".trimIndent()
+
 val ProductTypeInsertInstructions =
 """
 The `set` function used inside of an Insert and an Update query can only be used to update leaf-level values. These are values

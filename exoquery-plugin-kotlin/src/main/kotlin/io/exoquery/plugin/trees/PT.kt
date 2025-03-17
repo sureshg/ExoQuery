@@ -8,6 +8,7 @@ object PT {
   val io_exoquery_util_scaffoldCapFunctionQuery = "io.exoquery.util.scaffoldCapFunctionQuery"
   val io_exoquery_unpackQuery = "io.exoquery.unpackQuery"
   val io_exoquery_unpackAction = "io.exoquery.unpackAction"
+  val io_exoquery_unpackActionLazy = "io.exoquery.unpackActionLazy"
   val io_exoquery_unpackActionBatch = "io.exoquery.unpackActionBatch"
   val io_exoquery_unpackExpr = "io.exoquery.unpackExpr"
   val io_exoquery_SqlQuery = "io.exoquery.SqlQuery"

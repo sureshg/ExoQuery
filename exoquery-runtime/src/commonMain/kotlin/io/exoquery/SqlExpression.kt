@@ -96,6 +96,7 @@ internal class DeterminizeDynamics() {
     return SqlAction(newXR, RuntimeSet(newRuntimes.map { it.second to it.third }), ParamSet(newParams.map { it.third }))
   }
 
+  fun <I, O> ofAction(action: SqlAction<I, O>): SqlAction<I, O> = recAction(action)
   fun <T> ofExpression(expr: SqlExpression<T>): SqlExpression<T> = recExpr(expr)
   fun <T> ofQuery(query: SqlQuery<T>): SqlQuery<T> = recQuery(query)
 }

@@ -29,7 +29,7 @@ fun main() {
       //insert<Person> { set(name.first to param(n.first), age to 123) }.returning { p -> Name(p.name.first + "-stuff", p.name.last + "-otherStuff") }
       // TODO Odd error need to figure out: Exception in thread "main" java.lang.NoClassDefFoundError: I
       //insert<Person> { setParams(p) }.returning { p -> Name(p.name.first + "-stuff", p.name.last + "-otherStuff") }
-      insert<Person> { setParams(p) }
+      insert<Person> { setParams(p) }.returningKeys { name to age }//.returningKeys()
       //insert<PersonSimple> { set(name to "Joe", age to 123) }
     }
       // This is fine .xr, .params, .runtimes
@@ -37,8 +37,8 @@ fun main() {
 
   //println(s)
 
-//  println("--------------- XR ---------------\n${act.xr.showRaw()}")
+  println("--------------- XR ---------------\n${s.xr.show()}")
 //  println("hellooooooooo")
-  println(s.build<PostgresDialect>())
+  println(s.build<PostgresDialect>().show())
 
 }

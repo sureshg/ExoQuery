@@ -39,6 +39,8 @@ fun unpackQuery(query: String): XR.Query =
 fun unpackAction(action: String): XR.Action =
   EncodingXR.protoBuf.decodeFromHexString<XR.Action>(action)
 
+fun unpackActionLazy(action: String): () -> XR.Action =
+  { unpackAction(action) }
 
 // data class Person(val name: String, val age: Int)
 // fun example() {
@@ -104,6 +106,7 @@ interface CapturedBlock {
   @Dsl @ExoDelete fun <T> delete(): SqlActionFilterable<T, Long> = errorCap("The `insertValues` expression of the Query was not inlined")
 
   @Dsl fun <T, R> SqlAction<T, Long>.returning(expression: (T) -> R): SqlAction<T, R> = errorCap("The `returning` expression of the Query was not inlined")
+  @Dsl fun <T, R> SqlAction<T, Long>.returningKeys(expression: (T).() -> R): SqlAction<T, R> = errorCap("The `returning` expression of the Query was not inlined")
 
   // Specifically for doing generated-key return that is implicit i.e. where you use PreparedStatement.getGeneratedKeys() without an explicit RETURNING/OUTPUT clause in the SQL
   @Dsl fun <Input, Output, R1> SqlAction<Input, Output>.retruningKeys(columns: List<Any>): SqlAction<Input, R1> = errorCap("The `returning` expression of the Query was not inlined")
@@ -112,8 +115,8 @@ interface CapturedBlock {
   @Dsl fun <Input, Output> SqlActionFilterable<Input, Output>.all(): SqlAction<Input, Output> = errorCap("The `where` expression of the Query was not inlined")
 
   /** Only for insert and update */
-  @Dsl fun <T> set(vararg values: Pair<Any, Any>): set<T> = errorCap("The `values` expression of the Query was not inlined")
-  @Dsl fun <T> setParams(value: T): setParams<T> = errorCap("The `values` expression of the Query was not inlined")
+  @Dsl fun <T> set(vararg values: Pair<Any, Any>): set<T> = errorCap("The `set` expression of the Query was not inlined")
+  @Dsl fun <T> setParams(value: T): setParams<T> = errorCap("The `setParams` expression of the Query was not inlined")
 
   operator fun <T> FreeBlock.invoke(): T = errorCap("The `invoke` expression of the Query was not inlined")
   fun <T> FreeBlock.asPure(): T = errorCap("The `invoke` expression of the Query was not inlined")

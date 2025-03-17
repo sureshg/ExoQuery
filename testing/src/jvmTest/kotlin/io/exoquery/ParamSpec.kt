@@ -31,13 +31,13 @@ class ParamSpec : FreeSpec({
       val build = cap.build<PostgresDialect>()
       build.token.build() shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ?"
       val buildDet = build.determinizeDynamics()
-      buildDet.token.show(Renderer()) shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:name}"
+      buildDet.token.renderWith(Renderer()) shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:name}"
       buildDet.params.map { it.withNonStrictEquality() } shouldBe listOf(ParamSingle(BID("0"), "name", ParamSerializer.String))
 
       val buildRuntime = cap.buildRuntime(PostgresDialect(), null)
       buildRuntime.token.build() shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ?"
       val buildRuntimeDet = buildRuntime.determinizeDynamics()
-      buildRuntimeDet.token.show(Renderer()) shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:name}"
+      buildRuntimeDet.token.renderWith(Renderer()) shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:name}"
       buildRuntimeDet.params.map { it.withNonStrictEquality() } shouldBe listOf(ParamSingle(BID("0"), "name", ParamSerializer.String))
     }
     "params" {
@@ -52,13 +52,13 @@ class ParamSpec : FreeSpec({
       val build = cap.build<PostgresDialect>()
       build.token.build() shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN (?, ?)"
       val buildDet = build.determinizeDynamics()
-      buildDet.token.show(Renderer()) shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN ({0:[name1, name2]})"
+      buildDet.token.renderWith(Renderer()) shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN ({0:[name1, name2]})"
       buildDet.params.map { it.withNonStrictEquality() } shouldBe listOf(ParamMulti(BID("0"), listOf("name1", "name2"), ParamSerializer.String))
 
       val buildRuntime = cap.buildRuntime(PostgresDialect(), null)
       buildRuntime.token.build() shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN (?, ?)"
       val buildRuntimeDet = buildRuntime.determinizeDynamics()
-      buildRuntimeDet.token.show(Renderer()) shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN ({0:[name1, name2]})"
+      buildRuntimeDet.token.renderWith(Renderer()) shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN ({0:[name1, name2]})"
       buildRuntimeDet.params.map { it.withNonStrictEquality() } shouldBe listOf(ParamMulti(BID("0"), listOf("name1", "name2"), ParamSerializer.String))
     }
   }

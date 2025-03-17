@@ -65,7 +65,7 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
     }
 
   val XR.Assignment.token: Token get() =
-    stmt("${property.token} -> ${value.token}")
+    stmt("${property.token} to ${value.token}")
 
 //  implicit final def assignmentTokenizer(implicit externalTokenizer: Tokenizer[External]): Tokenizer[Assignment] =
 //  Tokenizer[Assignment] { case Assignment(ident, property, value) =>
@@ -74,8 +74,8 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
 
   val XR.Returning.token: Token get() =
     when (this.output) {
-      is XR.Returning.Kind.Expression -> stmt("${action.token}.returning((${this.output.alias.token}) => ${this.output.expr.token})")
-      is XR.Returning.Kind.Keys -> stmt("${action.token}.returningKeys(${this.output.keys.token { it.token }})")
+      is XR.Returning.Kind.Expression -> stmt("${action.token}.returning { ${this.output.alias.token} -> ${this.output.expr.token} }")
+      is XR.Returning.Kind.Keys -> stmt("${action.token}.returningKeys { ${this.output.keys.token { it.token }} }")
     }
 
   val XR.OnConflict.token: Token get() =

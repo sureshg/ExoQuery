@@ -53,10 +53,10 @@ abstract class GoldenSpecDynamic(val goldenQueries: GoldenQueryFile, val mode: M
   }
 
   fun TestScope.shouldBeGolden(xr: XR, suffix: String = "") = xr.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix")
-  fun TestScope.shouldBeGolden(sql: SqlCompiledQuery<*>, suffix: String = "") = run {
+  fun TestScope.shouldBeGolden(sql: ExoCompiled, suffix: String = "") = run {
     // Get the query as it is resolved from the runtime tokes. That is the only way to know whether the binding lifts actually work or not.
     // The sql.value will never have <UNR?> entries because if params erroneously don't exist it is only know at runtime.
-    val resolvedQuery = sql.determinizeDynamics().token.show(Renderer())
+    val resolvedQuery = sql.determinizeDynamics().token.renderWith(Renderer())
     resolvedQuery.shouldBeGolden(
       testPath() + if (suffix.isEmpty()) "" else "/$suffix",
       PrintableValue.Type.SqlQuery,

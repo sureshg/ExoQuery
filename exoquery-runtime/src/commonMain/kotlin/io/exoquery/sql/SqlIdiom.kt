@@ -66,7 +66,7 @@ abstract class SqlIdiom: HasPhasePrinting {
   }
 
   fun translate(xr: XR.Query) =
-    prepareQuery(xr).token.show(Renderer(true, true, null))
+    prepareQuery(xr).token.renderWith(Renderer(true, true, null))
 
   private fun translateBasic(xr: XR): Token {
     // TODO caching
@@ -733,7 +733,7 @@ abstract class SqlIdiom: HasPhasePrinting {
   val XR.Insert.token get(): Token = run {
     val query = this.query as? XR.Entity ?: xrError("Insert query must be an entity but found: ${this.query}")
     val (columns, values) = columnsAndValues(assignments).unzip()
-    +"INSERT INTO ${query.token}${` AS (table)`(alias)} (${columns.mkStmt(", ")}) VALUES (${values.mkStmt(", ")})"
+    +"INSERT INTO ${query.token}${` AS table`(alias)} (${columns.mkStmt(", ")}) VALUES (${values.mkStmt(", ")})"
 
 //    case Insert(entity: Entity, assignments) =>
 //        val (table, columns, values) = insertInfo(insertEntityTokenizer, entity, assignments)
@@ -783,7 +783,7 @@ abstract class SqlIdiom: HasPhasePrinting {
     }
 
   val XR.Delete.token get(): Token = run {
-    fun deleteBase() = +"DELETE FROM ${query.token}${` AS (table)`(alias)}"
+    fun deleteBase() = +"DELETE FROM ${query.token}${` AS table`(alias)}"
     when {
       query is XR.Filter && query.head is XR.Entity ->
         deleteBase()
@@ -795,7 +795,7 @@ abstract class SqlIdiom: HasPhasePrinting {
   }
 
   val XR.Update.token get(): Token = run {
-    fun updateBase() = +"UPDATE ${query.token}${` AS (table)`(alias)} SET ${assignments.token}"
+    fun updateBase() = +"UPDATE ${query.token}${` AS table`(alias)} SET ${assignments.token}"
     when {
       query is XR.Filter && query.head is XR.Entity ->
         updateBase()
@@ -807,7 +807,7 @@ abstract class SqlIdiom: HasPhasePrinting {
   }
 
   // AS [table] specifically for actions (where for some dialects it shouldn't even be there)
-  fun ` AS (table)`(alias: XR.Ident): Token =
+  fun ` AS table`(alias: XR.Ident): Token =
     if (alias.isThisRef()) emptyStatement
     else
       when (useActionTableAliasAs) {

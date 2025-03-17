@@ -113,10 +113,11 @@ sealed interface XR {
   abstract val type: XRType
   abstract val loc: XR.Location
 
-  fun show(pretty: Boolean = false, renderOptions: MirrorIdiom.RenderOptions = MirrorIdiom.RenderOptions()): String {
-    val xr: XR = this
+  fun show(pretty: Boolean = false, sanitzeIdents: Boolean = true, renderOptions: MirrorIdiom.RenderOptions = MirrorIdiom.RenderOptions()): String {
+    val xr: XR =
+      TransformXR({ when (it) { is Ident -> it.copy(name = it.name.replace("$", "")); else -> null } }).invoke(this)
     return with(MirrorIdiom(renderOptions)) {
-      xr.token.show(Renderer())
+      xr.token.renderWith(Renderer())
     }
   }
 
@@ -868,6 +869,10 @@ sealed interface XR {
         else -> XRType.Unknown
       }
     }
+
+    fun core(): XR.Expression =
+      if (of is Property) of.core() else of
+
     companion object {
       fun fromCoreAndPaths(core: XR.Expression, paths: List<String>, loc: Location = Location.Synth): XR.Expression =
         paths.fold(core) { acc, path -> Property(acc, path, Visibility.Visible, loc) }
@@ -1013,7 +1018,7 @@ sealed interface XR {
       @Serializable data class Expression(val alias: XR.Ident, val expr: XR.Expression): Kind { override val type get() = expr.type }
 
       // Specifically when APIs that IMPLICITLY return columns are used e.g. PreparedStatement.generatedKeys
-      @Serializable data class Keys(val keys: List<XR.Property>): Kind { override val type by lazy { XR.Product.TupleSmartN(keys).type } }
+      @Serializable data class Keys(val alias: XR.Ident, val keys: List<XR.Property>): Kind { override val type by lazy { XR.Product.TupleSmartN(keys).type } }
     }
   }
 

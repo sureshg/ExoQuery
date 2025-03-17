@@ -4,6 +4,7 @@ import io.exoquery.ParamSet
 import io.exoquery.RuntimeSet
 import io.exoquery.SqlAction
 import io.exoquery.SqlActionBatch
+import io.exoquery.SqlCompiledAction
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.fansi.Attrs
@@ -11,6 +12,14 @@ import io.exoquery.kmp.pprint.PPrinter
 import io.exoquery.kmp.pprint.PPrinterManual
 import io.exoquery.pprint.PPrinterConfig
 import io.exoquery.pprint.Tree
+import io.exoquery.sql.ParamMultiToken
+import io.exoquery.sql.ParamMultiTokenRealized
+import io.exoquery.sql.ParamSingleToken
+import io.exoquery.sql.ParamSingleTokenRealized
+import io.exoquery.sql.SetContainsToken
+import io.exoquery.sql.Statement
+import io.exoquery.sql.StringToken
+import io.exoquery.sql.Token
 import io.exoquery.util.ShowTree
 import io.exoquery.xr.*
 import kotlinx.serialization.SerializationStrategy
@@ -22,6 +31,21 @@ object PrintXRType {
 }
 
 fun qprint(xr: XR) = PrintXR.Color.invoke(xr)
+
+class PrintToken(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Token>(config) {
+  fun treeifyThis(x: Token, elementName: String?) = treeify(x, elementName, escapeUnicode = config.defaultEscapeUnicode, showFieldNames = config.defaultShowFieldNames)
+
+  override fun treeify(x: Token, elementName: String?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree =
+    when (x) {
+      is ParamMultiToken -> Tree.Apply("ParamMultiToken", iteratorOf(Tree.Literal(x.bid.value, "bid")))
+      is ParamMultiTokenRealized -> Tree.Apply("ParamMultiTokenRealized", iteratorOf(Tree.Literal(x.bid.value, "bid"), x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.value.toString()))) } ?: Tree.Literal("null", "param")))
+      is ParamSingleToken -> Tree.Apply("ParamSingleToken", iteratorOf(Tree.Literal(x.bid.value, "bid")))
+      is ParamSingleTokenRealized -> Tree.Apply("ParamSingleTokenRealized", iteratorOf(Tree.Literal(x.bid.value, "bid"), x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.value.toString()))) } ?: Tree.Literal("null", "param")))
+      is SetContainsToken -> Tree.Apply("SetContainsToken", iteratorOf(treeifyThis(x.a, "a"), treeifyThis(x.op, "op"), treeifyThis(x.b, "b")))
+      is Statement -> Tree.Apply("Statement", x.tokens.map { treeifyThis(it, null) }.iterator())
+      is StringToken -> Tree.Apply("StringToken", iteratorOf(Tree.Literal(x.string, "string")))
+    }
+}
 
 class PrintMisc(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Any?>(config) {
   fun treeifyThis(x: Any?, elementName: String?) = treeify(x, elementName, escapeUnicode = config.defaultEscapeUnicode, showFieldNames = config.defaultShowFieldNames)
@@ -38,6 +62,18 @@ class PrintMisc(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Any?>
       is ParamSet -> Tree.Apply("ParamSet", x.lifts.map { l -> Tree.KeyValue(l.id.value, Tree.Literal(l.showValue().toString())) }.iterator())
       is RuntimeSet -> Tree.Apply("RuntimeSet", x.runtimes.map { (id, xr) -> Tree.KeyValue(id.value, treeifyThis(xr, null)) }.iterator())
       is ShowTree -> x.showTree(config)
+
+      // Treeify the following: val value: String, override val token: Token, val needsTokenization: Boolean, val returningType: ReturningType, val label: String?, val phase: Phase
+      is SqlCompiledAction<*, *> -> Tree.Apply("SqlCompiledAction", iteratorOf(
+        Tree.KeyValue("value", Tree.Literal(x.value)),
+        Tree.KeyValue("token", PrintToken().treeifyThis(x.token, "token")),
+        Tree.KeyValue("needsTokenization", Tree.Literal("${x.needsTokenization}")),
+        Tree.KeyValue("returningType", Tree.Literal(x.returningType.toString())),
+        Tree.KeyValue("label", Tree.Literal(x.label ?: "null")),
+        Tree.KeyValue("phase", Tree.Literal(x.phase.toString())),
+        Tree.KeyValue("originalXR", treeifyThis(x.originalXR(), "originalXR"))
+      ))
+
       else -> super.treeify(x, elementName, escapeUnicode, showFieldNames)
     }
 }

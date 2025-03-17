@@ -357,7 +357,7 @@ interface StatefulTransformer<T> {
       }
       is Returning.Kind.Keys -> {
         val (at, att) = applyList(xr.keys) { t, v -> t.invoke(v) }
-        Returning.Kind.Keys(at) to att
+        Returning.Kind.Keys(xr.alias, at) to att
       }
     }
 

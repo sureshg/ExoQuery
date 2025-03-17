@@ -117,7 +117,7 @@ interface StatelessTransformer {
   operator fun invoke(xr: XR.Returning.Kind): XR.Returning.Kind =
     when (xr) {
       is XR.Returning.Kind.Expression -> XR.Returning.Kind.Expression(invokeIdent(xr.alias), invoke(xr.expr))
-      is XR.Returning.Kind.Keys -> XR.Returning.Kind.Keys(xr.keys.map { invoke(it) })
+      is XR.Returning.Kind.Keys -> XR.Returning.Kind.Keys(xr.alias, xr.keys.map { invoke(it) })
     }
 
   operator fun invoke(xr: XR.Insert): XR.Insert =

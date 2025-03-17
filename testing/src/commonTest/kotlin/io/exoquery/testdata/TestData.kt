@@ -15,3 +15,8 @@ val personEnt = XR.Entity("Person", personTpe)
 val addressEnt = XR.Entity("Address", addressTpe)
 val pIdent = XR.Ident("p", personTpe)
 val aIdent = XR.Ident("a", addressTpe)
+
+object Nest {
+  data class Name(val first: String, val last: String)
+  data class Person(val name: Name, val age: Int)
+}
