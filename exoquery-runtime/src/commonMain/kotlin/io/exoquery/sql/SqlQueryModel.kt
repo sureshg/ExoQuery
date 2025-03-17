@@ -58,7 +58,7 @@ final data class TableContext(val entity: XR.Entity, val alias: String) : FromCo
 }
 
 @Serializable
-final data class QueryContext(val query: SqlQuery, val alias: String) : FromContext {
+final data class QueryContext(val query: SqlQueryModel, val alias: String) : FromContext {
   override val type: XRType = query.type
   fun aliasIdent() = XR.Ident(alias, query.type, XR.Location.Synth)
 }
@@ -76,17 +76,17 @@ final data class FlatJoinContext(val joinType: XR.JoinType, val from: FromContex
 }
 
 @Serializable
-sealed interface SqlQuery {
+sealed interface SqlQueryModel {
   val type: XRType
 
-  fun transformType(f: (XRType) -> XRType): SqlQuery =
+  fun transformType(f: (XRType) -> XRType): SqlQueryModel =
     when (this) {
       is FlattenSqlQuery -> copy(type = f(type))
       is SetOperationSqlQuery -> copy(type = f(type))
       is UnaryOperationSqlQuery -> copy(type = f(type))
     }
 
-  fun transformXR(f: StatelessTransformer): SqlQuery =
+  fun transformXR(f: StatelessTransformer): SqlQueryModel =
     when (this) {
       is FlattenSqlQuery -> this.transformXR(f) // call the transformXR on FlattenSqlQuery directly
       is SetOperationSqlQuery -> SetOperationSqlQuery(a.transformXR(f), op, b.transformXR(f), type)
@@ -96,7 +96,7 @@ sealed interface SqlQuery {
   fun show(pretty: Boolean = false): String {
     val str =
       with(PostgresDialect(Globals.traceConfig())) {
-        this@SqlQuery.token.toString()
+        this@SqlQueryModel.token.toString()
       }
     // TODO integrate formatter via `expect`
     //return if (pretty) SqlFormatter.format(str) else str
@@ -105,7 +105,7 @@ sealed interface SqlQuery {
 
 
   fun showRaw(color: Boolean = true): String =
-    PrintXR(SqlQuery.serializer())(this).toString()
+    PrintXR(SqlQueryModel.serializer())(this).toString()
 }
 
 @Serializable
@@ -127,18 +127,18 @@ sealed interface DistinctKind {
 
 @Serializable
 final data class SetOperationSqlQuery(
-  val a: SqlQuery,
+  val a: SqlQueryModel,
   val op: SetOperation,
-  val b: SqlQuery,
+  val b: SqlQueryModel,
   override val type: XRType
-): SqlQuery
+): SqlQueryModel
 
 @Serializable
 final data class UnaryOperationSqlQuery(
   val op: XR.UnaryOp,
-  val query: SqlQuery,
+  val query: SqlQueryModel,
   override val type: XRType
-): SqlQuery
+): SqlQueryModel
 
 
 /**
@@ -183,7 +183,7 @@ final data class FlattenSqlQuery(
   val select: List<SelectValue> = emptyList(),
   val distinct: DistinctKind = DistinctKind.None,
   override val type: XRType
-): SqlQuery {
+): SqlQueryModel {
 
   // Overriding so make this return a more-specific type
   override fun transformXR(f: StatelessTransformer): FlattenSqlQuery =
@@ -216,7 +216,7 @@ final data class FlattenSqlQuery(
 class SqlQueryApply(val traceConfig: TraceConfig) {
   val trace: Tracer = Tracer(TraceType.SqlQueryConstruct, traceConfig, 1)
 
-  operator fun invoke(query: XR.Query): SqlQuery =
+  operator fun invoke(query: XR.Query): SqlQueryModel =
     with(query) {
       when(this) {
         is XR.Union ->

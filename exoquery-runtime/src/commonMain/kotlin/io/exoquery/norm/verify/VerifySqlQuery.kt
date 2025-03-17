@@ -4,10 +4,10 @@ import io.exoquery.sql.*
 import io.exoquery.xr.XR
 
 class VerifySqlQuery {
-  fun invoke(query: SqlQuery): FreeVariables.Result =
+  fun invoke(query: SqlQueryModel): FreeVariables.Result =
     verify(query)
 
-  private fun verify(query: SqlQuery): FreeVariables.Result =
+  private fun verify(query: SqlQueryModel): FreeVariables.Result =
     when (query) {
       is FlattenSqlQuery -> verifyFlatJoin(query)
       is SetOperationSqlQuery -> verify(query.a) + verify(query.b)

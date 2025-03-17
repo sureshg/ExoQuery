@@ -80,7 +80,7 @@ infix fun List<String>.or(alternate: String) =
  */
 class ExpandNestedQueries(val pathJoinFunction: (List<String>) -> String): StatelessQueryTransformer() {
 
-  override fun invoke(q: SqlQuery, level: QueryLevel): SqlQuery =
+  override fun invoke(q: SqlQueryModel, level: QueryLevel): SqlQueryModel =
     when (q) {
       is FlattenSqlQuery -> {
         val selection = ExpandSelection(q.from)(q.select, level)

@@ -337,10 +337,6 @@ object SqlActionExpr {
       return make
     }
 
-    context(CX.Scope, CX.Builder)
-    fun replantUnpackLambda() =
-      call(PT.io_exoquery_unpackActionLazy).invoke(builder.irString(packedXR))
-
     companion object {
       context (CX.Scope) operator fun <AP : Pattern<Uprootable>> get(x: AP) =
         customPattern1("SqlActionExpr.Uprootable", x) { it: IrExpression ->

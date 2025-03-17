@@ -11,9 +11,9 @@ data class SqlAction<Input, Output>(override val xr: XR.Action, override val run
     copy(xr = xr as? XR.Action ?: xrError("Failed to rebuild SqlAction with XR of type ${xr::class} which was: ${xr.show()}"), runtimes = runtimes, params = params)
 
   fun buildRuntime(dialect: SqlIdiom, label: String?, pretty: Boolean = false): SqlCompiledAction<Input, Output> = run {
-    val containerBuild = RuntimeBuilder(this, dialect, label, pretty).invoke()
+    val containerBuild = RuntimeBuilder(dialect, pretty).forAction(this)
     val returningType = ReturningType.fromActionXR(xr)
-    SqlCompiledAction(containerBuild.queryString, containerBuild.queryTokenized, true, returningType, containerBuild.label, Phase.Runtime, { xr })
+    SqlCompiledAction(containerBuild.queryString, containerBuild.queryTokenized, true, returningType, label, Phase.Runtime, { xr })
   }
 
   fun <Dialect: SqlIdiom> build(): SqlCompiledAction<Input, Output> = errorCap("The build function body was not inlined")

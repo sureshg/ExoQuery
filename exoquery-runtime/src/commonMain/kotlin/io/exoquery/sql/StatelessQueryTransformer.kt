@@ -3,10 +3,10 @@ package io.exoquery.sql
 import io.exoquery.xr.XRType
 
 abstract class StatelessQueryTransformer {
-  open operator fun invoke(q: SqlQuery, topLevelQuat: XRType = XRType.Unknown): SqlQuery =
+  open operator fun invoke(q: SqlQueryModel, topLevelQuat: XRType = XRType.Unknown): SqlQueryModel =
     invoke(q, QueryLevel.Top(topLevelQuat))
 
-  protected open fun invoke(q: SqlQuery, level: QueryLevel): SqlQuery =
+  protected open fun invoke(q: SqlQueryModel, level: QueryLevel): SqlQueryModel =
     with (q) {
       when(this) {
         is FlattenSqlQuery -> expandNested(this, level)

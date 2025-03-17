@@ -23,6 +23,7 @@ import io.exoquery.innerdsl.SqlActionFilterable
 import io.exoquery.innerdsl.set
 import io.exoquery.innerdsl.setParams
 import io.exoquery.serial.ParamSerializer
+import io.exoquery.sql.SqlQueryModel
 import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
 import kotlinx.serialization.Contextual
@@ -33,8 +34,17 @@ import kotlin.reflect.KClass
 fun unpackExpr(expr: String): XR.Expression =
   EncodingXR.protoBuf.decodeFromHexString<XR.Expression>(expr)
 
+fun unpackQueryModel(query: String): SqlQueryModel =
+  EncodingXR.protoBuf.decodeFromHexString<SqlQueryModel>(query)
+
+fun unpackQueryModelLazy(query: String): () -> SqlQueryModel =
+  { unpackQueryModel(query) }
+
 fun unpackQuery(query: String): XR.Query =
   EncodingXR.protoBuf.decodeFromHexString<XR.Query>(query)
+
+fun unpackQueryLazy(query: String): () -> XR.Query =
+  { unpackQuery(query) }
 
 fun unpackAction(action: String): XR.Action =
   EncodingXR.protoBuf.decodeFromHexString<XR.Action>(action)

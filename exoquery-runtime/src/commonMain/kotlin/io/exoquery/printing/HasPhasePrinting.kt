@@ -1,6 +1,6 @@
 package io.exoquery.printing
 
-import io.exoquery.sql.SqlQuery
+import io.exoquery.sql.SqlQueryModel
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
 import io.exoquery.util.Tracer
@@ -23,7 +23,7 @@ interface HasPhasePrinting {
     trace.interpolate({ listOf("", "") }, { listOf(q) }).andLog()
   }
 
-  fun demarcate(heading: String, q: SqlQuery) {
+  fun demarcate(heading: String, q: SqlQueryModel) {
     // Make sure to compute q.showRaw() outside of the trace parameter. Otherwise in some situations fansi blow up. Not sure exactly why.
     val titleString = title("$heading")
     trace("${titleString}").andLog()

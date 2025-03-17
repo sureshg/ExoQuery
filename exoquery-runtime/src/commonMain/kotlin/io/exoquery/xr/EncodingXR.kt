@@ -1,5 +1,6 @@
 package io.exoquery.xr
 
+import io.exoquery.sql.SqlQueryModel
 import io.exoquery.xr.EncodingXR.protoBuf
 import kotlinx.serialization.decodeFromHexString
 import kotlinx.serialization.encodeToHexString
@@ -19,6 +20,10 @@ object EncodingXR {
 
 fun XR.encode(): String {
   return protoBuf.encodeToHexString(EncodingXR.module.serializer<XR>(), this)
+}
+
+fun SqlQueryModel.encode(): String {
+  return protoBuf.encodeToHexString(EncodingXR.module.serializer<SqlQueryModel>(), this)
 }
 
 fun String.decodeXR(): XR {

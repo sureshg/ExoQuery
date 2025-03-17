@@ -29,7 +29,7 @@ abstract class SqlIdiom: HasPhasePrinting {
   protected fun normalizeQuery(xr: XR.Query) =
     SqlNormalize(traceConf = traceConf, disableApplyMap = false)(xr)
 
-  inline fun ((SqlQuery) -> SqlQuery).andThen(phaseTitle: String, crossinline f: (SqlQuery) -> SqlQuery): (SqlQuery) -> SqlQuery  =
+  inline fun ((SqlQueryModel) -> SqlQueryModel).andThen(phaseTitle: String, crossinline f: (SqlQueryModel) -> SqlQueryModel): (SqlQueryModel) -> SqlQueryModel  =
     { qRaw ->
       val q = this(qRaw)
       val label = traceConf.phaseLabel?.let { " (${it})" } ?: ""
@@ -38,10 +38,10 @@ abstract class SqlIdiom: HasPhasePrinting {
       output
     }
 
-  fun prepareQuery(xr: XR.Query): SqlQuery {
+  fun prepareQuery(xr: XR.Query): SqlQueryModel {
     val q = normalizeQuery(xr)
     val sqlQuery = SqlQueryApply(traceConf)(q)
-    val root = { q: SqlQuery -> q }
+    val root = { q: SqlQueryModel -> q }
     val output =
       root
         .andThen("SqlQueryApply") { it -> it }
@@ -56,9 +56,9 @@ abstract class SqlIdiom: HasPhasePrinting {
   }
 
   // TODO also return the params from there
-  fun processQuery(xr: XR.Query): Token {
+  fun processQuery(xr: XR.Query): Pair<Token, SqlQueryModel> {
     val q = prepareQuery(xr)
-    return q.token
+    return q.token to q
   }
 
   fun processAction(xr: XR.Action): Token {
@@ -675,7 +675,7 @@ abstract class SqlIdiom: HasPhasePrinting {
 //      stmt"SELECT ${op.token} (${q.token})"
 //  }
 
-  val SqlQuery.token get(): Token =
+  val SqlQueryModel.token get(): Token =
     when (this) {
       is FlattenSqlQuery -> token
       is SetOperationSqlQuery -> +"(${a.token}) ${op.token} (${b.token})"

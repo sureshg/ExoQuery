@@ -1,19 +1,25 @@
 package io.exoquery.xr
 
+import io.exoquery.ContainerOfActionXR
+import io.exoquery.ContainerOfFunXR
 import io.exoquery.ContainerOfXR
 import io.exoquery.ParamSet
 import io.exoquery.Phase
+import io.exoquery.SqlQuery
 import io.exoquery.sql.ParamMultiToken
 import io.exoquery.sql.ParamSingleToken
 import io.exoquery.sql.SqlIdiom
+import io.exoquery.sql.SqlQueryModel
 import io.exoquery.sql.StatelessTokenTransformer
 import io.exoquery.sql.Token
 import io.exoquery.util.formatQuery
 
-class RuntimeBuilder(val container: ContainerOfXR, val dialect: SqlIdiom, val label: String?, val pretty: Boolean) {
-  data class ContainerBuild(val queryString: String, val queryTokenized: Token, val label: String?, val phase: Phase)
+class RuntimeBuilder(val dialect: SqlIdiom, val pretty: Boolean) {
+  data class ContainerBuildQuery(val queryString: String, val queryTokenized: Token, val queryModel: SqlQueryModel)
+  data class ContainerBuildAction(val queryString: String, val queryTokenized: Token)
 
-  operator fun invoke(): ContainerBuild {
+
+  private fun <Other> processContainer(container: ContainerOfXR, tokenize: (XR) -> Pair<Token, Other>): Triple<String, Token, Other> {
     // First thing we need to do is dedupe any runtime binds. We need to do this while the whole AST is still hierarchically
     // organized i.e. before flattening. This happens because in dynamic situations that collect and then combine multiple queries e.g:
     // List("a", "b").map(a => quote { query[Person].filter(p => p.name == lift(a)) }).reduce(_ ++ _)
@@ -24,25 +30,43 @@ class RuntimeBuilder(val container: ContainerOfXR, val dialect: SqlIdiom, val la
     //   Filter(Entity("Person"), BinaryOperation(p.name, ==, ScalarTag("SOME_UUID"))
     // )
     // This will result in incorrect queries. Therefore we need to dedupe the runtime the "SOME_UUID" binds here.
-    // TODO need test with the above case
     val quoted = container.rekeyRuntimeBinds()
     val splicedAst = spliceQuotations(quoted)
 
-    val queryTokenizedRaw =
-      when (splicedAst) {
-        // If it is an expression attempt to convert into a query-type and run it. There are situations in which toExpr is introduced around a query etc... and we can handle that in SqlQuery processing
-        is XR.Expression -> dialect.processQuery(splicedAst.asQuery())
-        is XR.Query -> dialect.processQuery(splicedAst)
-        is XR.Action -> dialect.processAction(splicedAst)
-        else -> throw IllegalArgumentException("Unsupported XR type. Can only be a XR.Query or XR.Action: ${splicedAst::class}\n${splicedAst.showRaw()}")
-      }
+    val (queryTokenizedRaw, other) = tokenize(splicedAst)
 
     // "realize" the tokens converting params clauses to actual list-values
     val queryTokenized = TokenRealizer(container.params).invoke(queryTokenizedRaw)
 
     val queryRaw = queryTokenized.build()
-    val query = if (pretty) formatQuery(queryRaw) else queryRaw
-    return ContainerBuild(queryRaw, queryTokenized, label, Phase.Runtime)
+    val queryString = if (pretty) formatQuery(queryRaw) else queryRaw
+    return Triple(queryString, queryTokenized, other)
+  }
+
+  fun forQuery(container: ContainerOfFunXR): ContainerBuildQuery {
+    val (queryString, queryToken, queryModel) =
+      processContainer(container) { splicedAst ->
+        when (splicedAst) {
+          // If it is an expression attempt to convert into a query-type and run it. There are situations in which toExpr is introduced around a query etc... and we can handle that in SqlQuery processing
+          is XR.Expression -> dialect.processQuery(splicedAst.asQuery())
+          is XR.Query -> dialect.processQuery(splicedAst)
+          else -> throw IllegalArgumentException("Unsupported XR type. Can only be a XR.Query: ${splicedAst::class}\n${splicedAst.showRaw()}")
+        }
+      }
+
+    return ContainerBuildQuery(queryString, queryToken, queryModel)
+  }
+
+  fun forAction(container: ContainerOfActionXR): ContainerBuildAction {
+    val (queryString, queryToken, _) =
+      processContainer(container) { splicedAst ->
+        when (splicedAst) {
+          is XR.Action -> dialect.processAction(splicedAst) to null
+          else -> throw IllegalArgumentException("Unsupported XR type. Can only be a XR.Action: ${splicedAst::class}\n${splicedAst.showRaw()}")
+        }
+      }
+
+    return ContainerBuildAction(queryString, queryToken)
   }
 
   class TokenRealizer(val paramSet: ParamSet): StatelessTokenTransformer {

@@ -25,6 +25,7 @@ import io.exoquery.sql.Token
 import io.exoquery.sql.token
 import io.exoquery.util.TraceConfig
 import io.exoquery.xr.XR
+import io.exoquery.xr.encode
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.builders.irBoolean
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -114,7 +115,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
             sqlExpr.match(
               case(SqlQueryExpr.Uprootable[Is()]).then { uprootable ->
                 val xr = uprootable.xr // deserialize the XR, TODO need to handle deserialization failures here
-                val (queryTokenized, compileTime) = measureTimedValue {
+                val (queryAndToken, compileTime) = measureTimedValue {
                   try {
                     dialect.processQuery(xr)
                   } finally {
@@ -122,12 +123,14 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
                     writeSource?.close()
                   }
                 }
+                val (queryTokenized, query) = queryAndToken
 
                 // Can include the sql-formatting library here since the compiler is always on the JVM!
                 val queryString = queryTokenized.renderQueryString(isPretty, xr)
                 accum.addQuery(PrintableQuery(queryString, compileLocation, queryLabel))
                 this@Scope.logger.report("Compiled query in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)
-                ContainerType.Query.buildContainerCompiletime(queryLabel, queryString, queryTokenized, sqlExpr)
+
+                SqlCompiledQueryExpr(sqlExpr, queryString, queryTokenized, false, queryLabel, Phase.CompileTime, uprootable.packedXR, query.encode()).plant()
               }
             ) ?: run {
               logger.warn("The query could not be transformed at compile-time", expr.location())
@@ -152,8 +155,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
                 val returningType = ReturningType.fromActionXR(xr)
                 accum.addQuery(PrintableQuery(queryString, compileLocation, queryLabel))
                 this@Scope.logger.report("Compiled action in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)
-                val unpackActionLazyLambda = uprootable.replantUnpackLambda()
-                ContainerType.Action.buildContainerCompiletime(queryLabel, queryString, queryTokenized, sqlExpr, returningType, unpackActionLazyLambda)
+                SqlCompiledActionExpr(sqlExpr, queryString, queryTokenized, returningType, queryLabel, Phase.CompileTime, uprootable.packedXR).plant()
               }
             ) ?: run {
               //logger.warn("The action could not be transformed at compile-time", expr.location())
@@ -181,34 +183,6 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
 
     data object Query: ContainerType {
       context(CX.Scope, CX.Builder)
-      fun buildContainerCompiletime(queryLabel: String?, queryString: String, queryTokenized: Token, sqlQueryExpr: IrExpression) = run {
-        val lifter = Lifter(this@Builder)
-
-        // Gete the type T of the SqlQuery<T> that .build is called on
-        val queryOutputType = sqlQueryExpr.type.simpleTypeArgs[0]
-        // i.e. this is the SqlQuery.params call
-        val callParamsFromSqlQuery = sqlQueryExpr.callDispatch("params").invoke()
-
-        with (lifter) {
-          val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
-          makeWithTypes<SqlCompiledQuery<*>>(
-            listOf(queryOutputType),
-            listOf(
-              queryString.lift(), // value
-              queryTokenized.token.lift(callParamsFromSqlQuery), // token
-              // If there are no ParamMulti values then we know that we can use the original query built with the .build function.
-              // Now we can't check what the values in ParamSet are but we have this value in the TagForParam.paramType field
-              // which shows us if the Param is a ParamSingle or ParamMulti. We need to check that in the AST in order to know that this
-              // value is supposed to be.
-              irBuilder.irBoolean(false), // needsTokenization (todo need to determine this from the tokenized value i.e. only `true` if there are no ParamMulti values)
-              labelExpr,
-              Phase.CompileTime.lift()
-            )
-          )
-        }
-      }
-
-      context(CX.Scope, CX.Builder)
       fun buildContainerRuntime(construct: IrConstructorSymbol, traceConfig: TraceConfig, queryLabel: String?, isPretty: Boolean, sqlQueryExpr: IrExpression): IrExpression = run {
         with (Lifter(this@Builder)) {
           val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
@@ -219,30 +193,6 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
       }
     }
     data object Action: ContainerType {
-      context(CX.Scope, CX.Builder)
-      fun buildContainerCompiletime(queryLabel: String?, queryString: String, queryTokenized: Token, sqlQueryExpr: IrExpression, returningType: ReturningType, unpackActionLazy: IrExpression) = run {
-        val lifter = Lifter(this@Builder)
-        val callParamsFromSqlQuery = sqlQueryExpr.callDispatch("params").invoke()
-        val inputType = sqlQueryExpr.type.simpleTypeArgs[0]
-        val outputType = sqlQueryExpr.type.simpleTypeArgs[1]
-
-        with (lifter) {
-          val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
-          makeWithTypes<SqlCompiledAction<*, *>>(
-            listOf(inputType, outputType),
-            listOf(
-              queryString.lift(), // value
-              queryTokenized.token.lift(callParamsFromSqlQuery), // token
-              irBuilder.irBoolean(false), // needsTokenization
-              returningType.lift(), // returningType
-              labelExpr,
-              Phase.CompileTime.lift(),
-              unpackActionLazy
-            )
-          )
-        }
-      }
-
       context(CX.Scope, CX.Builder)
       fun buildContainerRuntime(construct: IrConstructorSymbol, traceConfig: TraceConfig, queryLabel: String?, isPretty: Boolean, sqlQueryExpr: IrExpression): IrExpression = run {
         with (Lifter(this@Builder)) {

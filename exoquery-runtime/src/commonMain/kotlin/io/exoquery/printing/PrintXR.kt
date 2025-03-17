@@ -54,7 +54,7 @@ class PrintMisc(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Any?>
     when (x) {
       is XR -> PrintXR(XR.serializer(), config.copy(defaultShowFieldNames = false)).treeifyThis(x, elementName)
       is XRType -> PrintXR(XRType.serializer(), config).treeifyThis(x, elementName)
-      is io.exoquery.sql.SqlQuery -> PrintXR(io.exoquery.sql.SqlQuery.serializer(), config).treeifyThis(x, elementName)
+      is io.exoquery.sql.SqlQueryModel -> PrintXR(io.exoquery.sql.SqlQueryModel.serializer(), config).treeifyThis(x, elementName)
       is SqlExpression<*> -> Tree.Apply("SqlExpression", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
       is SqlQuery<*> -> Tree.Apply("SqlQuery", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
       is SqlAction<*, *> -> Tree.Apply("SqlAction", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
@@ -136,7 +136,7 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
           else -> treet
         }
 
-      is io.exoquery.sql.SqlQuery -> super.treeifyComposite(elem, elementName, true)
+      is io.exoquery.sql.SqlQueryModel -> super.treeifyComposite(elem, elementName, true)
 
       else -> super.treeifyComposite(elem, elementName, showFieldNames)
     }

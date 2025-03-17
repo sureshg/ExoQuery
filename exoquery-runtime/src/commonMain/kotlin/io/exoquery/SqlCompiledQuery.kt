@@ -1,6 +1,7 @@
 package io.exoquery
 
 import io.exoquery.printing.PrintMisc
+import io.exoquery.sql.SqlQueryModel
 import io.exoquery.sql.Token
 import io.exoquery.xr.XR
 
@@ -17,7 +18,7 @@ sealed interface Phase {
 // can just use the value-string. Typically we cannot use the value-string because there is a paramList (since we don't know how many instances of "?" to use)
 // This needs to be checked from the Token at compile-time (also if the dialect requires numbered parameters
 // it is also useful to use Token)
-data class SqlCompiledQuery<T>(val value: String, override val token: Token, val needsTokenization: Boolean, val label: String?, val phase: Phase): ExoCompiled() {
+data class SqlCompiledQuery<T>(val value: String, override val token: Token, val needsTokenization: Boolean, val label: String?, val phase: Phase, val originalXR: () -> XR.Query, val originalQuery: () -> SqlQueryModel): ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
 
   // Similar concept tot the SqlQuery/SqlExpression.determinizeDynamics but it does not need to consider any nesting constructs
