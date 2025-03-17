@@ -50,9 +50,11 @@ data class SqlCompiledQueryExpr(
           // value is supposed to be.
           irBuilder.irBoolean(false), // needsTokenization (todo need to determine this from the tokenized value i.e. only `true` if there are no ParamMulti values)
           labelExpr,
-          Phase.CompileTime.lift(),
-          call(PT.io_exoquery_unpackQueryLazy).invoke(builder.irString(originalEncodedQueryXR)),
-          call(PT.io_exoquery_unpackQueryModelLazy).invoke(builder.irString(originalEncodedQueryModel))
+          make<SqlCompiledQuery.DebugData>(
+            Phase.CompileTime.lift(),
+            call(PT.io_exoquery_unpackQueryLazy).invoke(builder.irString(originalEncodedQueryXR)),
+            call(PT.io_exoquery_unpackQueryModelLazy).invoke(builder.irString(originalEncodedQueryModel))
+          )
         )
       )
     }
@@ -90,8 +92,10 @@ data class SqlCompiledActionExpr(
           irBuilder.irBoolean(false), // needsTokenization (todo need to determine this from the tokenized value i.e. only `true` if there are no ParamMulti values)
           returningType.lift(),
           labelExpr,
-          Phase.CompileTime.lift(),
-          call(PT.io_exoquery_unpackActionLazy).invoke(builder.irString(originalEncodedActionXR))
+          make<SqlCompiledAction.DebugData>(
+            Phase.CompileTime.lift(),
+            call(PT.io_exoquery_unpackActionLazy).invoke(builder.irString(originalEncodedActionXR))
+          )
         )
       )
     }

@@ -70,8 +70,8 @@ class PrintMisc(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Any?>
         Tree.KeyValue("needsTokenization", Tree.Literal("${x.needsTokenization}")),
         Tree.KeyValue("returningType", Tree.Literal(x.returningType.toString())),
         Tree.KeyValue("label", Tree.Literal(x.label ?: "null")),
-        Tree.KeyValue("phase", Tree.Literal(x.phase.toString())),
-        Tree.KeyValue("originalXR", treeifyThis(x.originalXR(), "originalXR"))
+        Tree.KeyValue("phase", Tree.Literal(x.debugData.phase.toString())),
+        Tree.KeyValue("originalXR", treeifyThis(x.debugData.originalXR(), "originalXR"))
       ))
 
       else -> super.treeify(x, elementName, escapeUnicode, showFieldNames)

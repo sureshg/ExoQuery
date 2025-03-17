@@ -18,7 +18,7 @@ sealed interface Phase {
 // can just use the value-string. Typically we cannot use the value-string because there is a paramList (since we don't know how many instances of "?" to use)
 // This needs to be checked from the Token at compile-time (also if the dialect requires numbered parameters
 // it is also useful to use Token)
-data class SqlCompiledQuery<T>(val value: String, override val token: Token, val needsTokenization: Boolean, val label: String?, val phase: Phase, val originalXR: () -> XR.Query, val originalQuery: () -> SqlQueryModel): ExoCompiled() {
+data class SqlCompiledQuery<T>(val value: String, override val token: Token, val needsTokenization: Boolean, val label: String?, val debugData: SqlCompiledQuery.DebugData): ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
 
   // Similar concept tot the SqlQuery/SqlExpression.determinizeDynamics but it does not need to consider any nesting constructs
@@ -26,15 +26,19 @@ data class SqlCompiledQuery<T>(val value: String, override val token: Token, val
   // (determined by Lifter.liftToken + realization for compile-time and buildRuntime + realization for runtime)
   override fun determinizeDynamics(): SqlCompiledQuery<T> =
     this.copy(token = determinizedToken())
+
+  data class DebugData(val phase: Phase, val originalXR: () -> XR.Query, val originalQuery: () -> SqlQueryModel)
 }
 
-data class SqlCompiledAction<Input, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val returningType: ReturningType, val label: String?, val phase: Phase, val originalXR: () -> XR.Action): ExoCompiled() {
+data class SqlCompiledAction<Input, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val returningType: ReturningType, val label: String?, val debugData: SqlCompiledAction.DebugData): ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
 
   override fun determinizeDynamics(): SqlCompiledAction<Input, Output> =
     this.copy(token = determinizedToken())
 
   fun show() = PrintMisc().invoke(this)
+
+  data class DebugData(val phase: Phase, val originalXR: () -> XR.Action)
 }
 
 abstract class ExoCompiled {

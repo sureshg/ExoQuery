@@ -30,7 +30,9 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
 
   fun buildRuntime(dialect: SqlIdiom, label: String?, pretty: Boolean = false): SqlCompiledQuery<T> = run {
     val containerBuild = RuntimeBuilder(dialect, pretty).forQuery(this)
-    SqlCompiledQuery(containerBuild.queryString, containerBuild.queryTokenized, true, label, Phase.Runtime, { this.xr }, { containerBuild.queryModel })
+    SqlCompiledQuery(containerBuild.queryString, containerBuild.queryTokenized, true, label,
+      SqlCompiledQuery.DebugData(Phase.Runtime, { this.xr }, { containerBuild.queryModel })
+    )
   }
 
 
