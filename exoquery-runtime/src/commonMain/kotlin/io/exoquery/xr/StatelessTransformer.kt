@@ -31,6 +31,7 @@ interface StatelessTransformer {
         is Variable -> invoke(this)
         is Action -> invoke(this)
         is Assignment -> invoke(this)
+        is Batching -> invoke(this)
       }
     }
 
@@ -116,6 +117,9 @@ interface StatelessTransformer {
         is Returning -> Returning.csf(invoke(action), invoke(kind))(this)
       }
     }
+
+  operator fun invoke(xr: XR.Batching): XR.Batching =
+    XR.Batching.csf(invokeIdent(xr.alias), xr.action)(xr)
 
   operator fun invoke(xr: XR.Returning.Kind): XR.Returning.Kind =
     when (xr) {

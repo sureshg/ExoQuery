@@ -229,7 +229,7 @@ object ExtractorsDomain {
     object CaptureActionBatch {
       context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
         customPattern1("Call.CaptureBatchAction", call) { it: IrCall ->
-          if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlActionBatch<*, *>>()) {
+          if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlBatchAction<*, *>>()) {
             Components1(it)
           } else {
             null

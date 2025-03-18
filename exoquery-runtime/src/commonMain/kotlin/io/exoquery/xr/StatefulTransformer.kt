@@ -69,6 +69,7 @@ interface StatefulTransformer<T> {
         is Variable -> invoke(this)
         is Action -> invoke(this)
         is Assignment -> invoke(this)
+        is Batching -> invoke(this)
       }
     }
 
@@ -323,6 +324,12 @@ interface StatefulTransformer<T> {
           XR.OnConflict.Resolution.Update(excludedId, a) to stateA
         }
       }
+    }
+
+  operator fun invoke(xr: XR.Batching): Pair<XR.Batching, StatefulTransformer<T>> =
+    with (xr) {
+      val (at, att) = invoke(action)
+      Batching.cs(xr.alias, at) to att
     }
 
   operator fun invoke(xr: XR.Action): Pair<XR.Action, StatefulTransformer<T>> =

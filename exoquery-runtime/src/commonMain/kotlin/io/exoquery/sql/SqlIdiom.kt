@@ -65,6 +65,12 @@ abstract class SqlIdiom: HasPhasePrinting {
     return xr.token
   }
 
+  fun processBatching(xr: XR.Batching): Token {
+    return xr.token
+  }
+
+
+
   fun translate(xr: XR.Query) =
     prepareQuery(xr).token.renderWith(Renderer(true, true, null))
 
@@ -112,6 +118,8 @@ abstract class SqlIdiom: HasPhasePrinting {
         xrError("All instances of ${this::class.qualifiedName} should have been beta-reduced out by now.")
       is XR.Action -> token
       is XR.Assignment -> token
+      is XR.Batching ->
+        xrError("XR.Batching should have been spliced out by now and replaced with regular XR.Action instances.")
     }
 
   val XR.Expression.token get(): Token =

@@ -16,14 +16,15 @@ object PT {
   val io_exoquery_unpackAction = "io.exoquery.unpackAction"
   val io_exoquery_unpackActionLazy = "io.exoquery.unpackActionLazy"
 
-  val io_exoquery_unpackActionBatch = "io.exoquery.unpackActionBatch"
-  val io_exoquery_unpackActionBatchLazy = "io.exoquery.unpackActionBatchLazy"
+  val io_exoquery_unpackBatchAction = "io.exoquery.unpackBatchAction"
+  val io_exoquery_unpackBatchActionLazy = "io.exoquery.unpackBatchActionLazy"
 
   val io_exoquery_unpackExpr = "io.exoquery.unpackExpr"
 
   val io_exoquery_SqlQuery = "io.exoquery.SqlQuery"
   val io_exoquery_SqlAction = "io.exoquery.SqlAction"
-  val io_exoquery_SqlActionBatch = "io.exoquery.SqlActionBatch"
+  val io_exoquery_SqlBatchAction = "io.exoquery.SqlBatchAction"
+
   // TODO small optimization: a bunch of times ClassId is created from this, create one here up front once
   val io_exoquery_SqlExpression = "io.exoquery.SqlExpression"
   // this matches the function-call Runtimes.Empty which is needed for an SqlQuery/SqlExpression to be uprootable

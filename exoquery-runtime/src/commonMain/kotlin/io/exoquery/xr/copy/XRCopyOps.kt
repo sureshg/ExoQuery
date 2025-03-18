@@ -6,6 +6,7 @@ package io.exoquery.xr.copy
 import io.exoquery.BID
 import io.exoquery.xr.*
 import io.exoquery.xr.XR.Assignment
+import io.exoquery.xr.XR.Batching
 import io.exoquery.xr.XR.ConcatMap
 import io.exoquery.xr.XR.Entity
 import io.exoquery.xr.XR.Filter
@@ -178,6 +179,9 @@ fun FilteredAction.cs(action: XR.Action, alias: XR.Ident, filter: XR.Expression)
 
 val Returning.Returning get() = this
 fun Returning.cs(action: XR.Action, kind: Returning.Kind) = io.exoquery.xr.XR.Returning.csf(action, kind)(this)
+
+val Batching.Batching get() = this
+fun Batching.cs(alias: XR.Ident, action: XR.Action) = io.exoquery.xr.XR.Batching.csf(alias, action)(this)
 
 val CustomQueryRef.CustomQueryRef get() = this
 fun CustomQueryRef.cs(customQuery: XR.CustomQuery) = io.exoquery.xr.XR.CustomQueryRef.csf(customQuery)(this)

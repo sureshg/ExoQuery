@@ -96,6 +96,16 @@ internal class DeterminizeDynamics() {
     return SqlAction(newXR, RuntimeSet(newRuntimes.map { it.second to it.third }), ParamSet(newParams.map { it.third }))
   }
 
+  private fun <Input: Any, Output> recBatching(action: SqlBatchAction<Input, Output>): SqlBatchAction<Input, Output> {
+    val newParams = action.walkParams()
+    val newRuntimes = action.walkRuntimes()
+    val newXR = action.xr.swapTags(
+      (newParams.map { it.first to it.second } + newRuntimes.map { it.first to it.second }).toMap()
+    )
+    return SqlBatchAction(newXR, action.batchParam, RuntimeSet(newRuntimes.map { it.second to it.third }), ParamSet(newParams.map { it.third }))
+  }
+
+  fun <I: Any, O> ofBatchAction(action: SqlBatchAction<I, O>): SqlBatchAction<I, O> = recBatching(action)
   fun <I, O> ofAction(action: SqlAction<I, O>): SqlAction<I, O> = recAction(action)
   fun <T> ofExpression(expr: SqlExpression<T>): SqlExpression<T> = recExpr(expr)
   fun <T> ofQuery(query: SqlQuery<T>): SqlQuery<T> = recQuery(query)

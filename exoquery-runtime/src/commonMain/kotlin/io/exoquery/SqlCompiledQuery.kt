@@ -41,6 +41,17 @@ data class SqlCompiledAction<Input, Output>(val value: String, override val toke
   data class DebugData(val phase: Phase, val originalXR: () -> XR.Action)
 }
 
+data class SqlCompiledBatchAction<Input: Any, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val batchParam: ParamMulti<Input>, val label: String?, val debugData: SqlCompiledBatchAction.DebugData): ExoCompiled() {
+  override val params: List<Param<*>> by lazy { token.extractParams() }
+
+  override fun determinizeDynamics(): SqlCompiledBatchAction<Input, Output> =
+    this.copy(token = determinizedToken())
+
+  fun show() = PrintMisc().invoke(this)
+
+  data class DebugData(val phase: Phase, val originalXR: () -> XR.Batching)
+}
+
 abstract class ExoCompiled {
   abstract val params: List<Param<*>>
   abstract val token: Token

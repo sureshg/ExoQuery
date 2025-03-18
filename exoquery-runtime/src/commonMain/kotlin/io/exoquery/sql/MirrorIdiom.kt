@@ -41,6 +41,7 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
       is XR.Variable -> this.token
       is XR.Action -> this.token
       is XR.Assignment -> this.token
+      is XR.Batching -> this.token
     }
 
 //  implicit final def actionTokenizer(implicit externalTokenizer: Tokenizer[External]): Tokenizer[AstAction] =
@@ -54,6 +55,9 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
 //    case Foreach(query, alias, body) => stmt"${query.token}.foreach((${alias.token}) => ${body.token})"
 //    case c: OnConflict               => stmt"${c.token}"
 //  }
+
+  val XR.Batching.token: Token get() =
+    stmt("batch { ${alias.token} -> ${action.token} }")
 
   val XR.Insert.exclusionsClause: Token get() =
     if (this.exclusions.isEmpty())

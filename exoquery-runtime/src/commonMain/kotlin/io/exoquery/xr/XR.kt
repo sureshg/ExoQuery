@@ -1120,6 +1120,19 @@ sealed interface XR {
       @Serializable data class Update(val excludedId: Ident, val assignments: List<XR.Assignment>): Resolution
     }
   }
+
+  // Similar to Quill's Foreach, the Batching parameter defines a batch-alias that can be used in actions defined inside
+  @Serializable
+  @Mat
+  data class Batching(@Slot val alias: XR.Ident, @Slot val action: XR.Action, override val loc: Location = Location.Synth): XR, PC<Batching> {
+    @Transient override val productComponents = productOf(this, alias, action)
+    override val type: XRType get() = action.type
+    companion object {}
+    override fun toString() = show()
+    @Transient private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is Batching && other.id() == cid
+  }
 }
 
 fun XR.isBottomTypedTerminal() =

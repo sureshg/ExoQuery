@@ -367,6 +367,53 @@ object SqlActionExpr {
   }
 }
 
+object SqlBatchActionExpr {
+  data class Uprootable(val packedXR: String) {
+    val xr by lazy {
+      try {
+        EncodingXR.protoBuf.decodeFromHexString<XR.Batching>(packedXR)
+      } catch (e: Throwable) {
+        throw IllegalArgumentException("Could not decode the XR.Batching from the packed string: $packedXR", e)
+      }
+    }
+
+    context(CX.Scope, CX.Builder)
+    fun replant(paramsFrom: IrExpression): IrExpression {
+      val strExpr = call(PT.io_exoquery_unpackBatchAction).invoke(builder.irString(packedXR))
+      val callParams = paramsFrom.callDispatch("params").invoke()
+      // Can't just pull out the batchParam from the CaseClassConstructorCall1Plus for the same reason we cannot do it for params. Namely
+      // because the reference inside that varaible might refer to things in a context that is no longer available (e.g. to class-members).
+      // In Quill this was solved by a clunky process that projected liftings into a custom reference object that every quotation had.
+      // In ExoQuery we simply call .param/.batchParam on upstream containers when creating downstream containers.
+      val callBatchParam = paramsFrom.callDispatch("batchParam").invoke()
+      val make = makeClassFromString(PT.io_exoquery_SqlBatchAction, listOf(strExpr, RuntimeEmpty(), callParams))
+      return make
+    }
+
+    companion object {
+      context (CX.Scope) operator fun <AP : Pattern<Uprootable>> get(x: AP) =
+        customPattern1("SqlBatchActionExpr.Uprootable", x) { it: IrExpression ->
+          it.match(
+            case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is(PT.io_exoquery_SqlBatchAction), Ir.Call.FunctionUntethered1[Is(PT.io_exoquery_unpackBatchAction), Is()]])
+              .thenIf { _, _ -> comp.valueArguments[1].isEmptyRuntimes() }
+              .then { _, (_, irStr) ->
+                val constPackedXR = irStr as? IrConst ?: throw IllegalArgumentException("value passed to unpackBatchAction was not a constant-string in:\n${it.dumpKotlinLike()}")
+                Components1(Uprootable(constPackedXR.value.toString()))
+              }
+          )
+        }
+
+      context(CX.Scope, CX.Builder) fun plantNewUprootable(xr: XR.Batching, batchParam: IrExpression, params: ParamsExpr): IrExpression {
+        val packedXR = xr.encode()
+        val strExpr = call(PT.io_exoquery_unpackBatchAction).invoke(builder.irString(packedXR))
+        val make = makeClassFromString(PT.io_exoquery_SqlBatchAction, listOf(strExpr, RuntimeEmpty(), params.lift()))
+        return make
+      }
+    }
+  }
+}
+
+
 context(CX.Scope)
 private fun IrExpression?.isEmptyRuntimes(): Boolean =
   this?.match(

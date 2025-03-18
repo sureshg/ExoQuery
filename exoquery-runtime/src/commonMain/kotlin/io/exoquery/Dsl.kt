@@ -52,6 +52,12 @@ fun unpackAction(action: String): XR.Action =
 fun unpackActionLazy(action: String): () -> XR.Action =
   { unpackAction(action) }
 
+fun unpackBatchAction(batchAction: String): XR.Batching =
+  EncodingXR.protoBuf.decodeFromHexString<XR.Batching>(batchAction)
+
+fun unpackBatchActionLazy(batchAction: String): () -> XR.Batching =
+  { unpackBatchAction(batchAction) }
+
 // data class Person(val name: String, val age: Int)
 // fun example() {
 //   val v = capture {

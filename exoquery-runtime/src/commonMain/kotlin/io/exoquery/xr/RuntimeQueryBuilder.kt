@@ -5,6 +5,8 @@ import io.exoquery.ContainerOfFunXR
 import io.exoquery.ContainerOfXR
 import io.exoquery.ParamSet
 import io.exoquery.Phase
+import io.exoquery.SqlAction
+import io.exoquery.SqlBatchAction
 import io.exoquery.SqlQuery
 import io.exoquery.sql.ParamMultiToken
 import io.exoquery.sql.ParamSingleToken
@@ -57,12 +59,24 @@ class RuntimeBuilder(val dialect: SqlIdiom, val pretty: Boolean) {
     return ContainerBuildQuery(queryString, queryToken, queryModel)
   }
 
-  fun forAction(container: ContainerOfActionXR): ContainerBuildAction {
+  fun forAction(container: SqlAction<*, *>): ContainerBuildAction {
     val (queryString, queryToken, _) =
       processContainer(container) { splicedAst ->
         when (splicedAst) {
           is XR.Action -> dialect.processAction(splicedAst) to null
           else -> throw IllegalArgumentException("Unsupported XR type. Can only be a XR.Action: ${splicedAst::class}\n${splicedAst.showRaw()}")
+        }
+      }
+
+    return ContainerBuildAction(queryString, queryToken)
+  }
+
+  fun forBatching(container: SqlBatchAction<*, *>): ContainerBuildAction {
+    val (queryString, queryToken, _) =
+      processContainer(container) { splicedAst ->
+        when (splicedAst) {
+          is XR.Batching -> dialect.processBatching(splicedAst) to null
+          else -> throw IllegalArgumentException("Unsupported XR type. Can only be a XR.Batching: ${splicedAst::class}\n${splicedAst.showRaw()}")
         }
       }
 

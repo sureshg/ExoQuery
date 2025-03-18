@@ -5,7 +5,7 @@ import io.exoquery.sql.SqlIdiom
 import io.exoquery.xr.RuntimeBuilder
 import io.exoquery.xr.XR
 
-data class SqlAction<Input, Output>(override val xr: XR.Action, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfActionXR {
+data class SqlAction<Input, Output>(override val xr: XR.Action, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfXR {
   fun show() = PrintMisc().invoke(this)
   override fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): SqlAction<Input, Output> =
     copy(xr = xr as? XR.Action ?: xrError("Failed to rebuild SqlAction with XR of type ${xr::class} which was: ${xr.show()}"), runtimes = runtimes, params = params)
@@ -29,10 +29,25 @@ data class SqlAction<Input, Output>(override val xr: XR.Action, override val run
   fun determinizeDynamics(): SqlAction<Input, Output> = DeterminizeDynamics().ofAction(this)
 }
 
-data class SqlActionBatch<Input, Output>(override val xr: XR.Action, val batchAlias: XR.Ident, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfActionXR {
+data class SqlBatchAction<Input: Any, Output>(override val xr: XR.Batching, val batchParam: ParamMulti<Input>, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfXR {
   fun show() = PrintMisc().invoke(this)
-  override fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): SqlActionBatch<Input, Output> =
-    copy(xr = xr as? XR.Action ?: xrError("Failed to rebuild SqlActionBatch with XR of type ${xr::class} which was: ${xr.show()}"), runtimes = runtimes, params = params)
+  override fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): SqlBatchAction<Input, Output> =
+    copy(xr = xr as? XR.Batching ?: xrError("Failed to rebuild SqlBatchAction with XR of type ${xr::class} which was: ${xr.show()}"), runtimes = runtimes, params = params)
 
-  override fun withNonStrictEquality(): SqlActionBatch<Input, Output> = copy(params = params.withNonStrictEquality())
+  fun buildRuntime(dialect: SqlIdiom, label: String?, pretty: Boolean = false): SqlCompiledBatchAction<Input, Output> = run {
+    val containerBuild = RuntimeBuilder(dialect, pretty).forBatching(this)
+    SqlCompiledBatchAction(containerBuild.queryString, containerBuild.queryTokenized, true, batchParam, label,
+      SqlCompiledBatchAction.DebugData(Phase.Runtime, { xr })
+    )
+  }
+
+  fun <Dialect: SqlIdiom> build(): SqlCompiledBatchAction<Input, Output> = errorCap("The build function body was not inlined")
+  fun <Dialect: SqlIdiom> build(label: String): SqlCompiledBatchAction<Input, Output> = errorCap("The build function body was not inlined")
+
+  fun <Dialect: SqlIdiom> buildPretty(): SqlCompiledBatchAction<Input, Output> = errorCap("The buildPretty function body was not inlined")
+  fun <Dialect: SqlIdiom> buildPretty(label: String): SqlCompiledBatchAction<Input, Output> = errorCap("The buildPretty function body was not inlined")
+
+  override fun withNonStrictEquality(): SqlBatchAction<Input, Output> = copy(params = params.withNonStrictEquality())
+
+  fun determinizeDynamics(): SqlBatchAction<Input, Output> = DeterminizeDynamics().ofBatchAction(this)
 }

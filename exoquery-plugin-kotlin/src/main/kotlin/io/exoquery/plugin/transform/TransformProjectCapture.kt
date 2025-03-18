@@ -5,7 +5,7 @@ import io.decomat.case
 import io.decomat.caseEarly
 import io.decomat.match
 import io.exoquery.SqlAction
-import io.exoquery.SqlActionBatch
+import io.exoquery.SqlBatchAction
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.parseError
@@ -14,6 +14,7 @@ import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.SqlActionExpr
+import io.exoquery.plugin.trees.SqlBatchActionExpr
 import io.exoquery.plugin.trees.SqlExpressionExpr
 import io.exoquery.plugin.trees.SqlQueryExpr
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
@@ -27,7 +28,7 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions): 
 
   context(CX.Scope, CX.Builder)
   private fun IrExpression.isContainerOfXR(): Boolean =
-    this.type.isClass<SqlExpression<*>>() || this.type.isClass<SqlQuery<*>>() || this.type.isClass<SqlAction<*, *>>() || this.type.isClass<SqlActionBatch<*, *>>()
+    this.type.isClass<SqlExpression<*>>() || this.type.isClass<SqlQuery<*>>() || this.type.isClass<SqlAction<*, *>>() || this.type.isClass<SqlBatchAction<*, *>>()
 
   sealed interface ExprType {
     data object Expr: ExprType
@@ -42,7 +43,7 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions): 
       this.type.isClass<SqlExpression<*>>() -> ExprType.Expr
       this.type.isClass<SqlQuery<*>>() -> ExprType.Query
       this.type.isClass<SqlAction<*, *>>() -> ExprType.Action
-      this.type.isClass<SqlActionBatch<*, *>>() -> ExprType.ActionBatch // Don't have the uprootable yet
+      this.type.isClass<SqlBatchAction<*, *>>() -> ExprType.ActionBatch // Don't have the uprootable yet
       //else -> parseError("The expression is not a SqlExpression or SqlQuery, (its type is ${this.type.dumpKotlinLike()} which cannot be projected)", this)
       else -> null
     }
@@ -135,7 +136,7 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions): 
           caseEarly(exprType == ExprType.Query)(Ir.Variable[Is(), SqlQueryExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
             uprootableExpr.replant(expression)
           },
-          caseEarly(exprType == ExprType.Action)(Ir.Variable[Is(), SqlActionExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
+          caseEarly(exprType == ExprType.Action)(Ir.Variable[Is(), SqlBatchActionExpr.Uprootable[Is()]]).then { _, (uprootableExpr) ->
             uprootableExpr.replant(expression)
           },
         )

@@ -3,7 +3,7 @@ package io.exoquery.printing
 import io.exoquery.ParamSet
 import io.exoquery.RuntimeSet
 import io.exoquery.SqlAction
-import io.exoquery.SqlActionBatch
+import io.exoquery.SqlBatchAction
 import io.exoquery.SqlCompiledAction
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
@@ -58,7 +58,7 @@ class PrintMisc(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Any?>
       is SqlExpression<*> -> Tree.Apply("SqlExpression", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
       is SqlQuery<*> -> Tree.Apply("SqlQuery", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
       is SqlAction<*, *> -> Tree.Apply("SqlAction", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
-      is SqlActionBatch<*, *> -> Tree.Apply("SqlActionBatch", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.batchAlias, "batchAlias"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
+      is SqlBatchAction<*, *> -> Tree.Apply("SqlActionBatch", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.batchParam, "batchParam"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
       is ParamSet -> Tree.Apply("ParamSet", x.lifts.map { l -> Tree.KeyValue(l.id.value, Tree.Literal(l.showValue().toString())) }.iterator())
       is RuntimeSet -> Tree.Apply("RuntimeSet", x.runtimes.map { (id, xr) -> Tree.KeyValue(id.value, treeifyThis(xr, null)) }.iterator())
       is ShowTree -> x.showTree(config)
