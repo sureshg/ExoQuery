@@ -31,6 +31,7 @@ object CX {
     val pluginCtx: IrPluginContext,
     val compilerConfig: CompilerConfiguration,
     val options: ExoCompileOptions,
+    val scopeOwner: IrSymbol
   ) {
     val compileLogger get() = logger
     val typeSystem by lazy {

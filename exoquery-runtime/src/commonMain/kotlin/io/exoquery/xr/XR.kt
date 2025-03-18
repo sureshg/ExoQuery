@@ -936,11 +936,13 @@ sealed interface XR {
   // ***********************************************************************************************************
 
   @Serializable
-  sealed interface Action: XR
+  sealed interface Action: XR {
+    fun coreAlias(): XR.Ident
+  }
 
   @Serializable
   @Mat
-  data class Update(@Slot val query: XR.Query, @CS override val alias: XR.Ident, @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, U.CoreAction, PC<Update> {
+  data class Update(@Slot val query: XR.Entity, @CS override val alias: XR.Ident, @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, U.CoreAction, PC<Update> {
     @Transient override val productComponents = productOf(this, query, assignments)
     override val type: XRType get() = query.type
     companion object {}
@@ -948,6 +950,7 @@ sealed interface XR {
     @Transient private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Update && other.id() == cid
+    override fun coreAlias(): XR.Ident = alias
   }
 
 // Scala:
@@ -962,7 +965,7 @@ sealed interface XR {
   // Note that XR.Query will always be a XR.Entity here
   @Serializable
   @Mat
-  data class Insert(@Slot val query: XR.Query, @CS override val alias: XR.Ident,  @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, U.CoreAction, PC<Insert> {
+  data class Insert(@Slot val query: XR.Entity, @CS override val alias: XR.Ident,  @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, U.CoreAction, PC<Insert> {
     @Transient override val productComponents = productOf(this, query, assignments)
     override val type: XRType get() = query.type
     companion object {}
@@ -970,6 +973,7 @@ sealed interface XR {
     @Transient private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Insert && other.id() == cid
+    override fun coreAlias(): XR.Ident = alias
   }
 
 
@@ -979,7 +983,20 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class Delete(@Slot val query: XR.Query, @CS override val alias: XR.Ident, override val loc: Location = Location.Synth): Action, U.CoreAction, PC<Delete> {
+  data class FilteredAction(@Slot val action: XR.Action, @MSlot val alias: Ident, @Slot val filter: XR.Expression, override val loc: Location = Location.Synth): XR.Action, PC<FilteredAction> {
+    @Transient override val productComponents = productOf(this, action, alias, filter)
+    override val type: XRType = action.type
+    companion object {}
+    override fun toString() = show()
+    @Transient private val cid = id()
+    override fun hashCode() = cid.hashCode()
+    override fun equals(other: Any?) = other is FilteredAction && other.id() == cid
+    override fun coreAlias(): XR.Ident = action.coreAlias()
+  }
+
+  @Serializable
+  @Mat
+  data class Delete(@Slot val query: XR.Entity, @CS override val alias: XR.Ident, override val loc: Location = Location.Synth): Action, U.CoreAction, PC<Delete> {
     @Transient override val productComponents = productOf(this, query)
     override val type: XRType get() = query.type
     companion object {}
@@ -987,6 +1004,7 @@ sealed interface XR {
     @Transient private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Delete && other.id() == cid
+    override fun coreAlias(): XR.Ident = alias
   }
 
 
@@ -1001,14 +1019,15 @@ sealed interface XR {
    */
   @Serializable
   @Mat
-  data class Returning(@Slot val action: XR.Action, @Slot val output: Kind, override val loc: Location = Location.Synth): Action, PC<Returning> {
-    @Transient override val productComponents = productOf(this, action, output)
-    override val type: XRType get() = output.type
+  data class Returning(@Slot val action: XR.Action, @Slot val kind: Kind, override val loc: Location = Location.Synth): Action, PC<Returning> {
+    @Transient override val productComponents = productOf(this, action, kind)
+    override val type: XRType get() = kind.type
     companion object {}
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Returning && other.id() == cid
+    override fun coreAlias(): XR.Ident = action.coreAlias()
 
 
     @Serializable sealed interface Kind {
@@ -1081,6 +1100,8 @@ sealed interface XR {
     @Transient private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is OnConflict && other.id() == cid
+
+    override fun coreAlias(): XR.Ident = insert.alias
 
     // I don't think these to extend the XR and if we need to transform them we can transform based on the OnConflict
     // if they do need to be parts of XR the should have a special sub-IR clause so that XR doesn't have too many unrelated things at the top level.

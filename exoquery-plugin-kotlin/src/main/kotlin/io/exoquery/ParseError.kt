@@ -34,14 +34,20 @@ class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) 
 
         """|[ExoQuery] Could not understand an expression or query due to an error: ${msg}.${expressionPart}
            |------------ Raw Expression ------------
-           |${printingElement.dumpKotlinLike()}
+           |${tryDump { printingElement.dumpKotlinLike()} }
            |------------ Raw Expression Tree ------------
-           |${printingElement.dumpSimple()}
+           |${tryDump { printingElement.dumpSimple()} }
            |""".trimMargin()
       }
       return ParseError(fullMsg, location)
     }
   }
+}
+
+private fun tryDump(dump: () -> String): String = try {
+  dump()
+} catch (e: Exception) {
+  "Could not dump the expression due to an error: ${e.message}\n${e.stackTraceToString()}"
 }
 
 fun parseError(msg: String, location: CompilerMessageSourceLocation? = null): Nothing = throw ParseError(msg, location)

@@ -4,10 +4,8 @@ import com.github.vertical_blank.sqlformatter.SqlFormatter
 import io.decomat.*
 import io.exoquery.Phase
 import io.exoquery.PostgresDialect
-import io.exoquery.ReturningType
+import io.exoquery.ActionReturningKind
 import io.exoquery.SqlAction
-import io.exoquery.SqlCompiledAction
-import io.exoquery.SqlCompiledQuery
 import io.exoquery.SqlQuery
 import io.exoquery.parseError
 import io.exoquery.plugin.isClass
@@ -18,16 +16,13 @@ import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.Lifter
 import io.exoquery.plugin.trees.SqlActionExpr
 import io.exoquery.plugin.trees.SqlQueryExpr
-import io.exoquery.plugin.trees.simpleTypeArgs
 import io.exoquery.sql.Renderer
 import io.exoquery.sql.SqlIdiom
 import io.exoquery.sql.Token
-import io.exoquery.sql.token
 import io.exoquery.util.TraceConfig
 import io.exoquery.xr.XR
 import io.exoquery.xr.encode
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
-import org.jetbrains.kotlin.ir.builders.irBoolean
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.expressions.*
@@ -152,10 +147,10 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
 
                 // Can include the sql-formatting library here since the compiler is always on the JVM!
                 val queryString = queryTokenized.renderQueryString(isPretty, xr)
-                val returningType = ReturningType.fromActionXR(xr)
+                val actionReturningKind = ActionReturningKind.fromActionXR(xr)
                 accum.addQuery(PrintableQuery(queryString, compileLocation, queryLabel))
                 this@Scope.logger.report("Compiled action in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)
-                SqlCompiledActionExpr(sqlExpr, queryString, queryTokenized, returningType, queryLabel, Phase.CompileTime, uprootable.packedXR).plant()
+                SqlCompiledActionExpr(sqlExpr, queryString, queryTokenized, actionReturningKind, queryLabel, Phase.CompileTime, uprootable.packedXR).plant()
               }
             ) ?: run {
               //logger.warn("The action could not be transformed at compile-time", expr.location())

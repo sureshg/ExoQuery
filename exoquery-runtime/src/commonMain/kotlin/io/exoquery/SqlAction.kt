@@ -12,8 +12,8 @@ data class SqlAction<Input, Output>(override val xr: XR.Action, override val run
 
   fun buildRuntime(dialect: SqlIdiom, label: String?, pretty: Boolean = false): SqlCompiledAction<Input, Output> = run {
     val containerBuild = RuntimeBuilder(dialect, pretty).forAction(this)
-    val returningType = ReturningType.fromActionXR(xr)
-    SqlCompiledAction(containerBuild.queryString, containerBuild.queryTokenized, true, returningType, label,
+    val actionReturningKind = ActionReturningKind.fromActionXR(xr)
+    SqlCompiledAction(containerBuild.queryString, containerBuild.queryTokenized, true, actionReturningKind, label,
       SqlCompiledAction.DebugData(Phase.Runtime, { xr })
     )
   }

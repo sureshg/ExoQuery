@@ -6,8 +6,10 @@ import io.decomat.on
 import io.exoquery.BID
 import io.exoquery.CapturedBlock
 import io.exoquery.SqlAction
+import io.exoquery.annotation.ExoDelete
 import io.exoquery.annotation.ExoInsert
 import io.exoquery.annotation.ExoUpdate
+import io.exoquery.innerdsl.SqlActionFilterable
 import io.exoquery.innerdsl.setParams
 import io.exoquery.parseError
 import io.exoquery.plugin.loc
@@ -30,22 +32,47 @@ object ParseAction {
   fun parse(expr: IrExpression): XR.Action =
     on(expr).match<XR.Action> (
       // the `insert` part of capture { insert<Person> { set ... } }
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is.Companion.of("insert", "update"), Is.Companion()]).thenIfThis { _, _ -> ownerHasAnnotation<ExoInsert>() || ownerHasAnnotation<ExoUpdate>() }.thenThis { reciever, lambdaRaw ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is.of("insert", "update"), Is.Companion()]).thenIfThis { _, _ -> ownerHasAnnotation<ExoInsert>() || ownerHasAnnotation<ExoUpdate>() }.thenThis { reciever, lambdaRaw ->
         val insertType = this.typeArguments.first() ?: parseError("Could not find the type argument of the insert/update call", expr)
         val compositeType = CompositeType.from(symName) ?: parseError("Unknown composite type: ${symName}", expr)
 
         on(lambdaRaw).match(
-          case(Ir.FunctionExpression.withReturnOnlyBlock[Is.Companion()]).thenThis { blockBody ->
+          case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { blockBody ->
             val extensionParam = this.function.symbol.owner.extensionReceiverParameter
             val actionAlias = extensionParam?.makeIdent() ?: parseError("Could not find the extension receiver parameter of the insert/update call", expr)
             parseActionComposite(blockBody, insertType, actionAlias, compositeType)
           }
         ) ?: parseError("The statement inside of a insert/update block must be a single `set` or `setParams` expression followed by excluded, returning/Keys, or onConflict", lambdaRaw)
       },
+      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<CapturedBlock>(), Is("delete")]).thenIfThis { _, _ -> ownerHasAnnotation<ExoDelete>() }.thenThis { reciever, _ ->
+        val deleteType = this.typeArguments.first() ?: parseError("Could not find the type argument of the delete call", expr)
+        val deleteTypeXR = TypeParser.ofTypeAt(deleteType, expr.location())
+        val dol = '$'
+        // Create a synthetic alias for the delete. Normally we get the alias (i.e. in inserts and udates) from the lambda that contains the set(...) clauses
+        // but 'delete' doesn't have such clauses. Since insert/update aliasses typically have the look $this$insert/update we'll do the same for delete synthetically.
+        val actionAlias = XR.Ident("${dol}this${dol}delete", deleteTypeXR)
+        val ent = ParseQuery.parseEntity(deleteType, expr.location())
+        XR.Delete(ent, actionAlias, expr.loc)
+      },
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlActionFilterable<*, *>>(), Is.of("filter", "where"), Ir.FunctionExpression.withBlock[Is(), Is()]]).thenThis { actionExpr, (args, lambdaBody) ->
+        val filterAlias = args.first().makeIdent()
+        val filterExpr = ParseExpression.parseFunctionBlockBody(lambdaBody)
+        val core = parse(actionExpr).let { it as? XR.U.CoreAction ?: parseError("The `.filter` function can only be called on a basic action i.e. insert, update, or delete but got:\n${it.showRaw()}", actionExpr) }
+        XR.FilteredAction(core, filterAlias, filterExpr, expr.loc)
+      },
+      // The .all() function just means perform the update/delete for all rows. Don't need to have a construct for that in the DSL because we have a construct for the other case i.e. SqlActionFiltereable
+      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<SqlActionFilterable<*, *>>(), Is("all")]).thenThis { actionExpr, _ ->
+        parse(actionExpr)
+      },
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlAction<*, *>>(), Is("returning"), Ir.FunctionExpression.withBlock[Is(), Is()]]).thenThis { actionExpr, (args, lambdaBody) ->
         val returningAlias = args.first().makeIdent()
         val returningExpr = ParseExpression.parseFunctionBlockBody(lambdaBody)
-        val core = parse(actionExpr) as? XR.U.CoreAction ?: parseError("The `.returning` function can only be called on a basic action i.e. insert, update, ro delete", actionExpr)
+        val core =
+          when (val parsed = parse(actionExpr)) {
+            is XR.U.CoreAction -> parsed
+            is XR.FilteredAction -> parsed
+            else -> parseError("The `.returning` function can only be called on a basic action i.e. insert, update, or delete or a basic-action with a filter but got:\n${parsed.showRaw()}", actionExpr)
+          }
         XR.Returning(core, XR.Returning.Kind.Expression(returningAlias, returningExpr), expr.loc)
       },
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlAction<*, *>>(), Is("returningKeys"), Ir.FunctionExpression.withBlock[Is(), Is()]]).then { actionExpr, (_, lambdaBody) ->
@@ -56,7 +83,6 @@ object ParseAction {
             parseError("The returningKeys used a value that was not a column of the entity: ${prop.show(sanitzeIdents = false)} (it's core should have been ${alias.show(sanitzeIdents = false)}).${explain}", lambdaBody)
         }
         val returningExpr = ParseExpression.parseFunctionBlockBody(lambdaBody)
-        //logger.error("------------------ HERE: ${returningExpr.showRaw()}")
         val props =
           when (val ret = returningExpr) {
             is XR.Product ->
@@ -71,7 +97,12 @@ object ParseAction {
           }
           else -> parseError("The returningKeys block must return a product type or a single property.${explain}", lambdaBody)
         }
-        val core = parse(actionExpr) as? XR.U.CoreAction ?: parseError("The `.returningKeys` function can only be called on a basic action i.e. insert, update, or delete", actionExpr)
+        val core =
+          when (val parsed = parse(actionExpr)) {
+            is XR.U.CoreAction -> parsed
+            is XR.FilteredAction -> parsed
+            else -> parseError("The `.returningKeys` function can only be called on a basic action i.e. insert, update, or delete or a basic-action with a filter but got:\n${parsed.showRaw()}", actionExpr)
+          }
         XR.Returning(core, XR.Returning.Kind.Keys(alias, props), expr.loc)
       }
     ) ?: parseError("Could not parse the action", expr)

@@ -94,16 +94,16 @@ data class FreeVariables(override val state: State): StatefulTransformer<State> 
   override fun invoke(xr: XR.Action): Pair<XR.Action, StatefulTransformer<State>> =
     when {
       // It is the .returning { x -> stuff(... x ...) } clause
-      xr is XR.Returning && xr.output is XR.Returning.Kind.Expression -> {
-        val (_, ta) = FreeVariables(state)(xr.output.expr)
+      xr is XR.Returning && xr.kind is XR.Returning.Kind.Expression -> {
+        val (_, ta) = FreeVariables(state)(xr.kind.expr)
         // Recurse into the { x -> stuff(... x ...) } part in `returning(x) { x -> stuff(... x ...) }` to check potential free variables inside
-        val (_, tb) = FreeVariables(state.withSeen(xr.output.alias))(xr.output.expr)
+        val (_, tb) = FreeVariables(state.withSeen(xr.kind.alias))(xr.kind.expr)
         // Collect any remaining free variables from the clause
         xr to FreeVariables(state.withFree(ta.state.free).withFree(tb.state.free))
       }
       // It is the .returningKeys(a, b, c) clause
       xr is XR.Returning -> {
-        val (_, ta) = FreeVariables(state)(xr.output)
+        val (_, ta) = FreeVariables(state)(xr.kind)
         xr to FreeVariables(state.withFree(ta.state.free))
       }
       // Need to do a free-variables check on all the action-clauses. They may contain free variables themselves.

@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.*
@@ -31,13 +32,14 @@ class VisitTransformExpressions(
   fun makeCompileLogger(currentExpr: IrElement) =
     CompileLogger.invoke(config, currentFile, currentExpr)
 
-  fun makeScope(currentExpr: IrElement) = CX.Scope(
+  fun makeScope(currentExpr: IrElement, scopeOwner: IrSymbol) = CX.Scope(
     currentExpr = currentExpr,
     logger = makeCompileLogger(currentExpr),
     currentFile = currentFile,
     pluginCtx = context,
     compilerConfig = config,
-    options = exoOptions
+    options = exoOptions,
+    scopeOwner = scopeOwner
   )
 
   context (CX.Symbology, CX.QueryAccum)
@@ -95,8 +97,8 @@ class VisitTransformExpressions(
     // phase where it is easy to make an error and analyze adjacent expressions, the FreeSymbols check at the end
     // of the compilation phases).
     //if (file.hasAnnotation<ExoGoldenTest>())
-
-    val scope = makeScope(file)
+    val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
+    val scope = makeScope(file, scopeOwner)
 
     val sanityCheck = currentFile.path == file.path
     if (!sanityCheck) {
@@ -121,7 +123,7 @@ class VisitTransformExpressions(
 
   override fun visitFunctionNew(declaration: IrFunction, data: VisitorContext): IrStatement {
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val scopeContext = makeScope(declaration)
+    val scopeContext = makeScope(declaration, scopeOwner)
     val builderContext = CX.Builder(scopeContext, scopeOwner)
     val runner = ScopedRunner(scopeContext, builderContext, data)
 
@@ -158,7 +160,7 @@ class VisitTransformExpressions(
   // TODO move this to visitGetValue? That would be more efficient but what other things might we wnat to transform?
   override fun visitExpression(expression: IrExpression, data: VisitorContext): IrExpression {
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val scopeContext = makeScope(expression)
+    val scopeContext = makeScope(expression, scopeOwner)
     val builderContext = CX.Builder(scopeContext, scopeOwner)
     val transformProjectCapture = TransformProjectCapture(this)
     val transformScaffoldAnnotatedFunctionCall = TransformScaffoldAnnotatedFunctionCall(this)
@@ -186,9 +188,10 @@ class VisitTransformExpressions(
   override fun visitCall(expression: IrCall, data: VisitorContext): IrElement {
 
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
+    val scopeCtx = makeScope(expression, scopeOwner)
     val stack = RuntimeException()
 
-    val builderContext = CX.Builder(makeScope(expression), scopeOwner)
+    val builderContext = CX.Builder(scopeCtx, scopeOwner)
 
     val transformPrint = TransformPrintSource(this)
     // TODO just for Expression capture or also for Query capture? Probably both
@@ -200,7 +203,7 @@ class VisitTransformExpressions(
     // or the .build call should have recursed down into it (because it calls the superTransformer on the reciever of the .build call)
     val transformCompileQuery = TransformCompileQuery(this)
     val transformScaffoldAnnotatedFunctionCall = TransformScaffoldAnnotatedFunctionCall(this)
-    val runner = ScopedRunner(makeScope(expression), builderContext, data)
+    val runner = ScopedRunner(scopeCtx, builderContext, data)
 
     return runner.run(expression) {
       when {

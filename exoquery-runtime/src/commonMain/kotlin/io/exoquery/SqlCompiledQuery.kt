@@ -30,7 +30,7 @@ data class SqlCompiledQuery<T>(val value: String, override val token: Token, val
   data class DebugData(val phase: Phase, val originalXR: () -> XR.Query, val originalQuery: () -> SqlQueryModel)
 }
 
-data class SqlCompiledAction<Input, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val returningType: ReturningType, val label: String?, val debugData: SqlCompiledAction.DebugData): ExoCompiled() {
+data class SqlCompiledAction<Input, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val actionReturningKind: ActionReturningKind, val label: String?, val debugData: SqlCompiledAction.DebugData): ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
 
   override fun determinizeDynamics(): SqlCompiledAction<Input, Output> =

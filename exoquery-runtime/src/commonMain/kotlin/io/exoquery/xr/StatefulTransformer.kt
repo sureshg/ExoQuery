@@ -132,6 +132,11 @@ interface StatefulTransformer<T> {
       Property.cs(ofA, name) to stateA
     }
 
+  operator fun invoke(xr: XR.Entity): Pair<XR.Entity, StatefulTransformer<T>> =
+    with(xr) {
+      this to this@StatefulTransformer
+    }
+
   operator fun invoke(xr: XR.Query): Pair<XR.Query, StatefulTransformer<T>> =
     with(xr) {
       when (this) {
@@ -145,7 +150,7 @@ interface StatefulTransformer<T> {
           val (bA, stateB) = stateA.invoke(body)
           Map.cs(aA, id, bA) to stateB
         }
-        is Entity -> this to this@StatefulTransformer
+        is Entity -> invoke(this)
         is Filter -> {
           val (aA, stateA) = invoke(head)
           val (bA, stateB) = stateA.invoke(body)
@@ -340,9 +345,14 @@ interface StatefulTransformer<T> {
           val (ct, ctt) = btt.invoke(resolution)
           OnConflict.cs(at, bt, ct) to ctt
         }
+        is FilteredAction -> {
+          val (at, att) = invoke(action)
+          val (bt, btt) = att.invoke(filter)
+          FilteredAction.cs(at, alias, bt) to btt
+        }
         is Returning -> {
           val (at, att) = invoke(action)
-          val (bt, btt) = invoke(output)
+          val (bt, btt) = invoke(kind)
           Returning.cs(at, bt) to btt
         }
       }

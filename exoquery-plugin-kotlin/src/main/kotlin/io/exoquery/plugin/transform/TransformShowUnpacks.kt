@@ -20,7 +20,11 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 // Note that if you don't do `.deepCopyWithSymbols()` then the actual Transformer will modify the original tree adding the XR.show into the unpackQuery/unpackExpr calls
 // which will obviously fail. It is non-obvious where the DeclarationIrBuilder actually does this.
 context(CX.Scope)
-fun IrElement.prepareForPrinting() = TransformShowUnpacks(this@Scope).visitElement(this.deepCopyWithSymbols(), Unit) as IrExpression
+fun IrElement.prepareForPrinting() =
+  TransformShowUnpacks(this@Scope).visitElement(this.deepCopyWithSymbols(
+    // Need to do this or in some cases will get: kotlin.UninitializedPropertyAccessException: lateinit property parent has not been initialized
+    (this as? IrCall)?.symbol?.owner?.parent), Unit
+  ) as IrExpression
 
 context(CX.Scope)
 fun IrElement.dumpKotlinLikePretty() = prepareForPrinting().dumpKotlinLike()

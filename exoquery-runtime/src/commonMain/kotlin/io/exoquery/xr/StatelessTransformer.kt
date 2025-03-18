@@ -71,12 +71,14 @@ interface StatelessTransformer {
   operator fun invoke(xr: XR.Property): XR.Property =
     Property.csf(invoke(xr.of), xr.name)(xr)
 
+  operator fun invoke(xr: XR.Entity): XR.Entity = xr
+
   operator fun invoke(xr: XR.Query): XR.Query =
     with(xr) {
       when (this) {
         is FlatMap -> FlatMap.csf(invoke(head), invokeIdent(id), invoke(body))(this)
         is Map -> Map.csf(invoke(head), invokeIdent(id), invoke(body))(this)
-        is Entity -> this
+        is Entity -> invoke(this)
         is Filter -> Filter.csf(invoke(head), invokeIdent(id), invoke(body))(this)
         is Union -> Union.csf(invoke(a), invoke(b))(this)
         is UnionAll -> UnionAll.csf(invoke(a), invoke(b))(this)
@@ -110,7 +112,8 @@ interface StatelessTransformer {
         is Update -> Update.csf(invoke(query), invokeIdent(alias), assignments.map { invoke(it) }, exclusions.map { invoke(it)})(this)
         is Delete -> Delete.csf(invoke(query), invokeIdent(alias))(this)
         is OnConflict -> invoke(this)
-        is Returning -> Returning.csf(invoke(action), invoke(output))(this)
+        is FilteredAction -> FilteredAction.csf(invoke(action), invokeIdent(alias), invoke(filter))(this)
+        is Returning -> Returning.csf(invoke(action), invoke(kind))(this)
       }
     }
 

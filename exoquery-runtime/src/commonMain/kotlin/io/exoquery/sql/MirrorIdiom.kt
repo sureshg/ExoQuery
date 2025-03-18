@@ -69,10 +69,11 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
 
   val XR.Action.token: Token get() =
     when (this) {
-      is XR.Update -> stmt("${query.token}.update { set(${assignments.map { it.token }.mkStmt()})${exclusionsClause} }")
-      is XR.Insert -> stmt("${query.token}.insert { set(${assignments.map { it.token }.mkStmt()})${exclusionsClause} }")
-      is XR.Delete -> stmt("${query.token}.delete")
+      is XR.Update -> stmt("update<${query.name.token}> { set(${assignments.map { it.token }.mkStmt()})${exclusionsClause} }")
+      is XR.Insert -> stmt("insert<${query.name.token}> { set(${assignments.map { it.token }.mkStmt()})${exclusionsClause} }")
+      is XR.Delete -> stmt("delete<${query.name.token}>")
       is XR.Returning -> this.token
+      is XR.FilteredAction -> stmt("${action.token}.filter { ${alias.token} -> ${filter.token} }")
       is XR.OnConflict -> stmt("${this.token}")
     }
 
@@ -85,9 +86,9 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
 //  }
 
   val XR.Returning.token: Token get() =
-    when (this.output) {
-      is XR.Returning.Kind.Expression -> stmt("${action.token}.returning { ${this.output.alias.token} -> ${this.output.expr.token} }")
-      is XR.Returning.Kind.Keys -> stmt("${action.token}.returningKeys { ${this.output.keys.token { it.token }} }")
+    when (this.kind) {
+      is XR.Returning.Kind.Expression -> stmt("${action.token}.returning { ${this.kind.alias.token} -> ${this.kind.expr.token} }")
+      is XR.Returning.Kind.Keys -> stmt("${action.token}.returningKeys { ${this.kind.keys.token { it.token }} }")
     }
 
   val XR.OnConflict.token: Token get() =

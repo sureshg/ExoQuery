@@ -1,7 +1,7 @@
 package io.exoquery.plugin.transform
 
 import io.exoquery.Phase
-import io.exoquery.ReturningType
+import io.exoquery.ActionReturningKind
 import io.exoquery.SqlCompiledAction
 import io.exoquery.SqlCompiledQuery
 import io.exoquery.plugin.trees.Lifter
@@ -9,12 +9,10 @@ import io.exoquery.plugin.trees.PT
 import io.exoquery.plugin.trees.simpleTypeArgs
 import io.exoquery.sql.Token
 import io.exoquery.sql.token
-import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.builders.irBoolean
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.types.IrType
 
 
 data class SqlCompiledQueryExpr(
@@ -66,7 +64,7 @@ data class SqlCompiledActionExpr(
   val sqlActionExpr: IrExpression,
   val queryString: String,
   val queryTokenized: Token,
-  val returningType: ReturningType,
+  val actionReturningKind: ActionReturningKind,
   val label: String?,
   val phase: Phase,
   val originalEncodedActionXR: String
@@ -90,7 +88,7 @@ data class SqlCompiledActionExpr(
           // which shows us if the Param is a ParamSingle or ParamMulti. We need to check that in the AST in order to know that this
           // value is supposed to be.
           irBuilder.irBoolean(false), // needsTokenization (todo need to determine this from the tokenized value i.e. only `true` if there are no ParamMulti values)
-          returningType.lift(),
+          actionReturningKind.lift(),
           labelExpr,
           make<SqlCompiledAction.DebugData>(
             Phase.CompileTime.lift(),

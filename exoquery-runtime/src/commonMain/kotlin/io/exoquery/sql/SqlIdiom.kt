@@ -727,6 +727,7 @@ abstract class SqlIdiom: HasPhasePrinting {
       is XR.Update -> this.token
       is XR.Delete -> this.token
       is XR.OnConflict -> TODO()
+      is XR.FilteredAction -> this.token
       is XR.Returning -> this.token
     }
 
@@ -744,6 +745,16 @@ abstract class SqlIdiom: HasPhasePrinting {
   val List<XR.Assignment>.token get(): Token =
     this.map { it.token }.mkStmt(", ")
 
+  val XR.FilteredAction.token get() : Token =
+    when {
+      action is XR.U.CoreAction -> {
+        val reducedExpr = BetaReduction(filter, alias to action.alias).asExpr()
+        +"${action.token} WHERE ${reducedExpr.token}"
+      }
+      else ->
+        xrError("Filtered actions are only allowed on the core-actions update, delete but found:\n${showRaw()}")
+    }
+
   // TODO possible variable-shadowing issues might require beta-reducing out the alias of the inner query first.
   //      Do that instead of creating an ExternalIdent like was done in Quill #1509.
   val XR.Returning.token get(): Token =
@@ -751,10 +762,10 @@ abstract class SqlIdiom: HasPhasePrinting {
       // In Postgres-style RETURNING clause the RETURNING is always the last thing to be used so we can
       // use the action renderes first. In SQL-server that uses an OUTPUT clause this is not the case
       // and we need to repeat some logic here.
-      output is XR.Returning.Kind.Expression && action is XR.U.CoreAction -> {
+      kind is XR.Returning.Kind.Expression && (action is XR.U.CoreAction || action is XR.FilteredAction) -> {
         // TODO If the output is a product type we need to do expansion similar to SelectValue I.e. use SelectValue here
         //      note selections of single values similar to `as value` need to function for this as well
-        val reducedExpr = BetaReduction(output.expr, output.alias to action.alias).asExpr()
+        val reducedExpr = BetaReduction(kind.expr, kind.alias to action.coreAlias()).asExpr()
 
         val returningClauseToken =
           when (val tpe = reducedExpr.type) {
@@ -775,10 +786,10 @@ abstract class SqlIdiom: HasPhasePrinting {
       // This is when an API like insert(...).returningColumns(...) is used.
       // In this case the PrepareStatement.getGeneratedKeys() should be used but there should
       // be no specific RETURNING clause in the SQL.
-      output is XR.Returning.Kind.Keys && action is XR.U.CoreAction ->
+      kind is XR.Returning.Kind.Keys && (action is XR.U.CoreAction || action is XR.FilteredAction) ->
         action.token
       else ->
-        xrError("Returning clauses are only allowed on core-actions i.e. insert, update, delete but found:\n${showRaw()}")
+        xrError("Returning clauses are only allowed on core-actions i.e. insert, update, delete but found:\n${action.showRaw()}")
     }
 
   val XR.Delete.token get(): Token = run {
