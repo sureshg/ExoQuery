@@ -32,14 +32,15 @@ class VisitTransformExpressions(
   fun makeCompileLogger(currentExpr: IrElement) =
     CompileLogger.invoke(config, currentFile, currentExpr)
 
-  fun makeScope(currentExpr: IrElement, scopeOwner: IrSymbol) = CX.Scope(
+  fun makeScope(currentExpr: IrElement, scopeOwner: IrSymbol, currentDeclarationParent: IrDeclarationParent?) = CX.Scope(
     currentExpr = currentExpr,
     logger = makeCompileLogger(currentExpr),
     currentFile = currentFile,
     pluginCtx = context,
     compilerConfig = config,
     options = exoOptions,
-    scopeOwner = scopeOwner
+    scopeOwner = scopeOwner,
+    currentDeclarationParent = currentDeclarationParent
   )
 
   context (CX.Symbology, CX.QueryAccum)
@@ -98,7 +99,7 @@ class VisitTransformExpressions(
     // of the compilation phases).
     //if (file.hasAnnotation<ExoGoldenTest>())
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val scope = makeScope(file, scopeOwner)
+    val scope = makeScope(file, scopeOwner, currentDeclarationParent)
 
     val sanityCheck = currentFile.path == file.path
     if (!sanityCheck) {
@@ -123,8 +124,8 @@ class VisitTransformExpressions(
 
   override fun visitFunctionNew(declaration: IrFunction, data: VisitorContext): IrStatement {
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val scopeContext = makeScope(declaration, scopeOwner)
-    val builderContext = CX.Builder(scopeContext, scopeOwner)
+    val scopeContext = makeScope(declaration, scopeOwner, currentDeclarationParent)
+    val builderContext = CX.Builder(scopeContext)
     val runner = ScopedRunner(scopeContext, builderContext, data)
 
     val transformAnnotatedFunction = TransformAnnotatedFunction(this)
@@ -160,8 +161,8 @@ class VisitTransformExpressions(
   // TODO move this to visitGetValue? That would be more efficient but what other things might we wnat to transform?
   override fun visitExpression(expression: IrExpression, data: VisitorContext): IrExpression {
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val scopeContext = makeScope(expression, scopeOwner)
-    val builderContext = CX.Builder(scopeContext, scopeOwner)
+    val scopeContext = makeScope(expression, scopeOwner, currentDeclarationParent)
+    val builderContext = CX.Builder(scopeContext)
     val transformProjectCapture = TransformProjectCapture(this)
     val transformScaffoldAnnotatedFunctionCall = TransformScaffoldAnnotatedFunctionCall(this)
     val runner = ScopedRunner(scopeContext, builderContext, data)
@@ -188,10 +189,10 @@ class VisitTransformExpressions(
   override fun visitCall(expression: IrCall, data: VisitorContext): IrElement {
 
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val scopeCtx = makeScope(expression, scopeOwner)
+    val scopeCtx = makeScope(expression, scopeOwner, currentDeclarationParent)
     val stack = RuntimeException()
 
-    val builderContext = CX.Builder(scopeCtx, scopeOwner)
+    val builderContext = CX.Builder(scopeCtx)
 
     val transformPrint = TransformPrintSource(this)
     // TODO just for Expression capture or also for Query capture? Probably both

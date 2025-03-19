@@ -1,6 +1,7 @@
 package io.exoquery.plugin.transform
 
 import io.exoquery.config.ExoCompileOptions
+import io.exoquery.parseError
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.trees.DynamicsAccum
 import io.exoquery.plugin.trees.Lifter
@@ -8,6 +9,7 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
@@ -31,8 +33,11 @@ object CX {
     val pluginCtx: IrPluginContext,
     val compilerConfig: CompilerConfiguration,
     val options: ExoCompileOptions,
-    val scopeOwner: IrSymbol
+    val scopeOwner: IrSymbol,
+    val currentDeclarationParent: IrDeclarationParent?
   ) {
+    fun currentDeclarationParentOrFail() = currentDeclarationParent ?: parseError("Cannot get parent of the current declaration", currentExpr)
+
     val compileLogger get() = logger
     val typeSystem by lazy {
       val baseContext = IrTypeSystemContextImpl(pluginCtx.irBuiltIns)
@@ -45,7 +50,8 @@ object CX {
   }
 
   // Need the scope-owner in order to be able to construct lambdas (which is why this is in the builder)
-  data class Builder(val scopeContext: Scope, val scopeOwner: IrSymbol) {
+  data class Builder(val scopeContext: Scope) {
+    val scopeOwner get() = scopeContext.scopeOwner
     val builder by lazy { DeclarationIrBuilder(scopeContext.pluginCtx, scopeOwner, scopeContext.currentExpr.startOffset, scopeContext.currentExpr.endOffset) }
   }
 }

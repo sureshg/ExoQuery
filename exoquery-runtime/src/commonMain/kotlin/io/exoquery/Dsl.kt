@@ -5,6 +5,7 @@ import io.exoquery.annotation.DslFunctionCall
 import io.exoquery.annotation.DslFunctionCallType
 import io.exoquery.annotation.DslNestingIgnore
 import io.exoquery.annotation.ExoCapture
+import io.exoquery.annotation.ExoCaptureBatch
 import io.exoquery.annotation.ExoCaptureExpression
 import io.exoquery.annotation.ExoCaptureSelect
 import io.exoquery.annotation.ExoDelete
@@ -85,6 +86,10 @@ object capture {
   // TODO play around with having multiple from-clauses
   @ExoCaptureSelect
   fun <T> select(block: SelectClauseCapturedBlock.() -> T): @Captured SqlQuery<T> = errorCap("The `select` expression of the Query was not inlined")
+
+  // TODO go on to build transform for this
+  @ExoCaptureBatch
+  fun <Input: Any, Output> batch(block: SelectClauseCapturedBlock.() -> SqlBatchAction<Input, Output>): @Captured SqlBatchAction<Input, Output> = errorCap("The `batch` expression of the Query was not inlined")
 }
 
 //fun <T> capture(block: CapturedBlock.() -> SqlQuery<T>): @Captured SqlQuery<T> = errorCap("Compile time plugin did not transform the tree")

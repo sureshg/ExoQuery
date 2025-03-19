@@ -40,6 +40,7 @@ kotlin {
                 implementation("io.kotest:kotest-assertions-core:6.0.0.M1")
                 implementation(kotlin("test-common"))
                 implementation(kotlin("test-annotations-common"))
+
             }
         }
 
@@ -47,6 +48,13 @@ kotlin {
             dependencies {
                 // Want to have the full pprint in the JVM to do reflective deep-object diffs
                 implementation("io.exoquery:pprint-kotlin:3.0.0")
+
+                implementation("org.jetbrains.exposed:exposed-core:0.60.0")
+                implementation("org.jetbrains.exposed:exposed-dao:0.60.0")
+                implementation("org.jetbrains.exposed:exposed-jdbc:0.60.0")
+
+                implementation("io.zonky.test:embedded-postgres:2.0.7")
+                implementation("io.zonky.test.postgres:embedded-postgres-binaries-linux-amd64:16.2.0")
             }
         }
 

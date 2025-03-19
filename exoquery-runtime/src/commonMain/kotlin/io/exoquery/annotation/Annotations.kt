@@ -114,6 +114,10 @@ annotation class ExoCaptureSelect
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
+annotation class ExoCaptureBatch
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
 annotation class ExoCaptureExpression
 
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER)

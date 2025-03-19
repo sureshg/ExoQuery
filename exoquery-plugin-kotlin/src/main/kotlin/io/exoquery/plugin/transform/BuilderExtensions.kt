@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
@@ -145,6 +146,22 @@ context (CX.Scope, CX.Builder) fun createLambda0(functionBody: IrExpression, fun
     IrFunctionExpressionImpl(startOffset, endOffset, functionType, functionClosure, IrStatementOrigin.LAMBDA)
   }
 
+context (CX.Scope, CX.Builder) fun createLambda1(functionBody: IrExpression, param: IrValueParameter, functionParent: IrDeclarationParent): IrFunctionExpression =
+  createLambdaN(functionBody, listOf(param), functionParent)
+
+context (CX.Scope, CX.Builder) fun createLambdaN(functionBody: IrExpression, params: List<IrValueParameter>, functionParent: IrDeclarationParent): IrFunctionExpression =
+  with(builder) {
+    val functionClosure = createLambdaClosure(functionBody, params, functionParent)
+
+    val typeWith = params.map { it.type } + functionClosure.returnType
+    val functionType =
+      pluginCtx.symbols.functionN(params.size)
+        // Remember this is FunctionN<InputA, InputB, ... Output> so these input/output args need to be both specified here
+        .typeWith(typeWith)
+
+    IrFunctionExpressionImpl(startOffset, endOffset, functionType, functionClosure, IrStatementOrigin.LAMBDA)
+  }
+
 context (CX.Scope, CX.Builder) fun createLambda0Closure(functionBody: IrExpression, functionParent: IrDeclarationParent): IrSimpleFunction {
   return with(pluginCtx) {
     irFactory.buildFun {
@@ -156,6 +173,39 @@ context (CX.Scope, CX.Builder) fun createLambda0Closure(functionBody: IrExpressi
       isSuspend = false
     }.apply {
       parent = functionParent
+      /*
+      VERY important here to create a new irBuilder from the symbol i.e. createIrBuilder because
+      the return-point needs to be the caller-function (which kotlin gets from the irBuilder).
+      If the builder in the BuilderContext is used it will return back to whatever context the
+      TransformInterpolatorInvoke IrCall expression is coming from (and this will be a non-local return)
+      and since the return-type is wrong it will fail with a very large error that ultimately says:
+      RETURN: Incompatible return type
+       */
+      body = pluginCtx.createIrBuilder(symbol).run {
+        // don't use expr body, coroutine codegen can't generate for it.
+        irBlockBody {
+          +irReturn(functionBody)
+        }
+      }
+    }
+  }
+}
+
+context (CX.Scope, CX.Builder) fun createLambdaClosure(functionBody: IrExpression, params: List<IrValueParameter>, functionParent: IrDeclarationParent): IrSimpleFunction {
+  return with(pluginCtx) {
+    irFactory.buildFun {
+      origin = IrDeclarationOrigin.LOCAL_FUNCTION_FOR_LAMBDA
+      name = SpecialNames.NO_NAME_PROVIDED
+      visibility = DescriptorVisibilities.LOCAL
+      returnType = functionBody.type
+      modality = Modality.FINAL
+      isSuspend = false
+    }.apply {
+      parent = functionParent
+
+      if (params.size > 0) {
+        valueParameters = params
+      }
       /*
       VERY important here to create a new irBuilder from the symbol i.e. createIrBuilder because
       the return-point needs to be the caller-function (which kotlin gets from the irBuilder).

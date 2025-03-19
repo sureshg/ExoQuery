@@ -175,6 +175,10 @@ object ParseExpression {
         XR.FunctionApply(parse(hostFunction), args.map { parse(it) }, expr.loc)
       },
 
+      // TODO add the batch IrValueParameter to the ParseContext
+      // TODO check if the component inside the Param contains the batch param (if it is used as a regular ident in the query we need to handle that too)
+      // TODO if it is a batch param then add the ParamBind into a new ParamUsingBatchAlias and then add it to the binds
+      // TODO also need to handle setParams case in parseAction where a batch-param is used
       case(Ir.Call.FunctionMemN[Is(), Is.of("param", "paramCtx", "paramCustom"), Is()]).thenThis { _, args ->
         val paramValue = args.first()
         validateParamArg(paramValue)
@@ -209,7 +213,7 @@ object ParseExpression {
         val paramValue = args.first()
         validateParamArg(paramValue)
 
-        // TODO detect if the param is coming from inside the capture block and throw an error if it is, make a special note if it is an argument of a CapturedFunction
+        // TODO if a batch param is used then fail here since you cannot use batch queries with multi-params
         val paramBindType =
           when {
             // currently not used because the specific ones have been commented out. Waiting for @SignatureName in KMP
