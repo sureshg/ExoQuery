@@ -41,7 +41,8 @@ data class SqlCompiledAction<Input, Output>(val value: String, override val toke
   data class DebugData(val phase: Phase, val originalXR: () -> XR.Action)
 }
 
-data class SqlCompiledBatchAction<Input: Any, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val batchParam: ParamMulti<Input>, val label: String?, val debugData: SqlCompiledBatchAction.DebugData): ExoCompiled() {
+// TODO since we're providing the batch-parameter at the last moment, we need a function that replaces ParamBatchRefiner to ParamSingle instances and create BatchGroups
+data class SqlCompiledBatchAction<Input: Any, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val batchParam: List<Input>, val label: String?, val debugData: SqlCompiledBatchAction.DebugData): ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
 
   override fun determinizeDynamics(): SqlCompiledBatchAction<Input, Output> =

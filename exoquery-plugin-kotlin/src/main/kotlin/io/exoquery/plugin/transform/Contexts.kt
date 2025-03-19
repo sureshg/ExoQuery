@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
@@ -20,7 +21,7 @@ context(CX.Builder) fun makeLifter() = Lifter(this@Builder)
 
 object CX {
 
-  data class Parsing(val binds: DynamicsAccum = DynamicsAccum.newEmpty())
+  data class Parsing(val binds: DynamicsAccum = DynamicsAccum.newEmpty(), val batchAlias: IrValueParameter? = null)
 
   data class QueryAccum(val accum: FileQueryAccum)
 

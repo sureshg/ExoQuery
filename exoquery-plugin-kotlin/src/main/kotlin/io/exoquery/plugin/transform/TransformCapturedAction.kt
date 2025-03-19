@@ -8,6 +8,7 @@ import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.trees.ExtractorsDomain
 import io.exoquery.plugin.trees.Parser
 import io.exoquery.plugin.trees.SqlActionExpr
+import io.exoquery.plugin.trees.SqlBatchActionExpr
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
@@ -29,7 +30,6 @@ class TransformCapturedAction(val superTransformer: VisitTransformExpressions): 
       }
 
     //logger.error("========== Output: ==========\n${newSqlAction.dumpKotlinLike()}")
-
     return newSqlAction
   }
   companion object {
@@ -48,5 +48,8 @@ class TransformCapturedAction(val superTransformer: VisitTransformExpressions): 
       Parser.scoped { Parser.parseAction(body) }
     }
   }
-
 }
+
+//class TransformCapturedBatchAction(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+//
+//}

@@ -5,6 +5,7 @@ import io.exoquery.*
 import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.annotation.CapturedFunction
 import io.exoquery.annotation.ExoCapture
+import io.exoquery.annotation.ExoCaptureBatch
 import io.exoquery.annotation.ExoCaptureExpression
 import io.exoquery.annotation.ExoCaptureSelect
 import io.exoquery.annotation.ExoUseExpression
@@ -219,6 +220,35 @@ object ExtractorsDomain {
       context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
         customPattern1("Call.CaptureAction", call) { it: IrCall ->
           if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlAction<*, *>>()) {
+            Components1(it)
+          } else {
+            null
+          }
+        }
+    }
+
+    object CaptureBatchAction {
+      object LambdaOutput {
+        context(CX.Scope) operator fun <AP: Pattern<IrValueParameter>, BP: Pattern<IrExpression>> get(variable: AP, call: BP) =
+          customPattern2("Call.CaptureBatchAction.LambdaBody", variable, call) { it: IrCall ->
+            if (it.ownerHasAnnotation<ExoCaptureBatch>() && it.type.isClass<SqlBatchAction<*, *>>()) {
+              val arg = it.simpleValueArgs.first() ?: parseError("CaptureBatchAction must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
+              arg.match(
+                // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
+                case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { output ->
+                  val firstArg = this.function.simpleValueParams.firstOrNull() ?: parseError("CaptureBatchAction must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
+                  Components2(firstArg, output)
+                }
+              )
+            } else {
+              null
+            }
+          }
+      }
+
+      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+        customPattern1("Call.CaptureBatchAction", call) { it: IrCall ->
+          if (it.ownerHasAnnotation<ExoCaptureBatch>() && it.type.isClass<SqlBatchAction<*, *>>()) {
             Components1(it)
           } else {
             null

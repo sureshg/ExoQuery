@@ -399,11 +399,6 @@ object SqlBatchActionExpr {
     fun replant(paramsFrom: IrExpression): IrExpression {
       val strExpr = call(PT.io_exoquery_unpackBatchAction).invoke(builder.irString(packedXR))
       val callParams = paramsFrom.callDispatch("params").invoke()
-      // Can't just pull out the batchParam from the CaseClassConstructorCall1Plus for the same reason we cannot do it for params. Namely
-      // because the reference inside that varaible might refer to things in a context that is no longer available (e.g. to class-members).
-      // In Quill this was solved by a clunky process that projected liftings into a custom reference object that every quotation had.
-      // In ExoQuery we simply call .param/.batchParam on upstream containers when creating downstream containers.
-      val callBatchParam = paramsFrom.callDispatch("batchParam").invoke()
       val make = makeClassFromString(PT.io_exoquery_SqlBatchAction, listOf(strExpr, RuntimeEmpty(), callParams))
       return make
     }
