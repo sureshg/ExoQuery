@@ -19,6 +19,27 @@ import org.jetbrains.kotlin.ir.util.*
 
 object Messages {
 
+context(CX.Parsing)
+fun batchParamError() = batchParamError(batchAlias?.name?.asString() ?: "<???>")
+
+fun batchParamError(batchParamName: String) = "Detected an invalid use of the batch-parameter `$batchParamName` in the query.\n" + UsingBatchParam
+
+val UsingBatchParam =
+"""
+In order to use a batch-param or a field of a batch param use wrap it in a param(...) function.
+For example for a batch query of List<Person> use it like this:
+
+val people: List<Person> = ...
+capture.batch(people) { p -> insert<Person> { set(name to param(p.name)) } }
+
+You can use use setParams to set the entire batch param as a single entity:
+capture.batch(people) { p -> insert<Person> { setParams(p) } }
+
+Note that the batch parameter can be different from the entity being inserted for example:
+val names: List<String> = listOf("Joe", "John")
+capture.batch(names) { name -> insert<Person> { set(name to param(name), age to 123) } }
+""".trimIndent()
+
 val ReturningKeysExplanation =
 """
 The returningKeys function is designed to be used with the JDBC PreparedStatement.generatedKeys (and similar APIs) that allow
@@ -82,10 +103,22 @@ INSERT INTO Person (name, age) VALUES (?, ?)
 
 fun InvalidSqlActionFunctionBody() =
 """
-The SqlAction expression has an invalid structure. An SqlAction expression should be a lambda with a single expression. For example:
+The SqlAction expression has an invalid structure. An SqlAction expression should be a lambda with a single expression. 
+""".trimIndent() + "\n" + ActionExample
+
+val ActionExample =
+"""
+For example:
 
 val insertPerson = capture {
   insert<Person> { set(name to "Joe", age to 123) }
+}
+
+You can also use setParams to make an action based on an existing data-class instance:
+
+val joe = Person(name = "Joe", age = 123)
+val insertPerson = capture {
+  insert<Person> { setParams(joe) }
 }
 """.trimIndent()
 
@@ -242,7 +275,7 @@ ${ir?.withIndex()?.map { (i, it) -> "($i) " + writeOutput(it) }?.joinToString("\
 
 val additionalPrint = if (additionalHeading.isNotEmpty()) " ($additionalHeading)" else ""
 
-val irWithUnpacks = ir.prepareForPrinting()
+val irWithUnpacks = ir //.prepareForPrinting()
 
 return """
 ================ Kotlin-Like:${additionalPrint} ================

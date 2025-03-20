@@ -28,6 +28,7 @@ import io.exoquery.plugin.safeName
 import io.exoquery.plugin.symName
 import io.exoquery.plugin.toLocationXR
 import io.exoquery.plugin.transform.CX
+import io.exoquery.plugin.transform.isBatchParam
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -80,7 +81,7 @@ object ParseQuery {
                   // Add all binds from the found SqlQuery instance, this will be truned into something like `currLifts + SqlQuery.lifts` late
                   binds.addAllParams(sqlQueryIr)
                   // Then unpack and return the XR
-                  uprootable.xr // TODO catch errors here?
+                  uprootable.unpackOrErrorXR().successOrParseError(sqlQueryArg)
                 },
                 case(ExtractorsDomain.DynamicQueryCall[Is()]).then { _ ->
                   val bid = BID.Companion.new()
@@ -98,6 +99,7 @@ object ParseQuery {
           },
 
           case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym->
+            if (this.isBatchParam()) parseError(Messages.UsingBatchParam, expr)
             XR.Ident(sym.sanitizedSymbolName(), TypeParser.of(this), this.locationXR())
           },
           // If we couldn't parse the expression treat (and it is indeed a SqlQuery<*> treat it as dynamic i.e. non-uprootable
@@ -110,7 +112,7 @@ object ParseQuery {
             // Add all binds from the found SqlQuery instance, this will be truned into something like `currLifts + SqlQuery.lifts` late
             binds.addAllParams(sqlQueryIr)
             // Then unpack and return the XR
-            uprootable.xr // TODO catch errors here?
+            uprootable.unpackOrErrorXR().successOrParseError(sqlQueryIr)
           },
           // TODO check that the output is a SqlQuery and pass to this parser instead of expression parser?
           case(Ir.Call.FunctionMemN[Ir.Expr.ClassOf<Function<*>>(), Is("invoke"), Is()]).thenThis { hostFunction, args ->
@@ -124,6 +126,7 @@ object ParseQuery {
               //it.type.hasAnnotation<CapturedDynamic>() || it.type.hasAnnotation(FqName("io.exoquery.Captured"))
               true
             }.then { _ ->
+              if (expr is IrGetValue && expr.isBatchParam()) parseError(Messages.UsingBatchParam, expr)
               if (expr is IrGetValue && expr.symbol.owner is IrFunction)
                 logger.warn(Messages.VariableComingFromNonCapturedFunction(expr, expr.ownerFunName ?: "<???>"), expr)
 

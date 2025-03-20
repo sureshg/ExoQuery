@@ -200,6 +200,7 @@ class VisitTransformExpressions(
     val transformCaptureQuery = TransformCapturedQuery(this)
     val transformSelectClause = TransformSelectClause(this)
     val transformCaptureAction = TransformCapturedAction(this)
+    val transformCaptureBatchAction = TransformCapturedBatchAction(this)
     // I.e. tranforms the SqlQuery.build call (i.e. the SqlQuery should have already been transformed into an Uprootable before recursing "out" to the .build call
     // or the .build call should have recursed down into it (because it calls the superTransformer on the reciever of the .build call)
     val transformCompileQuery = TransformCompileQuery(this)
@@ -218,7 +219,8 @@ class VisitTransformExpressions(
         transformCaptureQuery.matches(expression) -> transformCaptureQuery.transform(expression)
         transformSelectClause.matches(expression) -> transformSelectClause.transform(expression)
         transformCaptureAction.matches(expression) -> transformCaptureAction.transform(expression)
-        // Is this an sqlQuery.build(PostgresDialect) call? if yes see if the it is a compile-time query and transform it
+        transformCaptureBatchAction.matches(expression) -> transformCaptureBatchAction.transform(expression)
+          // Is this an sqlQuery.build(PostgresDialect) call? if yes see if the it is a compile-time query and transform it
         transformCompileQuery.matches(expression) -> transformCompileQuery.transform(expression)
 
 

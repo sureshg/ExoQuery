@@ -10,6 +10,8 @@ import io.exoquery.parseError
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.trees.Ir
+import io.exoquery.plugin.trees.simpleValueArgs
+import io.exoquery.plugin.trees.simpleValueParams
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.backend.jvm.ir.eraseTypeParameters
 import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
@@ -45,6 +47,7 @@ import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.utils.zipIfSizesAreEqual
 import kotlin.reflect.KClass
 
 fun KClass<*>.classId(): ClassId? = run {
@@ -192,6 +195,14 @@ fun CompilerMessageSourceLocation.show() =
   "${path}:${line}:${column}"
 
 val IrCall.funName get() = this.symbol.safeName
+
+val IrCall.ownerFunction get() =
+  this.symbol.owner
+
+context(CX.Scope)
+fun IrCall.zipArgsWithParamsOrFail() =
+  ownerFunction.simpleValueParams.zipIfSizesAreEqual(simpleValueArgs)
+    ?: parseError("Mismatched parts (${ownerFunction.simpleValueParams.size})  and params (${simpleValueArgs.size}) in function:\nParts: ${ownerFunction.simpleValueParams.map { it.source() }}\nParams: ${simpleValueArgs.map { it?.source() }}", this)
 
 val IrGetValue.ownerFunName get() =
   (this.symbol.owner as? IrFunction)?.let { it.symbol.safeName }

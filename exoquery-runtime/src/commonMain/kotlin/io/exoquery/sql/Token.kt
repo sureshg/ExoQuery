@@ -2,6 +2,7 @@ package io.exoquery.sql
 
 import io.exoquery.BID
 import io.exoquery.Param
+import io.exoquery.ParamBatchRefiner
 import io.exoquery.ParamMulti
 import io.exoquery.ParamSet
 import io.exoquery.ParamSingle
@@ -26,6 +27,8 @@ sealed interface Token {
       override fun invoke(token: ParamMultiToken): Token = token.withBid(bid = bids[token.bid] ?: token.bid)
       override fun invoke(token: ParamSingleTokenRealized): Token = token.withBid(bids[token.bid] ?: token.bid)
       override fun invoke(token: ParamMultiTokenRealized): Token = token.withBid(bid = bids[token.bid] ?: token.bid)
+      override fun invoke(token: ParamBatchToken): Token = token.withBid(bid = bids[token.bid] ?: token.bid)
+      override fun invoke(token: ParamBatchTokenRealized): Token = token.withBid(bid = bids[token.bid] ?: token.bid)
     }.invoke(this)
 
   fun extractParams(): List<Param<*>> {
@@ -40,10 +43,12 @@ sealed interface Token {
       when (token) {
         is ParamSingleTokenRealized -> accum.add(token.param ?: errorNotFound(token.bid))
         is ParamMultiTokenRealized -> accum.add(token.param ?: errorNotFound(token.bid))
+        is ParamBatchTokenRealized -> accum.add(token.param ?: errorNotFound(token.bid))
         is Statement -> toExplore.addAll(0, token.tokens)
         is SetContainsToken -> toExplore.addAll(0, listOf(token.a, token.op, token.b))
         is ParamMultiToken -> errorUnrealizedFound(token.bid)
         is ParamSingleToken -> errorUnrealizedFound(token.bid)
+        is ParamBatchToken -> errorUnrealizedFound(token.bid)
         is StringToken -> {} // No params in a string token
       }
     }
@@ -86,6 +91,20 @@ final data class ParamMultiTokenRealized(val bid: BID, val param: ParamMulti<*>?
   override fun build(): String = param?.value?.map { _ -> "?" }?.joinToString(", ") ?: xrError("Param not found for bid: ${bid}")
   override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, param, true)
   fun withBid(bid: BID) = ParamMultiTokenRealized(bid, param?.withNewBid(bid))
+}
+
+final data class ParamBatchToken(val bid: BID): Token {
+  override fun build() = "<UNRB?>"
+  fun realize(paramSet: ParamSet) =
+    ParamBatchTokenRealized(bid, paramSet.lifts.asSequence().filterIsInstance<ParamBatchRefiner<*, *>>().find { p -> p.id == bid })
+  override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, null, false)
+  fun withBid(bid: BID) = ParamBatchToken(bid)
+}
+
+final data class ParamBatchTokenRealized(val bid: BID, val param: ParamBatchRefiner<*, *>?): Token {
+  override fun build(): String = param?.let { "?" } ?: xrError("Param not found for bid: ${bid}")
+  override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, param, true)
+  fun withBid(bid: BID) = ParamBatchTokenRealized(bid, param?.withNewBid(bid))
 }
 
 final data class Statement(val tokens: List<Token>): Token {

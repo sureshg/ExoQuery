@@ -15,10 +15,12 @@ import io.exoquery.parseError
 import io.exoquery.plugin.loc
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.Messages
+import io.exoquery.plugin.logging.Messages.InvalidSqlActionFunctionBody
 import io.exoquery.plugin.ownerHasAnnotation
 import io.exoquery.plugin.source
 import io.exoquery.plugin.symName
 import io.exoquery.plugin.transform.CX
+import io.exoquery.plugin.transform.containsBatchParam
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -161,7 +163,13 @@ object ParseAction {
         if (property.type.isProduct())
           parseError("Invalid assignment expression `${expr.source()}`. The left-hand type `${left.type.dumpKotlinLike()}` is a product-type which is not allowed.\n${Messages.ProductTypeInsertInstructions}", expr)
 
-        XR.Assignment(property, ParseExpression.parse(right), expr.loc)
+        if (!((property.core() as? XR.Ident)?.let { it.isThisRef() } ?: false))
+          parseError("Invalid assignment expression `${expr.source()}`. The left-hand side of the assignment must be a column of the entity\n${Messages.ActionExample}", expr)
+
+        // Can check on this level if there's a batch-param but might have performance implications
+        //if (right.containsBatchParam()) parseError(Messages.UsingBatchParam, expr)
+        val rhs = ParseExpression.parse(right)
+        XR.Assignment(property, rhs, expr.loc)
       }
     ) ?: parseError("Could not parse the assignment", expr)
 

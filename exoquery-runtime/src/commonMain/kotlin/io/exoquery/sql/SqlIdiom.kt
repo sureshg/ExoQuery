@@ -65,11 +65,6 @@ abstract class SqlIdiom: HasPhasePrinting {
     return xr.token
   }
 
-  fun processBatching(xr: XR.Batching): Token {
-    return xr.token
-  }
-
-
 
   fun translate(xr: XR.Query) =
     prepareQuery(xr).token.renderWith(Renderer(true, true, null))
@@ -141,6 +136,7 @@ abstract class SqlIdiom: HasPhasePrinting {
         when (this.paramType) {
           is ParamType.Single -> ParamSingleToken(this.id)
           is ParamType.Multi  -> ParamMultiToken(this.id)
+          is ParamType.Batch  -> ParamBatchToken(this.id)
         }
       is XR.TagForSqlExpression ->
         xrError("Internal error. All instance of TagFOrSqlExpressio should have been spliced earlier.")

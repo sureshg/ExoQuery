@@ -108,6 +108,10 @@ annotation class ExoValue
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoCapture
 
+@Target(AnnotationTarget.VALUE_PARAMETER)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoBuildFunctionLabel
+
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoCaptureSelect

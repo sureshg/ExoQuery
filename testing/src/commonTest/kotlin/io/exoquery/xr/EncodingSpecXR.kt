@@ -166,5 +166,12 @@ class EncodingSpecXR: FreeSpec({
       val xr = XR.OnConflict(insert, XR.OnConflict.Target.Properties(listOf(XR.Property(XR.Ident("this"), "name"))), XR.OnConflict.Resolution.Update(XR.Ident("exclude"), listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe")))))
       xr.encode().decodeXR() shouldBeXR xr
     }
+    "Batching" {
+      val insert = XR.Insert(people, XR.Ident("this"), listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))), listOf(XR.Property(XR.Ident("this"), "name")))
+      val xr = XR.Batching(XR.Ident("p"), insert)
+      //xr.encode().decodeXR() shouldBeXR xr // doesn't work since .encode is specific to Batching
+      // Maybe in kotlin protobuf serialization, you can't have real elements mixed with abstract elements in the root of the hiearchy (i.e. everything else that inherits from XR is abstract)
+      xr.encode().decodeBatching() shouldBeXR xr
+    }
   }
 })

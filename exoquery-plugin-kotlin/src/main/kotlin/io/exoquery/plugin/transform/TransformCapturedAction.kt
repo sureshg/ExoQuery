@@ -4,11 +4,18 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.parseError
+import io.exoquery.plugin.loc
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.trees.ExtractorsDomain
 import io.exoquery.plugin.trees.Parser
 import io.exoquery.plugin.trees.SqlActionExpr
 import io.exoquery.plugin.trees.SqlBatchActionExpr
+import io.exoquery.unpackBatchAction
+import io.exoquery.xr.EncodingXR
+import io.exoquery.xr.XR
+import io.exoquery.xr.encode
+import kotlinx.serialization.decodeFromHexString
+import kotlinx.serialization.encodeToHexString
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
@@ -50,6 +57,55 @@ class TransformCapturedAction(val superTransformer: VisitTransformExpressions): 
   }
 }
 
-//class TransformCapturedBatchAction(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
-//
-//}
+class TransformCapturedBatchAction(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun matches(expression: IrCall): Boolean =
+    ExtractorsDomain.Call.CaptureBatchAction[Is.Companion()].matchesAny(expression)
+
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  override fun transform(expression: IrCall): IrExpression {
+    val (xr, dynamics, batchCollection) = parseCapturedBatchAction(expression, superTransformer)
+
+    //val res =
+    //  try {
+    //    val encode = EncodingXR.protoBuf.encodeToHexString(xr as XR) // Downcasting breaks it, otherwise is fine
+    //    val decode = EncodingXR.protoBuf.decodeFromHexString<XR.Batching>(encode)
+    //    decode
+    //  } catch (ex: Throwable) {
+    //    ex.stackTraceToString()
+    //  }
+    //logger.error("--------------- TransformCapturedBatchAction ----------------\n${xr.showRaw()}\n${res}")
+
+    val paramsExprModel = dynamics.makeParams()
+    val newSqlAction =
+      if (dynamics.noRuntimes()) {
+        SqlBatchActionExpr.Uprootable.plantNewUprootable(xr, batchCollection, paramsExprModel)
+      } else {
+        SqlBatchActionExpr.Uprootable.plantNewPluckable(xr, batchCollection, dynamics.makeRuntimes(), paramsExprModel)
+      }
+
+    //logger.error("========== Output: ==========\n${newSqlAction.dumpKotlinLike()}")
+    return newSqlAction
+  }
+  companion object {
+    context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+    fun parseCapturedBatchAction(expression: IrCall, superTransformer: VisitTransformExpressions)  = run {
+      val (batchData, bodyExpr) =
+        on(expression).match(
+          // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
+          case(ExtractorsDomain.Call.CaptureBatchAction.LambdaOutput[Is(), Is()]).then { batchParam, expr ->
+            batchParam to expr
+          }
+        )
+          ?: parseError(Messages.InvalidSqlActionFunctionBody(), expression)
+
+      val (batchParam, batchCollection) = batchData
+
+      val body = superTransformer.recurse(bodyExpr)
+      val (actionXR, dynamics) = Parser.scoped(CX.Parsing(batchAlias = batchParam)) { Parser.parseAction(body) }
+      val batchParamAlias = Parser.scoped { Parser.parseValueParamter(batchParam) }
+      val xr = XR.Batching(batchParamAlias, actionXR, body.loc)
+      Triple(xr, dynamics, batchCollection)
+    }
+  }
+}

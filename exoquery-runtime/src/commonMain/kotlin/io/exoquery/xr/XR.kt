@@ -690,6 +690,9 @@ sealed interface XR {
   sealed interface ParamType {
     @Serializable data object Single: ParamType
     @Serializable data object Multi: ParamType
+    @Serializable data object Batch: ParamType
+    // TODO Custom
+    // TODO BatchMulti
   }
 
   @Serializable

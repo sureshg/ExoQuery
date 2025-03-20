@@ -35,7 +35,9 @@ import io.exoquery.plugin.safeName
 import io.exoquery.plugin.show
 import io.exoquery.plugin.toXR
 import io.exoquery.plugin.transform.CX
+import io.exoquery.plugin.transform.containsBatchParam
 import io.exoquery.plugin.transform.dumpKotlinLikePretty
+import io.exoquery.plugin.transform.isBatchParam
 import io.exoquery.plugin.varargValues
 import io.exoquery.serial.ParamSerializer
 import io.exoquery.terpal.UnzipPartsParams
@@ -182,7 +184,7 @@ object ParseExpression {
       case(Ir.Call.FunctionMemN[Is(), Is.of("param", "paramCtx", "paramCustom"), Is()]).thenThis { _, args ->
         val paramValue = args.first()
         validateParamArg(paramValue)
-        val paramBindType =
+        val paramBindTypeRaw =
           when {
             this.ownerHasAnnotation<ParamStatic>() -> {
               val staticRef = this.symbol.owner.getAnnotationArgs<ParamStatic>().firstOrNull()?.let { param -> param as? IrClassReference
@@ -205,8 +207,16 @@ object ParseExpression {
           }
 
         val bid = BID.new()
-        binds.addParam(bid, paramValue, paramBindType)
-        XR.TagForParam(bid, XR.ParamType.Single, TypeParser.of(this), paramValue.loc)
+
+        val (paramBind, paramType) =
+          if (batchAlias != null && paramValue.containsBatchParam()) {
+            ParamBind.Type.ParamUsingBatchAlias(batchAlias, paramBindTypeRaw) to XR.ParamType.Batch
+          } else {
+            paramBindTypeRaw to XR.ParamType.Single
+          }
+
+        binds.addParam(bid, paramValue, paramBind)
+        XR.TagForParam(bid, paramType, TypeParser.of(this), paramValue.loc)
       },
 
       case(Ir.Call.FunctionMemN[Is(), Is.of("params", "paramsCtx", "paramsCustom"), Is()]).thenThis { _, args ->
@@ -298,7 +308,7 @@ object ParseExpression {
             // Add all binds from the found SqlExpression instance, this will be truned into something like `currLifts + SqlExpression.lifts` late
             binds.addAllParams(sqlExprIr)
             // Then unpack and return the XR
-            uprootable.xr
+            uprootable.unpackOrErrorXR().successOrParseError(sqlExprIr)
           },
           case(ExtractorsDomain.DynamicExprCall[Is()]).then { call ->
             val bid = BID.Companion.new()
@@ -324,6 +334,7 @@ object ParseExpression {
 
       // Other situations where you might have an identifier which is not an SqlVar e.g. with variable bindings in a Block (inside an expression)
       case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym ->
+        if (this.isBatchParam()) parseError(Messages.batchParamError(), expr)
         XR.Ident(sym.sanitizedSymbolName(), TypeParser.of(this), this.locationXR()) // this.symbol.owner.type
       },
       case(Ir.Const[Is()]).thenThis {
@@ -332,7 +343,10 @@ object ParseExpression {
 
       // TODO need to check for @SerialName("name_override") annotations from the Kotlin seriazation API and override the name
       //      (the parser also needs to be able to generated these based on a mapping)
-      case(Ir.Call.Property[Is(), Is()]).then { expr, propKind ->
+      case(Ir.Call.Property[Is(), Is()]).thenThis { expr, propKind ->
+        // If a batch-alias is being dereferenced should we potentially search inside of it? Might have performance implications
+        if (expr.containsBatchParam()) parseError(Messages.batchParamError(), this)
+
         val core = parse(expr)
         when (propKind) {
           is Ir.Call.Property.PropertyKind.Named ->
@@ -426,7 +440,7 @@ object ParseExpression {
           // Add all binds from the found SqlExpression instance, this will be truned into something like `currLifts + SqlExpression.lifts` late
           binds.addAllParams(sqlExprArg)
           // Then unpack and return the XR
-          uprootable.xr
+          uprootable.unpackOrErrorXR().successOrParseError(sqlExprArg)
         },
         case(ExtractorsDomain.DynamicExprCall[Is()]).then { call ->
           val bid = BID.Companion.new()

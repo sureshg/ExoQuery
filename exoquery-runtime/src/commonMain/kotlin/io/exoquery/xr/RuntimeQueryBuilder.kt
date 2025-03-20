@@ -8,6 +8,8 @@ import io.exoquery.Phase
 import io.exoquery.SqlAction
 import io.exoquery.SqlBatchAction
 import io.exoquery.SqlQuery
+import io.exoquery.TransformXrError
+import io.exoquery.sql.ParamBatchToken
 import io.exoquery.sql.ParamMultiToken
 import io.exoquery.sql.ParamSingleToken
 import io.exoquery.sql.SqlIdiom
@@ -40,7 +42,13 @@ class RuntimeBuilder(val dialect: SqlIdiom, val pretty: Boolean) {
     // "realize" the tokens converting params clauses to actual list-values
     val queryTokenized = TokenRealizer(container.params).invoke(queryTokenizedRaw)
 
-    val queryRaw = queryTokenized.build()
+    val queryRaw =
+      try {
+        queryTokenized.build()
+      } catch (e: TransformXrError) {
+        throw TransformXrError("Failed to build query from tokenized AST:\n${splicedAst.showRaw()}\n--------- With Params ---------\n${container.params}", e)
+      }
+
     val queryString = if (pretty) formatQuery(queryRaw) else queryRaw
     return Triple(queryString, queryTokenized, other)
   }
@@ -71,11 +79,11 @@ class RuntimeBuilder(val dialect: SqlIdiom, val pretty: Boolean) {
     return ContainerBuildAction(queryString, queryToken)
   }
 
-  fun forBatching(container: SqlBatchAction<*, *>): ContainerBuildAction {
+  fun forBatching(container: SqlBatchAction<*, *, *>): ContainerBuildAction {
     val (queryString, queryToken, _) =
       processContainer(container) { splicedAst ->
         when (splicedAst) {
-          is XR.Batching -> dialect.processBatching(splicedAst) to null
+          is XR.Batching -> dialect.processAction(splicedAst.action) to null
           else -> throw IllegalArgumentException("Unsupported XR type. Can only be a XR.Batching: ${splicedAst::class}\n${splicedAst.showRaw()}")
         }
       }
@@ -86,6 +94,7 @@ class RuntimeBuilder(val dialect: SqlIdiom, val pretty: Boolean) {
   class TokenRealizer(val paramSet: ParamSet): StatelessTokenTransformer {
     override fun invoke(token: ParamMultiToken): Token = token.realize(paramSet)
     override fun invoke(token: ParamSingleToken): Token = token.realize(paramSet)
+    override fun invoke(token: ParamBatchToken): Token = token.realize(paramSet)
   }
 
   // TODO need a test with a dynamic SqlExpression container used in an SqlQuery (and vice-versa)

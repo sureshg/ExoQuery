@@ -6,6 +6,7 @@ import io.exoquery.plugin.isClass
 import io.exoquery.plugin.isClassStrict
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.transform.CX
+import io.exoquery.plugin.transform.containsBatchParam
 import io.exoquery.serial.ParamSerializer
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -17,6 +18,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.declarations.nameWithPackage
 import org.jetbrains.kotlin.ir.expressions.IrDeclarationReference
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.IrValueAccessExpression
 import org.jetbrains.kotlin.ir.types.IrType

@@ -27,6 +27,8 @@ object CX {
 
   data class Symbology(val symbolSet: SymbolSet)
 
+  data class DebugDataConfig(val addParamDescriptions: Boolean = true)
+
   data class Scope(
     val currentExpr: IrElement,
     val logger: CompileLogger,
@@ -35,7 +37,8 @@ object CX {
     val compilerConfig: CompilerConfiguration,
     val options: ExoCompileOptions,
     val scopeOwner: IrSymbol,
-    val currentDeclarationParent: IrDeclarationParent?
+    val currentDeclarationParent: IrDeclarationParent?,
+    val debugDataConfig: DebugDataConfig = DebugDataConfig()
   ) {
     fun currentDeclarationParentOrFail() = currentDeclarationParent ?: parseError("Cannot get parent of the current declaration", currentExpr)
 

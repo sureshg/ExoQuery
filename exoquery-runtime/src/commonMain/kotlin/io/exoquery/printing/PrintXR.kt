@@ -1,10 +1,14 @@
 package io.exoquery.printing
 
+import io.exoquery.ParamBatchRefiner
+import io.exoquery.ParamMulti
 import io.exoquery.ParamSet
+import io.exoquery.ParamSingle
 import io.exoquery.RuntimeSet
 import io.exoquery.SqlAction
 import io.exoquery.SqlBatchAction
 import io.exoquery.SqlCompiledAction
+import io.exoquery.SqlCompiledBatchAction
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.fansi.Attrs
@@ -12,6 +16,8 @@ import io.exoquery.kmp.pprint.PPrinter
 import io.exoquery.kmp.pprint.PPrinterManual
 import io.exoquery.pprint.PPrinterConfig
 import io.exoquery.pprint.Tree
+import io.exoquery.sql.ParamBatchToken
+import io.exoquery.sql.ParamBatchTokenRealized
 import io.exoquery.sql.ParamMultiToken
 import io.exoquery.sql.ParamMultiTokenRealized
 import io.exoquery.sql.ParamSingleToken
@@ -41,6 +47,8 @@ class PrintToken(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Toke
       is ParamMultiTokenRealized -> Tree.Apply("ParamMultiTokenRealized", iteratorOf(Tree.Literal(x.bid.value, "bid"), x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.value.toString()))) } ?: Tree.Literal("null", "param")))
       is ParamSingleToken -> Tree.Apply("ParamSingleToken", iteratorOf(Tree.Literal(x.bid.value, "bid")))
       is ParamSingleTokenRealized -> Tree.Apply("ParamSingleTokenRealized", iteratorOf(Tree.Literal(x.bid.value, "bid"), x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.value.toString()))) } ?: Tree.Literal("null", "param")))
+      is ParamBatchToken -> Tree.Apply("ParamBatchToken", iteratorOf(Tree.Literal(x.bid.value, "bid")))
+      is ParamBatchTokenRealized -> Tree.Apply("ParamBatchTokenRealized", iteratorOf(Tree.Literal(x.bid.value, "bid"), x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.showValue().toString()))) } ?: Tree.Literal("null", "param")))
       is SetContainsToken -> Tree.Apply("SetContainsToken", iteratorOf(treeifyThis(x.a, "a"), treeifyThis(x.op, "op"), treeifyThis(x.b, "b")))
       is Statement -> Tree.Apply("Statement", x.tokens.map { treeifyThis(it, null) }.iterator())
       is StringToken -> Tree.Apply("StringToken", iteratorOf(Tree.Literal(x.string, "string")))
@@ -58,17 +66,35 @@ class PrintMisc(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Any?>
       is SqlExpression<*> -> Tree.Apply("SqlExpression", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
       is SqlQuery<*> -> Tree.Apply("SqlQuery", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
       is SqlAction<*, *> -> Tree.Apply("SqlAction", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
-      is SqlBatchAction<*, *> -> Tree.Apply("SqlActionBatch", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.batchParam, "batchParam"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
-      is ParamSet -> Tree.Apply("ParamSet", x.lifts.map { l -> Tree.KeyValue(l.id.value, Tree.Literal(l.showValue().toString())) }.iterator())
+      is SqlBatchAction<*, *, *> -> Tree.Apply("SqlActionBatch", iteratorOf(treeifyThis(x.xr, "xr"), treeifyThis(x.batchParam, "batchParam"), treeifyThis(x.runtimes, "runtimes"), treeifyThis(x.params, "params")))
+      //is ParamSet -> Tree.Apply("ParamSet", x.lifts.map { l -> Tree.KeyValue(l.id.value, Tree.Literal(l.showValue().toString())) }.iterator(
+      // ))
+      is ParamSet -> Tree.Apply("ParamSet", x.lifts.map { l -> treeifyThis(l, null) }.iterator())
+
       is RuntimeSet -> Tree.Apply("RuntimeSet", x.runtimes.map { (id, xr) -> Tree.KeyValue(id.value, treeifyThis(xr, null)) }.iterator())
       is ShowTree -> x.showTree(config)
+      is ParamSingle<*> -> Tree.Apply("ParamSingle", iteratorOf(Tree.Literal(x.id.value), Tree.Literal(x.value.toString()), Tree.Literal(x.serial.serializer.descriptor.kind.toString()), Tree.Literal(x.description.toString())))
+      is ParamMulti<*> -> Tree.Apply("ParamMulti", iteratorOf(Tree.Literal(x.id.value), Tree.Literal(x.value.toString()), Tree.Literal(x.serial.serializer.descriptor.kind.toString()), Tree.Literal(x.description.toString())))
+      is ParamBatchRefiner<*, *> -> Tree.Apply("ParamBatchRefiner", iteratorOf(Tree.Literal(x.id.value), Tree.Literal(x.serial.serializer.descriptor.kind.toString()), Tree.Literal(x.description.toString().replace("\n", ""))))
 
       // Treeify the following: val value: String, override val token: Token, val needsTokenization: Boolean, val returningType: ReturningType, val label: String?, val phase: Phase
       is SqlCompiledAction<*, *> -> Tree.Apply("SqlCompiledAction", iteratorOf(
         Tree.KeyValue("value", Tree.Literal(x.value)),
         Tree.KeyValue("token", PrintToken().treeifyThis(x.token, "token")),
-        Tree.KeyValue("needsTokenization", Tree.Literal("${x.needsTokenization}")),
+        Tree.KeyValue("params", Tree.Apply("List", x.params.map { treeifyThis(it, null) }.iterator())),
+        //Tree.KeyValue("needsTokenization", Tree.Literal("${x.needsTokenization}")),
         Tree.KeyValue("returningType", Tree.Literal(x.actionReturningKind.toString())),
+        Tree.KeyValue("label", Tree.Literal(x.label ?: "null")),
+        Tree.KeyValue("phase", Tree.Literal(x.debugData.phase.toString())),
+        Tree.KeyValue("originalXR", treeifyThis(x.debugData.originalXR(), "originalXR"))
+      ))
+
+      is SqlCompiledBatchAction<*, *, *> -> Tree.Apply("SqlCompiledBatchAction", iteratorOf(
+        Tree.KeyValue("value", Tree.Literal(x.value)),
+        Tree.KeyValue("token", PrintToken().treeifyThis(x.token, "token")),
+        Tree.KeyValue("params", Tree.Apply("List", x.params.map { treeifyThis(it, null) }.iterator())),
+        //Tree.KeyValue("needsTokenization", Tree.Literal("${x.needsTokenization}")),
+        Tree.KeyValue("batchParam", Tree.Apply("List", x.batchParam.map { Tree.Literal(it.toString()) }.iterator())),
         Tree.KeyValue("label", Tree.Literal(x.label ?: "null")),
         Tree.KeyValue("phase", Tree.Literal(x.debugData.phase.toString())),
         Tree.KeyValue("originalXR", treeifyThis(x.debugData.originalXR(), "originalXR"))

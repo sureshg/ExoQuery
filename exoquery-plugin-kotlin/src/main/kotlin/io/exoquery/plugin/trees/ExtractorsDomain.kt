@@ -229,15 +229,18 @@ object ExtractorsDomain {
 
     object CaptureBatchAction {
       object LambdaOutput {
-        context(CX.Scope) operator fun <AP: Pattern<IrValueParameter>, BP: Pattern<IrExpression>> get(variable: AP, call: BP) =
+        data class Data(val batchAlias: IrValueParameter,  val batchCollection: IrExpression)
+
+        context(CX.Scope) operator fun <AP: Pattern<Data>, BP: Pattern<IrExpression>> get(variable: AP, call: BP) =
           customPattern2("Call.CaptureBatchAction.LambdaBody", variable, call) { it: IrCall ->
-            if (it.ownerHasAnnotation<ExoCaptureBatch>() && it.type.isClass<SqlBatchAction<*, *>>()) {
-              val arg = it.simpleValueArgs.first() ?: parseError("CaptureBatchAction must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
+            if (it.ownerHasAnnotation<ExoCaptureBatch>() && it.type.isClass<SqlBatchAction<*, *, *>>()) {
+              val batchCollection = it.simpleValueArgs[0] ?: parseError("First argument to CaptureBatchAction the batch-parameter: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
+              val arg = it.simpleValueArgs[1] ?: parseError("Second argument to CaptureBatchAction must be a lambda but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
               arg.match(
                 // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
                 case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { output ->
                   val firstArg = this.function.simpleValueParams.firstOrNull() ?: parseError("CaptureBatchAction must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
-                  Components2(firstArg, output)
+                  Components2(Data(firstArg, batchCollection), output)
                 }
               )
             } else {
@@ -248,7 +251,7 @@ object ExtractorsDomain {
 
       context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
         customPattern1("Call.CaptureBatchAction", call) { it: IrCall ->
-          if (it.ownerHasAnnotation<ExoCaptureBatch>() && it.type.isClass<SqlBatchAction<*, *>>()) {
+          if (it.ownerHasAnnotation<ExoCaptureBatch>() && it.type.isClass<SqlBatchAction<*, *, *>>()) {
             Components1(it)
           } else {
             null
@@ -259,7 +262,7 @@ object ExtractorsDomain {
     object CaptureActionBatch {
       context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
         customPattern1("Call.CaptureBatchAction", call) { it: IrCall ->
-          if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlBatchAction<*, *>>()) {
+          if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlBatchAction<*, *, *>>()) {
             Components1(it)
           } else {
             null

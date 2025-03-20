@@ -89,7 +89,7 @@ object capture {
 
   // TODO go on to build transform for this
   @ExoCaptureBatch
-  fun <Input: Any, Output> batch(block: SelectClauseCapturedBlock.() -> SqlBatchAction<Input, Output>): @Captured SqlBatchAction<Input, Output> = errorCap("The `batch` expression of the Query was not inlined")
+  fun <BatchInput, Input: Any, Output> batch(batchCollection: Sequence<BatchInput>, block: SelectClauseCapturedBlock.(BatchInput) -> SqlAction<Input, Output>): @Captured SqlBatchAction<BatchInput, Input, Output> = errorCap("The `batch` expression of the Query was not inlined")
 }
 
 //fun <T> capture(block: CapturedBlock.() -> SqlQuery<T>): @Captured SqlQuery<T> = errorCap("Compile time plugin did not transform the tree")

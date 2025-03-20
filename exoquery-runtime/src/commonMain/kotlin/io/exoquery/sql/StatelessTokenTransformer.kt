@@ -7,6 +7,8 @@ interface StatelessTokenTransformer {
       is ParamMultiTokenRealized -> invoke(token)
       is ParamSingleToken -> invoke(token)
       is ParamSingleTokenRealized -> invoke(token)
+      is ParamBatchToken -> invoke(token)
+      is ParamBatchTokenRealized -> invoke(token)
       is SetContainsToken -> invoke(token)
       is Statement -> invoke(token)
       is StringToken -> invoke(token)
@@ -17,6 +19,8 @@ interface StatelessTokenTransformer {
   fun invoke(token: ParamMultiTokenRealized): Token = token
   fun invoke(token: ParamSingleToken): Token = token
   fun invoke(token: ParamSingleTokenRealized): Token = token
+  fun invoke(token: ParamBatchToken): Token = token
+  fun invoke(token: ParamBatchTokenRealized): Token = token
 
   fun invoke(token: SetContainsToken): Token =
     SetContainsToken(

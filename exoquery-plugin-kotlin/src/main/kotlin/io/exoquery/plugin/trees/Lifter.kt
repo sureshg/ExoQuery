@@ -4,6 +4,8 @@ import io.exoquery.*
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.call
 import io.exoquery.plugin.transform.callDispatch
+import io.exoquery.sql.ParamBatchToken
+import io.exoquery.sql.ParamBatchTokenRealized
 import io.exoquery.sql.ParamMultiToken
 import io.exoquery.sql.ParamMultiTokenRealized
 import io.exoquery.sql.ParamSingleToken
@@ -168,8 +170,16 @@ class Lifter(val builderCtx: CX.Builder) {
           make<ParamMultiToken>(this@lift.bid.lift()).callDispatch("realize")(paramSetExpr)
         }
       }
+      is ParamBatchToken -> {
+        runScoped {
+          make<ParamBatchToken>(this@lift.bid.lift()).callDispatch("realize")(paramSetExpr)
+        }
+      }
+
       is ParamSingleTokenRealized -> xrError("Attempting to lift an already realized ParamSingle. This should be impossible: ${this}")
       is ParamMultiTokenRealized -> xrError("Attempting to lift an already realized ParamMulti. This should be impossible: ${this}")
+      is ParamBatchTokenRealized -> xrError("Attempting to lift an already realized ParamBatch. This should be impossible: ${this}")
+
       is SetContainsToken -> make<SetContainsToken>(this.a.lift(paramSetExpr), this.op.lift(paramSetExpr), this.b.lift(paramSetExpr))
       is Statement -> make<Statement>(this.tokens.lift { it.lift(paramSetExpr) })
       is StringToken -> make<StringToken>(string.lift())

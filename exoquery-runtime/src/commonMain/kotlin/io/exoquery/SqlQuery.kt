@@ -1,5 +1,6 @@
 package io.exoquery
 
+import io.exoquery.annotation.ExoBuildFunctionLabel
 import io.exoquery.printing.PrintMisc
 import io.exoquery.sql.SqlIdiom
 import io.exoquery.xr.RuntimeBuilder
@@ -37,10 +38,10 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
 
 
   fun <Dialect: SqlIdiom> build(): SqlCompiledQuery<T> = errorCap("The build function body was not inlined")
-  fun <Dialect: SqlIdiom> build(label: String): SqlCompiledQuery<T> = errorCap("The build function body was not inlined")
+  fun <Dialect: SqlIdiom> build(@ExoBuildFunctionLabel label: String): SqlCompiledQuery<T> = errorCap("The build function body was not inlined")
 
   fun <Dialect: SqlIdiom> buildPretty(): SqlCompiledQuery<T> = errorCap("The buildPretty function body was not inlined")
-  fun <Dialect: SqlIdiom> buildPretty(label: String): SqlCompiledQuery<T> = errorCap("The buildPretty function body was not inlined")
+  fun <Dialect: SqlIdiom> buildPretty(@ExoBuildFunctionLabel label: String): SqlCompiledQuery<T> = errorCap("The buildPretty function body was not inlined")
 
   override fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): SqlQuery<T> =
     copy(xr = xr as? XR.Query ?: xrError("Failed to rebuild SqlQuery with XR of type ${xr::class} which was: ${xr.show()}"), runtimes = runtimes, params = params)

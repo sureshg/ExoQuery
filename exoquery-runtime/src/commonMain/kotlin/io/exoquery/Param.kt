@@ -29,6 +29,7 @@ sealed interface Param<T: Any> {
   fun withNonStrictEquality(): Param<T>
   fun showValue(): String
   fun withNewBid(newBid: BID): Param<T>
+  val description: String?
 }
 
 
@@ -37,27 +38,30 @@ sealed interface Param<T: Any> {
 // TODO need to have multiple-version of Param
 // TODO also in the dsl get rid of params that takes a list of ValueWithSerializer instances.
 //      any params used in a collection need to have the same serializer
-data class ParamMulti<T: Any>(override val id: BID, val value: List<T>, override val serial: ParamSerializer<T>): Param<T> {
+data class ParamMulti<T: Any>(override val id: BID, val value: List<T>, override val serial: ParamSerializer<T>, override val description: String? = null): Param<T> {
   override fun withNonStrictEquality(): ParamMulti<T> =
     copy(serial = serial.withNonStrictEquality())
   override fun showValue() = value.toString()
   override fun withNewBid(newBid: BID): ParamMulti<T> = copy(id = newBid)
+  override fun toString() = "ParamMulti(id=$id, value=$value, serial=$serial)" // don't want to show description here because it could add too much noise
 }
 
-data class ParamSingle<T: Any>(override val id: BID, val value: T, override val serial: ParamSerializer<T>): Param<T> {
+data class ParamSingle<T: Any>(override val id: BID, val value: T, override val serial: ParamSerializer<T>, override val description: String? = null): Param<T> {
   override fun withNonStrictEquality(): ParamSingle<T> =
     copy(serial = serial.withNonStrictEquality())
   override fun showValue() = value.toString()
   override fun withNewBid(newBid: BID): ParamSingle<T> = copy(id = newBid)
+  override fun toString() = "ParamSingle(id=$id, value=$value, serial=$serial)" // don't want to show description here because it could add too much noise
 }
 
 /**
  * For capture.batch { param -> insert { set(name = param(p.name <- encoding the value here!)) }  }
  */
-data class ParamBatchRefiner<Input, Output: Any>(override val id: BID, val refiner: (Input) -> Output, override val serial: ParamSerializer<Output>): Param<Output> {
+data class ParamBatchRefiner<Input, Output: Any>(override val id: BID, val refiner: (Input) -> Output, override val serial: ParamSerializer<Output>, override val description: String? = null): Param<Output> {
   override fun withNonStrictEquality(): ParamBatchRefiner<Input, Output> = this
   override fun showValue(): String = "Refiner_${serial.serializer.descriptor.kind}"
   override fun withNewBid(newBid: BID): ParamBatchRefiner<Input, Output> = copy(id = newBid)
+  override fun toString() = "ParamBatchRefiner(id=$id, refiner=$refiner, serial=$serial)" // don't want to show description here because it could add too much noise
 }
 
 data class ParamSet(val lifts: List<Param<*>>) {

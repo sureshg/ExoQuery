@@ -31,12 +31,20 @@ class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) 
           }
 
         val printingElement = element.prepareForPrinting()
+        val rawExpression =
+          try { printingElement.dumpKotlinLike() } catch (e: Throwable) {
+            try { element.dumpKotlinLike() } catch (e: Throwable) { e.stackTraceToString() }
+          }
+        val rawExpressionTree =
+          try { printingElement.dumpSimple() } catch (e: Throwable) {
+            try { element.dumpSimple() } catch (e: Throwable) { e.stackTraceToString() }
+          }
 
         """|[ExoQuery] Could not understand an expression or query due to an error: ${msg}.${expressionPart}
            |------------ Raw Expression ------------
-           |${tryDump { printingElement.dumpKotlinLike()} }
+           |${rawExpression}
            |------------ Raw Expression Tree ------------
-           |${tryDump { printingElement.dumpSimple()} }
+           |${rawExpressionTree}
            |""".trimMargin()
       }
       return ParseError(fullMsg, location)

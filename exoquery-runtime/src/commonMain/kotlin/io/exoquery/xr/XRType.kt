@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 // Formerly Quat
 @Serializable
-sealed class XRType {
+sealed interface XRType {
   fun isLeaf() =
     when (this) {
       is Product -> false
@@ -27,7 +27,7 @@ sealed class XRType {
   fun nonAbstract() = !isAbstract()
 
   @Serializable
-  data class Product(val name: String, val fields: List<Pair<String, XRType>>): XRType() {
+  data class Product(val name: String, val fields: List<Pair<String, XRType>>): XRType {
     private val fieldsHash by lazy { fields.toMap() }
     /**
      * The underlying impelmentation in kotlin o List<Pair<String, XRType>>.toMap() is a LinkedHashMap
@@ -47,21 +47,21 @@ sealed class XRType {
   }
 
   @Serializable
-  sealed class Boolean: XRType()
+  sealed class Boolean: XRType
   @Serializable object BooleanValue: Boolean()
   @Serializable object BooleanExpression: Boolean()
 
   @Serializable
-  object Unknown: XRType()
+  object Unknown: XRType
 
   @Serializable
-  object Null: XRType()
+  object Null: XRType
 
   @Serializable
-  object Generic: XRType()
+  object Generic: XRType
 
   @Serializable
-  object Value: XRType() {
+  object Value: XRType {
     override fun toString(): String {
       return "Value"
     }
