@@ -303,7 +303,8 @@ interface SqlIdiom: HasPhasePrinting {
     +"CASE ${whenThens.mkStmt(" ")} ELSE ${orElse.token} END"
   }
 
-  val XR.Const.token get(): Token =
+  val XR.Const.token get(): Token = xrConstTokenImpl(this)
+  fun xrConstTokenImpl(constImpl: XR.Const): Token = with (constImpl) {
     when(this) {
       is XR.Const.Boolean -> +"${value.toString().token}"
       is XR.Const.Byte    -> +"${value.toString().token}" // use kotlin 1.9.22 stlib to have this: +"${value.toHexString()}"
@@ -316,6 +317,7 @@ interface SqlIdiom: HasPhasePrinting {
       is XR.Const.Short   -> +"${value.toString().token}"
       is XR.Const.String  -> +"'${value.toString().token}'"
     }
+  }
 
   // Typically this will be a tuple of some sort, just converts the elements into a list
   // For dialects of SQL like Spark that select structured data this needs special handling
@@ -504,7 +506,8 @@ interface SqlIdiom: HasPhasePrinting {
   // with them enabled.  I'm not sure if the compiler will optimize them out or not but I
   // do not thing it will make a significant performance penalty.
   @Suppress("USELESS_IS_CHECK")
-  val XR.BinaryOp.token get(): Token =
+  val XR.BinaryOp.token get(): Token = xrBinaryOpTokenImpl(this)
+  fun xrBinaryOpTokenImpl(binaryOpImpl: XR.BinaryOp): Token = with (binaryOpImpl) {
     when {
       a is Any  && op is `==` && b is Null -> +"${scopedTokenizer(a)} IS NULL"
       a is Null && op is `==` && b is Any  -> +"${scopedTokenizer(b)} IS NULL"
@@ -526,12 +529,15 @@ interface SqlIdiom: HasPhasePrinting {
       a is Any && op is or && b is Any -> +"${a.token} ${op.token} ${b.token}"
       else -> +"${scopedTokenizer(a)} ${op.token} ${scopedTokenizer(b)}"
     }
+  }
 
   // In SQL unary operators will always be in prefix position. Also, if it's just a minus
   // it will be part of the int/long/float/double constant and not a separate unary operator
   // so we don't need to consider that case here.
-  val XR.UnaryOp.token get(): Token =
+  val XR.UnaryOp.token get(): Token = xrUnaryOpTokenImpl(this)
+  fun xrUnaryOpTokenImpl(unaryOpImpl: XR.UnaryOp): Token = with (unaryOpImpl) {
     +"${op.token} (${expr.token})"
+  }
 
   val UnaryOperator.token get(): Token =
     when(this) {
@@ -609,21 +615,27 @@ interface SqlIdiom: HasPhasePrinting {
       is FlatJoinContext -> +"${joinType.token} ${from.token} ON ${on.token}"
     }
 
-  val XR.Free.token get(): Token {
+  val XR.Free.token get(): Token = xrFreeTokenImpl(this)
+  fun xrFreeTokenImpl(freeImpl: XR.Free): Token = with (freeImpl) {
     val pt = parts.map { it.token }
     val pr = params.map { it.token }
-    return Statement(pt.intersperseWith(pr))
+    Statement(pt.intersperseWith(pr))
   }
 
-  val XR.JoinType.token get(): Token =
+  val XR.JoinType.token get(): Token = xrJoinTypeTokenImpl(this)
+  fun xrJoinTypeTokenImpl(joinTypeImpl: XR.JoinType): Token = with (joinTypeImpl) {
     when (this) {
       is Left -> +"LEFT JOIN"
       is Inner -> +"INNER JOIN"
       // is RightJoin -> +"RIGHT JOIN"
       // is FullJoin -> +"FULL JOIN"
     }
+  }
 
-  val XR.Entity.token get(): Token = tokenizeTable(name)
+  val XR.Entity.token get(): Token = xrEntityTokenImpl(this)
+  fun xrEntityTokenImpl(entityImpl: XR.Entity): Token = with (entityImpl) {
+    tokenizeTable(name)
+  }
 
 //  case OrderByCriteria(ast, Asc)            => stmt"${scopedTokenizer(ast)} ASC"
 //  case OrderByCriteria(ast, Desc)           => stmt"${scopedTokenizer(ast)} DESC"
@@ -632,7 +644,8 @@ interface SqlIdiom: HasPhasePrinting {
 //  case OrderByCriteria(ast, AscNullsLast)   => stmt"${scopedTokenizer(ast)} ASC NULLS LAST"
 //  case OrderByCriteria(ast, DescNullsLast)  => stmt"${scopedTokenizer(ast)} DESC NULLS LAST"
 
-  val OrderByCriteria.token get(): Token =
+  val OrderByCriteria.token get(): Token = xrOrderByCriteriaTokenImpl(this)
+  fun xrOrderByCriteriaTokenImpl(orderByCriteriaImpl: OrderByCriteria): Token = with (orderByCriteriaImpl) {
     when(this.ordering) {
       is Asc -> +"${scopedTokenizer(this.ast)} ASC"
       is Desc -> +"${scopedTokenizer(this.ast)} DESC"
@@ -641,6 +654,7 @@ interface SqlIdiom: HasPhasePrinting {
       is AscNullsLast -> +"${scopedTokenizer(this.ast)} ASC NULLS LAST"
       is DescNullsLast -> +"${scopedTokenizer(this.ast)} DESC NULLS LAST"
     }
+  }
 
   fun scopedQueryTokenizer(ast: XR.Query) =
     +"(${ast.token})"
@@ -708,7 +722,8 @@ interface SqlIdiom: HasPhasePrinting {
       is UnionAllOperation -> +"UNION ALL"
     }
 
-  val XR.Property.token get(): Token =
+  val XR.Property.token get(): Token = xrPropertyTokenImpl(this)
+  fun xrPropertyTokenImpl(propertyImpl: XR.Property): Token = with (propertyImpl) {
     UnnestProperty(this).let { (ast, prefix) ->
       when {
         // This is the typical case. It happens on the outer (i.e. top-level) clause of a multi-level select e.g.
@@ -723,6 +738,7 @@ interface SqlIdiom: HasPhasePrinting {
           +"${scopedTokenizer(ast)}.${(joinAlias(prefix).token)}"
       }
     }
+  }
 
 //  TokenizeProperty.unnest(ast) match {
 //    // In the rare case that the Ident is invisible, do not show it. See the Ident documentation for more info.
@@ -736,7 +752,8 @@ interface SqlIdiom: HasPhasePrinting {
 //    }
 // }
 
-  val XR.Action.token get(): Token =
+  val XR.Action.token get(): Token = xrActionTokenImpl(this)
+  fun xrActionTokenImpl(actionImpl: XR.Action): Token = with (actionImpl) {
     when (this) {
       is XR.Insert -> this.token
       is XR.Update -> this.token
@@ -745,8 +762,10 @@ interface SqlIdiom: HasPhasePrinting {
       is XR.FilteredAction -> this.token
       is XR.Returning -> this.token
     }
+  }
 
-  val XR.Insert.token get(): Token = run {
+  val XR.Insert.token get(): Token = xrInsertTokenImpl(this)
+  fun xrInsertTokenImpl(insertImpl: XR.Insert): Token = with (insertImpl) {
     val query = this.query as? XR.Entity ?: xrError("Insert query must be an entity but found: ${this.query}")
     val (columns, values) = columnsAndValues(assignments, exclusions).unzip()
     +"INSERT INTO ${query.token}${` AS table`(alias)} (${columns.mkStmt(", ")}) VALUES ${TokenContext(values.mkStmt(", ", "(", ")"), TokenContext.Kind.AssignmentBlock) }"
@@ -760,7 +779,8 @@ interface SqlIdiom: HasPhasePrinting {
   val List<XR.Assignment>.token get(): Token =
     this.map { it.token }.mkStmt(", ")
 
-  val XR.FilteredAction.token get() : Token =
+  val XR.FilteredAction.token get(): Token = xrFilteredActionTokenImpl(this)
+  fun xrFilteredActionTokenImpl(filteredActionImpl: XR.FilteredAction): Token = with (filteredActionImpl) {
     when {
       action is XR.U.CoreAction -> {
         val reducedExpr = BetaReduction(filter, alias to action.alias).asExpr()
@@ -769,10 +789,12 @@ interface SqlIdiom: HasPhasePrinting {
       else ->
         xrError("Filtered actions are only allowed on the core-actions update, delete but found:\n${showRaw()}")
     }
+  }
 
   // TODO possible variable-shadowing issues might require beta-reducing out the alias of the inner query first.
   //      Do that instead of creating an ExternalIdent like was done in Quill #1509.
-  val XR.Returning.token get(): Token =
+  val XR.Returning.token get(): Token = xrReturningTokenImpl(this)
+  fun xrReturningTokenImpl(returningImpl: XR.Returning): Token = with (returningImpl) {
     when {
       // In Postgres-style RETURNING clause the RETURNING is always the last thing to be used so we can
       // use the action renderes first. In SQL-server that uses an OUTPUT clause this is not the case
@@ -806,8 +828,10 @@ interface SqlIdiom: HasPhasePrinting {
       else ->
         xrError("Returning clauses are only allowed on core-actions i.e. insert, update, delete but found:\n${action.showRaw()}")
     }
+  }
 
-  val XR.Delete.token get(): Token = run {
+  val XR.Delete.token get(): Token = xrDeleteTokenImpl(this)
+  fun xrDeleteTokenImpl(deleteImpl: XR.Delete): Token = with (deleteImpl) {
     fun deleteBase() = +"DELETE FROM ${query.token}${` AS table`(alias)}"
     when {
       query is XR.Filter && query.head is XR.Entity ->
@@ -820,7 +844,8 @@ interface SqlIdiom: HasPhasePrinting {
   }
 
   // TODO specialized logic for Postgres UPDATE to allow setting token-context here
-  val XR.Update.token get(): Token = run {
+  val XR.Update.token get(): Token = xrUpdateTokenImpl(this)
+  fun xrUpdateTokenImpl(updateImpl: XR.Update): Token = with (updateImpl) {
     fun updateBase() = +"UPDATE ${query.token}${` AS table`(alias)} SET ${assignments.filterNot { exclusions.contains(it.property) }.token}"
     when {
       query is XR.Filter && query.head is XR.Entity ->

@@ -716,7 +716,7 @@ sealed interface XR {
   sealed class ConstType<T>: PC<ConstType<T>>, Const, XR.Expression {
     abstract val value: T
     override val productComponents by lazy { productOf(this, value) }
-    @Transient override val type = XRType.Value
+    @Transient override val type: XRType = XRType.Value
     override fun toString() = show()
     companion object {
       data class ConstTypeId<T>(val value: T)
@@ -738,7 +738,10 @@ sealed interface XR {
       operator fun invoke(value: kotlin.Double, loc: Location = Location.Synth) = Double(value, loc)
     }
 
-    @Serializable data class Boolean(override val value: kotlin.Boolean, override val loc: Location = Location.Synth) : ConstType<kotlin.Boolean>(), Const { override fun equals(other: Any?) = other is Const.Boolean && other.value == value }
+    @Serializable data class Boolean(override val value: kotlin.Boolean, override val loc: Location = Location.Synth) : ConstType<kotlin.Boolean>(), Const {
+      override fun equals(other: Any?) = other is Const.Boolean && other.value == value
+      override val type: XRType.BooleanValue = XRType.BooleanValue
+    }
     @Serializable data class Char(override val value: kotlin.Char, override val loc: Location = Location.Synth) : ConstType<kotlin.Char>(), Const { override fun equals(other: Any?) = other is Const.Char && other.value == value }
     @Serializable data class Byte(override val value: kotlin.Int, override val loc: Location = Location.Synth) : ConstType<kotlin.Int>(), Const { override fun equals(other: Any?) = other is Const.Byte && other.value == value }
     @Serializable data class Short(override val value: kotlin.Short, override val loc: Location = Location.Synth) : ConstType<kotlin.Short>(), Const { override fun equals(other: Any?) = other is Const.Short && other.value == value }

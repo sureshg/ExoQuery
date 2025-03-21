@@ -345,7 +345,7 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
         this.pure && this.type == XRType.BooleanExpression -> stmt(".asPureCondition()")
         !this.pure && this.type == XRType.BooleanExpression -> stmt(".asCondition()")
         this.pure -> stmt(".asPure()")
-        else -> stmt("invoke()")
+        else -> stmt(".invoke()")
       }
 
     stmt("free(\"${body.token{ it }}\")${suffix.token}")

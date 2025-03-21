@@ -5,18 +5,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
     data class Ent(val name: String, val b: Boolean, val bb: Boolean, val bc: Boolean, val num: Int)
     data class Status(val name: String, val value: Boolean)
 
-    "condition" {
-      val q = capture {
-        Table<Ent>().map { e -> e.name to if (e.b == e.bb) e.bc else e.b == e.bb }
-      }
-      shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
-    }
-  }
-})
-
-//class BooleanLiteralSupportSpec extends Spec {
-//
+// Scala:
 //  "value-fy boolean expression where needed" - testContext.withDialect(MirrorSqlDialectWithBooleanLiterals) { ctx =>
 //    import ctx._
 //
@@ -67,8 +56,57 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
 //        "SELECT 'foo' AS name, CASE WHEN e.bb = 1 THEN 1 ELSE 0 END AS value FROM Ent e"
 //    }
 //  }
-//
-//  "sql" - testContext.withDialect(MirrorSqlDialectWithBooleanLiterals) { ctx =>
+
+    "condition" {
+      val q = capture {
+        Table<Ent>().map { e -> e.name to if (e.b == e.bb) e.bc else e.b == e.bb }
+      }
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+
+    "map-clause" {
+      val q = capture {
+        Table<Ent>().map { e -> e.bb == true }
+      }
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+
+    "map-clause with int" {
+      val q = capture {
+        Table<Ent>().map { e -> e.num > 10 }
+      }
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+
+    "tuple" {
+      val q = capture {
+        Table<Ent>().map { e -> "foo" to (e.bb == true) }
+      }
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+
+    "tuple-multi" {
+      val q = capture {
+        Table<Ent>().map { e -> (e.bb == true) to (e.bc == false) to (e.num > 1) }
+      }
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+
+    "case-class" {
+      val q = capture {
+        Table<Ent>().map { e -> Status("foo", e.bb == true) }
+      }
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+  }
+
+  //  "sql" - testContext.withDialect(MirrorSqlDialectWithBooleanLiterals) { ctx =>
 //    import ctx._
 //
 //    "expressify asCondition" - {
@@ -140,6 +178,87 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
 //      }
 //    }
 //
+
+  "sql" - {
+    data class Ent(val name: String, val i: Int, val b: Boolean)
+
+    "expressify asCondition" - {
+      "filter-clause" {
+        val q = capture {
+          Table<Ent>().filter { e -> free("${e.i} > 123").asConditon() }
+        }
+        shouldBeGolden(q.xr, "XR")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      }
+
+      "pure filter-clause" {
+        val q = capture {
+          Table<Ent>().filter { e -> free("${e.i} > 123").asPureConditon() }
+        }
+        shouldBeGolden(q.xr, "XR")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      }
+
+      "map-clause" {
+        val q = capture {
+          Table<Ent>().map { e -> free("${e.i} > 123").asConditon() }
+        }
+        shouldBeGolden(q.xr, "XR")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      }
+
+      "distinct map-clause" {
+        val q = capture {
+          Table<Ent>()
+            .map { e -> "foo" to free("${e.i} > 123").asConditon() }
+            .distinct()
+            .map { r -> "baz" to r.second }
+        }
+        shouldBeGolden(q.xr, "XR")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      }
+
+      "distinct tuple map-clause" {
+        val q = capture {
+          Table<Ent>()
+            .map { e -> "foo" to free("${e.i} > 123").asPureConditon() }
+            .distinct()
+        }
+        shouldBeGolden(q.xr, "XR")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      }
+
+      "pure map-clause" {
+        val q = capture {
+          Table<Ent>().map { e -> free("${e.i} > 123").asPureConditon() }
+        }
+        shouldBeGolden(q.xr, "XR")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      }
+
+      "pure distinct map-clause" {
+        val q = capture {
+          Table<Ent>()
+            .map { e -> "foo" to free("${e.i} > 123").asPureConditon() }
+            .distinct()
+            .map { r -> "baz" to r.second }
+        }
+        shouldBeGolden(q.xr, "XR")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      }
+
+      "pure map-clause - double element" {
+        val q = capture {
+          Table<Ent>()
+            .map { e -> free("${e.i} > 123").asPureConditon() }
+            .distinct()
+            .map { r -> r to r }
+        }
+        shouldBeGolden(q.xr, "XR")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      }
+    }
+
 //    "valuefy normally" - {
 //      case class Ent(name: String, i: Int, b: Boolean)
 //
@@ -176,6 +295,36 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
 //      }
 //    }
 //  }
+
+    "valuefy normally" - {
+      data class Ent(val name: String, val i: Int, val b: Boolean)
+
+      "filter-clause" {
+        val q = capture {
+          Table<Ent>().filter { e -> free("SomeUdf(${e.i})")<Boolean>() }
+        }
+        shouldBeGolden(q.xr, "XR")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      }
+
+      "map-clause" {
+        val q = capture {
+          Table<Ent>()
+            .map { e -> free("SomeUdf(${e.i})")<Int>() }
+            .map { x -> x + 1 }
+        }
+        shouldBeGolden(q.xr, "XR")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      }
+    }
+  }
+
+})
+
+// Scala:
+//class BooleanLiteralSupportSpec extends Spec {
+//
+//
 //
 //  "do not expressify string transforming operations" - {
 //    case class Product(id: Long, desc: String, sku: Int)
@@ -208,6 +357,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
 //    }
 //  }
 //
+//  TODO test as optionals (also should test left-join conditions)
 //  "options" - {
 //    "exists" in testContext.withDialect(MirrorSqlDialectWithBooleanLiterals) { ctx =>
 //      import ctx._
@@ -230,72 +380,6 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
 //
 //  "joins" - {
 //    import testContext.extras._
-//
-//    "join + map" in testContext.withDialect(MirrorSqlDialectWithBooleanLiterals) { ctx =>
-//      import ctx._
-//      val q = quote {
-//        qr1.leftJoin(qr2).on((a, b) => true).map(t => (t._1.i, t._2.map(_.s), false))
-//      }
-//      ctx.run(q).string mustEqual
-//        "SELECT a.i AS _1, b.s AS _2, 0 AS _3 FROM TestEntity a LEFT JOIN TestEntity2 b ON 1 = 1"
-//    }
-//
-//    "join + map (with conditional)" in testContext.withDialect(MirrorSqlDialectWithBooleanLiterals) { ctx =>
-//      import ctx._
-//      val q = quote {
-//        qr1.leftJoin(qr2).on((a, b) => true).map(t => (t._1.i, if (t._2.map(_.i > 20) === true) false else true))
-//      }
-//      ctx.run(q).string mustEqual
-//        "SELECT a.i AS _1, CASE WHEN CASE WHEN b.i > 20 THEN 1 ELSE 0 END = 1 THEN 0 ELSE 1 END AS _2 FROM TestEntity a LEFT JOIN TestEntity2 b ON 1 = 1"
-//    }
-//
-//    "join + map (with conditional comparison)" in testContext.withDialect(MirrorSqlDialectWithBooleanLiterals) { ctx =>
-//      import ctx._
-//      val q = quote {
-//        qr1.leftJoin(qr2).on((a, b) => true).map(t => (t._1.i, if (t._2.exists(_.i > 20)) false else true))
-//      }
-//      ctx.run(q).string mustEqual
-//        "SELECT a.i AS _1, CASE WHEN b.i > 20 THEN 0 ELSE 1 END AS _2 FROM TestEntity a LEFT JOIN TestEntity2 b ON 1 = 1"
-//    }
-//
-//    "join + map (with conditional comparison lifted)" in testContext.withDialect(MirrorSqlDialectWithBooleanLiterals) {
-//      ctx =>
-//        import ctx._
-//        val q = quote {
-//          qr1
-//            .leftJoin(qr2)
-//            .on((a, b) => true)
-//            .map(t => (t._1.i, if (t._2.exists(_.i > 20)) lift(false) else lift(true)))
-//        }
-//        ctx.run(q).string mustEqual
-//          "SELECT a.i AS _1, CASE WHEN b.i > 20 THEN ? ELSE ? END AS _2 FROM TestEntity a LEFT JOIN TestEntity2 b ON 1 = 1"
-//    }
-//
-//    "join + map + filter" in testContext.withDialect(MirrorSqlDialectWithBooleanLiterals) { ctx =>
-//      import ctx._
-//      val q = quote {
-//        qr1
-//          .leftJoin(qr2)
-//          .on((a, b) => false)
-//          .map(t => (t._1.i, t._2.map(_.s), false))
-//          .filter(_._2.forall(v => if (true) true else false))
-//      }
-//      ctx.run(q).string mustEqual
-//        "SELECT a.i AS _1, b.s AS _2, 0 AS _3 FROM TestEntity a LEFT JOIN TestEntity2 b ON 1 = 0 WHERE (1 = 1 AND 1 = 1 OR NOT (1 = 1) AND 1 = 0) AND b.s IS NOT NULL OR b.s IS NULL"
-//    }
-//
-//    "join + map + filter (lifted)" in testContext.withDialect(MirrorSqlDialectWithBooleanLiterals) { ctx =>
-//      import ctx._
-//      val q = quote {
-//        qr1
-//          .leftJoin(qr2)
-//          .on((a, b) => false)
-//          .map(t => (t._1.i, t._2.map(_.s), false))
-//          .filter(_._2.forall(v => if (lift(true)) lift(true) else lift(false)))
-//      }
-//      ctx.run(q).string mustEqual
-//        "SELECT a.i AS _1, b.s AS _2, 0 AS _3 FROM TestEntity a LEFT JOIN TestEntity2 b ON 1 = 0 WHERE (1 = ? AND 1 = ? OR NOT (1 = ?) AND 1 = ?) AND b.s IS NOT NULL OR b.s IS NULL"
-//    }
 //
 //    "for-comprehension with constant" in testContext.withDialect(MirrorSqlDialectWithBooleanLiterals) { ctx =>
 //      import ctx._

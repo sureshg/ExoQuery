@@ -10,15 +10,15 @@ interface BooleanLiteralSupport: SqlIdiom {
     vendorized
   }
 
-  override val XR.Expression.token get(): Token =
+  override fun xrConstTokenImpl(constImpl: XR.Const): Token = with (constImpl) {
     when {
-      this is XR.Const.Boolean && type is XRType.BooleanValue ->
+      // By types we know here that it's always XRType.BooleanValue
+      this is XR.Const.Boolean ->
         StringToken(if (value) "1" else "0")
-      this is XR.Const.Boolean && type is XRType.BooleanExpression ->
-        StringToken(if (value) "1 = 1" else "1 = 0")
       else ->
-        super.xrExpressionTokenImpl(this)
+        super.xrConstTokenImpl(constImpl)
     }
+  }
 }
 
 //trait BooleanLiteralSupport extends SqlIdiom {
