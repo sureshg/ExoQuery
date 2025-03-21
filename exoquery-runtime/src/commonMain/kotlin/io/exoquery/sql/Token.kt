@@ -14,10 +14,10 @@ import io.exoquery.xrError
 
 sealed interface Token {
   // Builds the actual string to be used as the SQL query as opposed to just for display purposes
-  fun   build(): String
+  fun build(): String
   // For cases where it is a Param actually plugin the value i.e. stringify it
   fun renderWith(renderer: Renderer): String
-  fun showRaw(config: PPrinterConfig): String = PrintToken(config).invoke(this).toString()
+  fun showRaw(config: PPrinterConfig = PPrinterConfig()): String = PrintToken(config).invoke(this).toString()
 
   fun simplify(): Token = this
 
@@ -31,7 +31,7 @@ sealed interface Token {
       override fun invoke(token: ParamBatchTokenRealized): Token = token.withBid(bid = bids[token.bid] ?: token.bid)
     }.invoke(this)
 
-  fun extractParams(): List<Param<*>> {
+  fun extractParams(dissalowUnrefinedBatchParams: Boolean = false): List<Param<*>> {
     val accum = mutableListOf<Param<*>>()
     fun errorNotFound(bid: BID): Nothing = xrError("Param not found for bid: ${bid} in tokenization:\n${this.renderWith(Renderer(true, true, null))}")
     fun errorUnrealizedFound(bid: BID): Nothing = xrError("Unrealized Param found for bid: ${bid} in tokenization:\n${this.renderWith(Renderer(true, true, null))}")
@@ -43,9 +43,15 @@ sealed interface Token {
       when (token) {
         is ParamSingleTokenRealized -> accum.add(token.param ?: errorNotFound(token.bid))
         is ParamMultiTokenRealized -> accum.add(token.param ?: errorNotFound(token.bid))
-        is ParamBatchTokenRealized -> accum.add(token.param ?: errorNotFound(token.bid))
+        is ParamBatchTokenRealized -> {
+          if (token.param != null && dissalowUnrefinedBatchParams)
+            xrError("Unrefined ParamBatchToken found for bid: ${token.bid} (and description ${token.param.description}) in tokenization:\n${this.renderWith(Renderer(true, true, null))}")
+          else
+            accum.add(token.param ?: errorNotFound(token.bid))
+        }
         is Statement -> toExplore.addAll(0, token.tokens)
         is SetContainsToken -> toExplore.addAll(0, listOf(token.a, token.op, token.b))
+        is TokenContext -> toExplore.add(token.content)
         is ParamMultiToken -> errorUnrealizedFound(token.bid)
         is ParamSingleToken -> errorUnrealizedFound(token.bid)
         is ParamBatchToken -> errorUnrealizedFound(token.bid)
@@ -96,20 +102,36 @@ final data class ParamMultiTokenRealized(val bid: BID, val param: ParamMulti<*>?
 final data class ParamBatchToken(val bid: BID): Token {
   override fun build() = "<UNRB?>"
   fun realize(paramSet: ParamSet) =
-    ParamBatchTokenRealized(bid, paramSet.lifts.asSequence().filterIsInstance<ParamBatchRefiner<*, *>>().find { p -> p.id == bid })
+    ParamBatchTokenRealized(bid, paramSet.lifts.asSequence().filterIsInstance<ParamBatchRefiner<*, *>>().find { p -> p.id == bid }, 0)
   override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, null, false)
   fun withBid(bid: BID) = ParamBatchToken(bid)
 }
 
-final data class ParamBatchTokenRealized(val bid: BID, val param: ParamBatchRefiner<*, *>?): Token {
+final data class ParamBatchTokenRealized(val bid: BID, val param: ParamBatchRefiner<*, *>?, val chunkIndex: Int): Token {
   override fun build(): String = param?.let { "?" } ?: xrError("Param not found for bid: ${bid}")
   override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, param, true)
-  fun withBid(bid: BID) = ParamBatchTokenRealized(bid, param?.withNewBid(bid))
+  fun withBid(bid: BID) = ParamBatchTokenRealized(bid, param?.withNewBid(bid), chunkIndex)
+  fun withChunkIndex(chunkIndex: Int) = ParamBatchTokenRealized(bid, param, chunkIndex)
+  fun refineAny(elem: Any?): Token = run {
+    val refinedParam = param?.refineAny(elem) ?: xrError("Could not refine parameter in the ParamBatchTokenRealized: ${bid}")
+    ParamSingleTokenRealized(bid, refinedParam)
+  }
+}
+
+final data class TokenContext(val content: Token, val kind: Kind): Token {
+  sealed interface Kind {
+    data object AssignmentBlock: Kind
+  }
+  override fun build(): String = content.build()
+  override fun renderWith(renderer: Renderer): String = content.renderWith(renderer)
 }
 
 final data class Statement(val tokens: List<Token>): Token {
   override fun build(): String = tokens.map { it.build() }.mkString()
   override fun renderWith(renderer: Renderer): String = tokens.map { it.renderWith(renderer) }.mkString()
+
+  fun prepend(token: Token): Statement = Statement(listOf(token) + tokens)
+  fun append(token: Token): Statement = Statement(tokens + listOf(token))
 
   override fun simplify(): Token {
     val accum = mutableListOf<Token>()
@@ -139,10 +161,16 @@ val Token.token get(): Token = this
 val String.token get() = StringToken(this)
 
 fun <T> List<T>.token(elemTokenizer: (T) -> Token): Statement = this.map(elemTokenizer).mkStmt()
-fun List<Token>.mkStmt(sep: String = ", "): Statement =
-  if (this.isEmpty())
-    Statement(listOf())
-  else {
-    val sepList = List(this.size-1) { StringToken(sep) }
-    Statement(this.intersperseWith(sepList))
-  }
+fun List<Token>.mkStmt(sep: String = ", ", before: String = "", after: String = ""): Statement = run {
+  val interspersed =
+    if (this.isEmpty())
+      Statement(listOf())
+    else {
+      val sepList = List(this.size - 1) { StringToken(sep) }
+      Statement(this.intersperseWith(sepList))
+    }
+
+  val withPrepend = if (before.isNotEmpty()) interspersed.prepend(before.token) else interspersed
+  val withAppend = if (after.isNotEmpty()) withPrepend.append(after.token) else withPrepend
+  withAppend
+}

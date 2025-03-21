@@ -738,7 +738,7 @@ abstract class SqlIdiom: HasPhasePrinting {
   val XR.Insert.token get(): Token = run {
     val query = this.query as? XR.Entity ?: xrError("Insert query must be an entity but found: ${this.query}")
     val (columns, values) = columnsAndValues(assignments, exclusions).unzip()
-    +"INSERT INTO ${query.token}${` AS table`(alias)} (${columns.mkStmt(", ")}) VALUES (${values.mkStmt(", ")})"
+    +"INSERT INTO ${query.token}${` AS table`(alias)} (${columns.mkStmt(", ")}) VALUES ${TokenContext(values.mkStmt(", ", "(", ")"), TokenContext.Kind.AssignmentBlock) }"
 
 //    case Insert(entity: Entity, assignments) =>
 //        val (table, columns, values) = insertInfo(insertEntityTokenizer, entity, assignments)
@@ -808,6 +808,7 @@ abstract class SqlIdiom: HasPhasePrinting {
     }
   }
 
+  // TODO specialized logic for Postgres UPDATE to allow setting token-context here
   val XR.Update.token get(): Token = run {
     fun updateBase() = +"UPDATE ${query.token}${` AS table`(alias)} SET ${assignments.filterNot { exclusions.contains(it.property) }.token}"
     when {

@@ -1,5 +1,7 @@
 package io.exoquery
 
+import io.exoquery.sql.Renderer
+
 fun main() {
   data class Name(val first: String, val last: String)
   data class Person(val id: Int, val name: Name, val age: Int)
@@ -23,22 +25,37 @@ fun main() {
   val ps = PersonSimple(1, "joe", 123)
   val ps2 = PersonSimple2("joe")
   val ps3 = PersonSimple3(123)
-  val peopleSeq = sequenceOf(PersonSimple(1, "Joe", 123), PersonSimple(2, "Jane", 456))
+  val peopleSeq =
+    sequenceOf(
+      PersonSimple(1, "Joe", 123),
+      PersonSimple(2, "Jane", 456),
+      PersonSimple(3, "Jack", 789),
+      PersonSimple(4, "Jill", 101112),
+      PersonSimple(5, "Mack", 101112),
+      PersonSimple(6, "Mick", 101112),
+      PersonSimple(7, "Muck", 101112),
+      PersonSimple(8, "Muck", 101112)
+    )
 
+  // TODO when using setParams why the heck does it use a contextual serializer for the String??? Need to test for that case (even the regular actions should test for that case!)
   val s =
     capture.batch(peopleSeq) { p ->
       //insert<Person> { set(name.first to param(n.first), age to 123) }.returning { p -> Name(p.name.first + "-stuff", p.name.last + "-otherStuff") }
       // TODO Odd error need to figure out: Exception in thread "main" java.lang.NoClassDefFoundError: I
       //insert<Person> { setParams(p) }.returning { p -> Name(p.name.first + "-stuff", p.name.last + "-otherStuff") }
-      insert<PersonSimple> { set(name to param(p.name)) }.returningKeys { name to age }//.returningKeys()
+      //insert<PersonSimple> { set(id to param(p.id), name to param(p.name), age to param(p.age)) }.returningKeys { name to age }//.returningKeys()
+      insert<PersonSimple> { setParams(p) }.returningKeys { name to age }//.returningKeys()
       //insert<PersonSimple> { set(name to "Joe", age to 123) }
     }
 
-  //val src = printSource { s }
+
+
+
+  //println(s)
 
 
   // TODO now need to run through the sequence in the CompiledBatchAction and make the BatchGroup instances (i.e. by applying list elements on the refiner)
-  println(s.build<PostgresDialect>().show())
+  println(s.build<PostgresDialect>().produceBatchGroups().map { it.effectiveToken().renderWith(Renderer()) }.toList())
 
   //val build = s.build<PostgresDialect>()
   //println(build.show())

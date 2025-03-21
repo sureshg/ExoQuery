@@ -58,6 +58,9 @@ data class ParamSingle<T: Any>(override val id: BID, val value: T, override val 
  * For capture.batch { param -> insert { set(name = param(p.name <- encoding the value here!)) }  }
  */
 data class ParamBatchRefiner<Input, Output: Any>(override val id: BID, val refiner: (Input) -> Output, override val serial: ParamSerializer<Output>, override val description: String? = null): Param<Output> {
+  fun refine(input: Input): ParamSingle<Output> = ParamSingle<Output>(id, refiner(input), serial, description)
+  fun refineAny(input: Any?): ParamSingle<Output> = refine(input as Input)
+
   override fun withNonStrictEquality(): ParamBatchRefiner<Input, Output> = this
   override fun showValue(): String = "Refiner_${serial.serializer.descriptor.kind}"
   override fun withNewBid(newBid: BID): ParamBatchRefiner<Input, Output> = copy(id = newBid)

@@ -1,7 +1,9 @@
 package io.exoquery
 
 import io.exoquery.printing.PrintMisc
+import io.exoquery.sql.ParamBatchTokenRealized
 import io.exoquery.sql.SqlQueryModel
+import io.exoquery.sql.StatelessTokenTransformer
 import io.exoquery.sql.Token
 import io.exoquery.xr.XR
 
@@ -41,9 +43,40 @@ data class SqlCompiledAction<Input, Output>(val value: String, override val toke
   data class DebugData(val phase: Phase, val originalXR: () -> XR.Action)
 }
 
+
+
+
+// Effective token refines tokens for that particular batch-input value, we only need it for debugging
+data class BatchParamGroup<BatchInput, Input: Any, Output>(val input: BatchInput, val params: List<Param<*>>, val effectiveToken: () -> Token)
+
 // TODO since we're providing the batch-parameter at the last moment, we need a function that replaces ParamBatchRefiner to ParamSingle instances and create BatchGroups
 data class SqlCompiledBatchAction<BatchInput, Input: Any, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val batchParam: Sequence<BatchInput>, val label: String?, val debugData: SqlCompiledBatchAction.DebugData): ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
+
+  val effectiveQuery by lazy { token.build() }
+
+  protected fun paramsForElement(elem: BatchInput) =
+    params.map { param ->
+      when (param) {
+        is ParamBatchRefiner<*, *> -> param.refineAny(elem as Any?)
+        else -> param
+      }
+    }
+
+
+  private fun realizeToken(token: Token, value: BatchInput) =
+    StatelessTokenTransformer.invoke {
+      when (it) {
+        is ParamBatchTokenRealized -> {
+          it.refineAny(value)
+        }
+        else -> null
+      }
+    }.invoke(token)
+
+  fun produceBatchGroups(): Sequence<BatchParamGroup<BatchInput, Input, Output>> =
+    batchParam.map { BatchParamGroup(it, paramsForElement(it), { realizeToken(token, it) }) }
+
 
   override fun determinizeDynamics(): SqlCompiledBatchAction<BatchInput, Input, Output> =
     this.copy(token = determinizedToken())

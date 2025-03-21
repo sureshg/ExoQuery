@@ -12,6 +12,7 @@ interface StatelessTokenTransformer {
       is SetContainsToken -> invoke(token)
       is Statement -> invoke(token)
       is StringToken -> invoke(token)
+      is TokenContext -> invoke(token)
     }
 
   fun invoke(token: StringToken): Token = token
@@ -21,6 +22,7 @@ interface StatelessTokenTransformer {
   fun invoke(token: ParamSingleTokenRealized): Token = token
   fun invoke(token: ParamBatchToken): Token = token
   fun invoke(token: ParamBatchTokenRealized): Token = token
+  fun invoke(token: TokenContext): Token = TokenContext(invoke(token.content), token.kind)
 
   fun invoke(token: SetContainsToken): Token =
     SetContainsToken(
@@ -31,4 +33,12 @@ interface StatelessTokenTransformer {
 
   fun invoke(token: Statement): Token =
     Statement(token.tokens.map { invoke(it) })
+
+  companion object {
+    operator fun invoke(f: (Token) -> Token?) =
+      object: StatelessTokenTransformer {
+        override fun invoke(token: Token): Token =
+          f(token) ?: super.invoke(token)
+      }
+  }
 }

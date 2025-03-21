@@ -16,6 +16,8 @@ import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
 import io.exoquery.xr.encode
 import kotlinx.serialization.decodeFromHexString
+import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irNull
@@ -23,10 +25,15 @@ import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrGetValue
+import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
+import org.jetbrains.kotlin.ir.symbols.impl.IrValueParameterSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isPrimitiveType
 import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 
 class RuntimesExpr(val runtimes: List<Pair<BID, IrExpression>>, val runtimesToCompose: List<IrExpression>) {
   context (CX.Scope, CX.Builder) fun lift(): IrExpression {
@@ -78,10 +85,72 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
 
     context (CX.Scope, CX.Builder) fun build(bid: BID, originalValue: IrExpression, lifter: Lifter): IrExpression
 
-    data class ParamUsingBatchAlias(val batchVariable: IrValueParameter, val param: Type.Single): Type {
+    data class ParamUsingBatchAlias(val batchVariable: IrValueParameter, val param: Type.Single, val suffix: String? = null): Type {
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValue: IrExpression, lifter: Lifter) =
         with (lifter) {
-          val refinerLambda = createLambda1(param.makeValue(originalValue), batchVariable, currentDeclarationParentOrFail())
+          // Remember that the transformer (called below) that replaces the batch_varaible mutates the Ir so we need to make
+          // copies of it in case the actual batch-variable is being reused for multiple expression (as it happens when we use capture.batch(people) { p -> ... setParams(p)... })
+          // I.e. since during the eleboration phase, the actual `p` parameter gets copied so once we mutate it, it will be the same underlying instance for all
+          // expressions in the elaboration. Therefore when we need to actually replace the underlying symbol we need to copy all of them.
+          // If you don't do that you'll get strange `No mapping for symbol: VALUE_PARAMETER name:p` errors. This is especially confusing then the `p` variable
+          // is used for every single element in the batch (and is the input value to every lambda... so it SEEMS the mapping does exist, after all it's right there
+          // as a parameter in the lambda!... on it's not. Is the a different parameter with the same name.) To avoid this confounding issue, I modify the identifier
+          // to have some other suffix so that the symbol is unique for each batch clause and when debugging with print-source you can clearly see that the symbols are different.
+          // (in most cases the 1st symbol e.g. person.id will appear in the GetValue of every other clause (i.e. of the refiners for person.name and person.age as well).
+          // Therefore it is more clear what the mutability issue is.
+          // (Note that in case other similar issues occur, we might want to do a deep-copy for every single clause in the elaboration as a precautionary measure and maybe even create
+          // an new IrValueParameter for them. This might have performance implications so not doing for now.)
+          val madeValue = param.makeValue(originalValue).deepCopyWithSymbols(currentDeclarationParent)
+
+          val newSymbol = IrValueParameterSymbolImpl()
+          val batchVariableCopy = batchVariable.factory.createValueParameter(
+            startOffset = batchVariable.startOffset,
+            endOffset = batchVariable.endOffset,
+            origin = batchVariable.origin,
+            name = Name.identifier(batchVariable.name.identifier + "_batch" + (suffix ?: "")),
+            isCrossinline = false,
+            type = batchVariable.type,
+            isHidden = batchVariable.isHidden,
+            index = batchVariable.index,
+            varargElementType = batchVariable.varargElementType,
+            isAssignable = batchVariable.isAssignable,
+            symbol = newSymbol,
+            isNoinline = batchVariable.isNoinline
+          )
+
+
+
+          val transformer =
+            object: IrElementTransformerVoid() {
+              override fun visitGetValue(expression: IrGetValue): IrExpression {
+                if (expression.symbol.owner == batchVariable) {
+                  expression.symbol = newSymbol
+                }
+
+                return super.visitGetValue(expression)
+              }
+              //override fun visitValueParameter(declaration: IrValueParameter): IrStatement =
+              //  when {
+              //    declaration == batchVariable -> batchVariableCopy
+              //    else -> super.visitValueParameter(declaration)
+              //  }
+            }
+
+          val newMadeValue = transformer.visitElement(madeValue) as IrExpression
+
+          //val symbolRemapper =
+          //  object: DeepCopySymbolRemapper() {
+          //    init {
+          //      valueParameters.put(batchVariable.symbol, newSymbol)
+          //    }
+          //    //override val valueParameters = hashMapOf<IrValueParameterSymbol, IrValueParameterSymbol>(batchVariable.symbol to newSymbol)
+          //  }
+          //val batchVariableCopy = batchVariable.deepCopyWithSymbols(symbolRemapper)
+
+
+
+
+          val refinerLambda = createLambda1(newMadeValue, batchVariableCopy, currentDeclarationParentOrFail())
           val description = if (debugDataConfig.addParamDescriptions) refinerLambda.dumpKotlinLike().lift() else builder.irNull()
           make<ParamBatchRefiner<*, *>>(bid.lift(), refinerLambda, param.makeSerializer(), description)
         }

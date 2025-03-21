@@ -4,6 +4,7 @@ import io.exoquery.*
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.call
 import io.exoquery.plugin.transform.callDispatch
+import io.exoquery.sql.TokenContext
 import io.exoquery.sql.ParamBatchToken
 import io.exoquery.sql.ParamBatchTokenRealized
 import io.exoquery.sql.ParamMultiToken
@@ -182,7 +183,13 @@ class Lifter(val builderCtx: CX.Builder) {
 
       is SetContainsToken -> make<SetContainsToken>(this.a.lift(paramSetExpr), this.op.lift(paramSetExpr), this.b.lift(paramSetExpr))
       is Statement -> make<Statement>(this.tokens.lift { it.lift(paramSetExpr) })
+      is TokenContext -> make<TokenContext>(content.lift(paramSetExpr), kind.lift())
       is StringToken -> make<StringToken>(string.lift())
+    }
+
+  fun TokenContext.Kind.lift() =
+    when (this) {
+      TokenContext.Kind.AssignmentBlock -> makeObject<TokenContext.Kind.AssignmentBlock>()
     }
 
   fun ActionReturningKind.lift(): IrExpression =

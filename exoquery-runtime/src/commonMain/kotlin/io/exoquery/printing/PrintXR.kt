@@ -26,6 +26,7 @@ import io.exoquery.sql.SetContainsToken
 import io.exoquery.sql.Statement
 import io.exoquery.sql.StringToken
 import io.exoquery.sql.Token
+import io.exoquery.sql.TokenContext
 import io.exoquery.util.ShowTree
 import io.exoquery.xr.*
 import kotlinx.serialization.SerializationStrategy
@@ -48,10 +49,11 @@ class PrintToken(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Toke
       is ParamSingleToken -> Tree.Apply("ParamSingleToken", iteratorOf(Tree.Literal(x.bid.value, "bid")))
       is ParamSingleTokenRealized -> Tree.Apply("ParamSingleTokenRealized", iteratorOf(Tree.Literal(x.bid.value, "bid"), x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.value.toString()))) } ?: Tree.Literal("null", "param")))
       is ParamBatchToken -> Tree.Apply("ParamBatchToken", iteratorOf(Tree.Literal(x.bid.value, "bid")))
-      is ParamBatchTokenRealized -> Tree.Apply("ParamBatchTokenRealized", iteratorOf(Tree.Literal(x.bid.value, "bid"), x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.showValue().toString()))) } ?: Tree.Literal("null", "param")))
+      is ParamBatchTokenRealized -> Tree.Apply("ParamBatchTokenRealized", iteratorOf(Tree.Literal(x.bid.value, "bid"), Tree.Literal(x.chunkIndex.toString(), "chunkIndex"), x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.showValue().toString()))) } ?: Tree.Literal("null", "param")))
       is SetContainsToken -> Tree.Apply("SetContainsToken", iteratorOf(treeifyThis(x.a, "a"), treeifyThis(x.op, "op"), treeifyThis(x.b, "b")))
       is Statement -> Tree.Apply("Statement", x.tokens.map { treeifyThis(it, null) }.iterator())
       is StringToken -> Tree.Apply("StringToken", iteratorOf(Tree.Literal(x.string, "string")))
+      is TokenContext -> Tree.Apply("TokenContext", iteratorOf(treeifyThis(x.content, "content"), Tree.Literal(x.kind.toString(), "kind")))
     }
 }
 

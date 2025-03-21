@@ -15,7 +15,6 @@ import io.exoquery.parseError
 import io.exoquery.plugin.loc
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.Messages
-import io.exoquery.plugin.logging.Messages.InvalidSqlActionFunctionBody
 import io.exoquery.plugin.ownerHasAnnotation
 import io.exoquery.plugin.source
 import io.exoquery.plugin.symName
@@ -129,9 +128,17 @@ object ParseAction {
             val prop = XR.Property.fromCoreAndPaths(actionAlias, epath.path) as? XR.Property ?: parseError("Could not parse empty property path of the entity", epath.invocation)
             val id = BID.new()
             val tpe = TypeParser.of(epath.invocation)
-            val param = XR.TagForParam(id, XR.ParamType.Single, tpe, epath.invocation.loc)
-            binds.addParam(id, epath.invocation, ParamBind.Type.auto(epath.invocation))
-            XR.Assignment(prop, param, epath.invocation.loc)
+            val (bind, paramType) = run {
+              val rawParam = ParamBind.Type.auto(epath.invocation)
+              // If it's a batch param need an additional layer of wrapping so that the expr-model knows to create a io.exoquery.ParamBatchRefiner instead of a regular io.exoquery.ParamSingle
+              if (batchAlias != null && param.containsBatchParam())
+                ParamBind.Type.ParamUsingBatchAlias(batchAlias, rawParam, "_" + epath.path.joinToString("_")) to XR.ParamType.Batch
+              else
+                rawParam to XR.ParamType.Single
+            }
+            val tag = XR.TagForParam(id, paramType, tpe, epath.invocation.loc)
+            binds.addParam(id, epath.invocation, bind)
+            XR.Assignment(prop, tag, epath.invocation.loc)
           }
         val ent = ParseQuery.parseEntity(inputType, expr.location())
         when (compositeType) {
