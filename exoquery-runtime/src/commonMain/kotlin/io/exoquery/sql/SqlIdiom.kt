@@ -134,7 +134,7 @@ interface SqlIdiom: HasPhasePrinting {
       is XR.MethodCall -> token
       is XR.QueryToExpr -> token
       is XR.FunctionN, is XR.FunctionApply, is XR.Block ->
-        xrError("Malformed or unsupported construct: $this.")
+        xrError("Malformed or unsupported construct: ${this.showRaw()}.")
       is XR.TagForParam ->
         when (this.paramType) {
           is ParamType.Single -> ParamSingleToken(this.id)

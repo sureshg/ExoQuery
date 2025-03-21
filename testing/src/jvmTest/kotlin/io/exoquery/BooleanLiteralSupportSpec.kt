@@ -319,14 +319,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
     }
   }
 
-})
-
-// Scala:
-//class BooleanLiteralSupportSpec extends Spec {
-//
-//
-//
-//  "do not expressify string transforming operations" - {
+  //  "do not expressify string transforming operations" - {
 //    case class Product(id: Long, desc: String, sku: Int)
 //
 //    "first parameter" in testContext.withDialect(MirrorSqlDialectWithBooleanLiterals) { ctx =>
@@ -356,6 +349,93 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
 //        "SELECT p.id, p.desc, p.sku FROM Product p WHERE  (?) =  (?)"
 //    }
 //  }
+
+  "do not expressify string transforming operations" - {
+    data class Product(val id: Long, val desc: String, val sku: Int)
+
+    "first parameter" {
+      val q = capture {
+        Table<Product>().filter { p -> param("1").toInt() == p.sku }
+      }
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+
+    "second parameter" {
+      val q = capture {
+        Table<Product>().filter { p -> p.sku == param("1").toInt() }
+      }
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+
+    "both parameters" {
+      val q = capture {
+        Table<Product>().filter { p -> param("2").toInt() == param("1").toInt() }
+      }
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+  }
+
+  "joins" - {
+    data class TestEntity(val s: String, val i: Int, val l: Long, val o: Boolean?, val b: Boolean)
+    data class TestEntity2(val i: Int, val s: String)
+
+    "for-comprehension with constant" {
+      val q = capture.select {
+        val t1 = from(Table<TestEntity>())
+        val t2 = join(Table<TestEntity>()) { t -> true }
+        t1 to t2
+      }
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+
+    "for-comprehension with field" {
+      val q = capture.select {
+        val t1 = from(Table<TestEntity>())
+        val t2 = join(Table<TestEntity>()) { t -> t.b }
+        t1 to t2
+      }
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+  }
+
+  "optionals" - {
+    data class TestEntity(val s: String, val i: Int, val l: Long, val o: Boolean?, val b: Boolean)
+
+    "exists" {
+      val q = capture {
+        Table<TestEntity>()
+          .filter { t -> if (t.o ?: false) false else true }
+          .map { t -> t.b to true }
+      }
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+
+    "exists - lifted" {
+      val q = capture {
+        Table<TestEntity>()
+          .filter { t -> t.o?.let { if (param(false)) param(false) else param(true) } ?: false }
+          .map { t -> t.b to true }
+      }
+      println(q.xr.showRaw())
+
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+  }
+})
+
+// Scala:
+//class BooleanLiteralSupportSpec extends Spec {
+//
+//
+//
+
 //
 //  TODO test as optionals (also should test left-join conditions)
 //  "options" - {

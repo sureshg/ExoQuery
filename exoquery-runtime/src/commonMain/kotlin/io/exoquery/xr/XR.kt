@@ -2,6 +2,7 @@ package io.exoquery.xr
 
 import io.exoquery.xr.id
 import io.exoquery.BID
+import io.exoquery.pprint.PPrinterConfig
 import io.exoquery.printing.PrintXR
 import io.exoquery.sql.MirrorIdiom
 import io.exoquery.sql.Renderer
@@ -128,7 +129,7 @@ sealed interface XR {
   }
 
 
-  fun showRaw(color: Boolean = true): String {
+  fun showRaw(color: Boolean = true, config: PPrinterConfig = PPrinterConfig()): String {
     val str = PrintXR(XR.serializer())(this)
     return if (color) str.toString() else str.plainText
   }

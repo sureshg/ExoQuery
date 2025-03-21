@@ -34,12 +34,23 @@ object VendorizeBooleans: StatelessTransformer {
     with (xr) {
       when (this) {
         // Map clauses need values e.g. map(n=>n.status==true) => map(n=>if(n.status==true) 1 else 0)
-        is XR.Map -> Map.cs(invoke(head), id, valuefyExpression(invoke(body)))
+        is XR.Map -> Map.cs(invoke(head), id, expressifyValue(invoke(body)))
         // Filter clauses need expressions e.g. filter(n=>n.isTrue) becomes filter(n=>n.isTrue==1)
-        is XR.Filter -> Filter.cs(invoke(head), id, expressifyValue(invoke(body)))
+        is XR.Filter -> Filter.cs(invoke(head), id, valueifyWhenOrRecurse(body))
         // FlatJoin clauses need expressions e.g. flatJoin(n=>n.isTrue) becomes flatJoin(n=>n.isTrue==1)
-        is XR.FlatJoin -> FlatJoin.cs(invoke(head), id, expressifyValue(invoke(on)))
+        is XR.FlatJoin -> FlatJoin.cs(invoke(head), id, valueifyWhenOrRecurse(on))
+        is XR.FlatFilter -> XR.FlatFilter.csf(valueifyWhenOrRecurse(by))(this)
         else -> super.invoke(xr)
+      }
+    }
+
+  fun valueifyWhenOrRecurse(xr: XR.Expression): XR.Expression =
+    with (xr) {
+      when {
+        this is XR.When && allPartsBooleanValue() ->
+          invoke(reduceToExpression())
+        else ->
+          valuefyExpression(invoke(xr))
       }
     }
 
@@ -62,8 +73,13 @@ object VendorizeBooleans: StatelessTransformer {
         this is XR.Product ->
           Product.cs(fields.map { (name, value) -> name to valuefyExpression(invoke(value)) })
 
-        this is XR.When ->
-          When.cs(branches.map { XR.Branch.csf(expressifyValue(it.cond), valuefyExpression(it.then))(it) }, valuefyExpression(invoke(orElse)))
+        this is XR.When -> {
+          When.cs(
+            branches.map {
+              XR.Branch.csf(expressifyValue(invoke(it.cond)), valuefyExpression(invoke(it.then)))(it)
+            }, valuefyExpression(invoke(orElse))
+          )
+        }
 
         else -> super.invoke(xr)
       }
@@ -141,6 +157,16 @@ object VendorizeBooleans: StatelessTransformer {
 //  }
 
 
+    fun XR.When.allPartsBooleanValue(): Boolean =
+      branches.all { it.then.isBooleanValue() } && orElse.isBooleanValue()
+
+    fun XR.When.reduceToExpression(): XR.Expression = run {
+      val conds = branches.map { expressifyValue(it.cond) }.reduce { a, b -> a `+and+` b }
+      val condThens = branches.map { expressifyValue(it.cond) `+and+` expressifyValue(it.then) }
+      val elseExpr = expressifyValue(orElse)
+      condThens.reduce { a, b -> a `+and+` b } `+or+` (XR.UnaryOp(OP.not, conds) `+and+` elseExpr)
+    }
+
 
     /*
      * Generally speaking you need to add true==X to some X which is a boolean-value to make it a boolean-expression
@@ -154,12 +180,8 @@ object VendorizeBooleans: StatelessTransformer {
     fun expressifyValue(xr: XR.Expression): XR.Expression =
       with (xr) {
         when {
-          this is XR.When && branches.all { it.then.isBooleanValue() } && orElse.isBooleanValue() -> {
-            val conds = branches.map { expressifyValue(it.cond) }.reduce { a, b -> a `+and+` b }
-            val condThens = branches.map { expressifyValue(it.cond) `+and+` expressifyValue(it.then) }
-            val elseExpr = expressifyValue(orElse)
-            condThens.reduce { a, b -> a `+and+` b } `+or+` (XR.UnaryOp(OP.not, conds) `+and+` elseExpr)
-          }
+          this is XR.When && this.allPartsBooleanValue() ->
+            this.reduceToExpression()
           this.isBooleanValue() ->
             XR.Const.Boolean(true) `+==+` xr
           else ->

@@ -60,8 +60,13 @@ object TypeParser {
     try {
       when {
         // If this is a field from a class that is marked @Contextaul then we know immediately it is a value type
-        expr is IrGetField && expr.symbol.owner.hasAnnotation<kotlinx.serialization.Contextual>() -> XRType.Value
-        else -> parse(type)
+        expr is IrGetField && expr.symbol.owner.hasAnnotation<kotlinx.serialization.Contextual>() ->
+          if (type.isBoolean())
+            XRType.BooleanValue
+          else
+            XRType.Value
+        else ->
+          parse(type)
       }
     } catch (e: Exception) {
       parseErrorFromType("ERROR Could not parse the type: ${type.dumpKotlinLike()} (${type.toString()}", expr)

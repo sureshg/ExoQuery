@@ -219,6 +219,12 @@ object ParseExpression {
         XR.TagForParam(bid, paramType, TypeParser.of(this), paramValue.loc)
       },
 
+      case(Ir.Call.FunctionMem1[Is(), Is("let"), Is()]).thenThis { head, lambda ->
+        val reciever = parse(head)
+        val lambda: XR.FunctionN = parse(lambda).let { it as? XR.FunctionN ?: parseError("Expected a lambda function to be parsed from the let call but was:\n${it.showRaw()}", lambda) }
+        XR.FunctionApply(lambda, listOf(reciever), expr.loc)
+      },
+
       case(Ir.Call.FunctionMemN[Is(), Is.of("params", "paramsCtx", "paramsCustom"), Is()]).thenThis { _, args ->
         val paramValue = args.first()
         validateParamArg(paramValue)
