@@ -144,7 +144,10 @@ sealed interface XR {
   }
 
   @Serializable
-  sealed interface Expression: XR, U.QueryOrExpression
+  sealed interface Expression: XR, U.QueryOrExpression {
+    fun isBooleanValue() = type.isBooleanValue()
+    fun isBooleanExpression() = type.isBooleanExpression()
+  }
 
   @Serializable
   sealed interface Query: XR, U.QueryOrExpression
@@ -903,7 +906,10 @@ sealed interface XR {
   data class When(@Slot val branches: List<Branch>, @Slot val orElse: XR.Expression, override val loc: Location = Location.Synth) : Expression, PC<When> {
     @Transient override val productComponents = productOf(this, branches, orElse)
     override val type: XRType by lazy { branches.lastOrNull()?.type ?: XRType.Unknown }
-    companion object {}
+    companion object {
+      fun makeIf(cond: XR.Expression, then: XR.Expression, orElse: XR.Expression, loc: Location = Location.Synth) =
+        When(listOf(Branch(cond, then, loc)), orElse, loc)
+    }
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode() = cid.hashCode()

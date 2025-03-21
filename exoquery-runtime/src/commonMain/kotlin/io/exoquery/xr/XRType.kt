@@ -11,6 +11,18 @@ sealed interface XRType {
       else -> true
     }
 
+  fun isBooleanValue() =
+    when (this) {
+      is BooleanValue -> true
+      else -> false
+    }
+
+  fun isBooleanExpression() =
+    when (this) {
+      is BooleanExpression -> true
+      else -> false
+    }
+
   fun isProduct() =
     when (this) {
       is Product -> true

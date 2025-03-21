@@ -1,6 +1,7 @@
 package io.exoquery.sql
 
 import io.exoquery.printing.HasPhasePrinting
+import io.exoquery.sql.FlattenSqlQuery
 import io.exoquery.util.*
 import io.exoquery.xr.*
 import io.exoquery.xr.OP.*
@@ -15,21 +16,21 @@ import io.exoquery.xr.XR.Const.Null
 import io.exoquery.xr.XR.ParamType
 import io.exoquery.xrError
 
-abstract class SqlIdiom: HasPhasePrinting {
 
-  override val traceType: TraceType = TraceType.SqlNormalizations
+interface SqlIdiom: HasPhasePrinting {
+
+  override val traceType: TraceType get() = TraceType.SqlNormalizations
   abstract val concatFunction: String
   abstract val useActionTableAliasAs: ActionTableAliasBehavior
 
   val aliasSeparator: String get() = "_"
   open fun joinAlias(alias: List<String>): String = alias.joinToString(aliasSeparator)
 
-  override val trace: Tracer by lazy { Tracer(traceType, traceConf, 1) }
-
-  protected fun normalizeQuery(xr: XR.Query) =
+  fun normalizeQuery(xr: XR.Query) =
     SqlNormalize(traceConf = traceConf, disableApplyMap = false)(xr)
 
-  inline fun ((SqlQueryModel) -> SqlQueryModel).andThen(phaseTitle: String, crossinline f: (SqlQueryModel) -> SqlQueryModel): (SqlQueryModel) -> SqlQueryModel  =
+  // If we want to inline this we would need move it outisde of SqlIdiom and make it a top-level function, then we would need to pass traceConf to every invocation
+  fun ((SqlQueryModel) -> SqlQueryModel).andThen(phaseTitle: String, f: (SqlQueryModel) -> SqlQueryModel): (SqlQueryModel) -> SqlQueryModel  =
     { qRaw ->
       val q = this(qRaw)
       val label = traceConf.phaseLabel?.let { " (${it})" } ?: ""
@@ -117,30 +118,33 @@ abstract class SqlIdiom: HasPhasePrinting {
         xrError("XR.Batching should have been spliced out by now and replaced with regular XR.Action instances.")
     }
 
-  val XR.Expression.token get(): Token =
+  val XR.Expression.token get(): Token = xrExpressionTokenImpl(this)
+  // See KT-11488 When overriding a member extension function, cannot call superclass’ implementation
+  fun xrExpressionTokenImpl(exprImpl: XR.Expression) = with (exprImpl) {
     when (this) {
-      is BinaryOp      -> token
-      is XR.UnaryOp       -> token
-      is XR.Const         -> token
-      is XR.Free         -> token
-      is XR.Product       -> token
-      is XR.Property      -> token
-      is Ident            -> token
-      is XR.When          -> token
-      is XR.GlobalCall    -> token
-      is XR.MethodCall    -> token
-      is XR.QueryToExpr       -> token
+      is BinaryOp -> token
+      is XR.UnaryOp -> token
+      is XR.Const -> token
+      is XR.Free -> token
+      is XR.Product -> token
+      is XR.Property -> token
+      is Ident -> token
+      is XR.When -> token
+      is XR.GlobalCall -> token
+      is XR.MethodCall -> token
+      is XR.QueryToExpr -> token
       is XR.FunctionN, is XR.FunctionApply, is XR.Block ->
         xrError("Malformed or unsupported construct: $this.")
       is XR.TagForParam ->
         when (this.paramType) {
           is ParamType.Single -> ParamSingleToken(this.id)
-          is ParamType.Multi  -> ParamMultiToken(this.id)
-          is ParamType.Batch  -> ParamBatchToken(this.id)
+          is ParamType.Multi -> ParamMultiToken(this.id)
+          is ParamType.Batch -> ParamBatchToken(this.id)
         }
       is XR.TagForSqlExpression ->
         xrError("Internal error. All instance of TagFOrSqlExpressio should have been spliced earlier.")
     }
+  }
 
   val XR.Ident.token get(): Token = name.token
 
@@ -315,10 +319,13 @@ abstract class SqlIdiom: HasPhasePrinting {
 
   // Typically this will be a tuple of some sort, just converts the elements into a list
   // For dialects of SQL like Spark that select structured data this needs special handling
-  val XR.Product.token get(): Token =
+  val XR.Product.token get(): Token = xrProductTokenImpl(this)
+  fun xrProductTokenImpl(productImpl: XR.Product) = with (productImpl) {
     fields.map { it -> it.second.token }.mkStmt()
+  }
 
-  val XR.Query.token get(): Token =
+  val XR.Query.token get(): Token = xrQueryTokenImpl(this)
+  fun xrQueryTokenImpl(queryImpl: XR.Query): Token = with (queryImpl) {
     when (this) {
       is XR.ExprToQuery -> head.token
       else -> {
@@ -337,6 +344,7 @@ abstract class SqlIdiom: HasPhasePrinting {
           SqlQueryApply(traceConf)(this).token
       }
     }
+  }
 
 
   private val ` AS` get() =
@@ -345,7 +353,9 @@ abstract class SqlIdiom: HasPhasePrinting {
       else -> emptyStatement
     }
 
-  val FlattenSqlQuery.token get(): Token = run {
+  val FlattenSqlQuery.token get(): Token = flattenSqlQueryTokenImpl(this)
+  fun flattenSqlQueryTokenImpl(query: FlattenSqlQuery): Token =
+    with (query) {
 
 //      def selectTokenizer: Token =
 //        select match {
@@ -460,7 +470,8 @@ abstract class SqlIdiom: HasPhasePrinting {
   fun tokenizeAlias(alias: List<String>): Token = StringToken(this.joinAlias(alias))
 
 
-  val SelectValue.token get(): Token =
+  val SelectValue.token get(): Token = selectValueTokenImpl(this)
+  fun selectValueTokenImpl(exprImpl: SelectValue): Token = with (exprImpl) {
     when {
       // SelectValue(Ident(? or name, _), _, _)
       expr is Ident -> expr.name.token
@@ -481,7 +492,7 @@ abstract class SqlIdiom: HasPhasePrinting {
 
       else -> xrError("Illegal SelectValue clause: ${this}")
     }
-
+  }
 
   fun makeProductAggregationToken(id: String) =
     when(productAggregationToken) {
