@@ -11,6 +11,7 @@ import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.Location
 import io.exoquery.plugin.show
+import io.exoquery.plugin.source
 import io.exoquery.plugin.transform.CX
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.IrElement
@@ -22,6 +23,7 @@ import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetField
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.isAny
 import org.jetbrains.kotlin.ir.types.isBoolean
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
@@ -69,7 +71,7 @@ object TypeParser {
           parse(type)
       }
     } catch (e: Exception) {
-      parseErrorFromType("ERROR Could not parse the type: ${type.dumpKotlinLike()} (${type.toString()}", expr)
+      parseErrorFromType("ERROR Could not parse the type: ${type.dumpKotlinLike()} (in the expression: `${expr.source()}`", expr)
     }
 
   context(CX.Scope, CX.Parsing, CX.Symbology) private fun parse(expr: IrType): XRType =
@@ -129,6 +131,11 @@ object TypeParser {
 
       case(Ir.Type.Generic[Is()]).then { type ->
         //error("----------- Got here: ${type} ----------")
+        XRType.Generic
+      },
+
+      case(Is<IrType> { it.isAny() }).then {
+        //error("----------- Got here: ${it} ----------")
         XRType.Generic
       }
     ) ?: run {

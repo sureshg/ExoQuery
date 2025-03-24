@@ -48,6 +48,7 @@ import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import io.exoquery.xr.isConverterFunction
 import io.exoquery.xr.isNumeric
+import io.exoquery.xr.of
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -55,6 +56,7 @@ import org.jetbrains.kotlin.backend.common.lower.loops.isInductionVariable
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrBranch
@@ -66,6 +68,7 @@ import org.jetbrains.kotlin.ir.expressions.IrDeclarationReference
 import org.jetbrains.kotlin.ir.expressions.IrElseBranch
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
+import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isBoolean
 import org.jetbrains.kotlin.ir.types.isChar
@@ -113,7 +116,8 @@ object ParseExpression {
     on(expr).match(
       case(Ir.Variable[Is(), Is()]).thenThis { name, rhs ->
         val irType = TypeParser.of(this)
-        XR.Variable(XR.Ident(name.sanitizeIdentName(), irType, rhs.locationXR()), parse(rhs), expr.loc)
+        val rhsXR = parse(rhs)
+        XR.Variable(XR.Ident(name.sanitizeIdentName(), irType, rhs.locationXR()), rhsXR, expr.loc)
       }
     ) ?: parseError("Could not parse Ir Variable statement from:\n${expr.dumpSimple()}")
 
@@ -218,6 +222,8 @@ object ParseExpression {
         binds.addParam(bid, paramValue, paramBind)
         XR.TagForParam(bid, paramType, TypeParser.of(this), paramValue.loc)
       },
+
+      // x.let { stuff(...it...) } -> Apply(stuff(...it...), x)
 
       case(Ir.Call.FunctionMem1[Is(), Is("let"), Is()]).thenThis { head, lambda ->
         val reciever = parse(head)
@@ -325,8 +331,22 @@ object ParseExpression {
       },
       // Binary Operators
       case(ExtractorsDomain.Call.`x op y`[Is()]).thenThis { opCall ->
-        val (x, op, y) = opCall
-        XR.BinaryOp(parse(x), op, parse(y), expr.loc)
+        fun IrExpression.isGetTemporaryVar() =
+          (this as? IrGetValue)?.symbol?.owner?.origin == IrDeclarationOrigin.IR_TEMPORARY_VARIABLE
+
+        val (xExpr, op, yExpr) = opCall
+        val x = parse(xExpr)
+        val y = parse(yExpr)
+        val output = XR.BinaryOp(x, op, y, expr.loc)
+
+        if (y.type.isProduct() && !(x is XR.Const.Null && yExpr.isGetTemporaryVar())) {
+          parseError("Invalid right-hand-side argument ${y.show()} (whose type was ${y.type.shortString()}) in the expression ${output.show()}. Cannot directly call operators (including null-checks) on variables representing composite types (i.e. rows-types and anything representing a group of columns) because this cannot be done in SQL. Instead, call the null-check on a column variable.", expr)
+        }
+        if (x.type.isProduct() && !(y is XR.Const.Null && xExpr.isGetTemporaryVar())) {
+          parseError("Invalid left-hand-side argument ${x.show()} (whose type was ${x.type.shortString()}) in the expression ${output.show()}.  Cannot directly call operators (including null-checks) on variables representing composite types (i.e. rows-types and anything representing a group of columns) because this cannot be done in SQL. Instead, call the null-check on a column variable.", expr)
+        }
+
+        output
       },
       // Unary Operators
       case(ExtractorsDomain.Call.`(op)x`[Is()]).thenThis { opCall ->
@@ -374,14 +394,17 @@ object ParseExpression {
       //   XR.BinaryOp(parse(a), parseSymbol(this.symbol), parse(b))
       // }
       // ,
-      case(Ir.Block[Is(), Is()]).then { stmts, ret ->
+      case(Ir.Block[Is(), Is()]).thenThis { stmts, ret ->
+        val tpe = TypeParser.of(this)
+        if (this.origin == IrStatementOrigin.ELVIS && tpe.isProduct()) {
+          parseError("Elvis operator cannot be called on a composite type (i.e. rows-types and anything representing a group of columns) because this cannot be done in SQL", this)
+        }
         XR.Block(stmts.map { parseBlockStatement(it) }, parse(ret), expr.loc)
       },
       case(Ir.When[Is()]).thenThis { cases ->
         val elseBranch = cases.find { it is IrElseBranch }?.let { parseBranch(it) }
         val casesAst = cases.filterNot { it is IrElseBranch }.map { parseBranch(it) }
         val allReturnsAreBoolean = cases.all { it.result.type.isClass<Boolean>() }
-
         // Kotlin converts (A && B) to `if(A) B else false`. This undoes that
         if (
             allReturnsAreBoolean &&

@@ -495,8 +495,8 @@ sealed interface XR {
   // I.e. a lambda function. It can be used as an expression in some cases but not a query (although it's body maybe a query or expression)
   @Serializable
   @Mat
-  data class FunctionN(@CS val params: List<Ident>, @Slot val body: XR.U.QueryOrExpression, override val loc: Location = Location.Synth): Expression, PC<FunctionN> {
-    @Transient override val productComponents = productOf(this, body)
+  data class FunctionN(@Slot val params: List<Ident>, @Slot val body: XR.U.QueryOrExpression, override val loc: Location = Location.Synth): Expression, PC<FunctionN> {
+    @Transient override val productComponents = productOf(this, params, body)
     override val type get() = body.type
     companion object {}
     override fun toString() = show()
@@ -729,6 +729,8 @@ sealed interface XR {
   @Serializable
   sealed interface Const: Expression {
     companion object {
+      val True = Const.Boolean(true)
+      val False = Const.Boolean(false)
       operator fun invoke(value: kotlin.Boolean, loc: Location = Location.Synth) = Boolean(value, loc)
       operator fun invoke(value: kotlin.Char, loc: Location = Location.Synth) = Char(value, loc)
       operator fun invoke(value: kotlin.Short, loc: Location = Location.Synth) = Short(value, loc)

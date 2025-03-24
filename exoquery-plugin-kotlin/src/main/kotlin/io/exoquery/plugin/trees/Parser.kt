@@ -17,10 +17,6 @@ import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
-
-
-inline fun <reified R> Is.Companion.of(vararg possibilities: R): Is<R> = Is.PredicateAs(io.decomat.Typed<R>(), { possibilities.contains(it) })
-
 object Parser {
   context (CX.Scope, CX.Symbology)
   fun <X> scoped(parse: context(CX.Scope, CX.Symbology, CX.Parsing) () -> X): X =

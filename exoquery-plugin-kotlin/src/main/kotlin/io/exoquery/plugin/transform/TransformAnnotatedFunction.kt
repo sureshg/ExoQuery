@@ -17,7 +17,6 @@ import io.exoquery.plugin.trees.DynamicsAccum
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.Parser
 import io.exoquery.plugin.trees.SqlQueryExpr
-import io.exoquery.plugin.trees.of
 import io.exoquery.xr.XR
 import io.exoquery.plugin.trees.ExtractorsDomain.Call
 import io.exoquery.plugin.trees.SqlExpressionExpr

@@ -1,5 +1,6 @@
 package io.exoquery.sql
 
+import io.decomat.*
 import io.exoquery.printing.HasPhasePrinting
 import io.exoquery.sql.FlattenSqlQuery
 import io.exoquery.util.*
@@ -15,7 +16,6 @@ import io.exoquery.xr.XR.Ident
 import io.exoquery.xr.XR.Const.Null
 import io.exoquery.xr.XR.ParamType
 import io.exoquery.xrError
-
 
 interface SqlIdiom: HasPhasePrinting {
 
@@ -535,9 +535,17 @@ interface SqlIdiom: HasPhasePrinting {
   // it will be part of the int/long/float/double constant and not a separate unary operator
   // so we don't need to consider that case here.
   val XR.UnaryOp.token get(): Token = xrUnaryOpTokenImpl(this)
-  fun xrUnaryOpTokenImpl(unaryOpImpl: XR.UnaryOp): Token = with (unaryOpImpl) {
-    +"${op.token} (${expr.token})"
-  }
+  fun xrUnaryOpTokenImpl(unaryOpImpl: XR.UnaryOp): Token =
+    on(unaryOpImpl).match(
+      // NOT (x IS NULL) => x IS NOT NULL
+      case(XR.UnaryOp[Is<OP.not>(), BinaryOp[Is(), Is<OP.`==`>(), Is()]]).thenThis { (a, b) ->
+        xrBinaryOpTokenImpl(XR.BinaryOp(a, OP.`!=`, b))
+      }
+    ) ?: run {
+      with (unaryOpImpl) {
+        +"${op.token} (${expr.token})"
+      }
+    }
 
   val UnaryOperator.token get(): Token =
     when(this) {

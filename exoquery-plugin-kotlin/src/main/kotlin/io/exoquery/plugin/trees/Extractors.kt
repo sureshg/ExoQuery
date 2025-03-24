@@ -84,6 +84,10 @@ object Ir {
       }
   }
 
+  object Element {
+
+  }
+
   object Expr {
     class ClassOf<R>(val classNameRaw: ClassId?): Pattern0<IrExpression>(Typed<IrExpression>()) {
       override fun matches(r: ProductClass<IrExpression>): Boolean =
@@ -707,6 +711,7 @@ object Ir {
     object StatementsWithReturn {
       operator fun <AP: Pattern<List<IrStatement>>, BP: Pattern<IrExpression>> get(statements: AP, ret: BP) =
         customPattern2("BlockBody.StatementsWithReturn", statements, ret) { it: IrBlockBody ->
+
           if (it.statements.size > 0 && it.statements.last() is IrReturn) {
             Components2(it.statements.dropLast(1), (it.statements.last() as IrReturn).value)
           } else {

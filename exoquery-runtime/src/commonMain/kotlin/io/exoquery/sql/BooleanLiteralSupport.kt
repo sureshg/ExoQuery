@@ -1,13 +1,14 @@
 package io.exoquery.sql
 
+import io.exoquery.xr.BetaReduction
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 
 interface BooleanLiteralSupport: SqlIdiom {
   override fun normalizeQuery(xr: XR.Query): XR.Query = run {
     val norm = super.normalizeQuery(xr)
-    val vendorized = VendorizeBooleans(norm)
-    vendorized
+    val vendorized = VendorizeBooleans(norm) //BetaReduction(VendorizeBooleans(norm))
+    vendorized.asQuery()
   }
 
   override fun xrConstTokenImpl(constImpl: XR.Const): Token = with (constImpl) {

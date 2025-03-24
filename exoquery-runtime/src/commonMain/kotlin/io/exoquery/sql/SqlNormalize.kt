@@ -41,9 +41,9 @@ class SqlNormalize(
       .andThen("BetaReduce-Initial") {
         BetaReduction.ofQuery(it)
       }
-      .andThen("ExpandProductNullChecks") {
-        ExpandProductNullChecks(it)
-      }
+      //.andThen("ExpandProductNullChecks") {
+      //  ExpandProductNullChecks(it)
+      //}
       .andThen("RepropagateTypes") {
         RepropagateTypesPhase(it)
       }

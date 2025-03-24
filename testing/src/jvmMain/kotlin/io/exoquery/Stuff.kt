@@ -1,3 +1,7 @@
+import io.exoquery.PostgresDialect
+import io.exoquery.capture
+import io.exoquery.printSource
+
 ////@file:TracesEnabled(TraceType.SqlNormalizations::class, TraceType.Normalizations::class)
 //
 //package io.exoquery
@@ -125,3 +129,23 @@
 ////    x
 ////  }
 ////}
+
+fun main() {
+  data class Name(val first: String, val last: String)
+  data class Person(val name: Name?, val age: Int)
+
+  val p = Person(Name("Joe", "Smith"), 123)
+  fun foo(v: String) = v
+  fun foo(v: Name) = v
+
+//  val s = printSource {
+//    //(p.name ?: Name("John", "Doe")).first
+//    foo(p.name?.first ?: "John")
+//  }
+//  println(s)
+
+  val q = capture {
+    Table<Person>().map { p -> p.name?.first ?: "John" }
+  }
+  println(q.build<PostgresDialect>())
+}

@@ -416,7 +416,32 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
       shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
     }
 
-    "exists - lifted" {
+    "exists - lifted contains" {
+      val q = capture {
+        Table<TestEntity>()
+          // if (if (x == null) null else f(x)) == null) null else g(if (x == null) null else f(x))
+          .filter { t -> t.o?.let { it == true } ?: false }
+          .map { t -> t.b to true }
+      }
+      println(q.xr.showRaw())
+
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+
+    "exists - lifted not contains" {
+      val q = capture {
+        Table<TestEntity>()
+          .filter { t -> t.o?.let { param(true) } ?: false } // { it -> true }.apply(t.o) -> true
+          .map { t -> t.b to true }
+      }
+      println(q.xr.showRaw())
+
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+    }
+
+    "exists - lifted complex" {
       val q = capture {
         Table<TestEntity>()
           .filter { t -> t.o?.let { if (param(false)) param(false) else param(true) } ?: false }

@@ -2,6 +2,7 @@ package io.exoquery.xr
 
 import io.decomat.*
 import io.exoquery.BID
+import io.exoquery.xr.XR.BinaryOp
 
 // Can't use || or && chars because they don't work with linuxX64
 infix fun XR.Expression.`+or+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.or, other, this.loc)
@@ -10,6 +11,11 @@ infix fun XR.Expression.`+==+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(
 infix fun XR.Expression.`+!=+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.`!=`, other, this.loc)
 infix fun XR.Expression.`+'+'+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.strPlus, other, this.loc)
 infix fun XR.Expression.`+++`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.plus, other, this.loc)
+
+inline fun <reified R> Is.Companion.of(vararg possibilities: R): Is<R> = Is.PredicateAs(io.decomat.Typed<R>(), { possibilities.contains(it) })
+
+fun BinaryOp.oneSideIs(value: XR.Expression): Boolean =
+  this.a == value || this.b == value
 
 fun XR.Query.swapTags(tagMap: Map<BID, BID>): XR.Query =
   SwapTagsTransformer(tagMap).invoke(this)
@@ -69,10 +75,10 @@ CollectAst(ast) {
 
 // case(When.SingleBranch[Is(), Is()])
 
-val XR.When.Companion.SingleBranch get() = SingleBranch()
-class SingleBranch {
-  operator fun <AP: Pattern<A>, A: XR.Expression, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
-    customPattern2("When.SingleBranch", x, y) { it: XR.When ->
+val XR.When.Companion.CondThen get() = CondThen()
+class CondThen {
+  operator fun <AP: Pattern<A>, A: XR.Expression, BP: Pattern<XR.Expression>> get(cond: AP, then: BP) =
+    customPattern2("When.SingleBranch", cond, then) { it: XR.When ->
       with(it) {
         when {
           this.branches.size == 1 -> Components2(this.branches[0].cond, this.branches[0].then)
@@ -82,24 +88,138 @@ class SingleBranch {
     }
 }
 
-val XR.When.Companion.NullIfNullOrX get() = NullIfNullOrX()
-class NullIfNullOrX {
+object PairOf {
+  operator fun <AP: Pattern<A>, BP: Pattern<B>, A, B> get(a: AP, b: BP) =
+    customPattern2("PairOf", a, b) { it: Pair<A, B> ->
+      Components2(it.first, it.second)
+    }
+}
+
+val XR.When.Companion.CondThenElse get() = CondThenElse()
+class CondThenElse {
+  operator fun <AP: Pattern<A>, A: XR.Expression, BP: Pattern<Pair<XR.Expression, XR.Expression>>> get(cond: AP, thenElse: BP) =
+    customPattern2("When.CondThenElse", cond, thenElse) { it: XR.When ->
+      with(it) {
+        when {
+          this.branches.size == 1 -> Components2(this.branches[0].cond, this.branches[0].then to this.orElse)
+          else -> null
+        }
+      }
+    }
+}
+
+// TODO definitely want to early-exist this and make more efficient
+fun XR.contains(other: XR) =
+  CollectXR(this) {
+    if (it == other) it else null
+  }.isNotEmpty()
+
+val XR.BinaryOp.Companion.ProductNullCheck get() = ProductNullCheck()
+class ProductNullCheck {
   operator fun <AP: Pattern<XR.Expression>> get(x: AP) =
-    customPattern1("When.NullIfNullOrX", x) { it: XR.When ->
+    customPattern1("When.ProductNullCheck", x) { it: XR.BinaryOp ->
       on(it).match(
-        /* Simple example:
-         * ```
-         * val x = from(...)
-         * val y = joinLeft(...)
-         * y?.foo
-         * ```
-         * The `y?.foo` is interpreted in Kotlin is `if (y == null) null else y.foo`
-         * so in this case we want to just use y.foo because y itself cannot be null in the SQL
-         */
-        case(XR.When.SingleBranch[XR.BinaryOp.EqEq[Is(), NullXR()], NullXR()]).thenThis { _, _ ->
-          Components1(this.orElse)
+        case(XR.BinaryOp.OneSideIs[IsTypeProduct(), Is.of(OP.`==`, OP.`!=`), NullXR()]).thenThis { a, b ->
+          Components1(a)
         }
       )
+    }
+}
+
+val XR.When.Companion.IfNull get() = IfNull()
+class IfNull {
+  operator fun <AP: Pattern<XR.Expression>, BP: Pattern<Pair<XR.Expression, XR.Expression>>> get(x: AP, y: BP) =
+    customPattern2("When.IfNull", x, y) { it: XR.When ->
+      on(it).match(
+        case(XR.When.CondThen[XR.BinaryOp.OneSideIs[NullXR(), Is<OP.`==`>(), Is()], Is()]).thenThis { (nullSide, notNullSide), thenSide ->
+          Components2(notNullSide, thenSide to this.orElse)
+        }
+      )
+    }
+}
+
+
+val XR.When.Companion.IfCondThenFalseOrTrue get() = IfCondThenFalseOrTrue()
+class IfCondThenFalseOrTrue {
+  operator fun <AP: Pattern<XR.Expression>> get(x: AP) =
+    customPattern1("When.IfNullThenFalseOrTrue", x) { it: XR.When ->
+      on(it).match(
+        case(XR.When.CondThenElse[Is(), Is()]).thenThis { cond, (thenSide, elseSide) ->
+          if (thenSide == XR.Const.False && elseSide == XR.Const.True)
+            Components1(cond)
+          else
+            null
+        }
+      )
+    }
+}
+
+
+val XR.When.Companion.IfCondThenTrueOrFalse get() = IfCondThenTrueOrFalse()
+class IfCondThenTrueOrFalse {
+  operator fun <AP: Pattern<XR.Expression>> get(x: AP) =
+    customPattern1("When.IfNullThenTrueOrFalse", x) { it: XR.When ->
+      on(it).match(
+        case(XR.When.CondThenElse[Is(), Is()]).thenThis { cond, (thenSide, elseSide) ->
+          if (thenSide == XR.Const.True && elseSide == XR.Const.False)
+            Components1(cond)
+          else
+            null
+        }
+      )
+    }
+}
+
+val XR.When.Companion.NullIfNullOrX get() = NullIfNullOrX()
+class NullIfNullOrX {
+  operator fun <AP: Pattern<XR.Expression>, BP: Pattern<XR.Expression>> get(notNullSide: AP, elseClause: BP) =
+    customPattern1("When.NullIfNullOrX", notNullSide) { it: XR.When ->
+      // if (x == null) null else x
+      on(it).match(
+        case(XR.When.CondThen[XR.BinaryOp.OneSideIs[NullXR(), Is<OP.`==`>(), Is()], NullXR()]).thenThis { (nullSide, notNullSide), _ ->
+          if (notNullSide == this.orElse)
+            Components1(notNullSide)
+          else
+            null
+        }
+      )
+    }
+}
+
+operator fun <OP: Pattern<UnaryOperator>, AP: Pattern<A>, A: XR.Expression> XR.UnaryOp.Companion.get(op: OP, expr: AP) =
+  customPattern1("When.UnaryOp", expr) { it: XR.UnaryOp ->
+    if (op.matchesAny(it.op) && expr.matchesAny(it.expr)) {
+      Components1(it.expr)
+    } else {
+      null
+    }
+  }
+
+operator fun <AP: Pattern<XR.Expression>, MP: Pattern<OP>, BP: Pattern<XR.Expression>> XR.BinaryOp.Companion.get(a: AP, m: MP, b: BP) =
+  customPattern2("BinaryOp3", a, b) { it: XR.BinaryOp ->
+    if (m.matchesAny(it.op) && a.matchesAny(it.a) && b.matchesAny(it.b)) {
+      Components2(it.a, it.b)
+    } else {
+      null
+    }
+  }
+
+
+val XR.BinaryOp.Companion.OneSideIs get() = OneSideIs()
+class OneSideIs {
+  operator fun <OneSide: Pattern<XR.Expression>, OP: Pattern<BinaryOperator>, OtherSide: Pattern<XR.Expression>> get(oneSide: OneSide, op: OP, otherSide: OtherSide) =
+    customPattern2("When.OneSideIs", oneSide, otherSide) { it: XR.BinaryOp ->
+      if (op.matchesAny(it.op)) {
+        if (oneSide.matchesAny(it.a)) {
+          Components2(it.a, it.b)
+        } else if (oneSide.matchesAny(it.b)) {
+          Components2(it.b, it.a)
+        } else {
+          null
+        }
+      } else {
+        null
+      }
     }
 }
 
@@ -109,7 +229,7 @@ class XIsNotNullOrNull {
     customPattern1("When.XIsNotNullOrNull", x) { it: XR.When ->
       on(it).match(
         // if (x != null) x else null -> x
-        case(XR.When.SingleBranch[XR.BinaryOp.NotEq[Is(), NullXR()], Is()]).thenIfThis { _, _ -> NullXR().matchesAny(orElse) }.thenThis { _, then ->
+        case(XR.When.CondThen[XR.BinaryOp.OneSideIs[NullXR(), Is<OP.`!=`>(), Is()], Is()]).thenIfThis { (isNull, otherSide), thenTerm -> NullXR().matchesAny(orElse) && thenTerm.contains(otherSide) }.thenThis { _, then ->
           Components1(then)
         }
       )

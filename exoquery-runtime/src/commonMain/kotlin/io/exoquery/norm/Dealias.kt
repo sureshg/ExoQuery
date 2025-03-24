@@ -146,7 +146,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
           CustomQueryRef.cs(customQuery) to state
         }
         is FunctionApply, is FunctionN, is Ident ->
-          xrError("Dealiasing not supported (it should have been done already) for: $this")
+          xrError("Dealiasing not supported (it should have been done already) for: ${this.showRaw()}")
       }
   }
 
