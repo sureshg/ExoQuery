@@ -16,13 +16,13 @@ object BooleanLiteralSupportSpecGoldenDynamic: GoldenQueryFile {
       "Table(Ent).map { e -> e.bb == true }"
     ),
     "value-fy boolean expression where needed/map-clause/SQL" to cr(
-      "SELECT 1 = e.bb AS value FROM Ent e"
+      "SELECT e.bb AS value FROM Ent e"
     ),
     "value-fy boolean expression where needed/map-clause with int/XR" to kt(
       "Table(Ent).map { e -> e.num > 10 }"
     ),
     "value-fy boolean expression where needed/map-clause with int/SQL" to cr(
-      "SELECT e.num > 10 AS value FROM Ent e"
+      "SELECT CASE WHEN e.num > 10 THEN 1 ELSE 0 END AS value FROM Ent e"
     ),
     "value-fy boolean expression where needed/tuple/XR" to kt(
       "Table(Ent).map { e -> Tuple(first = foo, second = e.bb == true) }"
@@ -46,19 +46,19 @@ object BooleanLiteralSupportSpecGoldenDynamic: GoldenQueryFile {
       """Table(Ent).filter { e -> free(", ${'$'}{e.i},  > 123").asCondition() }"""
     ),
     "sql/expressify asCondition/filter-clause/SQL" to cr(
-      "SELECT e.name, e.i, e.b FROM Ent e WHERE CASE WHEN e.i > 123 THEN 1 ELSE 0 END"
+      "SELECT e.name, e.i, e.b FROM Ent e WHERE e.i > 123"
     ),
     "sql/expressify asCondition/pure filter-clause/XR" to kt(
       """Table(Ent).filter { e -> free(", ${'$'}{e.i},  > 123").asPureCondition() }"""
     ),
     "sql/expressify asCondition/pure filter-clause/SQL" to cr(
-      "SELECT e.name, e.i, e.b FROM Ent e WHERE CASE WHEN e.i > 123 THEN 1 ELSE 0 END"
+      "SELECT e.name, e.i, e.b FROM Ent e WHERE e.i > 123"
     ),
     "sql/expressify asCondition/map-clause/XR" to kt(
       """Table(Ent).map { e -> free(", ${'$'}{e.i},  > 123").asCondition() }"""
     ),
     "sql/expressify asCondition/map-clause/SQL" to cr(
-      "SELECT e.i > 123 AS value FROM Ent e"
+      "SELECT CASE WHEN e.i > 123 THEN 1 ELSE 0 END AS value FROM Ent e"
     ),
     "sql/expressify asCondition/distinct map-clause/XR" to kt(
       """Table(Ent).map { e -> Tuple(first = foo, second = free(", ${'$'}{e.i},  > 123").asCondition()) }.distinct.map { r -> Tuple(first = baz, second = r.second) }"""
@@ -76,7 +76,7 @@ object BooleanLiteralSupportSpecGoldenDynamic: GoldenQueryFile {
       """Table(Ent).map { e -> free(", ${'$'}{e.i},  > 123").asPureCondition() }"""
     ),
     "sql/expressify asCondition/pure map-clause/SQL" to cr(
-      "SELECT e.i > 123 AS value FROM Ent e"
+      "SELECT CASE WHEN e.i > 123 THEN 1 ELSE 0 END AS value FROM Ent e"
     ),
     "sql/expressify asCondition/pure distinct map-clause/XR" to kt(
       """Table(Ent).map { e -> Tuple(first = foo, second = free(", ${'$'}{e.i},  > 123").asPureCondition()) }.distinct.map { r -> Tuple(first = baz, second = r.second) }"""
@@ -88,13 +88,13 @@ object BooleanLiteralSupportSpecGoldenDynamic: GoldenQueryFile {
       """Table(Ent).map { e -> free(", ${'$'}{e.i},  > 123").asPureCondition() }.distinct.map { r -> Tuple(first = r, second = r) }"""
     ),
     "sql/expressify asCondition/pure map-clause - double element/SQL" to cr(
-      "SELECT r.value AS first, r.value AS second FROM (SELECT DISTINCT e.i > 123 AS value FROM Ent e) AS r"
+      "SELECT r.value AS first, r.value AS second FROM (SELECT DISTINCT CASE WHEN e.i > 123 THEN 1 ELSE 0 END AS value FROM Ent e) AS r"
     ),
     "sql/valuefy normally/filter-clause/XR" to kt(
       """Table(Ent).filter { e -> free("SomeUdf(, ${'$'}{e.i}, )").invoke() }"""
     ),
     "sql/valuefy normally/filter-clause/SQL" to cr(
-      "SELECT e.name, e.i, e.b FROM Ent e WHERE SomeUdf(e.i)"
+      "SELECT e.name, e.i, e.b FROM Ent e WHERE 1 = SomeUdf(e.i)"
     ),
     "sql/valuefy normally/map-clause/XR" to kt(
       """Table(Ent).map { e -> free("SomeUdf(, ${'$'}{e.i}, )").invoke() }.map { x -> x + 1 }"""
@@ -106,59 +106,59 @@ object BooleanLiteralSupportSpecGoldenDynamic: GoldenQueryFile {
       """Table(Product).filter { p -> TagP("0").toInt_MC() == p.sku }"""
     ),
     "do not expressify string transforming operations/first parameter/SQL" to cr(
-      "SELECT p.id, p.desc, p.sku FROM Product p WHERE CASE WHEN CAST({0:1} AS INTEGER) = p.sku THEN 1 ELSE 0 END",
+      "SELECT p.id, p.desc, p.sku FROM Product p WHERE CAST({0:1} AS INTEGER) = p.sku",
       "0" to "1"
     ),
     "do not expressify string transforming operations/second parameter/XR" to kt(
       """Table(Product).filter { p -> p.sku == TagP("0").toInt_MC() }"""
     ),
     "do not expressify string transforming operations/second parameter/SQL" to cr(
-      "SELECT p.id, p.desc, p.sku FROM Product p WHERE CASE WHEN p.sku = CAST({0:1} AS INTEGER) THEN 1 ELSE 0 END",
+      "SELECT p.id, p.desc, p.sku FROM Product p WHERE p.sku = CAST({0:1} AS INTEGER)",
       "0" to "1"
     ),
     "do not expressify string transforming operations/both parameters/XR" to kt(
       """Table(Product).filter { p -> TagP("0").toInt_MC() == TagP("1").toInt_MC() }"""
     ),
     "do not expressify string transforming operations/both parameters/SQL" to cr(
-      "SELECT p.id, p.desc, p.sku FROM Product p WHERE CASE WHEN CAST({0:2} AS INTEGER) = CAST({1:1} AS INTEGER) THEN 1 ELSE 0 END",
+      "SELECT p.id, p.desc, p.sku FROM Product p WHERE CAST({0:2} AS INTEGER) = CAST({1:1} AS INTEGER)",
       "0" to "2", "1" to "1"
     ),
     "joins/for-comprehension with constant/XR" to kt(
       "select { val t1 = from(Table(TestEntity)); val t2 = join(Table(TestEntity)) { true } }"
     ),
     "joins/for-comprehension with constant/SQL" to cr(
-      "SELECT t1.s, t1.i, t1.l, t1.o, t1.b, t.s, t.i, t.l, t.o, t.b FROM TestEntity t1 INNER JOIN TestEntity t ON 1"
+      "SELECT t1.s, t1.i, t1.l, t1.o, t1.b, t.s, t.i, t.l, t.o, t.b FROM TestEntity t1 INNER JOIN TestEntity t ON 1 = 1"
     ),
     "joins/for-comprehension with field/XR" to kt(
       "select { val t1 = from(Table(TestEntity)); val t2 = join(Table(TestEntity)) { t.b } }"
     ),
     "joins/for-comprehension with field/SQL" to cr(
-      "SELECT t1.s, t1.i, t1.l, t1.o, t1.b, t.s, t.i, t.l, t.o, t.b FROM TestEntity t1 INNER JOIN TestEntity t ON t.b"
+      "SELECT t1.s, t1.i, t1.l, t1.o, t1.b, t.s, t.i, t.l, t.o, t.b FROM TestEntity t1 INNER JOIN TestEntity t ON 1 = t.b"
     ),
     "optionals/exists/XR" to kt(
       "Table(TestEntity).filter { t -> if ({ val tmp0_elvis_lhs = t.o; if (tmp0_elvis_lhs == null) false else tmp0_elvis_lhs }) false else true }.map { t -> Tuple(first = t.b, second = true) }"
     ),
     "optionals/exists/SQL" to cr(
-      "SELECT t.b AS first, 1 AS second FROM TestEntity t WHERE CASE WHEN NOT (t.o IS NULL AND 1 = 0 OR t.o IS NOT NULL AND 1 = t.o) THEN 1 ELSE 0 END"
+      "SELECT t.b AS first, 1 AS second FROM TestEntity t WHERE NOT (CASE WHEN t.o IS NULL THEN 0 ELSE t.o END)"
     ),
     "optionals/exists - lifted contains/XR" to kt(
       "Table(TestEntity).filter { t -> { val tmp1_elvis_lhs = { val tmp0_safe_receiver = t.o; if (tmp0_safe_receiver == null) null else { it -> it == true }.apply(tmp0_safe_receiver) }; if (tmp1_elvis_lhs == null) false else tmp1_elvis_lhs } }.map { t -> Tuple(first = t.b, second = true) }"
     ),
     "optionals/exists - lifted contains/SQL" to cr(
-      "SELECT t.b AS first, 1 AS second FROM TestEntity t WHERE CASE WHEN t.o IS NULL THEN 0 ELSE t.o END"
+      "SELECT t.b AS first, 1 AS second FROM TestEntity t WHERE t.o IS NULL AND 1 = 0 OR t.o IS NOT NULL AND 1 = t.o"
     ),
     "optionals/exists - lifted not contains/XR" to kt(
       """Table(TestEntity).filter { t -> { val tmp1_elvis_lhs = { val tmp0_safe_receiver = t.o; if (tmp0_safe_receiver == null) null else { it -> TagP("0") }.apply(tmp0_safe_receiver) }; if (tmp1_elvis_lhs == null) false else tmp1_elvis_lhs } }.map { t -> Tuple(first = t.b, second = true) }"""
     ),
     "optionals/exists - lifted not contains/SQL" to cr(
-      "SELECT t.b AS first, 1 AS second FROM TestEntity t WHERE CASE WHEN CASE WHEN t.o IS NULL THEN null ELSE {1:true} END IS NULL THEN 0 ELSE CASE WHEN t.o IS NULL THEN null ELSE {1:true} END END",
+      "SELECT t.b AS first, 1 AS second FROM TestEntity t WHERE 1 = CASE WHEN CASE WHEN t.o IS NULL THEN null ELSE {1:true} END IS NULL THEN 0 ELSE CASE WHEN t.o IS NULL THEN null ELSE {1:true} END END",
       "0" to "true", "0" to "true"
     ),
     "optionals/exists - lifted complex/XR" to kt(
       """Table(TestEntity).filter { t -> { val tmp1_elvis_lhs = { val tmp0_safe_receiver = t.o; if (tmp0_safe_receiver == null) null else { it -> if (TagP("1")) TagP("2") else TagP("0") }.apply(tmp0_safe_receiver) }; if (tmp1_elvis_lhs == null) false else tmp1_elvis_lhs } }.map { t -> Tuple(first = t.b, second = true) }"""
     ),
     "optionals/exists - lifted complex/SQL" to cr(
-      "SELECT t.b AS first, 1 AS second FROM TestEntity t WHERE CASE WHEN CASE WHEN t.o IS NULL THEN null ELSE CASE WHEN 1 = {3:false} THEN {4:false} ELSE {5:true} END END IS NULL THEN 0 ELSE CASE WHEN t.o IS NULL THEN null ELSE CASE WHEN 1 = {3:false} THEN {4:false} ELSE {5:true} END END END",
+      "SELECT t.b AS first, 1 AS second FROM TestEntity t WHERE 1 = CASE WHEN CASE WHEN t.o IS NULL THEN null ELSE CASE WHEN {3:false} THEN {4:false} ELSE {5:true} END END IS NULL THEN 0 ELSE CASE WHEN t.o IS NULL THEN null ELSE CASE WHEN {3:false} THEN {4:false} ELSE {5:true} END END END",
       "1" to "false", "2" to "false", "0" to "true", "1" to "false", "2" to "false", "0" to "true"
     ),
   )

@@ -5,12 +5,10 @@ import io.exoquery.xr.`+and+`
 import io.exoquery.xr.`+or+`
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.OP
-import io.exoquery.xr.OP.and
 import io.exoquery.xr.StatelessTransformer
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import io.exoquery.xr.copy.BinaryOp
-import io.exoquery.xr.copy.Branch
 import io.exoquery.xr.copy.Filter
 import io.exoquery.xr.copy.FlatJoin
 import io.exoquery.xr.copy.When
@@ -34,22 +32,14 @@ object VendorizeBooleans: StatelessTransformer {
     with (xr) {
       when (this) {
         // Map clauses need values e.g. map(n=>n.status==true) => map(n=>if(n.status==true) 1 else 0)
-        is XR.Map -> Map.cs(invoke(head), id, expressifyValue(invoke(body)))
+        is XR.Map -> Map.cs(invoke(head), id, valuefyExpression(invoke(body)))
         // Filter clauses need expressions e.g. filter(n=>n.isTrue) becomes filter(n=>n.isTrue==1)
-        is XR.Filter -> Filter.cs(invoke(head), id, valueifyWhenOrRecurse(body))
+        is XR.Filter -> Filter.cs(invoke(head), id, expressifyValue(body))
         // FlatJoin clauses need expressions e.g. flatJoin(n=>n.isTrue) becomes flatJoin(n=>n.isTrue==1)
-        is XR.FlatJoin -> FlatJoin.cs(invoke(head), id, valueifyWhenOrRecurse(on))
-        is XR.FlatFilter -> XR.FlatFilter.csf(valueifyWhenOrRecurse(by))(this)
+        is XR.FlatJoin -> FlatJoin.cs(invoke(head), id, expressifyValue(on))
+        is XR.FlatFilter -> XR.FlatFilter.csf(expressifyValue(by))(this)
         else -> super.invoke(xr)
       }
-    }
-
-  fun valueifyWhenOrRecurse(xr: XR.Expression): XR.Expression =
-    with (xr) {
-      // If we want to eagerly turn if-statements into conjunctions we can do it here.
-      // With the advanced checks that the beta reducer currently does this does not produces simpler expressions.
-      //if (this is XR.When && allPartsBooleanValue()) invoke(reduceToExpression()) else
-      valuefyExpression(invoke(xr))
     }
 
 
