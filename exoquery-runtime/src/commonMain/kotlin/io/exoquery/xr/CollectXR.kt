@@ -62,10 +62,14 @@ class ContainsXR(private val predicate: (XR) -> Boolean): StatefulTransformer<Bo
 }
 
 open class TransformXR(
-  val transformExpression: (XR.Expression) -> XR.Expression? = { it },
-  val transformQuery: (XR.Query) -> XR.Query? = { it },
-  val transformBranch: (XR.Branch) -> XR.Branch? = { it },
-  val transformVariable: (XR.Variable) -> XR.Variable? = { it },
+  // MAKE SURE that the default value of these lambdas is always { null } since only that will make the
+  // transfoemrs delegate to the super to transformer their branches. Remember that the null-check is
+  // the equivalent of a partial-function-miss here since Kotlin has no partial functions. It tells
+  // the super-transformer to continue down the tree.
+  val transformExpression: (XR.Expression) -> XR.Expression? = { null },
+  val transformQuery: (XR.Query) -> XR.Query? = { null },
+  val transformBranch: (XR.Branch) -> XR.Branch? = { null },
+  val transformVariable: (XR.Variable) -> XR.Variable? = { null },
 ): StatelessTransformer {
 
   // For each transform, if the transform-function actually "captures" the given XR use the result of that,
@@ -121,6 +125,10 @@ class TransformerBuilder {
     this
   }
 
-  operator fun invoke(xr: XR) = TransformXR(transformExpression ?: { it }, transformQuery ?: { it }).invoke(xr)
-  operator fun invoke(xr: XR.U.QueryOrExpression): XR.U.QueryOrExpression = TransformXR(transformExpression ?: { it }, transformQuery ?: { it }).invoke(xr)
+  // MAKE SURE that the default value of these lambdas is always { null } since only that will make the
+  // transfoemrs delegate to the super to transformer their branches. Remember that the null-check is
+  // the equivalent of a partial-function-miss here since Kotlin has no partial functions. It tells
+  // the super-transformer to continue down the tree.
+  operator fun invoke(xr: XR) = TransformXR(transformExpression ?: { null }, transformQuery ?: { null }).invoke(xr)
+  operator fun invoke(xr: XR.U.QueryOrExpression): XR.U.QueryOrExpression = TransformXR(transformExpression ?: { null }, transformQuery ?: { null }).invoke(xr)
 }

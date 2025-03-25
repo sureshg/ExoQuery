@@ -126,10 +126,25 @@ class ProductNullCheck {
     }
 }
 
+val XR.When.Companion.IfNullThenNull get() = IfNullThenNull()
+class IfNullThenNull {
+  operator fun <AP: Pattern<XR.Expression>, BP: Pattern<XR.Expression>> get(notNull: AP, orElse: BP) =
+    customPattern2("When.IfNullThenNull", notNull, orElse) { it: XR.When ->
+      on(it).match(
+        case(XR.When.IfNull[Is(), Is()]).thenThis { notNullSide, (then, orElse) ->
+          if (then is XR.Const.Null)
+            Components2(notNullSide, orElse)
+          else
+            null
+        }
+      )
+    }
+}
+
 val XR.When.Companion.IfNull get() = IfNull()
 class IfNull {
-  operator fun <AP: Pattern<XR.Expression>, BP: Pattern<Pair<XR.Expression, XR.Expression>>> get(x: AP, y: BP) =
-    customPattern2("When.IfNull", x, y) { it: XR.When ->
+  operator fun <AP: Pattern<XR.Expression>, BP: Pattern<Pair<XR.Expression, XR.Expression>>> get(notNullSide: AP, thenElse: BP) =
+    customPattern2("When.IfNull", notNullSide, thenElse) { it: XR.When ->
       on(it).match(
         case(XR.When.CondThen[XR.BinaryOp.OneSideIs[NullXR(), Is<OP.`==`>(), Is()], Is()]).thenThis { (nullSide, notNullSide), thenSide ->
           Components2(notNullSide, thenSide to this.orElse)

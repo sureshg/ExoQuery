@@ -84,7 +84,7 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
       },
       // if ((if (x == null) null else y) == null) zA else zB ->
       //   if (x == null || y == null) zA else zB
-      //case(XR.When.IfNull[XR.When.NullIfNullOrX[Is(), Is()], Is()]).thenThis { (x, y), (zA, zB) ->
+      //case(XR.When.IfNull[XR.When.IfNullThenNull[Is(), Is()], Is()]).thenThis { (x, y), (zA, zB) ->
       //  //invoke(this.orElse)
       //  val cond = (x `+==+` XR.Const.Null()) `+or+` (y `+==+` XR.Const.Null())
       //  invoke(XR.When.makeIf(cond, zA, zB))
@@ -153,22 +153,7 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
     )
 
 
-//    return when {
-//      // I.e. we have an actual replacement for this element
-//      replacement != null -> {
-//        val rep = BetaReduce(map - xr - replacement).invoke(replacement)
-//        correctTheTypeOfReplacement(xr, rep)
-//      }
-//
-//      // TODO have a equivalent for XOrNullIfNull check
-//      // TODO any performance impact of running this during every beta reduction?
-//      xr is XR.When && XR.When.NullIfNullOrX[Is()].matchesAny(xr) ->
-//        invoke(xr.orElse)
-//
-//      // TODO have a equivalent for XOrNullIfNull check
-//      // TODO any performance impact of running this during every beta reduction?
-//      xr is XR.When && XR.When.XIsNotNullOrNull[Is()].matchesAny(xr) ->
-//        invoke(xr.branches.first().then)
+//    when {
 //
 //      // E.g. `(if (x) Name(first=foo,second=bar) else Name(first=baz,second=waz)).first` ->
 //      //   `if (x) Name(first=foo,second=bar).first else Name(first=baz,second=waz).first` ->

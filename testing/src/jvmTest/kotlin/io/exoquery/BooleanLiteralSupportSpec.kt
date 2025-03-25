@@ -1,6 +1,6 @@
 package io.exoquery
 
-class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGoldenOverride(), {
+class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGoldenDynamic, Mode.ExoGoldenTest(), {
   "value-fy boolean expression where needed" - {
     data class Ent(val name: String, val b: Boolean, val bb: Boolean, val bc: Boolean, val num: Int)
     data class Status(val name: String, val value: Boolean)
@@ -356,7 +356,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
     "first parameter" {
       val q = capture {
         Table<Product>().filter { p -> param("1").toInt() == p.sku }
-      }
+      }.determinizeDynamics()
       shouldBeGolden(q.xr, "XR")
       shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
     }
@@ -364,7 +364,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
     "second parameter" {
       val q = capture {
         Table<Product>().filter { p -> p.sku == param("1").toInt() }
-      }
+      }.determinizeDynamics()
       shouldBeGolden(q.xr, "XR")
       shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
     }
@@ -372,7 +372,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
     "both parameters" {
       val q = capture {
         Table<Product>().filter { p -> param("2").toInt() == param("1").toInt() }
-      }
+      }.determinizeDynamics()
       shouldBeGolden(q.xr, "XR")
       shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
     }
@@ -434,7 +434,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
         Table<TestEntity>()
           .filter { t -> t.o?.let { param(true) } ?: false } // { it -> true }.apply(t.o) -> true
           .map { t -> t.b to true }
-      }
+      }.determinizeDynamics()
       println(q.xr.showRaw())
 
       shouldBeGolden(q.xr, "XR")
@@ -446,9 +446,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.
         Table<TestEntity>()
           .filter { t -> t.o?.let { if (param(false)) param(false) else param(true) } ?: false }
           .map { t -> t.b to true }
-      }
-      println(q.xr.showRaw())
-
+      }.determinizeDynamics()
       shouldBeGolden(q.xr, "XR")
       shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
     }

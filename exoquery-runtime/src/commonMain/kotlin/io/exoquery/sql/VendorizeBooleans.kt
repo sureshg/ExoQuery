@@ -46,12 +46,10 @@ object VendorizeBooleans: StatelessTransformer {
 
   fun valueifyWhenOrRecurse(xr: XR.Expression): XR.Expression =
     with (xr) {
-      when {
-        this is XR.When && allPartsBooleanValue() ->
-          invoke(reduceToExpression())
-        else ->
-          valuefyExpression(invoke(xr))
-      }
+      // If we want to eagerly turn if-statements into conjunctions we can do it here.
+      // With the advanced checks that the beta reducer currently does this does not produces simpler expressions.
+      //if (this is XR.When && allPartsBooleanValue()) invoke(reduceToExpression()) else
+      valuefyExpression(invoke(xr))
     }
 
 

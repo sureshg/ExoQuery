@@ -5,7 +5,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 
 
-class SelectClauseQueryReq : GoldenSpecDynamic(SelectClauseQueryReqGoldenDynamic, Mode.ExoGoldenOverride(), {
+class SelectClauseQueryReq : GoldenSpecDynamic(SelectClauseQueryReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "table.emb?.field" - {
     data class Name(val first: String, val last: String)
     data class Person(val name: Name?, val age: Int)
