@@ -29,7 +29,9 @@ import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrValueParameterSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.isNullablePrimitiveType
 import org.jetbrains.kotlin.ir.types.isPrimitiveType
+import org.jetbrains.kotlin.ir.types.isString
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.ClassId
@@ -74,8 +76,8 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
     companion object {
       context(CX.Scope)
       fun auto(expr: IrExpression) = run {
-        //logger.error("--------------- Process Paramter ${expr.dumpKotlinLike()} for type: ${expr.type.classId()}")
-        if (expr.type.isPrimitiveType())
+        // Both isNullablePrimitiveType() and isPrimitiveType() are not needed (the 1st one takes care of both) but doing this for clarity
+        if (expr.type.isNullablePrimitiveType() || expr.type.isPrimitiveType() || expr.type.isString() || expr.type.isNullablePrimitiveType())
           ParamStatic(getSerializerForType(expr.type) ?: parseError("Could not create a primitive-type parser ofr the type ${expr.type.dumpKotlinLike()} whose class-id is ${expr.type.classId()}", expr))
           //ParamStatic(expr.type.classId()!!)
         else

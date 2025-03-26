@@ -26,11 +26,11 @@ object BatchActionSpecGoldenDynamic: GoldenQueryFile {
       "[ParamSingle(0, John, String), ParamSingle(1, 42, Int)], [ParamSingle(0, Jane, String), ParamSingle(1, 43, Int)], [ParamSingle(0, Jack, String), ParamSingle(1, 44, Int)]"
     ),
     "insert/simple with setParams/SQL" to cr(
-      "INSERT INTO Person (id, name, age) VALUES ({0:Refiner_INT}, {1:Refiner_CONTEXTUAL}, {2:Refiner_INT})",
-      "0" to "Refiner_INT", "1" to "Refiner_CONTEXTUAL", "2" to "Refiner_INT"
+      "INSERT INTO Person (id, name, age) VALUES ({0:Refiner_INT}, {1:Refiner_STRING}, {2:Refiner_INT})",
+      "0" to "Refiner_INT", "1" to "Refiner_STRING", "2" to "Refiner_INT"
     ),
     "insert/simple with setParams" to kt(
-      "[ParamSingle(0, 1, Int), ParamSingle(1, John, CustomCompareable(Id(cls=class kotlin.String, descriptor=ContextDescriptor(kClass: class kotlin.String, original: kotlinx.serialization.ContextualSerializer())))), ParamSingle(2, 42, Int)], [ParamSingle(0, 2, Int), ParamSingle(1, Jane, CustomCompareable(Id(cls=class kotlin.String, descriptor=ContextDescriptor(kClass: class kotlin.String, original: kotlinx.serialization.ContextualSerializer())))), ParamSingle(2, 43, Int)], [ParamSingle(0, 3, Int), ParamSingle(1, Jack, CustomCompareable(Id(cls=class kotlin.String, descriptor=ContextDescriptor(kClass: class kotlin.String, original: kotlinx.serialization.ContextualSerializer())))), ParamSingle(2, 44, Int)]"
+      "[ParamSingle(0, 1, Int), ParamSingle(1, John, String), ParamSingle(2, 42, Int)], [ParamSingle(0, 2, Int), ParamSingle(1, Jane, String), ParamSingle(2, 43, Int)], [ParamSingle(0, 3, Int), ParamSingle(1, Jack, String), ParamSingle(2, 44, Int)]"
     ),
   )
 }
