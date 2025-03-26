@@ -128,7 +128,11 @@ object ParseSelectClause {
     context(CX.Scope, CX.Parsing, CX.Symbology) fun parseOrdTuple(expr: IrExpression): Pair<XR.Expression, XR.Ordering> =
       expr.match(
         case(`x to y`[Is(), Is()]).thenThis { property, ord ->
-          ParseExpression.parse(property) to parseOrd(ord)
+          val propertyXR = ParseExpression.parse(property)
+          if (propertyXR.type.isProduct()) {
+            parseError("You cannot order by `${propertyXR.show()}` because this is composite type (i.e. a type that consists of multiple columns). You must order by a single column.", property)
+          }
+          propertyXR to parseOrd(ord)
         }
       ) ?: parseError("Could not parse a proper ordering from the expression: ${expr.dumpSimple()}. Orderings must always come in the form `property to Ord` for example `person.name to Desc`.", expr)
 

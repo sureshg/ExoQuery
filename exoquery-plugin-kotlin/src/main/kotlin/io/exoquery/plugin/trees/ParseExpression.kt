@@ -112,6 +112,10 @@ object ParseExpression {
       }
   }
 
+  context(CX.Scope, CX.Parsing, CX.Symbology)
+  private fun IrGetValue.isCurrentlyActiveBatchParam() =
+    batchAlias != null && this.isBatchParam()
+
   context(CX.Scope, CX.Parsing, CX.Symbology) fun parseBlockStatement(expr: IrStatement): XR.Variable =
     on(expr).match(
       case(Ir.Variable[Is(), Is()]).thenThis { name, rhs ->
@@ -187,7 +191,6 @@ object ParseExpression {
       // TODO also need to handle setParams case in parseAction where a batch-param is used
       case(Ir.Call.FunctionMemN[Is(), Is.of("param", "paramCtx", "paramCustom"), Is()]).thenThis { _, args ->
         val paramValue = args.first()
-        validateParamArg(paramValue)
         val paramBindTypeRaw =
           when {
             this.ownerHasAnnotation<ParamStatic>() -> {
@@ -212,13 +215,15 @@ object ParseExpression {
 
         val bid = BID.new()
 
-        fun IrGetValue.isCurrentlyActiveBatchParam() =
-          batchAlias != null && this.isBatchParam()
-
         val varsUsed = IrTraversals.collectGetValue(paramValue)
         varsUsed.forEach { varUsed ->
           if (varUsed.isInternal() && !varUsed.isCurrentlyActiveBatchParam())
-            parseError("Cannot use the variable `${varUsed.symbol.safeName}` because it originates inside of the capture-block. The `param` function is only used to bring external variables into the capture.", varUsed)
+            parseError(
+              """Cannot use the variable `${varUsed.symbol.safeName}` inside of a param(...) function because it originates inside of the capture-block. 
+                |The `param` function is only used to bring external variables into the capture (i.e. runtime-variables that are defined outside of it). 
+                |If you want to use the `${varUsed.symbol.safeName}` symbol inside this captured block, you should be able to use it directly.""".trimMargin(),
+              varUsed
+            )
         }
 
         val (paramBind, paramType) =
@@ -242,7 +247,6 @@ object ParseExpression {
 
       case(Ir.Call.FunctionMemN[Is(), Is.of("params", "paramsCtx", "paramsCustom"), Is()]).thenThis { _, args ->
         val paramValue = args.first()
-        validateParamArg(paramValue)
 
         // TODO if a batch param is used then fail here since you cannot use batch queries with multi-params
         val paramBindType =
@@ -278,6 +282,20 @@ object ParseExpression {
             }
             else -> parseError("Could not find Param annotation on the params function of the call", this)
           }
+
+        val varsUsed = IrTraversals.collectGetValue(paramValue)
+        varsUsed.forEach { varUsed ->
+          if (varUsed.isCurrentlyActiveBatchParam()) {
+            parseError("Cannot use the batch-parameter `${varUsed.symbol.safeName}` with multi-parameter functions (i.e. params, paramsCtx, paramsCustom, etc.). The batch-parameter is only used for single-parameter functions (i.e. param, paramCtx, paramCustom, etc.).", varUsed)
+          }
+          if (varUsed.isInternal())
+            parseError(
+              """Cannot use the variable `${varUsed.symbol.safeName}` inside of a param(...) function because it originates inside of the capture-block. 
+                |The `param` function is only used to bring external variables into the capture (i.e. runtime-variables that are defined outside of it). 
+                |If you want to use the `${varUsed.symbol.safeName}` symbol inside this captured block, you should be able to use it directly.""".trimMargin(),
+              varUsed
+            )
+        }
 
         val bid = BID.Companion.new()
         binds.addParam(bid, paramValue, paramBindType)
@@ -490,14 +508,6 @@ object ParseExpression {
     val parsedArgs = args.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null(loc) }
     XR.FunctionApply(wrappedExprCall, parsedArgs, loc)
   }
-
-  context(CX.Scope, CX.Symbology)
-  private fun validateParamArg(paramValue: IrExpression): Unit =
-    when {
-      paramValue is IrDeclarationReference && !paramValue.isExternal() ->
-        parseError("The argument of a param(...) function must be a runtime value, not a value defined within the `capture` block. Instead of wrapping this in a param(...) function just use it locally", paramValue)
-      else -> Unit
-    }
 
   context(CX.Scope) fun parseConst(irConst: IrConst): XR.Expression =
     if (irConst.value == null) XR.Const.Null(irConst.loc)

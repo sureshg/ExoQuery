@@ -489,7 +489,7 @@ object Ir {
     // Member Function1
     object FunctionMem1 {
 
-      context (CX.Scope) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<IrExpression>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, IrExpression, IrCall> =
+      context (CX.Scope) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<B>, B: IrExpression> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, B, IrCall> =
         customPattern2("Ir.Call.FunctionMem1", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver
           if (reciever != null && it.simpleValueArgs.size == 1 && it.simpleValueArgs.all { it != null } && m.matchesAny(it.symbol.safeName)) {

@@ -68,5 +68,29 @@ class SelectClauseQueryReq : GoldenSpecDynamic(SelectClauseQueryReqGoldenDynamic
       shouldBeGolden(people.xr, "XR")
       shouldBeGolden(people.build<PostgresDialect>(), "SQL")
     }
+
+    "join + aggregation" {
+      val people =
+        capture.select {
+          val p = from(Table<Person>())
+          val r = join(Table<Robot>()) { r -> p.name?.first == r.ownerFirstName }
+          groupBy(p.name?.first, r.model)
+          p.name?.first to r.model
+        }
+      shouldBeGolden(people.xr, "XR")
+      shouldBeGolden(people.build<PostgresDialect>(), "SQL")
+    }
+
+    "sortBy" {
+      val people =
+        capture.select {
+          val p = from(Table<Person>())
+          sortBy(p.age to Ord.Asc, p.name?.first to Ord.Desc)
+          // TODO when I have the ability to test compile-errors, should test the error that happnes when I try doing p.name for the order-by expression
+          p.name to p.age
+        }
+      shouldBeGolden(people.xr, "XR")
+      shouldBeGolden(people.build<PostgresDialect>(), "SQL")
+    }
   }
 })

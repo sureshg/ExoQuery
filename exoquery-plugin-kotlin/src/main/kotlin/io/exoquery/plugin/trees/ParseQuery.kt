@@ -173,6 +173,10 @@ object ParseQuery {
           else -> parseError("Unknown SqlQuery method call: ${symName} in: ${expr.dumpKotlinLike()}", expr)
         }
       },
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is("where"), Ir.FunctionExpression.withBlock[Is(), Is()]]).then { head, (_, body) ->
+        val ident = compRight.function.symbol.owner.extensionReceiverParameter?.makeIdent() ?: parseError("Could not parse the this-receiver for the where clause", expr)
+        XR.Filter(parse(head), ident, ParseExpression.parseFunctionBlockBody(body), expr.loc)
+      },
       // There are some situations where someone could do capture.expression { ... SqlQuery } and we need to handle that
       // later injecting that into a query-capture with a .use function. For example capture.expression { { p: Person -> flatJoin(addresses, ...) } }.
       // we need to handle those cases.

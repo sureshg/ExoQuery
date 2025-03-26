@@ -12,6 +12,7 @@ import io.exoquery.annotation.ExoUpdate
 import io.exoquery.innerdsl.SqlActionFilterable
 import io.exoquery.innerdsl.setParams
 import io.exoquery.parseError
+import io.exoquery.plugin.funName
 import io.exoquery.plugin.loc
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.Messages
@@ -23,6 +24,7 @@ import io.exoquery.plugin.transform.containsBatchParam
 import io.exoquery.xr.XR
 import io.exoquery.xr.of
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
+import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.types.IrType
@@ -56,8 +58,14 @@ object ParseAction {
         val ent = ParseQuery.parseEntity(deleteType, expr.location())
         XR.Delete(ent, actionAlias, expr.loc)
       },
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlActionFilterable<*, *>>(), Is.of("filter", "where"), Ir.FunctionExpression.withBlock[Is(), Is()]]).thenThis { actionExpr, (args, lambdaBody) ->
-        val filterAlias = args.first().makeIdent()
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlActionFilterable<*, *>>(), Is.of("filter", "where"), Ir.FunctionExpression.withBlock[Is(), Is()]]).then { actionExpr, (args, lambdaBody) ->
+        val funName = comp.funName
+        val filterAlias =
+          when (funName) {
+            "filter" -> args.first().makeIdent()
+            "where" -> compRight.function.symbol.owner.extensionReceiverParameter?.makeIdent() ?: parseError("Could not find the extension receiver parameter of the `where` call.", compRight)
+            else -> parseError("Unknown function name: ${funName}", expr)
+          }
         val filterExpr = ParseExpression.parseFunctionBlockBody(lambdaBody)
         val core = parse(actionExpr).let { it as? XR.U.CoreAction ?: parseError("The `.filter` function can only be called on a basic action i.e. insert, update, or delete but got:\n${it.showRaw()}", actionExpr) }
         XR.FilteredAction(core, filterAlias, filterExpr, expr.loc)

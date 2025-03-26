@@ -36,5 +36,17 @@ object SelectClauseQueryReqGoldenDynamic: GoldenQueryFile {
     "table.emb?.field/joinLeft(p.name?.first ?: alternative) -> p ?: alternative/SQL" to cr(
       "SELECT CASE WHEN p.first IS NULL THEN 'foo' ELSE p.first END AS first, r.model AS second FROM Robot r LEFT JOIN Person p ON r.ownerFirstName = CASE WHEN p.first IS NULL THEN 'defaultName' ELSE p.first END"
     ),
+    "table.emb?.field/join + aggregation/XR" to kt(
+      "select { val p = from(Table(Person)); val r = join(Table(Robot)) { { val tmp0_safe_receiver = p.name; if (tmp0_safe_receiver == null) null else tmp0_safe_receiver.first } == r.ownerFirstName }; groupBy(TupleA2(first = { val tmp0_safe_receiver = p.name; if (tmp0_safe_receiver == null) null else tmp0_safe_receiver.first }, second = r.model)) }"
+    ),
+    "table.emb?.field/join + aggregation/SQL" to cr(
+      "SELECT p.first, r.model AS second FROM Person p INNER JOIN Robot r ON p.first = r.ownerFirstName GROUP BY p.first, r.model"
+    ),
+    "table.emb?.field/sortBy/XR" to kt(
+      "select { val p = from(Table(Person)); sortBy(TupleOrdering)(TupleA2(first = p.age, second = { val tmp0_safe_receiver = p.name; if (tmp0_safe_receiver == null) null else tmp0_safe_receiver.first })) }"
+    ),
+    "table.emb?.field/sortBy/SQL" to cr(
+      "SELECT p.first, p.last, p.age AS second FROM Person p ORDER BY p.age ASC, p.first DESC"
+    ),
   )
 }
