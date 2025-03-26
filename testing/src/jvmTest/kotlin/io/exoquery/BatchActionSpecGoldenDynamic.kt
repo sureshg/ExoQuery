@@ -100,5 +100,38 @@ object BatchActionSpecGoldenDynamic: GoldenQueryFile {
     "update/simple with setParams and exclusion and returning param" to kt(
       "[ParamSingle(0, John-A, String), ParamSingle(1, 52, Int), ParamSingle(2, 1, Int), ParamSingle(3, John-A, String)], [ParamSingle(0, Jane-A, String), ParamSingle(1, 53, Int), ParamSingle(2, 2, Int), ParamSingle(3, Jane-A, String)], [ParamSingle(0, Jack-A, String), ParamSingle(1, 54, Int), ParamSingle(2, 3, Int), ParamSingle(3, Jack-A, String)]"
     ),
+    "delete/with filter - inside/SQL" to cr(
+      "DELETE FROM Person WHERE Person WHERE id = {0:Refiner_INT}",
+      "0" to "Refiner_INT"
+    ),
+    "delete/with filter - inside/Params1" to cr(
+      "DELETE FROM Person WHERE Person WHERE id = {0:1}",
+      "0" to "1"
+    ),
+    "delete/with filter - inside/Params2" to cr(
+      "DELETE FROM Person WHERE Person WHERE id = {0:2}",
+      "0" to "2"
+    ),
+    "delete/with filter - inside/Params3" to cr(
+      "DELETE FROM Person WHERE Person WHERE id = {0:3}",
+      "0" to "3"
+    ),
+    "delete/with filter - inside" to kt(
+      "[ParamSingle(0, 1, Int)], [ParamSingle(0, 2, Int)], [ParamSingle(0, 3, Int)]"
+    ),
+    "delete/with filter/SQL" to cr(
+      "DELETE FROM Person WHERE Person WHERE id = {0:Refiner_INT}",
+      "0" to "Refiner_INT"
+    ),
+    "delete/with filter" to kt(
+      "[ParamSingle(0, 1, Int)], [ParamSingle(0, 2, Int)], [ParamSingle(0, 3, Int)]"
+    ),
+    "delete/with returning/SQL" to cr(
+      "DELETE FROM Person WHERE Person WHERE id = {0:Refiner_INT} RETURNING id",
+      "0" to "Refiner_INT"
+    ),
+    "delete/with returning" to kt(
+      "[ParamSingle(0, 1, Int)], [ParamSingle(0, 2, Int)], [ParamSingle(0, 3, Int)]"
+    ),
   )
 }

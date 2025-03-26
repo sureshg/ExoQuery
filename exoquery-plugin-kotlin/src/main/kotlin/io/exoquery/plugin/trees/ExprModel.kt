@@ -124,11 +124,19 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
 
           val transformer =
             object: IrElementTransformerVoid() {
+              // Generic calls of IrElement bubble up to here
+              override fun visitElement(expression: IrElement): IrElement {
+                if (expression is IrGetValue && expression.symbol.owner == batchVariable) expression.symbol = newSymbol
+                return super.visitElement(expression)
+              }
+              // IrGetValue and IrDeclarationReference bubble up to here
+              override fun visitExpression(expression: IrExpression): IrExpression {
+                if (expression is IrGetValue && expression.symbol.owner == batchVariable) expression.symbol = newSymbol
+                return super.visitExpression(expression)
+              }
+              // Technically don't need this because it will bubble up to visitExpression but here for clarity
               override fun visitGetValue(expression: IrGetValue): IrExpression {
-                if (expression.symbol.owner == batchVariable) {
-                  expression.symbol = newSymbol
-                }
-
+                if (expression.symbol.owner == batchVariable) expression.symbol = newSymbol
                 return super.visitGetValue(expression)
               }
               //override fun visitValueParameter(declaration: IrValueParameter): IrStatement =

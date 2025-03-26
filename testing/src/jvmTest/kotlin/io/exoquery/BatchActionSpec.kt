@@ -2,7 +2,7 @@ package io.exoquery
 
 import io.exoquery.testdata.Person
 
-class BatchActionSpec: GoldenSpecDynamic(BatchActionSpecGoldenDynamic, Mode.ExoGoldenTest(), {
+class BatchActionSpec: GoldenSpecDynamic(BatchActionSpecGoldenDynamic, Mode.ExoGoldenOverride(), {
   "insert" - {
     val people = listOf(Person(1, "John", 42), Person(2, "Jane", 43), Person(3, "Jack", 44),).asSequence()
 
@@ -122,39 +122,37 @@ class BatchActionSpec: GoldenSpecDynamic(BatchActionSpecGoldenDynamic, Mode.ExoG
   }
 
   "delete" - {
-//    "with filter - inside" {
-//      val q = capture.batch(listOf(1, 2, 3).asSequence()) { id ->
-//        delete<Person>().filter { it.id == param(id) }
-//      }
-//      val b = q.build<PostgresDialect>().determinizeDynamics()
-//      val groups = b.produceBatchGroups().toList()
-//      shouldBeGolden(b, "SQL")
-//      shouldBeGolden(groups[0], "Params1")
-//      shouldBeGolden(groups[1], "Params2")
-//      shouldBeGolden(groups[2], "Params3")
-//      shouldBeGoldenParams(groups)
-//    }
-
-// TODO all of thses currently giving IR Lowering errors, need to investigate
-//    "with filter" {
-//      val ids = listOf(1, 2, 3).asSequence()
-//      val q = capture.batch(ids) { id ->
-//        delete<Person>().filter { p -> p.id == param(id) }
-//      }
-//      val b = q.build<PostgresDialect>().determinizeDynamics()
-//      val groups = b.produceBatchGroups().toList()
-//      shouldBeGolden(b, "SQL")
-//      shouldBeGoldenParams(groups)
-//    }
-//    "with returning" {
-//      val ids = listOf(1, 2, 3).asSequence()
-//      val q = capture.batch(ids) { id ->
-//        delete<Person>().filter { p -> p.id == param(id) }.returning { p -> p.id }
-//      }
-//      val b = q.build<PostgresDialect>().determinizeDynamics()
-//      val groups = b.produceBatchGroups().toList()
-//      shouldBeGolden(b, "SQL")
-//      shouldBeGoldenParams(groups)
-//    }
+    "with filter - inside" {
+      val q = capture.batch(listOf(1, 2, 3).asSequence()) { id ->
+        delete<Person>().filter { it.id == param(id) }
+      }
+      val b = q.build<PostgresDialect>().determinizeDynamics()
+      val groups = b.produceBatchGroups().toList()
+      shouldBeGolden(b, "SQL")
+      shouldBeGolden(groups[0], "Params1")
+      shouldBeGolden(groups[1], "Params2")
+      shouldBeGolden(groups[2], "Params3")
+      shouldBeGoldenParams(groups)
+    }
+    "with filter" {
+      val ids = listOf(1, 2, 3).asSequence()
+      val q = capture.batch(ids) { id ->
+        delete<Person>().filter { p -> p.id == param(id) }
+      }
+      val b = q.build<PostgresDialect>().determinizeDynamics()
+      val groups = b.produceBatchGroups().toList()
+      shouldBeGolden(b, "SQL")
+      shouldBeGoldenParams(groups)
+    }
+    "with returning" {
+      val ids = listOf(1, 2, 3).asSequence()
+      val q = capture.batch(ids) { id ->
+        delete<Person>().filter { p -> p.id == param(id) }.returning { p -> p.id }
+      }
+      val b = q.build<PostgresDialect>().determinizeDynamics()
+      val groups = b.produceBatchGroups().toList()
+      shouldBeGolden(b, "SQL")
+      shouldBeGoldenParams(groups)
+    }
   }
 })
