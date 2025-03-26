@@ -214,6 +214,7 @@ sealed interface XR {
         FqName(fullPath.split('.'))
 
       val Empty = FqName(listOf())
+      val Cast = FqName(listOf("kotlinCast"))
     }
 
     private val str by lazy { path.joinToString(".") }
@@ -590,7 +591,7 @@ sealed interface XR {
    * that for the former, we know that various flattening in ApplyMap can be done but for the latter we it cannot.
    * This is a collorary to Impure-Infixes.
    */
-  @Serializable
+  @Serializable // TODO originalResultType
   @Mat
   data class MethodCall(@Slot val head: XR.U.QueryOrExpression, @MSlot val name: String, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, val originalHostType: XR.ClassId, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, U.Call, PC<MethodCall> {
     @Transient override val productComponents = productOf(this, head, name, args)
@@ -604,6 +605,7 @@ sealed interface XR {
     override fun isAggregation() = callType == CallType.Aggregator
   }
 
+  // TODO originalResultType
   @Serializable
   @Mat
   data class GlobalCall(@Slot val name: XR.FqName, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, U.Call, PC<GlobalCall> {

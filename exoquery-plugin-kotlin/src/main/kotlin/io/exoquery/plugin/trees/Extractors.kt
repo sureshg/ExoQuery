@@ -70,6 +70,17 @@ object Ir {
       }
   }
 
+  object CastingTypeOperator {
+    context(CX.Scope) operator fun <AP: Pattern<IrExpression>, BP: Pattern<IrType>> get(op: AP, type: BP) =
+      customPattern2("Ir.TypeOperatorCall", op, type) { it: IrTypeOperatorCall ->
+        if (it.operator == IrTypeOperator.CAST) {
+          Components2(it.argument, it.typeOperand)
+        } else {
+          null
+        }
+      }
+  }
+
   object StringConcatenation {
     // Can't do just get(components: Pattern<List<IrExpression>) need to do:
     // <AP: Pattern<List<IrExpression>>> get(components: AP) or it doesn't work because

@@ -369,7 +369,7 @@ class RenderIrElementVisitorSimple(normalizeNames: Boolean = false, private val 
     "[IrStringConcatenation] type=${expression.type.render()}"
 
   override fun visitTypeOperator(expression: IrTypeOperatorCall, data: Nothing?): String =
-    "[IrTypeOperatorCall]] type=${expression.type.render()} origin=${expression.operator} typeOperand=${expression.typeOperand.render()}"
+    "[IrTypeOperatorCall]] type=${expression.type.render()} operator=${expression.operator} typeOperand=${expression.typeOperand.render()}"
 
   override fun visitWhen(expression: IrWhen, data: Nothing?): String =
     "[IrWhen] type=${expression.type.render()} origin=${expression.origin}"

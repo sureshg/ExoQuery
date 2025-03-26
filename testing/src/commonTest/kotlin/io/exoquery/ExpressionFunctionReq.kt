@@ -16,6 +16,18 @@ class ExpressionFunctionReq : GoldenSpecDynamic(ExpressionFunctionReqGoldenDynam
       val q = capture { Table<Person>().map { p -> p.name.toBoolean() } }
       shouldBeGolden(q.build<PostgresDialect>())
     }
+    "casting" {
+      val q = capture { Table<Person>().map { p -> p.name + (p.age as String) } }
+      shouldBeGolden(q.build<PostgresDialect>())
+    }
+    "string concat" {
+      val q = capture { Table<Person>().map { p -> p.name + " " + p.name } }
+      shouldBeGolden(q.build<PostgresDialect>())
+    }
+    "substr - regular" {
+      val q = capture { Table<Person>().map { p -> p.name.substring(1, 2) } }
+      shouldBeGolden(q.build<PostgresDialect>())
+    }
     "substr" {
       val q = capture { Table<Person>().map { p -> p.name.sql.substring(1, 2) } }
       shouldBeGolden(q.build<PostgresDialect>())

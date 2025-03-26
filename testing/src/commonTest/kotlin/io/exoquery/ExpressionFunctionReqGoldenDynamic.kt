@@ -15,6 +15,15 @@ object ExpressionFunctionReqGoldenDynamic: GoldenQueryFile {
     "String/toBoolean" to cr(
       "SELECT CAST(p.name AS BOOLEAN) AS value FROM Person p"
     ),
+    "String/casting" to cr(
+      "SELECT p.name || p.age AS value FROM Person p"
+    ),
+    "String/string concat" to cr(
+      "SELECT (p.name || ' ') || p.name AS value FROM Person p"
+    ),
+    "String/substr - regular" to cr(
+      "SELECT SUBSTRING(p.name, 1, 2) AS value FROM Person p"
+    ),
     "String/substr" to cr(
       "SELECT SUBSTRING(p.name, 1, 2) AS value FROM Person p"
     ),
@@ -34,31 +43,31 @@ object ExpressionFunctionReqGoldenDynamic: GoldenQueryFile {
       "SELECT LOWER(p.name) AS value FROM Person p"
     ),
     "Int/toLong" to cr(
-      "SELECT CAST(p.age AS BIGINT) AS value FROM Person p"
+      "SELECT p.age AS value FROM Person p"
     ),
     "Int/toDouble" to cr(
-      "SELECT CAST(p.age AS DOUBLE PRECISION) AS value FROM Person p"
+      "SELECT p.age AS value FROM Person p"
     ),
     "Int/toFloat" to cr(
-      "SELECT CAST(p.age AS REAL) AS value FROM Person p"
+      "SELECT p.age AS value FROM Person p"
     ),
     "Long/toInt" to cr(
-      "SELECT CAST(p.age AS INTEGER) AS value FROM Person p"
+      "SELECT p.age AS value FROM Person p"
     ),
     "Long/toDouble" to cr(
-      "SELECT CAST(p.age AS DOUBLE PRECISION) AS value FROM Person p"
+      "SELECT p.age AS value FROM Person p"
     ),
     "Long/toFloat" to cr(
-      "SELECT CAST(p.age AS REAL) AS value FROM Person p"
+      "SELECT p.age AS value FROM Person p"
     ),
     "Float/toInt" to cr(
-      "SELECT CAST(p.age AS INTEGER) AS value FROM Person p"
+      "SELECT p.age AS value FROM Person p"
     ),
     "Float/toLong" to cr(
-      "SELECT CAST(p.age AS BIGINT) AS value FROM Person p"
+      "SELECT p.age AS value FROM Person p"
     ),
     "Float/toDouble" to cr(
-      "SELECT CAST(p.age AS DOUBLE PRECISION) AS value FROM Person p"
+      "SELECT p.age AS value FROM Person p"
     ),
   )
 }

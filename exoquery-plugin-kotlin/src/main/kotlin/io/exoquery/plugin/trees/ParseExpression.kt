@@ -163,8 +163,17 @@ object ParseExpression {
       // Numeric conversion functions toInt, toString, etc... on numeric types Int, Long, etc...
       case(Ir.Call.FunctionMem0[Is(), Is { it.isConverterFunction() }])
         .thenIf { head, _ -> head.type.classId()?.toXR()?.isNumeric() ?: false }
-        .then { head, method ->
-          XR.MethodCall(parse(head), method, emptyList(), XR.CallType.PureFunction, CID.kotlin_String, XRType.Value, expr.loc)
+        .thenThis { head, method ->
+          val classId = this.type.classId() ?: parseError("Cannot determine the classId of the type ${this.type.dumpKotlinLike()} of this expression.", this)
+          XR.MethodCall(parse(head), method, emptyList(), XR.CallType.PureFunction, classId.toXR(), XRType.Value, expr.loc)
+        },
+
+      case(Ir.Call.FunctionMemN[Is { it.type.classId()?.let { MethodWhitelist.allowedHost(it) } ?: false }, Is(), Is()])
+        .thenIfThis { _, _ -> MethodWhitelist.allowedMethodForHost(this.type.classId(), funName) }
+        .thenThis { head, args ->
+          val classId = this.type.classId() ?: parseError("Cannot determine the classId of the type ${this.type.dumpKotlinLike()} of this expression.", this)
+          val argsXR = args.map { parse(it) }
+          XR.MethodCall(parse(head), funName, argsXR, XR.CallType.PureFunction, classId.toXR(), XRType.Value, expr.loc)
         },
 
       case(Ir.Expr.ClassOf<SqlQuery<*>>()).then { expr ->
@@ -243,6 +252,11 @@ object ParseExpression {
         val reciever = parse(head)
         val lambda: XR.FunctionN = parse(lambda).let { it as? XR.FunctionN ?: parseError("Expected a lambda function to be parsed from the let call but was:\n${it.showRaw()}", lambda) }
         XR.FunctionApply(lambda, listOf(reciever), expr.loc)
+      },
+
+      case(Ir.CastingTypeOperator[Is(), Is()]).thenThis { target, newType ->
+        val callType: XR.CallType = XR.CallType.PureFunction
+        XR.GlobalCall(XR.FqName.Cast, listOf(parse(target)), callType, TypeParser.of(this), this.loc) //, TypeParser.of(this), loc)
       },
 
       case(Ir.Call.FunctionMemN[Is(), Is.of("params", "paramsCtx", "paramsCustom"), Is()]).thenThis { _, args ->

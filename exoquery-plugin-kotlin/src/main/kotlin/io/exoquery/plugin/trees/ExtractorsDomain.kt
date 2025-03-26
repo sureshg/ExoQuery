@@ -15,6 +15,7 @@ import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.plugin.transform.UnaryOperators
 import io.exoquery.xr.BinaryOperator
+import io.exoquery.xr.OP
 import io.exoquery.xr.UnaryOperator
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -22,6 +23,7 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.classFqName
+import org.jetbrains.kotlin.ir.types.isString
 
 object ExtractorsDomain {
 
@@ -360,7 +362,10 @@ object ExtractorsDomain {
           )?.let { result ->
             val (opName, arg1, arg2) = result
             BinaryOperators.operators.get(opName)?.let { op ->
-              Components1(OperatorCall(arg1, op, arg2))
+              if (op == OP.plus && arg1.type.isString())
+                Components1(OperatorCall(arg1, OP.strPlus, arg2))
+              else
+                Components1(OperatorCall(arg1, op, arg2))
             }
           }
         }

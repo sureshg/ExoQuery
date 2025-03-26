@@ -327,6 +327,14 @@ interface CapturedBlock {
   fun <T, R> SqlQuery<T>.distinctOn(f: (T) -> R): SqlQuery<T> =
     errorCap("The `distinctBy` expression of the Query was not inlined")
 
+  /**
+   * Use this to call specialized functions on Strings that are specific to SQL. For example:
+   * ```
+   * people.map { p -> p.name.sql.right(3) }
+   * // SQL: SELECT RIGHT(p.name, 3) FROM people p
+   * ```
+   * Aside from substring and concatenation, most Kotlin string methods cannot be used inside of capture clauses.
+   */
   @DslNestingIgnore
   val String.sql @DslNestingIgnore get(): StringSqlDsl = errorCap("The `sql-dsl` expression of the Query was not inlined")
 

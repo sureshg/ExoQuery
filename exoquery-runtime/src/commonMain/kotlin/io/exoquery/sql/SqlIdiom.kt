@@ -293,7 +293,12 @@ interface SqlIdiom: HasPhasePrinting {
 
   val XR.GlobalCall.token get(): Token = run {
     val argsToken = args.map { it -> it.token }.mkStmt()
-    +"${name.name}(${argsToken})"
+    // The parser translate casting operators into a XR.GlobalCall named "kotlinCast" with one argument.
+    // In this case for now we want to just assume SQL will do an implicit cast. May want to change this in the future.
+    if (this.name == XR.FqName.Cast && args.size == 1)
+      argsToken
+    else
+      +"${name.name}(${argsToken})"
   }
 
 
