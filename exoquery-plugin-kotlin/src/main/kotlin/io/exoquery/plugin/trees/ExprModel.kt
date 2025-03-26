@@ -147,10 +147,8 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
           //  }
           //val batchVariableCopy = batchVariable.deepCopyWithSymbols(symbolRemapper)
 
-
-
-
           val refinerLambda = createLambda1(newMadeValue, batchVariableCopy, currentDeclarationParentOrFail())
+
           val description = if (debugDataConfig.addParamDescriptions) refinerLambda.dumpKotlinLike().lift() else builder.irNull()
           make<ParamBatchRefiner<*, *>>(bid.lift(), refinerLambda, param.makeSerializer(), description)
         }

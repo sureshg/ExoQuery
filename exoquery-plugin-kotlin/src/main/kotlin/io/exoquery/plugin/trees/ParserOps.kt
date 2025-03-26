@@ -61,6 +61,9 @@ context(CX.Scope, CX.Symbology)
 fun IrDeclarationReference.isExternal(): Boolean =
   !isCapturedFunctionArgument() && !isCapturedVariable()
 
+context(CX.Scope, CX.Symbology)
+fun IrDeclarationReference.isInternal(): Boolean = !isExternal()
+
 context(CX.Scope)
 fun IrGetValue.showLineage(): String {
   val collect = mutableListOf<String>()

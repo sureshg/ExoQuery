@@ -212,8 +212,17 @@ object ParseExpression {
 
         val bid = BID.new()
 
+        fun IrGetValue.isCurrentlyActiveBatchParam() =
+          batchAlias != null && this.isBatchParam()
+
+        val varsUsed = IrTraversals.collectGetValue(paramValue)
+        varsUsed.forEach { varUsed ->
+          if (varUsed.isInternal() && !varUsed.isCurrentlyActiveBatchParam())
+            parseError("Cannot use the variable `${varUsed.symbol.safeName}` because it originates inside of the capture-block. The `param` function is only used to bring external variables into the capture.", varUsed)
+        }
+
         val (paramBind, paramType) =
-          if (batchAlias != null && paramValue.containsBatchParam()) {
+          if (batchAlias != null && varsUsed.any { it.isCurrentlyActiveBatchParam() }) {
             ParamBind.Type.ParamUsingBatchAlias(batchAlias, paramBindTypeRaw) to XR.ParamType.Batch
           } else {
             paramBindTypeRaw to XR.ParamType.Single

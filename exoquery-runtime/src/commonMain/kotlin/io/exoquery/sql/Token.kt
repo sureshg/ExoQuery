@@ -31,6 +31,17 @@ sealed interface Token {
       override fun invoke(token: ParamBatchTokenRealized): Token = token.withBid(bid = bids[token.bid] ?: token.bid)
     }.invoke(this)
 
+  fun withNonStrictEquality() =
+    StatelessTokenTransformer {
+      when (it) {
+        is ParamBatchTokenRealized -> it.copy(param = it.param?.withNonStrictEquality())
+        is ParamMultiTokenRealized -> it.copy(param = it.param?.withNonStrictEquality())
+        is ParamSingleTokenRealized -> it.copy(param = it.param?.withNonStrictEquality())
+        else -> null
+      }
+    }.invoke(this)
+
+
   fun extractParams(dissalowUnrefinedBatchParams: Boolean = false): List<Param<*>> {
     val accum = mutableListOf<Param<*>>()
     fun errorNotFound(bid: BID): Nothing = xrError("Param not found for bid: ${bid} in tokenization:\n${this.renderWith(Renderer(true, true, null))}")

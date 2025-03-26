@@ -43,7 +43,7 @@ data class ParamMulti<T: Any>(override val id: BID, val value: List<T>, override
     copy(serial = serial.withNonStrictEquality())
   override fun showValue() = value.toString()
   override fun withNewBid(newBid: BID): ParamMulti<T> = copy(id = newBid)
-  override fun toString() = "ParamMulti(id=$id, value=$value, serial=$serial)" // don't want to show description here because it could add too much noise
+  override fun toString() = "ParamMulti(${id.value}, $value, $serial)" // don't want to show description here because it could add too much noise
 }
 
 data class ParamSingle<T: Any>(override val id: BID, val value: T, override val serial: ParamSerializer<T>, override val description: String? = null): Param<T> {
@@ -51,7 +51,7 @@ data class ParamSingle<T: Any>(override val id: BID, val value: T, override val 
     copy(serial = serial.withNonStrictEquality())
   override fun showValue() = value.toString()
   override fun withNewBid(newBid: BID): ParamSingle<T> = copy(id = newBid)
-  override fun toString() = "ParamSingle(id=$id, value=$value, serial=$serial)" // don't want to show description here because it could add too much noise
+  override fun toString() = "ParamSingle(${id.value}, $value, $serial)" // don't want to show description here because it could add too much noise
 }
 
 /**
@@ -61,10 +61,10 @@ data class ParamBatchRefiner<Input, Output: Any>(override val id: BID, val refin
   fun refine(input: Input): ParamSingle<Output> = ParamSingle<Output>(id, refiner(input), serial, description)
   fun refineAny(input: Any?): ParamSingle<Output> = refine(input as Input)
 
-  override fun withNonStrictEquality(): ParamBatchRefiner<Input, Output> = this
+  override fun withNonStrictEquality(): ParamBatchRefiner<Input, Output> = this.copy(serial = serial.withNonStrictEquality())
   override fun showValue(): String = "Refiner_${serial.serializer.descriptor.kind}"
   override fun withNewBid(newBid: BID): ParamBatchRefiner<Input, Output> = copy(id = newBid)
-  override fun toString() = "ParamBatchRefiner(id=$id, refiner=$refiner, serial=$serial)" // don't want to show description here because it could add too much noise
+  override fun toString() = "ParamBatchRefiner(${id.value}, ${showValue()}, $serial)"
 }
 
 data class ParamSet(val lifts: List<Param<*>>) {

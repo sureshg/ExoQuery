@@ -60,6 +60,16 @@ class ActionReq: GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGoldenOverride
       shouldBeGolden(build, "SQL")
       shouldBeGolden(build.actionReturningKind.toString(), "returningType")
     }
+    "with returning params" {
+      val myParam = "myParamValue"
+      val q = capture {
+        insert<Person> { set(name to "Joe", age to 123) }.returning { p -> p.name to param(myParam) }
+      }.determinizeDynamics()
+      val build = q.build<PostgresDialect>()
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(build, "SQL")
+      shouldBeGolden(build.actionReturningKind.toString(), "returningType")
+    }
     "with returningKeys" {
       val q = capture {
         insert<Person> { set(name to "Joe", age to 123) }.returningKeys { id }

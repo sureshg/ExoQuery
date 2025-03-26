@@ -42,9 +42,9 @@ fun main() {
     capture.batch(peopleSeq) { p ->
       //insert<Person> { set(name.first to param(n.first), age to 123) }.returning { p -> Name(p.name.first + "-stuff", p.name.last + "-otherStuff") }
       // TODO Odd error need to figure out: Exception in thread "main" java.lang.NoClassDefFoundError: I
-      //insert<Person> { setParams(p) }.returning { p -> Name(p.name.first + "-stuff", p.name.last + "-otherStuff") }
-      //insert<PersonSimple> { set(id to param(p.id), name to param(p.name), age to param(p.age)) }.returningKeys { name to age }//.returningKeys()
-      insert<PersonSimple> { setParams(p) }.returningKeys { name to age }//.returningKeys()
+      insert<PersonSimple> { setParams(p) } //.returning { p -> Name(p.name.first + "-stuff", p.name.last + "-otherStuff") }
+      //insert<PersonSimple> { set(id to param(p.id), name to param(p.name), age to param(p.age)) } //.returningKeys { name to age }//.returningKeys()
+      //insert<PersonSimple> { setParams(p) }.returningKeys { name to age }//.returningKeys()
       //insert<PersonSimple> { set(name to "Joe", age to 123) }
     }
 
@@ -55,7 +55,7 @@ fun main() {
 
 
   // TODO now need to run through the sequence in the CompiledBatchAction and make the BatchGroup instances (i.e. by applying list elements on the refiner)
-  println(s.build<PostgresDialect>().produceBatchGroups().map { it.effectiveToken().renderWith(Renderer()) }.toList())
+  println(s.build<PostgresDialect>()) //.produceBatchGroups().map { it.effectiveToken().renderWith(Renderer()) }.toList()
 
   //val build = s.build<PostgresDialect>()
   //println(build.show())

@@ -1,10 +1,19 @@
 package io.exoquery
 
 import io.exoquery.printing.PrintMisc
+import io.exoquery.sql.ParamBatchToken
 import io.exoquery.sql.ParamBatchTokenRealized
+import io.exoquery.sql.ParamMultiToken
+import io.exoquery.sql.ParamMultiTokenRealized
+import io.exoquery.sql.ParamSingleToken
+import io.exoquery.sql.ParamSingleTokenRealized
+import io.exoquery.sql.SetContainsToken
 import io.exoquery.sql.SqlQueryModel
 import io.exoquery.sql.StatelessTokenTransformer
+import io.exoquery.sql.Statement
+import io.exoquery.sql.StringToken
 import io.exoquery.sql.Token
+import io.exoquery.sql.TokenContext
 import io.exoquery.xr.XR
 
 sealed interface Phase {
@@ -47,7 +56,12 @@ data class SqlCompiledAction<Input, Output>(val value: String, override val toke
 
 
 // Effective token refines tokens for that particular batch-input value, we only need it for debugging
-data class BatchParamGroup<BatchInput, Input: Any, Output>(val input: BatchInput, val params: List<Param<*>>, val effectiveToken: () -> Token)
+data class BatchParamGroup<BatchInput, Input: Any, Output>(val input: BatchInput, val params: List<Param<*>>, val effectiveToken: () -> Token) {
+  fun determinizeDynamics(): BatchParamGroup<BatchInput, Input, Output> = run {
+    val (token, params) = determinizeToken(effectiveToken(), params)
+    this.copy(params = params, effectiveToken = { token })
+  }
+}
 
 // TODO since we're providing the batch-parameter at the last moment, we need a function that replaces ParamBatchRefiner to ParamSingle instances and create BatchGroups
 data class SqlCompiledBatchAction<BatchInput, Input: Any, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val batchParam: Sequence<BatchInput>, val label: String?, val debugData: SqlCompiledBatchAction.DebugData): ExoCompiled() {
@@ -81,6 +95,8 @@ data class SqlCompiledBatchAction<BatchInput, Input: Any, Output>(val value: Str
   override fun determinizeDynamics(): SqlCompiledBatchAction<BatchInput, Input, Output> =
     this.copy(token = determinizedToken())
 
+  fun withNonStrictEquality() = this.copy(token = token.withNonStrictEquality())
+
   fun show() = PrintMisc().invoke(this)
 
   data class DebugData(val phase: Phase, val originalXR: () -> XR.Batching)
@@ -92,14 +108,16 @@ abstract class ExoCompiled {
 
   abstract fun determinizeDynamics(): ExoCompiled
 
-  protected fun determinizedToken() = run {
-    var id = 0
-    fun nextId() = "$id".also { id++ }
-    val bids = params.map { param ->
-      val newId = BID(nextId())
-      (param.id to newId) to param.withNewBid(newId)
-    }
-    val (bidMap, newParams) = bids.unzip()
-    token.mapBids(bidMap.toMap())
+  protected fun determinizedToken() = determinizeToken(token, params).first
+}
+
+fun determinizeToken(token: Token, params: List<Param<*>>): Pair<Token, List<Param<*>>> {
+  var id = 0
+  fun nextId() = "$id".also { id++ }
+  val bids = params.map { param ->
+    val newId = BID(nextId())
+    (param.id to newId) to param.withNewBid(newId)
   }
+  val (bidMap, newParams) = bids.unzip()
+  return token.mapBids(bidMap.toMap()) to newParams
 }

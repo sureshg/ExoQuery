@@ -58,6 +58,16 @@ object ActionReqGoldenDynamic: GoldenQueryFile {
     "insert/with returning - multiple/returningType" to cr(
       "ClauseInQuery"
     ),
+    "insert/with returning params/XR" to kt(
+      """insert<Person> { set(thisinsert.name to Joe, thisinsert.age to 123) }.returning { p -> Tuple(first = p.name, second = TagP("0")) }"""
+    ),
+    "insert/with returning params/SQL" to cr(
+      "INSERT INTO Person (name, age) VALUES ('Joe', 123) RETURNING name, {0:myParamValue}",
+      "0" to "myParamValue"
+    ),
+    "insert/with returning params/returningType" to cr(
+      "ClauseInQuery"
+    ),
     "insert/with returningKeys/XR" to kt(
       "insert<Person> { set(thisinsert.name to Joe, thisinsert.age to 123) }.returningKeys { listOf(thisreturningKeys.id) }"
     ),

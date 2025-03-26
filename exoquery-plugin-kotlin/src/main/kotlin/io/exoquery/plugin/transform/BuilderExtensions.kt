@@ -153,6 +153,8 @@ context (CX.Scope, CX.Builder) fun createLambdaN(functionBody: IrExpression, par
   with(builder) {
     val functionClosure = createLambdaClosure(functionBody, params, functionParent)
 
+    params.forEach { it.parent = functionClosure }
+
     val typeWith = params.map { it.type } + functionClosure.returnType
     val functionType =
       pluginCtx.symbols.functionN(params.size)

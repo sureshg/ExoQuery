@@ -63,7 +63,24 @@ abstract class GoldenSpecDynamic(val goldenQueries: GoldenQueryFile, val mode: M
       sql.params.map { PrintableValue.Param(it.id.value, it.showValue()) }
     )
   }
-  fun TestScope.shouldBeGolden(value: String, suffix: String = "") = value.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix", PrintableValue.Type.SqlQuery, listOf())
+
+  fun TestScope.shouldBeGolden(sql: BatchParamGroup<*, *, *>, suffix: String = "") = run {
+    // Get the query as it is resolved from the runtime tokes. That is the only way to know whether the binding lifts actually work or not.
+    // The sql.value will never have <UNR?> entries because if params erroneously don't exist it is only know at runtime.
+    val resolvedQuery = sql.determinizeDynamics().effectiveToken().renderWith(Renderer())
+    resolvedQuery.shouldBeGolden(
+      testPath() + if (suffix.isEmpty()) "" else "/$suffix",
+      PrintableValue.Type.SqlQuery,
+      sql.params.map { PrintableValue.Param(it.id.value, it.showValue()) }
+    )
+  }
+
+  fun TestScope.shouldBeGoldenParams(groups: List<BatchParamGroup<*, *, *>>, suffix: String = "") =
+    shouldBeGolden(groups.map { it.determinizeDynamics().params.toString() }.joinToString(", "), suffix, PrintableValue.Type.KotlinCode)
+
+
+  fun TestScope.shouldBeGolden(value: String, suffix: String = "", valuePrinting: PrintableValue.Type = PrintableValue.Type.SqlQuery) =
+    value.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix", valuePrinting, listOf())
 
   // A simple test that does an assert only when in ExoGoldenTest mode
   fun <T> TestScope.shouldBeGoldenValue(expected: T, actual: T, suffix: String = "") =
