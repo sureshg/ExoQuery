@@ -6,6 +6,7 @@ pluginManagement {
 includeBuild("exoquery-runtime")
 includeBuild("exoquery-plugin-kotlin")
 
+include("exoquery-jdbc")
 include("testing")
 
 rootProject.name = "exoquery"
