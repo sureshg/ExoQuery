@@ -160,10 +160,8 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
           //val batchVariableCopy = batchVariable.deepCopyWithSymbols(symbolRemapper)
 
           val refinerLambda = createLambda1(newMadeValue, batchVariableCopy, currentDeclarationParentOrFail())
-          madeValue.type.classOrNull ?: parseError("The batch-parameter type ${madeValue.type.dumpKotlinLike()} was not a class.", originalValue)
-          val classRef = builder.kClassReference(madeValue.type)
           val description = if (debugDataConfig.addParamDescriptions) refinerLambda.dumpKotlinLike().lift() else builder.irNull()
-          make<ParamBatchRefiner<*, *>>(bid.lift(), refinerLambda, classRef, param.makeSerializer(), description)
+          make<ParamBatchRefiner<*, *>>(bid.lift(), refinerLambda, param.makeSerializer(), description)
         }
     }
 
@@ -177,9 +175,7 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
         with (lifter) {
           val value = makeValue(originalValue)
           val description = if (debugDataConfig.addParamDescriptions) value.dumpKotlinLike().lift() else builder.irNull()
-          value.type.classOrNull ?: parseError("The static-parameter type ${value.type.dumpKotlinLike()} was not a class.", originalValue)
-          val classRef = builder.kClassReference(value.type)
-          make<ParamSingle<*>>(bid.lift(), value, classRef, makeSerializer())
+          make<ParamSingle<*>>(bid.lift(), value, makeSerializer())
         }
     }
     /**
@@ -193,9 +189,7 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
         with (lifter) {
           val value = makeValue(originalValue)
           val description = if (debugDataConfig.addParamDescriptions) value.dumpKotlinLike().lift() else builder.irNull()
-          value.type.classOrNull ?: parseError("The static-parameter type ${value.type.dumpKotlinLike()} was not a class.", originalValue)
-          val classRef = builder.kClassReference(value.type)
-          make<ParamSingle<*>>(bid.lift(), value, classRef, makeSerializer())
+          make<ParamSingle<*>>(bid.lift(), value, makeSerializer())
         }
     }
     /**
@@ -211,9 +205,7 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
         with (lifter) {
           val value = makeValue(originalValue)
           val description = if (debugDataConfig.addParamDescriptions) value.dumpKotlinLike().lift() else builder.irNull()
-          value.type.classOrNull ?: parseError("The static-parameter type ${value.type.dumpKotlinLike()} was not a class.", originalValue)
-          val classRef = builder.kClassReference(value.type)
-          make<ParamSingle<*>>(bid.lift(), value, classRef, makeSerializer())
+          make<ParamSingle<*>>(bid.lift(), value, makeSerializer())
         }
     }
     /** valueWithSet is the ValueWithSerializer instance passed to param */
@@ -224,9 +216,7 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
         with (lifter) {
           val value = makeValue(originalValue)
           val description = if (debugDataConfig.addParamDescriptions) value.dumpKotlinLike().lift() else builder.irNull()
-          value.type.classOrNull ?: parseError("The static-parameter type ${value.type.dumpKotlinLike()} was not a class.", originalValue)
-          val classRef = builder.kClassReference(value.type)
-          make<ParamSingle<*>>(bid.lift(), value, classRef, makeSerializer())
+          make<ParamSingle<*>>(bid.lift(), value, makeSerializer())
         }
       }
     }
@@ -248,8 +238,6 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValues: IrExpression, lifter: Lifter) =
         with (lifter) {
           val valueType = originalValues.type.simpleTypeArgs.firstOrNull() ?: parseError("Could not get the first type-argument of the static-param list type: ${originalValues.dumpKotlinLike()}", originalValues)
-          valueType.type.classOrNull ?: parseError("The static-parameter type ${valueType.dumpKotlinLike()} was not a class.", originalValues)
-          val classRef = builder.kClassReference(valueType.type)
           make<ParamMulti<*>>(bid.lift(), originalValues, makeObjectFromId(classId))
         }
     }
@@ -257,8 +245,6 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValues: IrExpression, lifter: Lifter) =
         with (lifter) {
           val valueType = originalValues.type.simpleTypeArgs.firstOrNull() ?: parseError("Could not get the first type-argument of the context-param list type: ${originalValues.dumpKotlinLike()}", originalValues)
-          valueType.type.classOrNull ?: parseError("The static-parameter type ${valueType.dumpKotlinLike()} was not a class.", originalValues)
-          val classRef = builder.kClassReference(valueType.type)
           make<ParamMulti<*>>(bid.lift(), originalValues, callWithParams("io.exoquery.serial", "contextualSerializer", listOf(type)).invoke())
         }
     }
@@ -272,8 +258,6 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValues: IrExpression, lifter: Lifter) =
         with(lifter) {
           val valueType = originalValues.type.simpleTypeArgs.firstOrNull() ?: parseError("Could not get the first type-argument of the custom-param list type: ${originalValues.dumpKotlinLike()}", originalValues)
-          valueType.type.classOrNull ?: parseError("The static-parameter type ${valueType.dumpKotlinLike()} was not a class.", originalValues)
-          val classRef = builder.kClassReference(valueType.type)
           make<ParamMulti<*>>(bid.lift(), originalValues, callWithParams("io.exoquery.serial", "customSerializer", listOf(type)).invoke(ktSerializer))
         }
     }
@@ -283,9 +267,7 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
         val value = originalValue.callDispatch("values")()
         with (lifter) {
           val valueType = value.type.simpleTypeArgs.firstOrNull() ?: parseError("Could not get the first type-argument of the custom-param-value list type: ${value.dumpKotlinLike()}", value)
-          valueType.type.classOrNull ?: parseError("The static-parameter type ${valueType.dumpKotlinLike()} was not a class.", value)
-          val classRef = builder.kClassReference(valueType.type)
-          make<ParamMulti<*>>(bid.lift(), value, classRef, paramSerializer)
+          make<ParamMulti<*>>(bid.lift(), value, paramSerializer)
         }
       }
     }

@@ -9,22 +9,6 @@ import kotlinx.serialization.Serializable
 import kotlin.test.Test
 
 
-/*
-CREATE TABLE io.exoquery.Person (
-    id INT NOT NULL AUTO_INCREMENT,
-    firstName VARCHAR(255),
-    lastName VARCHAR(255),
-    age INT,
-    PRIMARY KEY (id)
-);
- */
-@Serializable
-data class Person(
-  val id: Int,
-  val firstName: String,
-  val lastName: String,
-  val age: Int
-)
 
 fun main() {
   val emb = EmbeddedPostgres.start()

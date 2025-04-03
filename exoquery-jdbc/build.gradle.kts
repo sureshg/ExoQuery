@@ -52,23 +52,6 @@ repositories {
   mavenLocal()
 }
 
-tasks.named<Test>("jvmTest") {
-  useJUnitPlatform()
-  filter {
-    isFailOnNoMatchingTests = false
-  }
-  testLogging {
-    showExceptions = true
-    showStandardStreams = true
-    events = setOf(
-      org.gradle.api.tasks.testing.logging.TestLogEvent.FAILED,
-      org.gradle.api.tasks.testing.logging.TestLogEvent.PASSED
-    )
-    exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-  }
-}
-
-
 kotlin {
   jvmToolchain(17)
   jvm {
@@ -91,10 +74,11 @@ kotlin {
         api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
         api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
 
-//        implementation("com.zaxxer:HikariCP:5.0.1")
-//        implementation("com.typesafe:config:1.4.1")
-//        implementation("org.xerial:sqlite-jdbc:3.42.0.1")
-//        implementation("org.jetbrains:annotations:24.1.0")
+        // Hikari should be optional on a user-level. The contexts only need a DataSource instance.
+        implementation("com.zaxxer:HikariCP:5.0.1")
+        implementation("com.typesafe:config:1.4.1")
+        implementation("org.xerial:sqlite-jdbc:3.42.0.1")
+        implementation("org.jetbrains:annotations:24.1.0")
       }
     }
     jvmTest {
@@ -111,11 +95,13 @@ kotlin {
 
         //implementation(kotlin("test"))
         //implementation(kotlin("reflect"))
-        //implementation("io.kotest:kotest-runner-junit5:5.9.1")
+        implementation("io.kotest:kotest-runner-junit5:6.0.0.M1")
+
         //implementation("io.kotest.extensions:kotest-extensions-testcontainers:2.0.2")
 
-        implementation("io.kotest:kotest-framework-engine:6.0.0.M1")
-        implementation("io.kotest:kotest-assertions-core:6.0.0.M1")
+        //implementation("io.kotest:kotest-framework-engine:6.0.0.M1")
+        //implementation("io.kotest:kotest-assertions-core:6.0.0.M1")
+
         implementation(kotlin("test-common"))
         implementation(kotlin("test-annotations-common"))
 
@@ -131,5 +117,21 @@ kotlin {
       }
     }
 
+  }
+}
+
+tasks.named<Test>("jvmTest") {
+  useJUnitPlatform()
+  filter {
+    isFailOnNoMatchingTests = false
+  }
+  testLogging {
+    showExceptions = true
+    showStandardStreams = true
+    events = setOf(
+      org.gradle.api.tasks.testing.logging.TestLogEvent.FAILED,
+      org.gradle.api.tasks.testing.logging.TestLogEvent.PASSED
+    )
+    exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
   }
 }
