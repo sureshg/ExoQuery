@@ -15,7 +15,6 @@ val thisVersion = version
 
 // Exclude the jb-annotations-kmp in favor of the official jebrains one (in dependencies below)
 configurations.forEach {
-  //create("cleanedAnnotations")
   it.exclude(group = "com.sschr15.annotations", module = "jb-annotations-kmp")
 }
 
@@ -69,6 +68,7 @@ kotlin {
 
       dependencies {
         api("io.exoquery:controller-jdbc:1.2.0")
+        implementation(project(":exoquery-testing-controller"))
 
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
         api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
