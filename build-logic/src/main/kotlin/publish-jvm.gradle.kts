@@ -115,9 +115,9 @@ publishing {
   }
 
   fun MavenPom.configureMavenCentralMetadata() {
-    name.set("terpal")
-    description.set("Terpal - Custom string-interpolation for Kotlin")
-    url.set("https://github.com/exoquery/terpal")
+    name.set("exoquery")
+    description.set("ExoQuery - Custom string-interpolation for Kotlin")
+    url.set("https://github.com/exoquery/exoquery")
 
     licenses {
       license {
@@ -137,9 +137,9 @@ publishing {
     }
 
     scm {
-      url.set("https://github.com/exoquery/terpal/tree/main")
-      connection.set("scm:git:git://github.com/ExoQuery/Terpal.git")
-      developerConnection.set("scm:git:ssh://github.com:ExoQuery/Terpal.git")
+      url.set("https://github.com/exoquery/exoquery/tree/main")
+      connection.set("scm:git:git://github.com/ExoQuery/ExoQuery.git")
+      developerConnection.set("scm:git:ssh://github.com:ExoQuery/ExoQuery.git")
     }
   }
 
@@ -157,7 +157,7 @@ publishing {
   }
 
   // Regular kotlin `kotlin("jvm")` builds need a create<MavenPublication>("mavenJava") while odd ones
-  // like the terpal-plugin-gradle build `id("java-gradle-plugin")` type already has a publication.
+  // like the exoquery-plugin-gradle build `id("java-gradle-plugin")` type already has a publication.
   // that means we need to configuration the licenses/developers/scm for each kind
   publications.withType<MavenPublication>().configureEach {
     pom.configureMavenCentralMetadata()
@@ -191,8 +191,8 @@ signing {
     }
 }
 
-// If not present :terpal-plugin-gradle:publishToMavenLocal is called it will fail with:
-// Execution failed for task ':terpal-plugin-gradle:signPluginMavenPublication'.
+// If not present :exoquery-plugin-gradle:publishToMavenLocal is called it will fail with:
+// Execution failed for task ':exoquery-plugin-gradle:signPluginMavenPublication'.
 // e.g. if ./deploy-local.sh is called.
 if (isLocal) {
   tasks.withType<Sign>().configureEach {
