@@ -28,18 +28,18 @@ kotlin {
           browser()
           nodejs()
         }
+
+        // Kotlinx-datetime doesn't exist for this
+        // @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+        // wasmWasi()
+        // @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+        // wasmJs()
+
+        androidNativeX64()
+        androidNativeX86()
+        androidNativeArm32()
+        androidNativeArm64()
       }
-
-      // Kotlinx-datetime doesn't exist for this
-      // @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
-      // wasmWasi()
-      // @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
-      // wasmJs()
-
-      androidNativeX64()
-      androidNativeX86()
-      androidNativeArm32()
-      androidNativeArm64()
     }
     HostManager.hostIsMingw -> {
       mingwX64()
