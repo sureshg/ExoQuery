@@ -41,8 +41,6 @@ android {
 }
 
 kotlin {
-  if (HostManager.hostIsLinux) {
-
     androidTarget {
       compilations.all {
         kotlinOptions {
@@ -103,7 +101,7 @@ kotlin {
         }
       }
     }
-  }
+
 }
 
 dependencies {
