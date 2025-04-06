@@ -27,7 +27,16 @@ includeBuild("exoquery-plugin-kotlin")
 
 include("exoquery-testing-controller")
 include("exoquery-jdbc")
-include("exoquery-android")
+
+val isCI: String by settings
+val isCIBool = isCI.toBoolean()
+val isLocal = !isCIBool
+
+// If it's a local build or we're building the CI onl linux include the android project
+if (isLocal || System.getProperty("os.name").toLowerCase().contains("linux")) {
+    include("exoquery-android")
+}
+
 include("exoquery-native")
 include("testing")
 
