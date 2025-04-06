@@ -29,9 +29,16 @@ include("exoquery-testing-controller")
 
 val isCI: Boolean by settings.extra { false }
 val isLocal = !isCI
+val isLinux = System.getProperty("os.name").toLowerCase().contains("linux")
 
 // If it's a local build or we're building the CI onl linux include the android project
-if (isLocal || System.getProperty("os.name").toLowerCase().contains("linux")) {
+if (isLocal || isLinux) {
+    val buildLabel =
+        if (isLocal) "Local"
+        else if (isLinux) "Linux"
+        else "Unknown"
+
+    println("------------------- Building JDBC/Android Libraries for ${buildLabel} Build -------------------")
     include("exoquery-jdbc")
     include("exoquery-android")
 }
