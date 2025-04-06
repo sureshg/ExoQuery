@@ -57,6 +57,33 @@ kotlin {
     }
   }
 
+  configure(targets.withType<KotlinNativeTarget>().filter {
+    listOf(
+      "iosX64",
+      "iosArm64",
+      "tvosX64",
+      "tvosArm64",
+      "watchosX64",
+      "watchosArm32",
+      "watchosArm64",
+      "macosX64",
+      "macosArm64",
+      "iosSimulatorArm64",
+      "watchosSimulatorArm64",
+      // These are not used yet but want to have then for when we enable these builds
+      "tvosSimulatorArm64",
+      "watchosDeviceArm64",
+      "watchosSimulatorArm64"
+    ).contains(it.name)
+  }) {
+    binaries.configureEach {
+      // we only need to link sqlite for the test binaries
+      if (outputKind == NativeOutputKind.TEST) {
+        linkerOpts.add("-lsqlite3")
+      }
+    }
+  }
+
   if (HostManager.hostIsLinux) {
     linuxX64 {
       compilations.configureEach {
