@@ -22,3 +22,5 @@ terpal_test.db-wal
 exoquery_test.db
 exoquery_test.db-shm
 exoquery_test.db-wal
+
+kotlin-js-store/

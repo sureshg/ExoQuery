@@ -1,5 +1,6 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
+import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 import org.jetbrains.kotlin.konan.target.HostManager
 
 plugins {
@@ -22,11 +23,21 @@ kotlin {
   val mingCI = HostManager.hostIsMingw && isCI
   val macCI = HostManager.hostIsMac && isCI
 
-  if (linuxCI)
-    js {
-      browser()
-      nodejs()
-    }
+  //if (linuxCI)
+  //  js {
+  //    browser()
+  //    nodejs {
+  //      testTask {
+  //        useKarma {
+  //          useChromeHeadless()
+  //          webpackConfig.apply {
+  //            devtool = "source-map"
+  //            mode = KotlinWebpackConfig.Mode.DEVELOPMENT
+  //          }
+  //        }
+  //      }
+  //    }
+  //  }
   if (linuxCI) linuxArm64()
   // LinuxCI Needs to know the OSX and MingW dependencies exist even though it does not build them so it can put them in the mmodules-list metadata in maven-central.
   if (linuxCI || macCI) macosArm64()
@@ -61,6 +72,7 @@ kotlin {
       }
   }
 }
+
 
 tasks.withType<AbstractTestTask>().configureEach {
     testLogging {

@@ -110,8 +110,10 @@ interface SqlIdiom: HasPhasePrinting {
       is XR.Expression -> token
       is XR.Query -> token
       // is XR.Action -> this.lift()
-      is XR.Branch, is XR.Variable ->
-        xrError("All instances of ${this::class.qualifiedName} should have been beta-reduced out by now.")
+      is XR.Branch ->
+        xrError("All instances of XR.Branch should have been beta-reduced out by now.")
+      is XR.Variable ->
+        xrError("All instances of XR.Variable should have been beta-reduced out by now.")
       is XR.Action -> token
       is XR.Assignment -> token
       is XR.Batching ->
