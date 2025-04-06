@@ -29,56 +29,34 @@ kotlin {
   // I.e. set this environment variable specifically to true to build (most) targets
   val fullLocal = !isCI && ((System.getenv("EXOQUERY_FULL_LOCAL")?.toBoolean() ?: false) || project.hasProperty("isLocalMultiplatform"))
 
-  when {
-    HostManager.hostIsLinux -> {
-      linuxX64()
-      if (isCI || fullLocal) {
-        iosX64()
-        iosArm64()
-        iosSimulatorArm64()
-        linuxArm64()
+  linuxX64()
+  macosX64()
 
-        // Need to know about this since we publish the -tooling metadata from
-        // the linux containers. Although it doesn't build these it needs to know about them.
-        macosX64()
-        iosX64()
-        iosArm64()
-        watchosArm32()
-        watchosArm64()
-        watchosX64()
-        tvosArm64()
-        tvosX64()
-        macosArm64()
-        iosSimulatorArm64()
-        mingwX64()
-        // Terpal-Runtime not published for these yet
-        //watchosDeviceArm64()
-        //tvosSimulatorArm64()
-        //watchosSimulatorArm64()
-      }
+  val linuxCI = HostManager.hostIsLinux && isCI
+  val mingCI = HostManager.hostIsMingw && isCI
+  val macCI = HostManager.hostIsMac && isCI
+
+  if (linuxCI)
+    js {
+      browser()
+      nodejs()
     }
-    HostManager.hostIsMingw -> {
-      mingwX64()
-    }
-    HostManager.hostIsMac -> {
-      macosX64()
-      if (isCI || fullLocal) {
-        iosX64()
-        iosArm64()
-        watchosArm32()
-        watchosArm64()
-        watchosX64()
-        tvosArm64()
-        tvosX64()
-        macosArm64()
-        iosSimulatorArm64()
-        // Terpal-Runtime not published for these yet
-        //watchosDeviceArm64()
-        //tvosSimulatorArm64()
-        //watchosSimulatorArm64()
-      }
-    }
-  }
+  if (linuxCI) linuxArm64()
+  // LinuxCI Needs to know the OSX and MingW dependencies exist even though it does not build them so it can put them in the mmodules-list metadata in maven-central.
+  if (linuxCI || macCI) macosArm64()
+  if (linuxCI || macCI) iosX64()
+  if (linuxCI || macCI) iosArm64()
+  if (linuxCI || macCI) tvosX64()
+  if (linuxCI || macCI) tvosArm64()
+  if (linuxCI || macCI) watchosX64()
+  if (linuxCI || macCI) watchosArm32()
+  if (linuxCI || macCI) watchosArm64()
+  if (linuxCI || macCI) iosSimulatorArm64()
+  //if (linux || mac) watchosSimulatorArm64()
+  //if (linux || mac) watchosDeviceArm64()
+  //if (linux || mac) tvosSimulatorArm64()
+  //if (linux || mac) watchosSimulatorArm64()
+  if (linuxCI || mingCI) mingwX64()
 }
 
 tasks.withType<AbstractTestTask>().configureEach {

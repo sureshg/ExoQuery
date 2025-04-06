@@ -1,7 +1,5 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
-import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalWasmDsl
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.kotlin.konan.target.HostManager
 
 plugins {
@@ -17,70 +15,51 @@ kotlin {
 
   jvm {
   }
+  linuxX64()
+  macosX64()
 
-  when {
-    HostManager.hostIsLinux -> {
-      linuxX64()
-      if (isCI || fullLocal) {
-        linuxArm64()
+  val linuxCI = HostManager.hostIsLinux && isCI
+  val mingCI = HostManager.hostIsMingw && isCI
+  val macCI = HostManager.hostIsMac && isCI
 
-        js {
-          browser()
-          nodejs()
-        }
+  if (linuxCI)
+    js {
+      browser()
+      nodejs()
+    }
+  if (linuxCI) linuxArm64()
+  // LinuxCI Needs to know the OSX and MingW dependencies exist even though it does not build them so it can put them in the mmodules-list metadata in maven-central.
+  if (linuxCI || macCI) macosArm64()
+  if (linuxCI || macCI) iosX64()
+  if (linuxCI || macCI) iosArm64()
+  if (linuxCI || macCI) tvosX64()
+  if (linuxCI || macCI) tvosArm64()
+  if (linuxCI || macCI) watchosX64()
+  if (linuxCI || macCI) watchosArm32()
+  if (linuxCI || macCI) watchosArm64()
+  if (linuxCI || macCI) iosSimulatorArm64()
+  //if (linux || mac) watchosSimulatorArm64()
+  //if (linux || mac) watchosDeviceArm64()
+  //if (linux || mac) tvosSimulatorArm64()
+  //if (linux || mac) watchosSimulatorArm64()
+  if (linuxCI || mingCI) mingwX64()
 
-        // Kotlinx-datetime doesn't exist for this
-        // @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
-        // wasmWasi()
-        // @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
-        // wasmJs()
-
-        androidNativeX64()
-        androidNativeX86()
-        androidNativeArm32()
-        androidNativeArm64()
+  sourceSets {
+      commonMain {
+          kotlin.srcDir("$buildDir/templates/")
+          dependencies {
+          }
       }
-    }
-    HostManager.hostIsMingw -> {
-      mingwX64()
-    }
-    HostManager.hostIsMac -> {
-      macosX64()
-      if (isCI || fullLocal) {
-        macosArm64()
-        iosX64()
-        iosArm64()
-        iosSimulatorArm64()
-        tvosX64()
-        tvosArm64()
-        watchosX64()
-        watchosArm32()
-        watchosArm64()
 
-
-        //tvosSimulatorArm64()
-        //watchosDeviceArm64()
-        //watchosSimulatorArm64()
+      commonTest {
+          kotlin.srcDir("$buildDir/templates/")
+          dependencies {
+              implementation(kotlin("test"))
+              implementation(kotlin("test-common"))
+              implementation(kotlin("test-annotations-common"))
+          }
       }
-    }
   }
-
-    sourceSets {
-        commonMain {
-            kotlin.srcDir("$buildDir/templates/")
-            dependencies {
-            }
-        }
-
-        commonTest {
-            kotlin.srcDir("$buildDir/templates/")
-            dependencies {
-                implementation(kotlin("test"))
-                implementation(kotlin("test-common"))
-                implementation(kotlin("test-annotations-common"))
-            }
-        }
-    }
 }
 
 tasks.withType<AbstractTestTask>().configureEach {
