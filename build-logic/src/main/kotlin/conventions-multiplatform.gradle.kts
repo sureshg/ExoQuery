@@ -13,7 +13,7 @@ plugins {
 kotlin {
   val isCI = project.hasProperty("isCI")
   val fullLocal = !isCI && ((System.getenv("EXOQUERY_FULL_LOCAL")?.toBoolean() ?: false) || project.hasProperty("isLocalMultiplatform"))
-  jvmToolchain(11)
+  jvmToolchain(17)
 
   jvm {
   }
