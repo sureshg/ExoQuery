@@ -36,11 +36,12 @@ kotlin {
   val mingCI = HostManager.hostIsMingw && isCI
   val macCI = HostManager.hostIsMac && isCI
 
-  if (linuxCI)
-    js {
-      browser()
-      nodejs()
-    }
+  // No Controller for JS yet
+  //if (linuxCI)
+  //  js {
+  //    browser()
+  //    nodejs()
+  //  }
   if (linuxCI) linuxArm64()
   // LinuxCI Needs to know the OSX and MingW dependencies exist even though it does not build them so it can put them in the mmodules-list metadata in maven-central.
   if (linuxCI || macCI) macosArm64()
