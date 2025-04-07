@@ -791,13 +791,12 @@ interface SqlIdiom: HasPhasePrinting {
   val XR.Insert.token get(): Token = xrInsertTokenImpl(this)
   fun xrInsertTokenImpl(insertImpl: XR.Insert): Token = with (insertImpl) {
     val query = this.query as? XR.Entity ?: xrError("Insert query must be an entity but found: ${this.query}")
-    val (columns, values) = columnsAndValues(assignments, exclusions).unzip()
-    +"INSERT INTO ${query.token}${` AS table`(alias)} (${columns.mkStmt(", ")}) VALUES ${tokenizeInsertAssignemnts(columns)}"
+    tokenizeInsertBase(this)
+  }
 
-//    case Insert(entity: Entity, assignments) =>
-//        val (table, columns, values) = insertInfo(insertEntityTokenizer, entity, assignments)
-//        stmt"INSERT INTO $table${` AS [table]`} (${columns
-//            .mkStmt(",")}) VALUES ${ValuesClauseToken(stmt"(${values.mkStmt(", ")})")}"
+  fun tokenizeInsertBase(insert: XR.Insert): Token = with (insert) {
+    val (columns, values) = columnsAndValues(assignments, exclusions).unzip()
+    +"INSERT INTO ${query.token}${` AS table`(alias)} (${columns.mkStmt(", ")}) VALUES ${tokenizeInsertAssignemnts(values)}"
   }
 
   fun tokenizeInsertAssignemnts(values: List<Token>) =

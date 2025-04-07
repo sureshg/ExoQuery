@@ -61,40 +61,40 @@ object BatchActionSpecGoldenDynamic: GoldenQueryFile {
       "[ParamSingle(0, John, String), ParamSingle(1, 42, Int)], [ParamSingle(0, Jane, String), ParamSingle(1, 43, Int)], [ParamSingle(0, Jack, String), ParamSingle(1, 44, Int)]"
     ),
     "update/simple/SQL" to cr(
-      "UPDATE Person SET name = {0:Refiner_STRING}, age = {1:Refiner_INT} WHERE Person WHERE id = {2:Refiner_INT}",
+      "UPDATE Person SET name = {0:Refiner_STRING}, age = {1:Refiner_INT} WHERE id = {2:Refiner_INT}",
       "0" to "Refiner_STRING", "1" to "Refiner_INT", "2" to "Refiner_INT"
     ),
     "update/simple/Params1" to cr(
-      "UPDATE Person SET name = {0:John-A}, age = {1:52} WHERE Person WHERE id = {2:1}",
+      "UPDATE Person SET name = {0:John-A}, age = {1:52} WHERE id = {2:1}",
       "0" to "John-A", "1" to "52", "2" to "1"
     ),
     "update/simple/Params2" to cr(
-      "UPDATE Person SET name = {0:Jane-A}, age = {1:53} WHERE Person WHERE id = {2:2}",
+      "UPDATE Person SET name = {0:Jane-A}, age = {1:53} WHERE id = {2:2}",
       "0" to "Jane-A", "1" to "53", "2" to "2"
     ),
     "update/simple/Params3" to cr(
-      "UPDATE Person SET name = {0:Jack-A}, age = {1:54} WHERE Person WHERE id = {2:3}",
+      "UPDATE Person SET name = {0:Jack-A}, age = {1:54} WHERE id = {2:3}",
       "0" to "Jack-A", "1" to "54", "2" to "3"
     ),
     "update/simple" to kt(
       "[ParamSingle(0, John-A, String), ParamSingle(1, 52, Int), ParamSingle(2, 1, Int)], [ParamSingle(0, Jane-A, String), ParamSingle(1, 53, Int), ParamSingle(2, 2, Int)], [ParamSingle(0, Jack-A, String), ParamSingle(1, 54, Int), ParamSingle(2, 3, Int)]"
     ),
     "update/simple - where clause/SQL" to cr(
-      "UPDATE Person SET name = {0:Refiner_STRING}, age = {1:Refiner_INT} WHERE Person WHERE id = {2:Refiner_INT} AND age > 50",
+      "UPDATE Person SET name = {0:Refiner_STRING}, age = {1:Refiner_INT} WHERE id = {2:Refiner_INT} AND age > 50",
       "0" to "Refiner_STRING", "1" to "Refiner_INT", "2" to "Refiner_INT"
     ),
     "update/simple - where clause" to kt(
       "[ParamSingle(0, John-A, String), ParamSingle(1, 52, Int), ParamSingle(2, 1, Int)], [ParamSingle(0, Jane-A, String), ParamSingle(1, 53, Int), ParamSingle(2, 2, Int)], [ParamSingle(0, Jack-A, String), ParamSingle(1, 54, Int), ParamSingle(2, 3, Int)]"
     ),
     "update/simple with setParams and exclusion/SQL" to cr(
-      "UPDATE Person SET name = {0:Refiner_STRING}, age = {1:Refiner_INT} WHERE Person WHERE id = {2:Refiner_INT}",
+      "UPDATE Person SET name = {0:Refiner_STRING}, age = {1:Refiner_INT} WHERE id = {2:Refiner_INT}",
       "0" to "Refiner_STRING", "1" to "Refiner_INT", "2" to "Refiner_INT"
     ),
     "update/simple with setParams and exclusion" to kt(
       "[ParamSingle(0, John-A, String), ParamSingle(1, 52, Int), ParamSingle(2, 1, Int)], [ParamSingle(0, Jane-A, String), ParamSingle(1, 53, Int), ParamSingle(2, 2, Int)], [ParamSingle(0, Jack-A, String), ParamSingle(1, 54, Int), ParamSingle(2, 3, Int)]"
     ),
     "update/simple with setParams and exclusion and returning param/SQL" to cr(
-      "UPDATE Person SET name = {0:Refiner_STRING}, age = {1:Refiner_INT} WHERE Person WHERE id = {2:Refiner_INT} RETURNING id, {3:Refiner_STRING}",
+      "UPDATE Person SET name = {0:Refiner_STRING}, age = {1:Refiner_INT} WHERE id = {2:Refiner_INT} RETURNING id, {3:Refiner_STRING}",
       "0" to "Refiner_STRING", "1" to "Refiner_INT", "2" to "Refiner_INT", "3" to "Refiner_STRING"
     ),
     "update/simple with setParams and exclusion and returning param" to kt(

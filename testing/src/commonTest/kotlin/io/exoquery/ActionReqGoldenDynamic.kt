@@ -90,33 +90,33 @@ object ActionReqGoldenDynamic: GoldenQueryFile {
       "update<Person> { set(thisupdate.name to Joe, thisupdate.age to 123) }.filter { p -> p.id == 1 }"
     ),
     "update/simple/SQL" to cr(
-      "UPDATE Person SET name = 'Joe', age = 123 WHERE Person WHERE id = 1"
+      "UPDATE Person SET name = 'Joe', age = 123 WHERE id = 1"
     ),
     "update/no condition/XR" to kt(
       "update<Person> { set(thisupdate.name to Joe, thisupdate.age to 123) }"
     ),
     "update/no condition/SQL" to cr(
-      "UPDATE Person SET name = 'Joe', age = 123 WHERE Person"
+      "UPDATE Person SET name = 'Joe', age = 123"
     ),
     "update/with setParams/XR" to kt(
       """update<Person> { set(thisupdate.id to TagP("0"), thisupdate.name to TagP("1"), thisupdate.age to TagP("2")) }.filter { p -> p.id == 1 }"""
     ),
     "update/with setParams/SQL" to cr(
-      "UPDATE Person SET id = {0:1}, name = {1:Joe}, age = {2:123} WHERE Person WHERE id = 1",
+      "UPDATE Person SET id = {0:1}, name = {1:Joe}, age = {2:123} WHERE id = 1",
       "0" to "1", "1" to "Joe", "2" to "123"
     ),
     "update/with setParams and exclusion/XR" to kt(
       """update<Person> { set(thisupdate.id to TagP("0"), thisupdate.name to TagP("1"), thisupdate.age to TagP("2")).excluding(listOf(thisupdate.id)) }.filter { p -> p.id == 1 }"""
     ),
     "update/with setParams and exclusion/SQL" to cr(
-      "UPDATE Person SET name = {0:Joe}, age = {1:123} WHERE Person WHERE id = 1",
+      "UPDATE Person SET name = {0:Joe}, age = {1:123} WHERE id = 1",
       "1" to "Joe", "2" to "123"
     ),
     "update/with returning/XR" to kt(
       "update<Person> { set(thisupdate.name to Joe, thisupdate.age to 123) }.filter { p -> p.id == 1 }.returning { p -> p.id }"
     ),
     "update/with returning/SQL" to cr(
-      "UPDATE Person SET name = 'Joe', age = 123 WHERE Person WHERE id = 1 RETURNING id"
+      "UPDATE Person SET name = 'Joe', age = 123 WHERE id = 1 RETURNING id"
     ),
     "update/with returning/returningType" to cr(
       "ClauseInQuery"
@@ -125,7 +125,7 @@ object ActionReqGoldenDynamic: GoldenQueryFile {
       "update<Person> { set(thisupdate.name to Joe, thisupdate.age to 123) }.filter { p -> p.id == 1 }.returningKeys { listOf(thisreturningKeys.id) }"
     ),
     "update/with returningKeys/SQL" to cr(
-      "UPDATE Person SET name = 'Joe', age = 123 WHERE Person WHERE id = 1"
+      "UPDATE Person SET name = 'Joe', age = 123 WHERE id = 1"
     ),
     "update/with returningKeys/returningType" to cr(
       "Keys(columns=[id])"

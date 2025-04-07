@@ -53,8 +53,8 @@ class SqlServerDialect(override val traceConf: TraceConfig = TraceConfig.empty) 
     val newAlias = insert.coreAlias().copy(name = "INSERTED")
     val returningClauseToken = protractReturning(expr, newAlias)
     val query = insert.query as? XR.Entity ?: xrError("Insert query must be an entity but found: ${insert.query}")
-    val (columns, values) = columnsAndValues(insert.assignments, insert.exclusions).unzip()
-    +"INSERT INTO ${query.token}${` AS table`(insert.alias)} (${columns.mkStmt(", ")}) VALUES ${tokenizeInsertAssignemnts(columns)} OUTPUT ${returningClauseToken}"
+    val insertBase = tokenizeInsertBase(insert)
+    +"${insertBase} OUTPUT ${returningClauseToken}"
   }
 
   fun tokenizeOutputtingUpdate(expr: XR.Returning.Kind.Expression, update: XR.Update): Token = run {

@@ -354,6 +354,7 @@ sealed interface XR {
     override fun equals(other: Any?): Boolean = other is Drop && other.id() == cid
   }
 
+  // TODO refactor into UnionKind which will have Union, UnionAll, and other things like Intersect and Except
   @Serializable
   @Mat
   data class Union(@Slot val a: XR.Query, @Slot val b: XR.Query, override val loc: Location = Location.Synth): Query, PC<Union> {
