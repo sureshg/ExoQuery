@@ -389,7 +389,7 @@ interface CapturedBlock {
   @DslFunctionCall(DslFunctionCallType.Aggregator::class)
   fun <T : Comparable<T>> sum(value: T): T = errorCap("The `min` expression of the Query was not inlined")
   @DslFunctionCall(DslFunctionCallType.Aggregator::class)
-  fun <T> count(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+  fun <T> count(value: T): Int = errorCap("The `min` expression of the Query was not inlined")
 
   // Use this as an aggregator for a query e.g. people.map(p -> p.age).min()
   // this is useful for co-releated subqueries e.g. events.filter(ev -> people.map(p -> p.age).avg() > ev.minAllowedAge) i.e. events to which the average person can come to

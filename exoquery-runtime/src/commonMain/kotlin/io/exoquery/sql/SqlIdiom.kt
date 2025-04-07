@@ -148,7 +148,15 @@ interface SqlIdiom: HasPhasePrinting {
     }
   }
 
-  val XR.Ident.token get(): Token = name.token
+  // All previous sanitization focused on doing things like removing "<" and ">" from variables like "<init>"
+  // at this point we need to get rid of the dollar signs.
+  private fun String.sane() = run {
+    val dol = '$' + ""
+    this.replace(dol, "")
+  }
+
+  val XR.Ident.token get(): Token =
+    this.name.sane().token
 
   /**
    * For example something like `people.map(_.age).avg` would be something like `people.map(_.age).value.avg`
@@ -624,9 +632,9 @@ interface SqlIdiom: HasPhasePrinting {
 
   val FromContext.token get(): Token =
     when (this) {
-      is TableContext -> +"${entity.token} ${alias.token}"
-      is QueryContext -> +"(${query.token})${` AS`} ${alias.token}"
-      is ExpressionContext -> +"(${(infix as XR.Expression).token})${` AS`} ${alias.token}"
+      is TableContext -> +"${entity.token} ${alias.sane().token}"
+      is QueryContext -> +"(${query.token})${` AS`} ${alias.sane().token}"
+      is ExpressionContext -> +"(${(infix as XR.Expression).token})${` AS`} ${alias.sane().token}"
       is FlatJoinContext -> +"${joinType.token} ${from.token} ON ${on.token}"
     }
 
