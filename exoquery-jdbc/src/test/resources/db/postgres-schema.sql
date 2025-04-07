@@ -1,14 +1,20 @@
-CREATE TABLE person (
+CREATE TABLE Person(
     id SERIAL PRIMARY KEY,
     firstName VARCHAR(255),
     lastName VARCHAR(255),
     age INT
 );
 
-CREATE TABLE address (
+CREATE TABLE Address(
     ownerId INT,
     street VARCHAR,
     zip INT
+);
+
+CREATE TABLE Robot(
+    ownerId INT,
+    model VARCHAR(255),
+    age INT
 );
 
 CREATE TABLE Product(

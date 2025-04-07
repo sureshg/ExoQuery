@@ -4,6 +4,7 @@ import io.exoquery.Address
 import io.exoquery.Ord
 import io.exoquery.Person
 import io.exoquery.PostgresDialect
+import io.exoquery.Robot
 import io.exoquery.TestDatabases
 import io.exoquery.capture
 import io.exoquery.controller.jdbc.DatabaseController
@@ -26,12 +27,16 @@ class BasicQuerySpec : FreeSpec({
       """
       DELETE FROM Person;
       DELETE FROM Address;
+      DELETE FROM Robot;
       INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'Joe', 'Bloggs', 111);
       INSERT INTO Person (id, firstName, lastName, age) VALUES (2, 'Joe', 'Doggs', 222);
       INSERT INTO Person (id, firstName, lastName, age) VALUES (3, 'Jim', 'Roogs', 333);
       INSERT INTO Address (ownerId, street, zip) VALUES (1, '123 Main St', '12345');
       INSERT INTO Address (ownerId, street, zip) VALUES (1, '456 Elm St', '67890');
       INSERT INTO Address (ownerId, street, zip) VALUES (2, '789 Oak St', '54321');
+      INSERT INTO Robot (ownerId, model, age) VALUES (2, 'R2D2', 22);
+      INSERT INTO Robot (ownerId, model, age) VALUES (3, 'C3PO', 33);
+      INSERT INTO Robot (ownerId, model, age) VALUES (3, 'T100', 44);
       """
     )
   }
@@ -70,6 +75,21 @@ class BasicQuerySpec : FreeSpec({
     q.build<PostgresDialect>().runOn(ctx) shouldBe listOf(
       Person(1, "Joe", "Bloggs", 111),
       Person(2, "Joe", "Doggs", 222)
+    )
+  }
+
+  "filter + correlated isNotEmpty" {
+    val q = capture { Table<Person>().filter { p -> Table<Address>().filter { it.ownerId == p.id }.isNotEmpty() } }
+    q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
+      Person(1, "Joe", "Bloggs", 111),
+      Person(2, "Joe", "Doggs", 222)
+    )
+  }
+
+  "filter + correlated isEmpty" {
+    val q = capture { Table<Person>().filter { p -> Table<Address>().filter { it.ownerId == p.id }.isEmpty() } }
+    q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
+      Person(3, "Jim", "Roogs", 333)
     )
   }
 
@@ -173,6 +193,63 @@ class BasicQuerySpec : FreeSpec({
 //      )
 //    }
 //
+
+  // TODO probably only need to test for one DB e.g. postgres, move it out
+  "deconstruct" - {
+    "columns - from a table" {
+      val names = capture.select {
+        val p = from(Table<Person>())
+        p.firstName to p.lastName
+      }
+      val q = capture.select {
+        val (first, last) = from(names)
+        first + " - " + last
+      }
+      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
+        "Joe - Bloggs",
+        "Joe - Doggs",
+        "Jim - Roogs"
+      )
+    }
+
+    "columns - from a table - mapped" {
+      val names = capture.select {
+        val p = from(Table<Person>())
+        p.firstName to p.lastName
+      }
+      val q = capture {
+        names.map { (first, last) -> first + " - " + last }
+      }
+      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
+        "Joe - Bloggs",
+        "Joe - Doggs",
+        "Jim - Roogs"
+      )
+    }
+
+    "join - from a join" {
+      val join =
+        capture.select {
+          val p = from(Table<Person>())
+          val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+          p to a
+        }
+      val deconstuct =
+        capture.select {
+          val (p, a) = from(join)
+          val r = join(Table<Robot>()) { r -> r.ownerId == p.id }
+          Triple(p, a, r)
+        }
+
+      deconstuct.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
+        Triple(
+          Person(2, "Joe", "Doggs", 222),
+          Address(2, "789 Oak St", "54321"),
+          Robot(2, "R2D2", 22)
+        )
+      )
+    }
+  }
 
   "joins" - {
     "Person, Address - join" {

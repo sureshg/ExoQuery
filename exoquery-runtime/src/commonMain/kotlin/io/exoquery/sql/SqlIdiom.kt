@@ -20,9 +20,9 @@ import io.exoquery.xrError
 interface SqlIdiom: HasPhasePrinting {
 
   override val traceType: TraceType get() = TraceType.SqlNormalizations
-  abstract val concatFunction: String
   abstract val useActionTableAliasAs: ActionTableAliasBehavior
 
+  val concatFunction: String get() = "UNNEST"
   val aliasSeparator: String get() = "_"
   open fun joinAlias(alias: List<String>): String = alias.joinToString(aliasSeparator)
 
@@ -568,8 +568,9 @@ interface SqlIdiom: HasPhasePrinting {
       is OP.not -> +"NOT"
     }
 
-  val BinaryOperator.token get(): Token =
-    when(this) {
+  val BinaryOperator.token get(): Token = opBinaryTokenImpl(this)
+  fun opBinaryTokenImpl(opImpl: BinaryOperator): Token = with (opImpl) {
+    when (this) {
       is OP.`==` -> +"="
       is OP.`!=` -> +"<>"
       is OP.and -> +"AND"
@@ -584,8 +585,8 @@ interface SqlIdiom: HasPhasePrinting {
       is OP.lte -> +"<="
       is OP.div -> +"/"
       is OP.mod -> +"%"
-
     }
+  }
 
 
 //    case EqualityOperator.`_==`      => stmt"="
@@ -791,13 +792,16 @@ interface SqlIdiom: HasPhasePrinting {
   fun xrInsertTokenImpl(insertImpl: XR.Insert): Token = with (insertImpl) {
     val query = this.query as? XR.Entity ?: xrError("Insert query must be an entity but found: ${this.query}")
     val (columns, values) = columnsAndValues(assignments, exclusions).unzip()
-    +"INSERT INTO ${query.token}${` AS table`(alias)} (${columns.mkStmt(", ")}) VALUES ${TokenContext(values.mkStmt(", ", "(", ")"), TokenContext.Kind.AssignmentBlock) }"
+    +"INSERT INTO ${query.token}${` AS table`(alias)} (${columns.mkStmt(", ")}) VALUES ${tokenizeInsertAssignemnts(columns)}"
 
 //    case Insert(entity: Entity, assignments) =>
 //        val (table, columns, values) = insertInfo(insertEntityTokenizer, entity, assignments)
 //        stmt"INSERT INTO $table${` AS [table]`} (${columns
 //            .mkStmt(",")}) VALUES ${ValuesClauseToken(stmt"(${values.mkStmt(", ")})")}"
   }
+
+  fun tokenizeInsertAssignemnts(values: List<Token>) =
+    TokenContext(values.mkStmt(", ", "(", ")"), TokenContext.Kind.AssignmentBlock)
 
   val List<XR.Assignment>.token get(): Token =
     this.map { it.token }.mkStmt(", ")
@@ -814,6 +818,21 @@ interface SqlIdiom: HasPhasePrinting {
     }
   }
 
+  fun protractReturning(kind: XR.Returning.Kind.Expression, actionAlias: XR.Ident) = run {
+    val reducedExpr = BetaReduction(kind.expr, kind.alias to actionAlias).asExpr()
+    when (val tpe = reducedExpr.type) {
+      is XRType.Product ->
+        // Some crazy things can happen if you do something like
+        // data class Name(val first: String, val last: String), data class Person(val id: Int, val name: Name, val age: Int)
+        // insert<Person> { ... }.returning { p -> Name(p.name.first + "-stuff", p.name.last + "-otherStuff") } i.e. something like:
+        // SELECT ... RETURNING (first + '-stuff', last + '-otherStuff').first, (first + '-stuff', last + '-otherStuff').last
+        // So we need to make sure to beta-reduce all of the output clauses individually when a product is expanded
+        ProtractQuat(true).invoke(tpe, reducedExpr).map { BetaReduction(it.first).token }.mkStmt(", ")
+      else ->
+        scopedTokenizer(reducedExpr).token
+    }
+  }
+
   // TODO possible variable-shadowing issues might require beta-reducing out the alias of the inner query first.
   //      Do that instead of creating an ExternalIdent like was done in Quill #1509.
   val XR.Returning.token get(): Token = xrReturningTokenImpl(this)
@@ -823,24 +842,7 @@ interface SqlIdiom: HasPhasePrinting {
       // use the action renderes first. In SQL-server that uses an OUTPUT clause this is not the case
       // and we need to repeat some logic here.
       kind is XR.Returning.Kind.Expression && (action is XR.U.CoreAction || action is XR.FilteredAction) -> {
-        // TODO If the output is a product type we need to do expansion similar to SelectValue I.e. use SelectValue here
-        //      note selections of single values similar to `as value` need to function for this as well
-        val reducedExpr = BetaReduction(kind.expr, kind.alias to action.coreAlias()).asExpr()
-
-        val returningClauseToken =
-          when (val tpe = reducedExpr.type) {
-            is XRType.Product ->
-              // Some crazy things can happen if you do something like
-              // data class Name(val first: String, val last: String), data class Person(val id: Int, val name: Name, val age: Int)
-              // insert<Person> { ... }.returning { p -> Name(p.name.first + "-stuff", p.name.last + "-otherStuff") } i.e. something like:
-              // SELECT ... RETURNING (first + '-stuff', last + '-otherStuff').first, (first + '-stuff', last + '-otherStuff').last
-              // So we need to make sure to beta-reduce all of the output clauses individually when a product is expanded
-              ProtractQuat(true).invoke(tpe, reducedExpr).map { BetaReduction(it.first).token }.mkStmt(", ")
-            else ->
-              scopedTokenizer(reducedExpr).token
-          }
-
-
+        val returningClauseToken = protractReturning(kind, action.coreAlias())
         +"${action.token} RETURNING ${returningClauseToken}"
       }
       // This is when an API like insert(...).returningColumns(...) is used.
@@ -855,7 +857,7 @@ interface SqlIdiom: HasPhasePrinting {
 
   val XR.Delete.token get(): Token = xrDeleteTokenImpl(this)
   fun xrDeleteTokenImpl(deleteImpl: XR.Delete): Token = with (deleteImpl) {
-    fun deleteBase() = +"DELETE FROM ${query.token}${` AS table`(alias)}"
+    fun deleteBase() = tokenizeDeleteBase(deleteImpl)
     when {
       query is XR.Filter && query.head is XR.Entity ->
         deleteBase()
@@ -866,18 +868,26 @@ interface SqlIdiom: HasPhasePrinting {
     }
   }
 
+  fun tokenizeDeleteBase(delete: XR.Delete): Token = with (delete) {
+    +"DELETE FROM ${query.token}${` AS table`(alias)}"
+  }
+
   // TODO specialized logic for Postgres UPDATE to allow setting token-context here
   val XR.Update.token get(): Token = xrUpdateTokenImpl(this)
   fun xrUpdateTokenImpl(updateImpl: XR.Update): Token = with (updateImpl) {
-    fun updateBase() = +"UPDATE ${query.token}${` AS table`(alias)} SET ${assignments.filterNot { exclusions.contains(it.property) }.token}"
+    fun updateBase() = tokenizeUpdateBase(updateImpl)
     when {
       query is XR.Filter && query.head is XR.Entity ->
-        updateBase()
-      query is XR.Entity ->
         +"${updateBase()} WHERE ${query.token}"
+      query is XR.Entity ->
+        updateBase()
       else ->
         xrError("Invalid query-clause in an Update. It can only be a XR Filter or Entity but was:\n${query.showRaw()}")
     }
+  }
+
+  fun tokenizeUpdateBase(update: XR.Update): Token = with (update) {
+    +"UPDATE ${query.token}${` AS table`(alias)} SET ${assignments.filterNot { exclusions.contains(it.property) }.token}"
   }
 
   // AS [table] specifically for actions (where for some dialects it shouldn't even be there)

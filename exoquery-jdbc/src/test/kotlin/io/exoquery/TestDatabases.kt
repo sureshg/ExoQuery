@@ -13,6 +13,7 @@ object TestDatabases {
     val resource = this::class.java.getResource(postgresScriptsPath)
     if (resource == null) throw NullPointerException("The postgres script path `$postgresScriptsPath` was not found")
     val postgresScript = resource.readText()
+    println("---------- Postgres Running on: ${started.getJdbcUrl("postgres", "")}")
     started.getPostgresDatabase().run(postgresScript)
     started
   }

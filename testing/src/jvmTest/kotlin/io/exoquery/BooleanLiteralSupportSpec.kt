@@ -62,7 +62,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
         Table<Ent>().map { e -> e.name to if (e.b == e.bb) e.bc else e.b == e.bb }
       }
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
 
     "map-clause" {
@@ -70,7 +70,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
         Table<Ent>().map { e -> e.bb == true }
       }
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
 
     "map-clause with int" {
@@ -78,7 +78,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
         Table<Ent>().map { e -> e.num > 10 }
       }
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
 
     "tuple" {
@@ -86,7 +86,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
         Table<Ent>().map { e -> "foo" to (e.bb == true) }
       }
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
 
     "tuple-multi" {
@@ -94,7 +94,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
         Table<Ent>().map { e -> (e.bb == true) to (e.bc == false) to (e.num > 1) }
       }
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
 
     "case-class" {
@@ -102,7 +102,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
         Table<Ent>().map { e -> Status("foo", e.bb == true) }
       }
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
   }
 
@@ -188,7 +188,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
           Table<Ent>().filter { e -> free("${e.i} > 123").asConditon() }
         }
         shouldBeGolden(q.xr, "XR")
-        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
       }
 
       "pure filter-clause" {
@@ -196,7 +196,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
           Table<Ent>().filter { e -> free("${e.i} > 123").asPureConditon() }
         }
         shouldBeGolden(q.xr, "XR")
-        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
       }
 
       "map-clause" {
@@ -204,7 +204,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
           Table<Ent>().map { e -> free("${e.i} > 123").asConditon() }
         }
         shouldBeGolden(q.xr, "XR")
-        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
       }
 
       "distinct map-clause" {
@@ -215,7 +215,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
             .map { r -> "baz" to r.second }
         }
         shouldBeGolden(q.xr, "XR")
-        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
       }
 
       "distinct tuple map-clause" {
@@ -225,7 +225,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
             .distinct()
         }
         shouldBeGolden(q.xr, "XR")
-        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
       }
 
       "pure map-clause" {
@@ -233,7 +233,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
           Table<Ent>().map { e -> free("${e.i} > 123").asPureConditon() }
         }
         shouldBeGolden(q.xr, "XR")
-        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
       }
 
       "pure distinct map-clause" {
@@ -244,7 +244,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
             .map { r -> "baz" to r.second }
         }
         shouldBeGolden(q.xr, "XR")
-        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
       }
 
       "pure map-clause - double element" {
@@ -255,7 +255,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
             .map { r -> r to r }
         }
         shouldBeGolden(q.xr, "XR")
-        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
       }
     }
 
@@ -304,7 +304,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
           Table<Ent>().filter { e -> free("SomeUdf(${e.i})")<Boolean>() }
         }
         shouldBeGolden(q.xr, "XR")
-        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
       }
 
       "map-clause" {
@@ -314,7 +314,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
             .map { x -> x + 1 }
         }
         shouldBeGolden(q.xr, "XR")
-        shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
       }
     }
   }
@@ -358,7 +358,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
         Table<Product>().filter { p -> param("1").toInt() == p.sku }
       }.determinizeDynamics()
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
 
     "second parameter" {
@@ -366,7 +366,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
         Table<Product>().filter { p -> p.sku == param("1").toInt() }
       }.determinizeDynamics()
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
 
     "both parameters" {
@@ -374,7 +374,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
         Table<Product>().filter { p -> param("2").toInt() == param("1").toInt() }
       }.determinizeDynamics()
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
   }
 
@@ -389,7 +389,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
         t1 to t2
       }
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
 
     "for-comprehension with field" {
@@ -399,7 +399,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
         t1 to t2
       }
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
   }
 
@@ -413,7 +413,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
           .map { t -> t.b to true }
       }
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
 
     "exists - lifted contains" {
@@ -426,7 +426,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
       println(q.xr.showRaw())
 
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
 
     "exists - lifted not contains" {
@@ -438,7 +438,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
       println(q.xr.showRaw())
 
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
 
     "exists - lifted complex" {
@@ -448,7 +448,7 @@ class BooleanLiteralSupportSpec : GoldenSpecDynamic(BooleanLiteralSupportSpecGol
           .map { t -> t.b to true }
       }.determinizeDynamics()
       shouldBeGolden(q.xr, "XR")
-      shouldBeGolden(q.buildRuntime(BooleanLiteralDialect(), "SQL"), "SQL")
+      shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
     }
   }
 })
