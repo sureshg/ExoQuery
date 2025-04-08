@@ -7,7 +7,9 @@ import io.exoquery.PostgresDialect
 import io.exoquery.Robot
 import io.exoquery.TestDatabases
 import io.exoquery.capture
+import io.exoquery.controller.Controller
 import io.exoquery.controller.jdbc.DatabaseController
+import io.exoquery.controller.runActions
 import io.exoquery.controller.runOn
 import io.exoquery.run
 import io.exoquery.runOn
@@ -17,13 +19,12 @@ import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import kotlinx.serialization.Serializable
 import kotlin.to
 
-class BasicQuerySpec : FreeSpec({
 
-  val ds = TestDatabases.postgres
-  val ctx by lazy { DatabaseController.Postgres(ds) }
+class BasicQuerySpec : FreeSpec({
+  val ctx = TestDatabases.postgres
 
   beforeSpec {
-    ds.run(
+    ctx.runActions(
       """
       DELETE FROM Person;
       DELETE FROM Address;
@@ -42,10 +43,6 @@ class BasicQuerySpec : FreeSpec({
   }
 
   "simple" {
-    //Sql("SELECT id, firstName, lastName, age FROM Person").queryOf<Person>().runOn(ctx) shouldBe listOf(
-    //  Person(1, "Joe", "Bloggs", 111),
-    //  Person(2, "Jim", "Roogs", 222)
-    //)
     val q = capture { Table<Person>() }
     q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
       Person(1, "Joe", "Bloggs", 111),
@@ -56,6 +53,15 @@ class BasicQuerySpec : FreeSpec({
 
   "filter" {
     val q = capture { Table<Person>().filter { it.firstName == "Joe" } }
+    q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
+      Person(1, "Joe", "Bloggs", 111),
+      Person(2, "Joe", "Doggs", 222)
+    )
+  }
+
+  "filter with param" {
+    val joe = "Joe"
+    val q = capture { Table<Person>().filter { it.firstName == param(joe) } }
     q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
       Person(1, "Joe", "Bloggs", 111),
       Person(2, "Joe", "Doggs", 222)
