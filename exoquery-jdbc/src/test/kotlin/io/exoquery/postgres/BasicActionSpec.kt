@@ -216,7 +216,45 @@ class BasicActionSpec: FreeSpec({
 //      shouldBeGolden(build.actionReturningKind.toString(), "returningType")
 //    }
 //  }
-//
+
+
+  "delete" - {
+    "simple" {
+      ctx.insertGeorgeAndJim()
+      val q = capture {
+        delete<Person>().filter { p -> p.id == 1 }
+      }
+      q.build<PostgresDialect>().runOn(ctx) shouldBe 1
+      ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
+    }
+    "no condition" {
+      ctx.insertGeorgeAndJim()
+      val q = capture {
+        delete<Person>().all()
+      }
+      q.build<PostgresDialect>().runOn(ctx) shouldBe 2
+      ctx.people() shouldBe emptyList()
+    }
+    "with returning" {
+      ctx.insertGeorgeAndJim()
+      val q = capture {
+        delete<Person>().filter { p -> p.id == 1 }.returning { p -> p.id + 100 }
+      }
+      val build = q.build<PostgresDialect>()
+      build.runOn(ctx) shouldBe 101
+      ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
+    }
+    "with returningKeys" {
+      ctx.insertGeorgeAndJim()
+      val q = capture {
+        delete<Person>().filter { p -> p.id == 1 }.returningKeys { id }
+      }
+      val build = q.build<PostgresDialect>()
+      build.runOn(ctx) shouldBe 1
+      ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
+    }
+  }
+
 //  "delete" - {
 //    "simple" {
 //      val q = capture {

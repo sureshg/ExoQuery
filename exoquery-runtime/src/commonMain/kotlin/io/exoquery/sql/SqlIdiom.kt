@@ -859,9 +859,9 @@ interface SqlIdiom: HasPhasePrinting {
     fun deleteBase() = tokenizeDeleteBase(deleteImpl)
     when {
       query is XR.Filter && query.head is XR.Entity ->
-        deleteBase()
-      query is XR.Entity ->
         +"${deleteBase()} WHERE ${query.token}"
+      query is XR.Entity ->
+        deleteBase()
       else ->
         xrError("Invalid query-clause in a Delete. It can only be a XR Filter or Entity but was:\n${query.showRaw()}")
     }

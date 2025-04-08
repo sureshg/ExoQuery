@@ -134,19 +134,19 @@ object ActionReqGoldenDynamic: GoldenQueryFile {
       "delete<Person>.filter { p -> p.id == 1 }"
     ),
     "delete/simple/SQL" to cr(
-      "DELETE FROM Person WHERE Person WHERE id = 1"
+      "DELETE FROM Person WHERE id = 1"
     ),
     "delete/no condition/XR" to kt(
       "delete<Person>"
     ),
     "delete/no condition/SQL" to cr(
-      "DELETE FROM Person WHERE Person"
+      "DELETE FROM Person"
     ),
     "delete/with returning/XR" to kt(
       "delete<Person>.filter { p -> p.id == 1 }.returning { p -> p.id }"
     ),
     "delete/with returning/SQL" to cr(
-      "DELETE FROM Person WHERE Person WHERE id = 1 RETURNING id"
+      "DELETE FROM Person WHERE id = 1 RETURNING id"
     ),
     "delete/with returning/returningType" to cr(
       "ClauseInQuery"
@@ -155,7 +155,7 @@ object ActionReqGoldenDynamic: GoldenQueryFile {
       "delete<Person>.filter { p -> p.id == 1 }.returningKeys { listOf(thisreturningKeys.id) }"
     ),
     "delete/with returningKeys/SQL" to cr(
-      "DELETE FROM Person WHERE Person WHERE id = 1"
+      "DELETE FROM Person WHERE id = 1"
     ),
     "delete/with returningKeys/returningType" to cr(
       "Keys(columns=[id])"

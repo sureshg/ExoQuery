@@ -199,12 +199,13 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
 
                 // Can include the sql-formatting library here since the compiler is always on the JVM!
                 val queryString = queryTokenized.renderQueryString(isPretty, xr)
+                val actionReturningKind = ActionReturningKind.fromActionXR(xr.action)
                 accum.addQuery(PrintableQuery(queryString, compileLocation, parsedArgs.queryLabel))
 
                 val msgAdd = parsedArgs.queryLabel?.let { " ($it)" } ?: ""
                 logger.report("Compiled batch-action in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)
 
-                SqlCompiledBatchActionExpr(sqlExpr, queryString, queryTokenized, parsedArgs.queryLabel, Phase.CompileTime, uprootable.packedXR).plant()
+                SqlCompiledBatchActionExpr(sqlExpr, queryString, queryTokenized, actionReturningKind, parsedArgs.queryLabel, Phase.CompileTime, uprootable.packedXR).plant()
               }
             ) ?: run {
               logger.warn("The batch-action could not be transformed at compile-time", expr.location())

@@ -96,6 +96,7 @@ class PrintMisc(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Any?>
         Tree.KeyValue("token", PrintToken().treeifyThis(x.token, "token")),
         Tree.KeyValue("params", Tree.Apply("List", x.params.map { treeifyThis(it, null) }.iterator())),
         //Tree.KeyValue("needsTokenization", Tree.Literal("${x.needsTokenization}")),
+        Tree.KeyValue("returningType", Tree.Literal(x.actionReturningKind.toString())),
         Tree.KeyValue("batchParam", Tree.Apply("List", x.batchParam.map { Tree.Literal(it.toString()) }.iterator())),
         Tree.KeyValue("label", Tree.Literal(x.label ?: "null")),
         Tree.KeyValue("phase", Tree.Literal(x.debugData.phase.toString())),

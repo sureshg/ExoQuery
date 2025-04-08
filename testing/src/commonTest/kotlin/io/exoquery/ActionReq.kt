@@ -2,9 +2,6 @@ package io.exoquery
 
 import io.exoquery.testdata.Person
 
-// TODO need  a test for exclusing
-// TODO need a test for returning-keys (and that info needs to be avaiable for downstream systems i.e. the context)
-// TODO OnConflict
 class ActionReq: GoldenSpecDynamic(ActionReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "insert" - {
     "simple" {

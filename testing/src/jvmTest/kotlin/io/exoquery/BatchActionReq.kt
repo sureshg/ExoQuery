@@ -2,7 +2,7 @@ package io.exoquery
 
 import io.exoquery.testdata.Person
 
-class BatchActionSpec: GoldenSpecDynamic(BatchActionSpecGoldenDynamic, Mode.ExoGoldenOverride(), {
+class BatchActionReq: GoldenSpecDynamic(BatchActionReqGoldenDynamic, Mode.ExoGoldenOverride(), {
   "insert" - {
     val people = listOf(Person(1, "John", 42), Person(2, "Jane", 43), Person(3, "Jack", 44),).asSequence()
 

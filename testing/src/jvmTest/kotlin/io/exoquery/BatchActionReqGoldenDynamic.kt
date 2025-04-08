@@ -4,7 +4,7 @@ import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object BatchActionSpecGoldenDynamic: GoldenQueryFile {
+object BatchActionReqGoldenDynamic: GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "insert/simple/SQL" to cr(
       "INSERT INTO Person (name, age) VALUES ({0:Refiner_STRING}, {1:Refiner_INT})",

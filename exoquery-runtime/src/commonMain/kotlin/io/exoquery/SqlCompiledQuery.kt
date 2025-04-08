@@ -64,7 +64,7 @@ data class BatchParamGroup<BatchInput, Input: Any, Output>(val input: BatchInput
 }
 
 // TODO since we're providing the batch-parameter at the last moment, we need a function that replaces ParamBatchRefiner to ParamSingle instances and create BatchGroups
-data class SqlCompiledBatchAction<BatchInput, Input: Any, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val batchParam: Sequence<BatchInput>, val label: String?, val debugData: SqlCompiledBatchAction.DebugData): ExoCompiled() {
+data class SqlCompiledBatchAction<BatchInput, Input: Any, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val actionReturningKind: ActionReturningKind, val batchParam: Sequence<BatchInput>, val label: String?, val debugData: SqlCompiledBatchAction.DebugData): ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
 
   val effectiveQuery by lazy { token.build() }
