@@ -11,7 +11,7 @@ import io.exoquery.sql.SqlIdiom
 suspend fun JdbcController.people() = capture { Table<Person>() }.build<PostgresDialect>().runOn(this)
 
 suspend fun JdbcController.insertPerson(person: Person) =
-  capture { insert<Person> { setParams(person) } }
+  capture { insert<Person> { setParams(person) } }.build<PostgresDialect>().runOn(this)
 
 suspend fun JdbcController.insertPeople() =
   people.forEach { capture { insert<Person> { setParams(it) } }.build<PostgresDialect>().runOn(this) }

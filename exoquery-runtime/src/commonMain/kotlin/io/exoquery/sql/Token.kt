@@ -42,12 +42,22 @@ sealed interface Token {
     }.invoke(this)
 
 
+  fun <T> ArrayDeque<T>.addAllFirst(tokens: List<T>) {
+    for (i in tokens.lastIndex downTo 0) {
+      val token = tokens[i]
+      this.addFirst(token)
+    }
+  }
+
+
   fun extractParams(dissalowUnrefinedBatchParams: Boolean = false): List<Param<*>> {
     val accum = mutableListOf<Param<*>>()
     fun errorNotFound(bid: BID): Nothing = xrError("Param not found for bid: ${bid} in tokenization:\n${this.renderWith(Renderer(true, true, null))}")
     fun errorUnrealizedFound(bid: BID): Nothing = xrError("Unrealized Param found for bid: ${bid} in tokenization:\n${this.renderWith(Renderer(true, true, null))}")
 
     // Depth-first search of the tree to find all the params
+    // NOTE: It is VERY important to travel this in a depth-first manner otherwise the Params will come out in the wrong order
+    // and the wrong things will be substituted into the query `?` placeholders. Everything that adds to the toExplore list needs to prepend
     val toExplore = ArrayDeque<Token>(listOf(this))
     while (toExplore.isNotEmpty()) {
       val token = toExplore.removeFirst()
@@ -60,9 +70,10 @@ sealed interface Token {
           else
             accum.add(token.param ?: errorNotFound(token.bid))
         }
+        // Make SURE these prepend, children of this need to be explored first
         is Statement -> toExplore.addAll(0, token.tokens)
         is SetContainsToken -> toExplore.addAll(0, listOf(token.a, token.op, token.b))
-        is TokenContext -> toExplore.add(token.content)
+        is TokenContext -> toExplore.add(0, token.content)
         is ParamMultiToken -> errorUnrealizedFound(token.bid)
         is ParamSingleToken -> errorUnrealizedFound(token.bid)
         is ParamBatchToken -> errorUnrealizedFound(token.bid)

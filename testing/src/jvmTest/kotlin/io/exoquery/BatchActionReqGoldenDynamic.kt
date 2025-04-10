@@ -50,11 +50,11 @@ object BatchActionReqGoldenDynamic: GoldenQueryFile {
       "ClauseInQuery"
     ),
     "insert/with returning and params/SQL" to cr(
-      "INSERT INTO Person (name, age) VALUES ({1:Refiner_STRING}, {2:Refiner_INT}) RETURNING id, {0:Refiner_STRING}",
-      "0" to "Refiner_STRING", "1" to "Refiner_STRING", "2" to "Refiner_INT"
+      "INSERT INTO Person (name, age) VALUES ({0:Refiner_STRING}, {1:Refiner_INT}) RETURNING id, {2:Refiner_STRING}",
+      "0" to "Refiner_STRING", "1" to "Refiner_INT", "2" to "Refiner_STRING"
     ),
     "insert/with returning and params" to kt(
-      "[ParamSingle(0, John, String), ParamSingle(1, John, String), ParamSingle(2, 42, Int)], [ParamSingle(0, Jane, String), ParamSingle(1, Jane, String), ParamSingle(2, 43, Int)], [ParamSingle(0, Jack, String), ParamSingle(1, Jack, String), ParamSingle(2, 44, Int)]"
+      "[ParamSingle(0, John, String), ParamSingle(1, 42, Int), ParamSingle(2, John, String)], [ParamSingle(0, Jane, String), ParamSingle(1, 43, Int), ParamSingle(2, Jane, String)], [ParamSingle(0, Jack, String), ParamSingle(1, 44, Int), ParamSingle(2, Jack, String)]"
     ),
     "insert/with returning and params/returningType" to cr(
       "ClauseInQuery"
