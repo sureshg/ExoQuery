@@ -99,9 +99,13 @@ class ActionSpec: FreeSpec({
 
   suspend fun JdbcController.insertGeorgeAndJim() =
     this.runActions("""
-        INSERT INTO Person (firstName, lastName, age) VALUES ('George', 'Googs', 555);
-        INSERT INTO Person (firstName, lastName, age) VALUES ('Jim', 'Roogs', 222);
+        INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'George', 'Googs', 555);
+        INSERT INTO Person (id, firstName, lastName, age) VALUES (2, 'Jim', 'Roogs', 222);
       """.trimIndent())
+
+  val joe = Person(1, "Joe", "Bloggs", 111)
+  val george = Person(1, "George", "Googs", 555)
+  val jim = Person(2, "Jim", "Roogs", 222)
 
   "update" - {
     "simple" {
