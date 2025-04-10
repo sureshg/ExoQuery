@@ -2,17 +2,23 @@ package io.exoquery
 
 val SqliteSchemaString =
 """
-CREATE TABLE Person (
+CREATE TABLE IF NOT EXISTS Person (
     id INTEGER PRIMARY KEY,
     firstName VARCHAR(255),
     lastName VARCHAR(255),
     age INT
 );
 
-CREATE TABLE Address (
+CREATE TABLE IF NOT EXISTS Address (
     ownerId INTEGER,
     street VARCHAR(255),
     zip INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS Robot (
+    ownerId INT,
+    model VARCHAR(255),
+    age INT
 );
 
 CREATE TABLE IF NOT EXISTS Product(

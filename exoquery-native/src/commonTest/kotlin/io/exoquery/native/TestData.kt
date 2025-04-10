@@ -3,20 +3,18 @@ package io.exoquery.postgres
 import io.exoquery.Person
 import io.exoquery.PostgresDialect
 import io.exoquery.capture
-import io.exoquery.controller.Controller
-import io.exoquery.controller.jdbc.JdbcController
-import io.exoquery.runOn
-import io.exoquery.sql.SqlIdiom
+import io.exoquery.controller.native.DatabaseController
+import io.exoquery.native.runOn
 
-suspend fun JdbcController.people() = capture { Table<Person>() }.build<PostgresDialect>().runOn(this)
+suspend fun DatabaseController.people() = capture { Table<Person>() }.build<PostgresDialect>().runOn(this)
 
-suspend fun JdbcController.insertPerson(person: Person) =
+suspend fun DatabaseController.insertPerson(person: Person) =
   capture { insert<Person> { setParams(person) } }.build<PostgresDialect>().runOn(this)
 
-suspend fun JdbcController.insertPeople() =
+suspend fun DatabaseController.insertPeople() =
   people.forEach { capture { insert<Person> { setParams(it) } }.build<PostgresDialect>().runOn(this) }
 
-suspend fun JdbcController.insertAllPeople() =
+suspend fun DatabaseController.insertAllPeople() =
   allPeople.forEach { capture { insert<Person> { setParams(it) } }.build<PostgresDialect>().runOn(this) }
 
 val joe = Person(1, "Joe", "Bloggs", 111)

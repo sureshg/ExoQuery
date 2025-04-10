@@ -1,10 +1,15 @@
 package io.exoquery.native
 
+import io.exoquery.ActionReturningKind
 import io.exoquery.Param
 import io.exoquery.ParamBatchRefiner
 import io.exoquery.ParamMulti
 import io.exoquery.ParamSingle
+import io.exoquery.SqlCompiledAction
 import io.exoquery.SqlCompiledQuery
+import io.exoquery.controller.Action
+import io.exoquery.controller.ActionReturningId
+import io.exoquery.controller.ActionReturningRow
 import io.exoquery.xrError
 import io.exoquery.controller.ExecutionOptions
 import io.exoquery.controller.Query
@@ -12,6 +17,7 @@ import io.exoquery.controller.StatementParam
 import io.exoquery.controller.native.DatabaseController
 import io.exoquery.controller.runOn
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.serializer
 
 // Change testing-controller to controller-common and it in there?
@@ -33,3 +39,29 @@ suspend fun <T> SqlCompiledQuery<T>.runOn(database: DatabaseController, serializ
 
 inline suspend fun <reified T: Any> SqlCompiledQuery<T>.runOn(database: DatabaseController, options: ExecutionOptions = ExecutionOptions()) =
   this.runOn(database, serializer(), options)
+
+
+
+suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: DatabaseController, serializer: KSerializer<Output>, options: ExecutionOptions = ExecutionOptions()): Output =
+  when(actionReturningKind) {
+    is ActionReturningKind.None -> {
+      val action = Action(token.build(), params.map { it.toStatementParam() })
+      // Check the kind of "Output" i.e. it needs to be a Long (we can use the descriptor-kind as a proxy for this and not need to pass a KClass in)
+      if (serializer.descriptor.kind == PrimitiveKind.LONG)
+        action.runOn(database, options) as Output
+      else
+        xrError("The action is not returning anything, but the serializer is not a Long. This is illegal. The serializer was:\n${serializer.descriptor}")
+    }
+    is ActionReturningKind.ClauseInQuery -> {
+      // Try not passing the keys explicitly? If it's a action-returning do we need them?
+      val actionReturning = ActionReturningRow(value, params.map { it.toStatementParam() }, serializer, listOf())
+      actionReturning.runOn(database, options)
+    }
+     is ActionReturningKind.Keys -> {
+      val actionReturningId = ActionReturningId(value, params.map { it.toStatementParam() }, serializer, (actionReturningKind as ActionReturningKind.Keys).columns)
+      actionReturningId.runOn(database, options)
+    }
+  }
+
+inline suspend fun <Input, reified Output> SqlCompiledAction<Input, Output>.runOn(database: DatabaseController, options: ExecutionOptions = ExecutionOptions()) =
+  this.runOn(database, serializer<Output>(), options)
