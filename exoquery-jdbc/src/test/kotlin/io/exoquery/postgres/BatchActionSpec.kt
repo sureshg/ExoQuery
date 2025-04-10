@@ -69,21 +69,21 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(people.asSequence()) { p ->
         insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returning { pp -> pp.id + 100 to param(p.firstName) }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(101, 102, 103)
-      ctx.people() shouldContainExactlyInAnyOrder allPeople
+      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf((101 to "Joe"), (102 to "Joe"), (103 to "Jim"))
+      ctx.people() shouldContainExactlyInAnyOrder people + george
     }
     "with returning keys" {
       ctx.insertPerson(george)
       val q = capture.batch(people.asSequence()) { p ->
         insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returningKeys { id }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1 to "Joe", 2 to "Joe", 3 to "Jack")
+      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
       ctx.people() shouldContainExactlyInAnyOrder allPeople
     }
   }
 
   "update" - {
-    val updatedPeople = listOf(Person(1, "Joe-A", "Bloggs-A", 112), Person(2, "Joe-A", "Doggs-A", 222), Person(3, "Jim-A", "Roogs-A", 333))
+    val updatedPeople = listOf(Person(1, "Joe-A", "Bloggs", 112), Person(2, "Joe-A", "Doggs", 222), Person(3, "Jim-A", "Roogs", 333))
     val allNewPeople = updatedPeople + george
 
     "simple" {
@@ -92,6 +92,26 @@ class BatchActionSpec: FreeSpec ({
         update<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.filter { pp -> pp.id == param(p.id) }
       }
       q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
+      ctx.people() shouldContainExactlyInAnyOrder allNewPeople
+    }
+
+    "simple with setParams and exclusion" {
+      ctx.insertAllPeople()
+      val peopleWithOddIds = updatedPeople.asSequence().map { it.copy(id = it.id + 100) }
+      val q = capture.batch(peopleWithOddIds) { p ->
+        update<Person> { setParams(p).excluding(id) }.filter { pp -> pp.lastName == param(p.lastName) }
+      }
+      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
+      ctx.people() shouldContainExactlyInAnyOrder allNewPeople
+    }
+
+    "simple with setParams and exclusion and returning param" {
+      ctx.insertAllPeople()
+      val peopleWithOddIds = updatedPeople.asSequence().map { it.copy(id = it.id + 100) }
+      val q = capture.batch(peopleWithOddIds) { p ->
+        update<Person> { setParams(p).excluding(id) }.filter { pp -> pp.lastName == param(p.lastName) }.returning { pp -> pp.id to param(p.firstName) }
+      }
+      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1 to "Joe-A", 2 to "Joe-A", 3 to "Jim-A")
       ctx.people() shouldContainExactlyInAnyOrder allNewPeople
     }
   }
@@ -104,16 +124,6 @@ class BatchActionSpec: FreeSpec ({
 //    "simple" {
 //      val q = capture.batch(updatedPeople) { p ->
 //        update<Person> { set(name to param(p.name), age to param(p.age)) }.filter { pp -> pp.id == param(p.id) }
-//      }
-//      val b = q.build<PostgresDialect>().determinizeDynamics()
-//      val groups = b.produceBatchGroups().toList()
-//      shouldBeGolden(b, "SQL")
-//      shouldBeGoldenParams(groups)
-//    }
-//
-//    "simple - where clause" {
-//      val q = capture.batch(updatedPeople) { p ->
-//        update<Person> { set(name to param(p.name), age to param(p.age)) }.where { id == param(p.id) && age > 50 }
 //      }
 //      val b = q.build<PostgresDialect>().determinizeDynamics()
 //      val groups = b.produceBatchGroups().toList()
