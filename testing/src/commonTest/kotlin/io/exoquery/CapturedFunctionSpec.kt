@@ -17,4 +17,5 @@ class CapturedFunctionSpec : FreeSpec({
       shouldThrow<MissingCaptureError> { joes(people) }
     }
   }
+
 })

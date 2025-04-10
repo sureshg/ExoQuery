@@ -38,6 +38,7 @@ object PrintXRType {
 }
 
 fun qprint(xr: XR) = PrintXR.Color.invoke(xr)
+fun pprintMisc(any: Any?) = PrintMisc().invoke(any)
 
 class PrintToken(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Token>(config) {
   fun treeifyThis(x: Token, elementName: String?) = treeify(x, elementName, escapeUnicode = config.defaultEscapeUnicode, showFieldNames = config.defaultShowFieldNames)

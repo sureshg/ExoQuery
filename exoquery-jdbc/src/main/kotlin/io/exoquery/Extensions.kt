@@ -5,6 +5,9 @@ import io.exoquery.Param
 import io.exoquery.controller.Action
 import io.exoquery.controller.ActionReturningId
 import io.exoquery.controller.ActionReturningRow
+import io.exoquery.controller.BatchAction
+import io.exoquery.controller.BatchActionReturningId
+import io.exoquery.controller.BatchActionReturningRow
 import io.exoquery.controller.ExecutionOptions
 import io.exoquery.controller.Query
 import io.exoquery.controller.StatementParam
@@ -76,23 +79,32 @@ inline suspend fun <reified Input, reified Output> SqlCompiledAction<Input, Outp
   this.runOn(controller, serializer<Output>())
 }
 
-suspend fun <BatchInput, Input: Any, Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: ExecutionOptions = ExecutionOptions()): Output =
-  when(this) {
+suspend fun <BatchInput, Input: Any, Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: ExecutionOptions = ExecutionOptions()): List<Output> =
+  when(actionReturningKind) {
     is ActionReturningKind.None -> {
-      val action = Action(token.build(), params.map { it.toStatementParam() })
+      val action = BatchAction(token.build(), produceBatchGroups().map { g -> g.params.map { it.toStatementParam() } })
+        //Action(token.build(), params.map { it.toStatementParam() })
       // Check the kind of "Output" i.e. it needs to be a Long (we can use the descriptor-kind as a proxy for this and not need to pass a KClass in)
       if (serializer.descriptor.kind == PrimitiveKind.LONG)
-        action.runOn(database, options) as Output
+        action.runOn(database, options) as List<Output>
       else
         xrError("The action is not returning anything, but the serializer is not a Long. This is illegal. The serializer was:\n${serializer.descriptor}")
     }
     is ActionReturningKind.ClauseInQuery -> {
       // Try not passing the keys explicitly? If it's a action-returning do we need them?
-      val actionReturning = ActionReturningRow(value, params.map { it.toStatementParam() }, serializer, listOf())
+      val actionReturning = BatchActionReturningRow(value, produceBatchGroups().map { g -> g.params.map { it.toStatementParam() } }, serializer, listOf())
       actionReturning.runOn(database, options)
     }
      is ActionReturningKind.Keys -> {
-      val actionReturningId = ActionReturningId(value, params.map { it.toStatementParam() }, serializer, (actionReturningKind as ActionReturningKind.Keys).columns)
+      val actionReturningId = BatchActionReturningId(value, produceBatchGroups().map { g -> g.params.map { it.toStatementParam() } }, serializer, (actionReturningKind as ActionReturningKind.Keys).columns)
       actionReturningId.runOn(database, options)
     }
   }
+
+inline suspend fun <BatchInput, Input: Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOn(database: JdbcController, options: ExecutionOptions = ExecutionOptions()) =
+  this.runOn(database, serializer<Output>(), options)
+
+inline suspend fun <BatchInput, reified Input: Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOnPostgres(dataSource: DataSource) = run {
+  val controller = DatabaseController.Postgres(dataSource)
+  this.runOn(controller, serializer<Output>())
+}

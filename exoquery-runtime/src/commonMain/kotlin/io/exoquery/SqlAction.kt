@@ -37,7 +37,8 @@ data class SqlBatchAction<BatchInput, Input: Any, Output>(override val xr: XR.Ba
 
   fun buildRuntime(dialect: SqlIdiom, label: String?, pretty: Boolean = false): SqlCompiledBatchAction<BatchInput, Input, Output> = run {
     val containerBuild = RuntimeBuilder(dialect, pretty).forBatching(this)
-    SqlCompiledBatchAction(containerBuild.queryString, containerBuild.queryTokenized, true, batchParam, label,
+    val actionReturningKind = ActionReturningKind.fromActionXR(xr.action)
+    SqlCompiledBatchAction(containerBuild.queryString, containerBuild.queryTokenized, true, actionReturningKind, batchParam, label,
       SqlCompiledBatchAction.DebugData(Phase.Runtime, { xr })
     )
   }

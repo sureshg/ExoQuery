@@ -46,6 +46,9 @@ object BatchActionReqGoldenDynamic: GoldenQueryFile {
     "insert/with returning" to kt(
       "[ParamSingle(0, John, String), ParamSingle(1, 42, Int)], [ParamSingle(0, Jane, String), ParamSingle(1, 43, Int)], [ParamSingle(0, Jack, String), ParamSingle(1, 44, Int)]"
     ),
+    "insert/with returning/returningType" to cr(
+      "ClauseInQuery"
+    ),
     "insert/with returning and params/SQL" to cr(
       "INSERT INTO Person (name, age) VALUES ({1:Refiner_STRING}, {2:Refiner_INT}) RETURNING id, {0:Refiner_STRING}",
       "0" to "Refiner_STRING", "1" to "Refiner_STRING", "2" to "Refiner_INT"
@@ -53,12 +56,18 @@ object BatchActionReqGoldenDynamic: GoldenQueryFile {
     "insert/with returning and params" to kt(
       "[ParamSingle(0, John, String), ParamSingle(1, John, String), ParamSingle(2, 42, Int)], [ParamSingle(0, Jane, String), ParamSingle(1, Jane, String), ParamSingle(2, 43, Int)], [ParamSingle(0, Jack, String), ParamSingle(1, Jack, String), ParamSingle(2, 44, Int)]"
     ),
+    "insert/with returning and params/returningType" to cr(
+      "ClauseInQuery"
+    ),
     "insert/with returning keys/SQL" to cr(
       "INSERT INTO Person (name, age) VALUES ({0:Refiner_STRING}, {1:Refiner_INT})",
       "0" to "Refiner_STRING", "1" to "Refiner_INT"
     ),
     "insert/with returning keys" to kt(
       "[ParamSingle(0, John, String), ParamSingle(1, 42, Int)], [ParamSingle(0, Jane, String), ParamSingle(1, 43, Int)], [ParamSingle(0, Jack, String), ParamSingle(1, 44, Int)]"
+    ),
+    "insert/with returning keys/returningType" to cr(
+      "Keys(columns=[id])"
     ),
     "update/simple/SQL" to cr(
       "UPDATE Person SET name = {0:Refiner_STRING}, age = {1:Refiner_INT} WHERE id = {2:Refiner_INT}",
@@ -78,6 +87,9 @@ object BatchActionReqGoldenDynamic: GoldenQueryFile {
     ),
     "update/simple" to kt(
       "[ParamSingle(0, John-A, String), ParamSingle(1, 52, Int), ParamSingle(2, 1, Int)], [ParamSingle(0, Jane-A, String), ParamSingle(1, 53, Int), ParamSingle(2, 2, Int)], [ParamSingle(0, Jack-A, String), ParamSingle(1, 54, Int), ParamSingle(2, 3, Int)]"
+    ),
+    "update/simple/returningType" to cr(
+      "None"
     ),
     "update/simple - where clause/SQL" to cr(
       "UPDATE Person SET name = {0:Refiner_STRING}, age = {1:Refiner_INT} WHERE id = {2:Refiner_INT} AND age > 50",
@@ -100,38 +112,44 @@ object BatchActionReqGoldenDynamic: GoldenQueryFile {
     "update/simple with setParams and exclusion and returning param" to kt(
       "[ParamSingle(0, John-A, String), ParamSingle(1, 52, Int), ParamSingle(2, 1, Int), ParamSingle(3, John-A, String)], [ParamSingle(0, Jane-A, String), ParamSingle(1, 53, Int), ParamSingle(2, 2, Int), ParamSingle(3, Jane-A, String)], [ParamSingle(0, Jack-A, String), ParamSingle(1, 54, Int), ParamSingle(2, 3, Int), ParamSingle(3, Jack-A, String)]"
     ),
+    "update/simple with setParams and exclusion and returning param/returningType" to cr(
+      "ClauseInQuery"
+    ),
     "delete/with filter - inside/SQL" to cr(
-      "DELETE FROM Person WHERE Person WHERE id = {0:Refiner_INT}",
+      "DELETE FROM Person WHERE id = {0:Refiner_INT}",
       "0" to "Refiner_INT"
     ),
     "delete/with filter - inside/Params1" to cr(
-      "DELETE FROM Person WHERE Person WHERE id = {0:1}",
+      "DELETE FROM Person WHERE id = {0:1}",
       "0" to "1"
     ),
     "delete/with filter - inside/Params2" to cr(
-      "DELETE FROM Person WHERE Person WHERE id = {0:2}",
+      "DELETE FROM Person WHERE id = {0:2}",
       "0" to "2"
     ),
     "delete/with filter - inside/Params3" to cr(
-      "DELETE FROM Person WHERE Person WHERE id = {0:3}",
+      "DELETE FROM Person WHERE id = {0:3}",
       "0" to "3"
     ),
     "delete/with filter - inside" to kt(
       "[ParamSingle(0, 1, Int)], [ParamSingle(0, 2, Int)], [ParamSingle(0, 3, Int)]"
     ),
     "delete/with filter/SQL" to cr(
-      "DELETE FROM Person WHERE Person WHERE id = {0:Refiner_INT}",
+      "DELETE FROM Person WHERE id = {0:Refiner_INT}",
       "0" to "Refiner_INT"
     ),
     "delete/with filter" to kt(
       "[ParamSingle(0, 1, Int)], [ParamSingle(0, 2, Int)], [ParamSingle(0, 3, Int)]"
     ),
     "delete/with returning/SQL" to cr(
-      "DELETE FROM Person WHERE Person WHERE id = {0:Refiner_INT} RETURNING id",
+      "DELETE FROM Person WHERE id = {0:Refiner_INT} RETURNING id",
       "0" to "Refiner_INT"
     ),
     "delete/with returning" to kt(
       "[ParamSingle(0, 1, Int)], [ParamSingle(0, 2, Int)], [ParamSingle(0, 3, Int)]"
+    ),
+    "delete/with returning/returningType" to cr(
+      "ClauseInQuery"
     ),
   )
 }

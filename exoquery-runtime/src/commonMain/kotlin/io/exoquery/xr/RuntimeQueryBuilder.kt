@@ -3,12 +3,14 @@ package io.exoquery.xr
 import io.exoquery.ContainerOfActionXR
 import io.exoquery.ContainerOfFunXR
 import io.exoquery.ContainerOfXR
+import io.exoquery.Param
 import io.exoquery.ParamSet
 import io.exoquery.Phase
 import io.exoquery.SqlAction
 import io.exoquery.SqlBatchAction
 import io.exoquery.SqlQuery
 import io.exoquery.TransformXrError
+import io.exoquery.printing.pprintMisc
 import io.exoquery.sql.ParamBatchToken
 import io.exoquery.sql.ParamMultiToken
 import io.exoquery.sql.ParamSingleToken
@@ -35,18 +37,19 @@ class RuntimeBuilder(val dialect: SqlIdiom, val pretty: Boolean) {
     // )
     // This will result in incorrect queries. Therefore we need to dedupe the runtime the "SOME_UUID" binds here.
     val quoted = container.rekeyRuntimeBinds()
-    val splicedAst = spliceQuotations(quoted)
+
+    val (splicedAst, allParams) = spliceQuotations(quoted)
 
     val (queryTokenizedRaw, other) = tokenize(splicedAst)
 
     // "realize" the tokens converting params clauses to actual list-values
-    val queryTokenized = TokenRealizer(container.params).invoke(queryTokenizedRaw)
+    val queryTokenized = TokenRealizer(ParamSet(allParams)).invoke(queryTokenizedRaw)
 
     val queryRaw =
       try {
         queryTokenized.build()
       } catch (e: TransformXrError) {
-        throw TransformXrError("Failed to build query from tokenized AST:\n${splicedAst.showRaw()}\n--------- With Params ---------\n${container.params}", e)
+        throw TransformXrError("Failed to build query from tokenized AST:\n${splicedAst.showRaw()}\n--------- With Params ---------\n${allParams}", e)
       }
 
     val queryString = if (pretty) formatQuery(queryRaw) else queryRaw
@@ -100,9 +103,14 @@ class RuntimeBuilder(val dialect: SqlIdiom, val pretty: Boolean) {
   // TODO need a test with a dynamic SqlExpression container used in an SqlQuery (and vice-versa)
   // TODO will need to gather the Params from all of the nested query containers when lifting system is introduced
 
-  fun spliceQuotations(quoted: ContainerOfXR): XR {
+  fun spliceQuotations(quoted: ContainerOfXR): Pair<XR, List<Param<*>>> {
+    // While we're recursing through the nested containers and splicing them, collect all the parameters
+    val collectedParams = mutableListOf<Param<*>>()
+
     fun spliceQuotationsRecurse(quoted: ContainerOfXR): XR {
       val quotationVases = quoted.runtimes.runtimes
+      collectedParams.addAll(quoted.params.lifts)
+
       val ast = quoted.xr
       // Get all the quotation tags
       return TransformXR.build()
@@ -114,7 +122,7 @@ class RuntimeBuilder(val dialect: SqlIdiom, val pretty: Boolean) {
             ?: throw IllegalArgumentException("Expression-Based vase with UID ${tag.id} could not be found!")
         }.invoke(ast)
     }
-    return BetaReduction.ofXR(spliceQuotationsRecurse(quoted))
+    return BetaReduction.ofXR(spliceQuotationsRecurse(quoted)) to collectedParams.toList()
   }
 
 // Kotlin:

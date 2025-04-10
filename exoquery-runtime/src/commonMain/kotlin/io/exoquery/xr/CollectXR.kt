@@ -79,25 +79,17 @@ open class TransformXR(
   override fun invoke(xr: XR.Branch): XR.Branch = transformBranch(xr) ?: super.invoke(xr)
 
   companion object {
-    fun <T: XR> LikeToLike(xr: T, transform: (T) -> T?): T =
-      TransformXR(
-        transformExpression = { if (xr is XR.Expression) transform(xr) as XR.Expression else it as XR.Expression },
-        transformQuery = { if (xr is XR.Query) transform(xr) as XR.Query else it as XR.Query },
-        transformBranch = { if (xr is XR.Branch) transform(xr) as XR.Branch else it as XR.Branch },
-        transformVariable = { if (xr is XR.Variable) transform(xr) as XR.Variable else it as XR.Variable }
-      ).invoke(xr) as T
-
     fun Query(xr: XR.Query, transform: (XR.Query) -> XR.Query?): XR.Query =
-      TransformXR(transformQuery = transform).invoke(xr) as XR.Query
+      TransformXR(transformQuery = transform).invoke(xr)
 
     fun Expression(xr: XR.Expression, transform: (XR.Expression) -> XR.Expression?): XR.Expression =
-      TransformXR(transformExpression = transform).invoke(xr) as XR.Expression
+      TransformXR(transformExpression = transform).invoke(xr)
 
     fun Branch(xr: XR.Branch, transform: (XR.Branch) -> XR.Branch?): XR.Branch =
-      TransformXR(transformBranch = transform).invoke(xr) as XR.Branch
+      TransformXR(transformBranch = transform).invoke(xr)
 
     fun Variable(xr: XR.Variable, transform: (XR.Variable) -> XR.Variable?): XR.Variable =
-      TransformXR(transformVariable = transform).invoke(xr) as XR.Variable
+      TransformXR(transformVariable = transform).invoke(xr)
 
     fun build() = TransformerBuilder()
   }

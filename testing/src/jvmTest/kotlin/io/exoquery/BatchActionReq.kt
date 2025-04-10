@@ -2,7 +2,7 @@ package io.exoquery
 
 import io.exoquery.testdata.Person
 
-class BatchActionReq: GoldenSpecDynamic(BatchActionReqGoldenDynamic, Mode.ExoGoldenOverride(), {
+class BatchActionReq: GoldenSpecDynamic(BatchActionReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "insert" - {
     val people = listOf(Person(1, "John", 42), Person(2, "Jane", 43), Person(3, "Jack", 44),).asSequence()
 
@@ -52,6 +52,7 @@ class BatchActionReq: GoldenSpecDynamic(BatchActionReqGoldenDynamic, Mode.ExoGol
       val groups = b.produceBatchGroups().toList()
       shouldBeGolden(b, "SQL")
       shouldBeGoldenParams(groups)
+      shouldBeGolden(b.actionReturningKind.toString(), "returningType")
     }
 
     "with returning and params" {
@@ -62,6 +63,7 @@ class BatchActionReq: GoldenSpecDynamic(BatchActionReqGoldenDynamic, Mode.ExoGol
       val groups = b.produceBatchGroups().toList()
       shouldBeGolden(b, "SQL")
       shouldBeGoldenParams(groups)
+      shouldBeGolden(b.actionReturningKind.toString(), "returningType")
     }
 
     "with returning keys" {
@@ -72,6 +74,7 @@ class BatchActionReq: GoldenSpecDynamic(BatchActionReqGoldenDynamic, Mode.ExoGol
       val groups = b.produceBatchGroups().toList()
       shouldBeGolden(b, "SQL")
       shouldBeGoldenParams(groups)
+      shouldBeGolden(b.actionReturningKind.toString(), "returningType")
     }
   }
   "update" - {
@@ -88,6 +91,7 @@ class BatchActionReq: GoldenSpecDynamic(BatchActionReqGoldenDynamic, Mode.ExoGol
       shouldBeGolden(groups[1], "Params2")
       shouldBeGolden(groups[2], "Params3")
       shouldBeGoldenParams(groups)
+      shouldBeGolden(b.actionReturningKind.toString(), "returningType")
     }
 
     "simple - where clause" {
@@ -118,6 +122,7 @@ class BatchActionReq: GoldenSpecDynamic(BatchActionReqGoldenDynamic, Mode.ExoGol
       val groups = b.produceBatchGroups().toList()
       shouldBeGolden(b, "SQL")
       shouldBeGoldenParams(groups)
+      shouldBeGolden(b.actionReturningKind.toString(), "returningType")
     }
   }
 
@@ -153,6 +158,7 @@ class BatchActionReq: GoldenSpecDynamic(BatchActionReqGoldenDynamic, Mode.ExoGol
       val groups = b.produceBatchGroups().toList()
       shouldBeGolden(b, "SQL")
       shouldBeGoldenParams(groups)
+      shouldBeGolden(b.actionReturningKind.toString(), "returningType")
     }
   }
 })

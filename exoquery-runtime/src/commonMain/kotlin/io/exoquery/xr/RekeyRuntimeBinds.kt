@@ -12,25 +12,34 @@ fun <CXR: ContainerOfXR> CXR.rekeyRuntimeBinds(): CXR {
   //      }
 
   fun rekeyLeafBinds(ast: XR, bindMap: Map<BID, BID>): XR =
-    TransformXR.LikeToLike(ast) {
+    TransformerBuilder().withExpression {
       when (it) {
         is XR.TagForParam -> if (bindMap.contains(it.id)) it.copy(id = bindMap[it.id]!!) else it
-        else -> it
+        //is XR.TagForSqlExpression -> if (bindMap.contains(it.id)) it.copy(id = bindMap[it.id]!!) else it
+        // If there's nothing matching remember to return null so it will recurse into child expression checking for Tags
+        // if you don't return null here the transformer will assume transformation for the entire sub-expression is done
+        else -> null
       }
-    }
+    }.invoke(ast)
 
   //    def rekeyVasesUsing(ast: Ast, bindMap: Map[String, String]) =
   //      Transform(ast) {
   //        case tag: QuotationTag if (bindMap.contains(tag.uid)) => tag.copy(uid = bindMap(tag.uid))
   //      }
   fun rekeyVasesUsing(ast: XR, bindMap: Map<BID, BID>): XR =
-    TransformXR.LikeToLike(ast) {
-      when (it) {
-        is XR.TagForSqlQuery -> if (bindMap.contains(it.id)) it.copy(id = bindMap[it.id]!!) else it
-        is XR.TagForSqlExpression -> if (bindMap.contains(it.id)) it.copy(id = bindMap[it.id]!!) else it
-        else -> it
+    TransformerBuilder()
+      .withQuery {
+        when (it) {
+          is XR.TagForSqlQuery -> if (bindMap.contains(it.id)) it.copy(id = bindMap[it.id]!!) else it
+          else -> null
+        }
+      }.withExpression {
+        when (it) {
+          is XR.TagForSqlExpression -> if (bindMap.contains(it.id)) it.copy(id = bindMap[it.id]!!) else it
+          else -> null
+        }
       }
-    }
+      .invoke(ast)
 
   //    def rekeyLeafBinds(quoted: Quoted[_]) = {
   //      val (liftIdMap, newPlanters) = quoted.lifts.map { lift =>
@@ -76,7 +85,7 @@ fun <CXR: ContainerOfXR> CXR.rekeyRuntimeBinds(): CXR {
       val newVaseId = BID.new()
       // recursively call to rekey the vase (if there are any inner dynamic quotes)
       val newQuotation = rekeyRecurse(vase)
-      Pair(vaseId, newVaseId) to Pair(vaseId, newQuotation)
+      Pair(vaseId, newVaseId) to Pair(newVaseId, newQuotation)
     }.unzip()
     // Then go through the vases themselves (that are on this level and rekey them)
     val newAst = rekeyVasesUsing(quoted.xr, vaseIdMap.toMap())

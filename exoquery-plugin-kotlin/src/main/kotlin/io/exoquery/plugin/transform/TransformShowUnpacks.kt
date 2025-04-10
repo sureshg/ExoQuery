@@ -24,7 +24,7 @@ fun IrElement.prepareForPrinting() =
   TransformShowUnpacks(this@Scope).visitElement(this.deepCopyWithSymbols(
     // Need to do this or in some cases will get: kotlin.UninitializedPropertyAccessException: lateinit property parent has not been initialized
     (this as? IrCall)?.symbol?.owner?.parent), Unit
-  ) as IrExpression
+  )
 
 context(CX.Scope)
 fun IrElement.dumpKotlinLikePretty() = prepareForPrinting().dumpKotlinLike()

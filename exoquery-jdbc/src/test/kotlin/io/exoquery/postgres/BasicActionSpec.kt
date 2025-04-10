@@ -24,9 +24,6 @@ class BasicActionSpec: FreeSpec({
     )
   }
 
-  val joe = Person(1, "Joe", "Bloggs", 111)
-  val jim = Person(2, "Jim", "Roogs", 222)
-
   "insert" - {
     "simple" {
       val q = capture {
@@ -62,6 +59,15 @@ class BasicActionSpec: FreeSpec({
       }
       val build = q.build<PostgresDialect>()
       build.runOn(ctx) shouldBe 101
+      ctx.people() shouldBe listOf(joe)
+    }
+    "with returning using param" {
+      val n = 1000
+      val q = capture {
+        insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id + 100 + param(n) }
+      }
+      val build = q.build<PostgresDialect>()
+      build.runOn(ctx) shouldBe 1101
       ctx.people() shouldBe listOf(joe)
     }
     "with returning - multiple" {
@@ -130,10 +136,11 @@ class BasicActionSpec: FreeSpec({
     }
     "with setParams and exclusion" {
       ctx.insertGeorgeAndJim()
-      val updateCall = Person(0, "Joe", "Bloggs", 111)
+      // Set a large Id that should specifically be excluded from insertion
+      val updateCall = Person(1000, "Joe", "Bloggs", 111)
       val q = capture {
         // Set the ID to 0 so we can be sure
-        update<Person> { setParams(updateCall).excluding(id) }.filter { p -> p.id == param(1) }
+        update<Person> { setParams(updateCall).excluding(id) }.filter { p -> p.id == 1 }
       }
       q.build<PostgresDialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
