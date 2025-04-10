@@ -114,9 +114,16 @@ class BatchActionSpec: FreeSpec ({
       q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1 to "Joe-A", 2 to "Joe-A", 3 to "Jim-A")
       ctx.people() shouldContainExactlyInAnyOrder allNewPeople
     }
-  }
-})
 
+    "returningKeys" {
+      ctx.insertAllPeople()
+      val q = capture.batch(updatedPeople.asSequence()) { p ->
+        update<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.filter { pp -> pp.id == param(p.id) }.returningKeys { id }
+      }
+      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
+      ctx.people() shouldContainExactlyInAnyOrder allNewPeople
+    }
+  }
 
 //  "update" - {
 //    val updatedPeople = listOf(Person(1, "John-A", 52), Person(2, "Jane-A", 53), Person(3, "Jack-A", 54),).asSequence()
@@ -151,7 +158,47 @@ class BatchActionSpec: FreeSpec ({
 //      shouldBeGoldenParams(groups)
 //    }
 //  }
-//
+
+  "delete" - {
+    val ids = listOf(1, 2, 3).asSequence()
+
+    "simple" {
+      ctx.insertAllPeople()
+      val q = capture.batch(ids) { id ->
+        delete<Person>().filter { pp -> pp.id == param(id) }
+      }
+      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
+      ctx.people() shouldContainExactlyInAnyOrder listOf(george)
+    }
+
+    "using whole object" {
+      ctx.insertAllPeople()
+      val q = capture.batch(people.asSequence()) { p ->
+        delete<Person>().filter { pp -> pp.id == param(p.id) }
+      }
+      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
+      ctx.people() shouldContainExactlyInAnyOrder listOf(george)
+    }
+
+    "with returning" {
+      ctx.insertAllPeople()
+      val q = capture.batch(ids) { id ->
+        delete<Person>().filter { pp -> pp.id == param(id) }.returning { pp -> pp.id }
+      }
+      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
+      ctx.people() shouldContainExactlyInAnyOrder listOf(george)
+    }
+
+    "with returning keys" {
+      ctx.insertAllPeople()
+      val q = capture.batch(ids) { pid ->
+        delete<Person>().filter { pp -> pp.id == param(pid) }.returningKeys { id }
+      }
+      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
+      ctx.people() shouldContainExactlyInAnyOrder listOf(george)
+    }
+  }
+
 //  "delete" - {
 //    "with filter - inside" {
 //      val q = capture.batch(listOf(1, 2, 3).asSequence()) { id ->
@@ -187,3 +234,4 @@ class BatchActionSpec: FreeSpec ({
 //    }
 //  }
 //})
+})
