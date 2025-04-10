@@ -11,7 +11,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 
-class BasicActionSpec: FreeSpec({
+class ActionSpec: FreeSpec({
   val ctx = TestDatabases.postgres
 
   beforeEach {

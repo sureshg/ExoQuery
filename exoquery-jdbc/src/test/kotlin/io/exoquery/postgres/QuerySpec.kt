@@ -7,11 +7,7 @@ import io.exoquery.PostgresDialect
 import io.exoquery.Robot
 import io.exoquery.TestDatabases
 import io.exoquery.capture
-import io.exoquery.controller.Controller
-import io.exoquery.controller.jdbc.DatabaseController
 import io.exoquery.controller.runActions
-import io.exoquery.controller.runOn
-import io.exoquery.run
 import io.exoquery.runOn
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
@@ -20,7 +16,7 @@ import kotlinx.serialization.Serializable
 import kotlin.to
 
 
-class BasicQuerySpec : FreeSpec({
+class QuerySpec : FreeSpec({
   val ctx = TestDatabases.postgres
 
   beforeSpec {
