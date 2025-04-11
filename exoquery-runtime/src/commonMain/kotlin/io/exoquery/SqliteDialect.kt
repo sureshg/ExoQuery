@@ -1,11 +1,20 @@
-package io.exoquery.sql
+package io.exoquery
 
+import io.exoquery.sql.BooleanLiteralSupport
+import io.exoquery.sql.FlattenSqlQuery
+import io.exoquery.sql.OrderByCriteria
+import io.exoquery.sql.SetOperationSqlQuery
+import io.exoquery.sql.SqlIdiom
+import io.exoquery.sql.SqlQueryModel
+import io.exoquery.sql.Statement
+import io.exoquery.sql.Token
+import io.exoquery.sql.UnaryOperationSqlQuery
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.Tracer
 import io.exoquery.util.unaryPlus
 import io.exoquery.xr.XR
 
-class SqliteDialect(override val traceConf: TraceConfig = TraceConfig.empty) : SqlIdiom, BooleanLiteralSupport {
+class SqliteDialect(override val traceConf: TraceConfig = TraceConfig.Companion.empty) : SqlIdiom, BooleanLiteralSupport {
   override val concatFunction: String = "||"
   override val useActionTableAliasAs = SqlIdiom.ActionTableAliasBehavior.UseAs
   override val trace: Tracer by lazy { Tracer(traceType, traceConf, 1) }
@@ -20,7 +29,30 @@ class SqliteDialect(override val traceConf: TraceConfig = TraceConfig.empty) : S
       is XR.Ordering.DescNullsLast -> +"${scopedTokenizer(ast)} DESC /* NULLS LAST */"
     }
   }
+
+  // Sqlite doesn't like parans around union clauses
+  override fun xrSqlQueryModelTokenImpl(queryImpl: SqlQueryModel): Token = with (queryImpl) {
+    when (this) {
+      is FlattenSqlQuery -> token
+      is SetOperationSqlQuery -> +"${a.token} ${op.token} ${b.token}"
+      is UnaryOperationSqlQuery -> +"SELECT ${op.token} (${query.token})"
+    }
+  }
+
+  /**
+   * Postgres OFFSET needs to be preceded by LIMIT
+   * See here: https://sqlite.org/lang_select.html#simple_select_processing
+   */
+  override fun limitOffsetToken(query: Statement, limit: XR.Expression?, offset: XR.Expression?): Token =
+    when {
+      limit == null && offset == null -> query
+      limit != null && offset == null -> +"$query LIMIT ${limit.token}"
+      limit != null && offset != null -> +"$query LIMIT ${limit.token} OFFSET ${offset.token}"
+      limit == null && offset != null -> +"$query LIMIT -1 OFFSET ${offset.token}"
+      else -> throw IllegalStateException("Invalid limit/offset combination")
+    }
 }
+
 
 //
 //  private val _emptySetContainsToken = StringToken("0")

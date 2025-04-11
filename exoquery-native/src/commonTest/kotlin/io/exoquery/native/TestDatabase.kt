@@ -3,7 +3,7 @@ package io.exoquery.native
 import co.touchlab.sqliter.DatabaseFileContext.deleteDatabase
 import io.exoquery.BasicSchemaTerpal
 import io.exoquery.SqliteSchemaString
-import io.exoquery.controller.native.DatabaseController
+import io.exoquery.controller.native.NativeDatabaseController
 import kotlinx.coroutines.runBlocking
 
 object TestDatabase {
@@ -13,7 +13,7 @@ object TestDatabase {
   val ctx by lazy {
     runBlocking {
       deleteDatabase(name, basePath)
-      DatabaseController.fromSchema(BasicSchemaTerpal, name, basePath)
+      NativeDatabaseController.fromSchema(BasicSchemaTerpal, name, basePath)
     }
   }
 

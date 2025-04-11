@@ -16,7 +16,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("io.exoquery:controller-core:2.0.0")
+                implementation("io.exoquery:controller-core:3.0.0")
                 api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
                 api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
 

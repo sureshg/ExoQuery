@@ -1,21 +1,21 @@
 package io.exoquery.postgres
 
 import io.exoquery.Person
-import io.exoquery.PostgresDialect
+import io.exoquery.SqliteDialect
 import io.exoquery.capture
-import io.exoquery.controller.native.DatabaseController
+import io.exoquery.controller.native.NativeDatabaseController
 import io.exoquery.native.runOn
 
-suspend fun DatabaseController.people() = capture { Table<Person>() }.build<PostgresDialect>().runOn(this)
+suspend fun NativeDatabaseController.people() = capture { Table<Person>() }.build<SqliteDialect>().runOn(this)
 
-suspend fun DatabaseController.insertPerson(person: Person) =
-  capture { insert<Person> { setParams(person) } }.build<PostgresDialect>().runOn(this)
+suspend fun NativeDatabaseController.insertPerson(person: Person) =
+  capture { insert<Person> { setParams(person) } }.build<SqliteDialect>().runOn(this)
 
-suspend fun DatabaseController.insertPeople() =
-  people.forEach { capture { insert<Person> { setParams(it) } }.build<PostgresDialect>().runOn(this) }
+suspend fun NativeDatabaseController.insertPeople() =
+  people.forEach { capture { insert<Person> { setParams(it) } }.build<SqliteDialect>().runOn(this) }
 
-suspend fun DatabaseController.insertAllPeople() =
-  allPeople.forEach { capture { insert<Person> { setParams(it) } }.build<PostgresDialect>().runOn(this) }
+suspend fun NativeDatabaseController.insertAllPeople() =
+  allPeople.forEach { capture { insert<Person> { setParams(it) } }.build<SqliteDialect>().runOn(this) }
 
 val joe = Person(1, "Joe", "Bloggs", 111)
 val joe2 = Person(2, "Joe", "Doggs", 222)

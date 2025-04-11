@@ -1,5 +1,6 @@
 package io.exoquery.plugin.transform
 
+import io.exoquery.ActionKind
 import io.exoquery.Phase
 import io.exoquery.ActionReturningKind
 import io.exoquery.SqlCompiledAction
@@ -65,6 +66,7 @@ data class SqlCompiledActionExpr(
   val sqlActionExpr: IrExpression,
   val queryString: String,
   val queryTokenized: Token,
+  val actionKind: ActionKind,
   val actionReturningKind: ActionReturningKind,
   val label: String?,
   val phase: Phase,
@@ -89,6 +91,7 @@ data class SqlCompiledActionExpr(
           // which shows us if the Param is a ParamSingle or ParamMulti. We need to check that in the AST in order to know that this
           // value is supposed to be.
           irBuilder.irBoolean(false), // needsTokenization (todo need to determine this from the tokenized value i.e. only `true` if there are no ParamMulti values)
+          actionKind.lift(),
           actionReturningKind.lift(),
           labelExpr,
           make<SqlCompiledAction.DebugData>(
@@ -105,6 +108,7 @@ data class SqlCompiledBatchActionExpr(
   val sqlBatchActionExpr: IrExpression,
   val queryString: String,
   val queryTokenized: Token,
+  val actionKind: ActionKind,
   val actionReturningKind: ActionReturningKind,
   val label: String?,
   val phase: Phase,
@@ -130,6 +134,7 @@ data class SqlCompiledBatchActionExpr(
           // which shows us if the Param is a ParamSingle or ParamMulti. We need to check that in the AST in order to know that this
           // value is supposed to be.
           irBuilder.irBoolean(false), // needsTokenization (todo need to determine this from the tokenized value i.e. only `true` if there are no ParamMulti values)
+          actionKind.lift(),
           actionReturningKind.lift(),
           callBatchParamFromSqlBatchAction,
           labelExpr,

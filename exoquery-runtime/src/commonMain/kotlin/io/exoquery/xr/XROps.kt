@@ -1,8 +1,10 @@
 package io.exoquery.xr
 
 import io.decomat.*
+import io.exoquery.ActionKind
 import io.exoquery.BID
 import io.exoquery.xr.XR.BinaryOp
+import io.exoquery.xrError
 
 // Can't use || or && chars because they don't work with linuxX64
 infix fun XR.Expression.`+or+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.or, other, this.loc)
@@ -344,3 +346,14 @@ fun String.isConverterFunction(): Boolean =
     "toLong", "toInt", "toShort", "toDouble", "toFloat", "toBoolean" -> true
     else -> false
   }
+
+fun XR.Action.toActionKind(): ActionKind = when (this) {
+  is XR.Insert -> ActionKind.Insert
+  is XR.Update -> ActionKind.Update
+  is XR.Delete -> ActionKind.Delete
+  // The following contain nested actions inside, go into them and get the data
+  is XR.Returning -> this.action.toActionKind()
+  is XR.Batching -> this.action.toActionKind()
+  is XR.FilteredAction -> this.action.toActionKind()
+  is XR.OnConflict -> this.insert.toActionKind()
+}

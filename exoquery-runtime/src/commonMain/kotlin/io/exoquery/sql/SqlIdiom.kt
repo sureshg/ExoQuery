@@ -728,12 +728,14 @@ interface SqlIdiom: HasPhasePrinting {
 //      stmt"SELECT ${op.token} (${q.token})"
 //  }
 
-  val SqlQueryModel.token get(): Token =
+  val SqlQueryModel.token get(): Token = xrSqlQueryModelTokenImpl(this)
+  fun xrSqlQueryModelTokenImpl(queryImpl: SqlQueryModel): Token = with (queryImpl) {
     when (this) {
       is FlattenSqlQuery -> token
       is SetOperationSqlQuery -> +"(${a.token}) ${op.token} (${b.token})"
       is UnaryOperationSqlQuery -> +"SELECT ${op.token} (${query.token})"
     }
+  }
 
 //  implicit val setOperationTokenizer: Tokenizer[SetOperation] = Tokenizer[SetOperation] {
 //    case UnionOperation    => stmt"UNION"

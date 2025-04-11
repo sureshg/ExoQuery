@@ -1,6 +1,6 @@
 package io.exoquery
 
-import io.exoquery.controller.jdbc.DatabaseController
+import io.exoquery.controller.jdbc.JdbcControllers
 import io.exoquery.controller.jdbc.HikariHelper
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
 import javax.sql.DataSource
@@ -18,26 +18,26 @@ object TestDatabases {
     started.getPostgresDatabase().run(postgresScript)
     started
   }
-  val postgres by lazy { DatabaseController.Postgres(embeddedPostgres.getPostgresDatabase()) }
+  val postgres by lazy { JdbcControllers.Postgres(embeddedPostgres.getPostgresDatabase()) }
 
   val mysql by lazy {
-    DatabaseController.Mysql(HikariHelper.makeDataSource("testMysqlDB"))
+    JdbcControllers.Mysql(HikariHelper.makeDataSource("testMysqlDB"))
   }
 
   val sqlServer by lazy {
-    DatabaseController.SqlServer(HikariHelper.makeDataSource("testSqlServerDB"))
+    JdbcControllers.SqlServer(HikariHelper.makeDataSource("testSqlServerDB"))
   }
 
   val h2 by lazy {
-    DatabaseController.H2(HikariHelper.makeDataSource("testH2DB"))
+    JdbcControllers.H2(HikariHelper.makeDataSource("testH2DB"))
   }
 
   val sqlite by lazy {
-    DatabaseController.Sqlite(HikariHelper.makeDataSource("testSqliteDB"))
+    JdbcControllers.Sqlite(HikariHelper.makeDataSource("testSqliteDB"))
   }
 
   val oracle by lazy {
-    DatabaseController.Oracle(HikariHelper.makeDataSource("testOracleDB"))
+    JdbcControllers.Oracle(HikariHelper.makeDataSource("testOracleDB"))
   }
 }
 

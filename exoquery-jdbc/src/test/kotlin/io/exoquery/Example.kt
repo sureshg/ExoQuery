@@ -1,6 +1,6 @@
 package io.exoquery
 
-import io.exoquery.controller.jdbc.DatabaseController
+import io.exoquery.controller.jdbc.JdbcControllers
 import io.exoquery.controller.jdbc.fromConfig
 import io.exoquery.controller.runActions
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
@@ -19,7 +19,7 @@ fun main() {
 
   runBlocking {
 
-    val postgres = DatabaseController.Postgres(ds)
+    val postgres = JdbcControllers.Postgres(ds)
     postgres.runActions(
       """
       CREATE TABLE Person (

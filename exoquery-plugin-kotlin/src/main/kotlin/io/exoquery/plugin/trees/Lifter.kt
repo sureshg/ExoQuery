@@ -192,6 +192,13 @@ class Lifter(val builderCtx: CX.Builder) {
       TokenContext.Kind.AssignmentBlock -> makeObject<TokenContext.Kind.AssignmentBlock>()
     }
 
+  fun ActionKind.lift(): IrExpression =
+    when (this) {
+      ActionKind.Insert -> makeObject<ActionKind.Insert>()
+      ActionKind.Update -> makeObject<ActionKind.Update>()
+      ActionKind.Delete -> makeObject<ActionKind.Delete>()
+    }
+
   fun ActionReturningKind.lift(): IrExpression =
     when (this) {
       ActionReturningKind.None -> makeObject<ActionReturningKind.None>()

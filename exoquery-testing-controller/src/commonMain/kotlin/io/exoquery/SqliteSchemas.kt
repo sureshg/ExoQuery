@@ -131,12 +131,12 @@ object EmptySchema: SqlSchema<QueryResult.Value<Unit>> {
 
 object BasicSchemaTerpal: TerpalSchema<Unit> {
   override val version: Long = 1
-  override suspend fun create(driver: Controller): Unit {
+  override suspend fun create(driver: Controller<*>): Unit {
     driver.runActions(SqliteSchemaString)
   }
 
   override suspend fun migrate(
-    driver: Controller,
+    driver: Controller<*>,
     oldVersion: Long,
     newVersion: Long,
     vararg callbacks: io.exoquery.controller.sqlite.CallAfterVersion) {

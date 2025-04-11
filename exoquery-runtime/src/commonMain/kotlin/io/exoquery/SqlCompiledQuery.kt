@@ -21,6 +21,12 @@ sealed interface Phase {
   object Runtime : Phase
 }
 
+sealed interface ActionKind {
+  object Insert : ActionKind
+  object Update : ActionKind
+  object Delete : ActionKind
+}
+
 // TODO value needs to be Token and we need to write a lifter for Token
 //      This probably needs to be something like SqlCompiledQuery<T> which has constructors
 //      SqlCompiledQuery.compileTime<T>(String|Token,Params,serialier<T>=some-default-value) and SqlCompiledQuery.runtime(query:SqlQuery,serialier<T>=some-default-value)
@@ -41,7 +47,7 @@ data class SqlCompiledQuery<T>(val value: String, override val token: Token, val
   data class DebugData(val phase: Phase, val originalXR: () -> XR.Query, val originalQuery: () -> SqlQueryModel)
 }
 
-data class SqlCompiledAction<Input, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val actionReturningKind: ActionReturningKind, val label: String?, val debugData: SqlCompiledAction.DebugData): ExoCompiled() {
+data class SqlCompiledAction<Input, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val actionKind: ActionKind, val actionReturningKind: ActionReturningKind, val label: String?, val debugData: SqlCompiledAction.DebugData): ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
 
   override fun determinizeDynamics(): SqlCompiledAction<Input, Output> =
@@ -64,7 +70,7 @@ data class BatchParamGroup<BatchInput, Input: Any, Output>(val input: BatchInput
 }
 
 // TODO since we're providing the batch-parameter at the last moment, we need a function that replaces ParamBatchRefiner to ParamSingle instances and create BatchGroups
-data class SqlCompiledBatchAction<BatchInput, Input: Any, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val actionReturningKind: ActionReturningKind, val batchParam: Sequence<BatchInput>, val label: String?, val debugData: SqlCompiledBatchAction.DebugData): ExoCompiled() {
+data class SqlCompiledBatchAction<BatchInput, Input: Any, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val actionKind: ActionKind, val actionReturningKind: ActionReturningKind, val batchParam: Sequence<BatchInput>, val label: String?, val debugData: SqlCompiledBatchAction.DebugData): ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
 
   val effectiveQuery by lazy { token.build() }

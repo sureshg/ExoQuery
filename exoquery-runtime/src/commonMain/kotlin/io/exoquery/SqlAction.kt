@@ -5,6 +5,7 @@ import io.exoquery.printing.PrintMisc
 import io.exoquery.sql.SqlIdiom
 import io.exoquery.xr.RuntimeBuilder
 import io.exoquery.xr.XR
+import io.exoquery.xr.toActionKind
 
 data class SqlAction<Input, Output>(override val xr: XR.Action, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfXR {
   fun show() = PrintMisc().invoke(this)
@@ -14,7 +15,7 @@ data class SqlAction<Input, Output>(override val xr: XR.Action, override val run
   fun buildRuntime(dialect: SqlIdiom, label: String?, pretty: Boolean = false): SqlCompiledAction<Input, Output> = run {
     val containerBuild = RuntimeBuilder(dialect, pretty).forAction(this)
     val actionReturningKind = ActionReturningKind.fromActionXR(xr)
-    SqlCompiledAction(containerBuild.queryString, containerBuild.queryTokenized, true, actionReturningKind, label,
+    SqlCompiledAction(containerBuild.queryString, containerBuild.queryTokenized, true, xr.toActionKind(), actionReturningKind, label,
       SqlCompiledAction.DebugData(Phase.Runtime, { xr })
     )
   }
@@ -38,7 +39,7 @@ data class SqlBatchAction<BatchInput, Input: Any, Output>(override val xr: XR.Ba
   fun buildRuntime(dialect: SqlIdiom, label: String?, pretty: Boolean = false): SqlCompiledBatchAction<BatchInput, Input, Output> = run {
     val containerBuild = RuntimeBuilder(dialect, pretty).forBatching(this)
     val actionReturningKind = ActionReturningKind.fromActionXR(xr.action)
-    SqlCompiledBatchAction(containerBuild.queryString, containerBuild.queryTokenized, true, actionReturningKind, batchParam, label,
+    SqlCompiledBatchAction(containerBuild.queryString, containerBuild.queryTokenized, true, xr.action.toActionKind(), actionReturningKind, batchParam, label,
       SqlCompiledBatchAction.DebugData(Phase.Runtime, { xr })
     )
   }
