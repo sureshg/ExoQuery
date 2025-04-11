@@ -8,10 +8,10 @@ import io.exoquery.controller.ActionReturningRow
 import io.exoquery.controller.BatchAction
 import io.exoquery.controller.BatchActionReturningId
 import io.exoquery.controller.BatchActionReturningRow
-import io.exoquery.controller.ExecutionOptions
+import io.exoquery.controller.jdbc.JdbcExecutionOptions
 import io.exoquery.controller.Query
 import io.exoquery.controller.StatementParam
-import io.exoquery.controller.jdbc.DatabaseController
+import io.exoquery.controller.jdbc.JdbcControllers
 import io.exoquery.controller.jdbc.JdbcController
 import io.exoquery.controller.runOn
 import kotlinx.serialization.KSerializer
@@ -38,18 +38,18 @@ private interface ActionOutput<T> {
   object NoReturning : ActionOutput<Long>
 }
 
-suspend fun <T> SqlCompiledQuery<T>.runOn(database: JdbcController, serializer: KSerializer<T>, options: ExecutionOptions = ExecutionOptions()) =
+suspend fun <T> SqlCompiledQuery<T>.runOn(database: JdbcController, serializer: KSerializer<T>, options: JdbcExecutionOptions = JdbcExecutionOptions()) =
   this.toControllerQuery(serializer).runOn(database, options)
 
-inline suspend fun <reified T: Any> SqlCompiledQuery<T>.runOn(database: JdbcController, options: ExecutionOptions = ExecutionOptions()) =
+inline suspend fun <reified T: Any> SqlCompiledQuery<T>.runOn(database: JdbcController, options: JdbcExecutionOptions = JdbcExecutionOptions()) =
   this.runOn(database, serializer(), options)
 
 inline suspend fun <reified T: Any> SqlCompiledQuery<T>.runOnPostgres(dataSource: DataSource) = run {
-  val controller = DatabaseController.Postgres(dataSource)
+  val controller = JdbcControllers.Postgres(dataSource)
   this.runOn(controller, serializer())
 }
 
-suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: ExecutionOptions = ExecutionOptions()): Output =
+suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: JdbcExecutionOptions = JdbcExecutionOptions()): Output =
   when(actionReturningKind) {
     is ActionReturningKind.None -> {
       val action = Action(token.build(), params.map { it.toStatementParam() })
@@ -71,15 +71,15 @@ suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: Jdb
   }
 
 
-inline suspend fun <Input, reified Output> SqlCompiledAction<Input, Output>.runOn(database: JdbcController, options: ExecutionOptions = ExecutionOptions()) =
+inline suspend fun <Input, reified Output> SqlCompiledAction<Input, Output>.runOn(database: JdbcController, options: JdbcExecutionOptions = JdbcExecutionOptions()) =
   this.runOn(database, serializer<Output>(), options)
 
 inline suspend fun <reified Input, reified Output> SqlCompiledAction<Input, Output>.runOnPostgres(dataSource: DataSource) = run {
-  val controller = DatabaseController.Postgres(dataSource)
+  val controller = JdbcControllers.Postgres(dataSource)
   this.runOn(controller, serializer<Output>())
 }
 
-suspend fun <BatchInput, Input: Any, Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: ExecutionOptions = ExecutionOptions()): List<Output> =
+suspend fun <BatchInput, Input: Any, Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: JdbcExecutionOptions = JdbcExecutionOptions()): List<Output> =
   when(actionReturningKind) {
     is ActionReturningKind.None -> {
       val action = BatchAction(token.build(), produceBatchGroups().map { g -> g.params.map { it.toStatementParam() } })
@@ -101,10 +101,10 @@ suspend fun <BatchInput, Input: Any, Output> SqlCompiledBatchAction<BatchInput, 
     }
   }
 
-inline suspend fun <BatchInput, Input: Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOn(database: JdbcController, options: ExecutionOptions = ExecutionOptions()) =
+inline suspend fun <BatchInput, Input: Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOn(database: JdbcController, options: JdbcExecutionOptions = JdbcExecutionOptions()) =
   this.runOn(database, serializer<Output>(), options)
 
 inline suspend fun <BatchInput, reified Input: Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOnPostgres(dataSource: DataSource) = run {
-  val controller = DatabaseController.Postgres(dataSource)
+  val controller = JdbcControllers.Postgres(dataSource)
   this.runOn(controller, serializer<Output>())
 }

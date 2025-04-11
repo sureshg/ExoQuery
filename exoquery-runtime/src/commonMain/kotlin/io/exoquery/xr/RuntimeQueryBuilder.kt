@@ -38,7 +38,7 @@ class RuntimeBuilder(val dialect: SqlIdiom, val pretty: Boolean) {
     // This will result in incorrect queries. Therefore we need to dedupe the runtime the "SOME_UUID" binds here.
     val quoted = container.rekeyRuntimeBinds()
 
-    val (splicedAst, allParams) = spliceQuotations(quoted)
+    val (splicedAst, allParams) = quoted.spliceQuotations()
 
     val (queryTokenizedRaw, other) = tokenize(splicedAst)
 
@@ -103,28 +103,6 @@ class RuntimeBuilder(val dialect: SqlIdiom, val pretty: Boolean) {
   // TODO need a test with a dynamic SqlExpression container used in an SqlQuery (and vice-versa)
   // TODO will need to gather the Params from all of the nested query containers when lifting system is introduced
 
-  fun spliceQuotations(quoted: ContainerOfXR): Pair<XR, List<Param<*>>> {
-    // While we're recursing through the nested containers and splicing them, collect all the parameters
-    val collectedParams = mutableListOf<Param<*>>()
-
-    fun spliceQuotationsRecurse(quoted: ContainerOfXR): XR {
-      val quotationVases = quoted.runtimes.runtimes
-      collectedParams.addAll(quoted.params.lifts)
-
-      val ast = quoted.xr
-      // Get all the quotation tags
-      return TransformXR.build()
-        .withQueryOf<XR.TagForSqlQuery> { tag ->
-          quotationVases.find { it.first == tag.id }?.let { (id, vase) -> spliceQuotationsRecurse(vase) as XR.Query }
-            ?: throw IllegalArgumentException("Query-Based vase with UID ${tag.id} could not be found!")
-        }.withExpressionOf<XR.TagForSqlExpression> { tag ->
-          quotationVases.find { it.first == tag.id }?.let { (id, vase) -> spliceQuotationsRecurse(vase) as XR.Expression }
-            ?: throw IllegalArgumentException("Expression-Based vase with UID ${tag.id} could not be found!")
-        }.invoke(ast)
-    }
-    return BetaReduction.ofXR(spliceQuotationsRecurse(quoted)) to collectedParams.toList()
-  }
-
 // Kotlin:
 //  def spliceQuotations(quoted: Quoted[_]): Ast = {
 //    def spliceQuotationsRecurse(quoted: Quoted[_]): Ast = {
@@ -144,4 +122,26 @@ class RuntimeBuilder(val dialect: SqlIdiom, val pretty: Boolean) {
 //    }
 //    BetaReduction(spliceQuotationsRecurse(quoted))
 //  }
+}
+
+fun ContainerOfXR.spliceQuotations(): Pair<XR, List<Param<*>>> {
+  // While we're recursing through the nested containers and splicing them, collect all the parameters
+  val collectedParams = mutableListOf<Param<*>>()
+
+  fun spliceQuotationsRecurse(quoted: ContainerOfXR): XR {
+    val quotationVases = quoted.runtimes.runtimes
+    collectedParams.addAll(quoted.params.lifts)
+
+    val ast = quoted.xr
+    // Get all the quotation tags
+    return TransformXR.build()
+      .withQueryOf<XR.TagForSqlQuery> { tag ->
+        quotationVases.find { it.first == tag.id }?.let { (id, vase) -> spliceQuotationsRecurse(vase) as XR.Query }
+          ?: throw IllegalArgumentException("Query-Based vase with UID ${tag.id} could not be found!")
+      }.withExpressionOf<XR.TagForSqlExpression> { tag ->
+        quotationVases.find { it.first == tag.id }?.let { (id, vase) -> spliceQuotationsRecurse(vase) as XR.Expression }
+          ?: throw IllegalArgumentException("Expression-Based vase with UID ${tag.id} could not be found!")
+      }.invoke(ast)
+  }
+  return BetaReduction.ofXR(spliceQuotationsRecurse(this)) to collectedParams.toList()
 }

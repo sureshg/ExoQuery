@@ -81,6 +81,9 @@ abstract class GoldenSpecDynamic(val goldenQueries: GoldenQueryFile, val mode: M
   fun TestScope.shouldBeGoldenParams(action: SqlCompiledAction<*, *>, suffix: String = "") =
     shouldBeGolden(action.determinizeDynamics().params.toString(), suffix, PrintableValue.Type.KotlinCode)
 
+  fun TestScope.shouldBeGolden(params: ParamSet, suffix: String = "") =
+    shouldBeGolden(params.withNonStrictEquality().lifts.toString(), suffix, PrintableValue.Type.KotlinCode)
+
   fun TestScope.shouldBeGolden(value: String, suffix: String = "", valuePrinting: PrintableValue.Type = PrintableValue.Type.SqlQuery) =
     value.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix", valuePrinting, listOf())
 
