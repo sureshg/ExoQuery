@@ -67,8 +67,8 @@ kotlin {
       resources.srcDir("src/main/resources")
 
       dependencies {
-        api("io.exoquery:controller-jdbc:3.0.0")
-        implementation(project(":exoquery-testing-controller"))
+        api("io.exoquery:controller-jdbc:3.0.4")
+        implementation(project(":exoquery-controller-common"))
 
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
         api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")

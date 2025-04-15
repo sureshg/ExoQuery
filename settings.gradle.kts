@@ -25,7 +25,7 @@ dependencyResolutionManagement {
 includeBuild("exoquery-runtime")
 includeBuild("exoquery-plugin-kotlin")
 
-include("exoquery-testing-controller")
+include("exoquery-controller-common")
 
 val isCI: Boolean by settings.extra { false }
 val isLocal = !isCI

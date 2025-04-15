@@ -54,7 +54,7 @@ kotlin {
 
       androidMain.dependencies {
         dependencies {
-          api("io.exoquery:controller-android:3.0.0")
+          api("io.exoquery:controller-android:3.0.4")
 
           api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
           api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
@@ -65,7 +65,7 @@ kotlin {
 
       val androidInstrumentedTest by getting {
         dependencies {
-          implementation(project(":exoquery-testing-controller"))
+          implementation(project(":exoquery-controller-common"))
 
           //implementation(kotlin("test-junit"))
           //implementation("junit:junit:4.13.2")
@@ -84,7 +84,7 @@ kotlin {
 
       val androidUnitTest by getting {
         dependencies {
-          implementation(project(":exoquery-testing-controller"))
+          implementation(project(":exoquery-controller-common"))
 
           //implementation(kotlin("test-junit"))
           //implementation("junit:junit:4.13.2")

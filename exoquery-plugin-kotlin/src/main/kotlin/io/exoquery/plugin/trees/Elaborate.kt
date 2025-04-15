@@ -6,12 +6,19 @@ import io.exoquery.plugin.dataClassProperties
 import io.exoquery.plugin.isDataClass
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.callDispatch
+import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irIfNull
 import org.jetbrains.kotlin.ir.builders.irNull
+import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.isNullable
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.irCall
 
 object Elaborate {
   data class Path(val path: List<String>, val invocation: IrExpression, val type: IrType)
@@ -40,8 +47,27 @@ object Elaborate {
           !Ir.Type.Value[Is()].matchesAny(type)
       ) {
       val cls = type.classOrNull ?: parseError("Expected a class to elaborate, got ${type} which is invalid", parent)
+
+      val safeFields = cls.owner.declarations.filterIsInstance<IrProperty>()
+      //error("----------- Safe fields: ${cls.owner.declarations.map { dec ->
+      //  ("--------------- ${dec::class.simpleName}, ${dec is IrProperty} --------------\n${dec.dumpKotlinLike()}\n-----------------")
+      //}} -----------")
+
       cls.dataClassProperties().flatMap { (propertyName, propertyType) ->
-        invokeRecurse(currPath + propertyName, callNullSafe(parent, type, propertyType, propertyName), propertyType)
+        val fieldOpt = safeFields.find { it.name.identifier == propertyName }?.backingField
+        if (fieldOpt != null) {
+          val call =
+            with (builder) {
+              val getField = irGetField(parent, fieldOpt)
+              getField.superQualifierSymbol = cls
+              getField.receiver = parent
+              getField
+            }
+
+          invokeRecurse(currPath + propertyName, callNullSafe(parent, type, propertyType, call), propertyType)
+        } else {
+          emptyList()
+        }
       }
     } else {
       listOf(Path(currPath, parent, type))
@@ -49,8 +75,8 @@ object Elaborate {
   }
 
   context(CX.Scope, CX.Builder)
-  private fun callNullSafe(parent: IrExpression, parentType: IrType, targetType: IrType, propertyName: String) = run {
-    val call = parent.callDispatch(propertyName).invoke()
+  private fun callNullSafe(parent: IrExpression, parentType: IrType, targetType: IrType, call: IrExpression) = run {
+    //val call = parent.callDispatch(propertyName).invoke()
     if (parentType.isNullable()) {
       with (builder) {
         irIfNull(targetType, parent, irNull(targetType), call)

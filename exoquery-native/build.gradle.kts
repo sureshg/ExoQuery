@@ -35,7 +35,7 @@ kotlin {
   sourceSets {
     val commonMain by getting {
       dependencies {
-        api("io.exoquery:controller-native:3.0.0")
+        api("io.exoquery:controller-native:3.0.4")
 
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
         api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
@@ -47,7 +47,7 @@ kotlin {
 
     val commonTest by getting {
       dependencies {
-        api(project(":exoquery-testing-controller"))
+        api(project(":exoquery-controller-common"))
 
         implementation(kotlin("test"))
         implementation(kotlin("test-common"))
@@ -56,6 +56,8 @@ kotlin {
       }
     }
   }
+
+  val isCI = project.hasProperty("isCI")
 
   configure(targets.withType<KotlinNativeTarget>().filter {
     listOf(
@@ -76,10 +78,12 @@ kotlin {
       "watchosSimulatorArm64"
     ).contains(it.name)
   }) {
-    binaries.configureEach {
-      // we only need to link sqlite for the test binaries
-      if (outputKind == NativeOutputKind.TEST) {
-        linkerOpts.add("-lsqlite3")
+    if (isCI) {
+      binaries.configureEach {
+        // we only need to link sqlite for the test binaries
+        if (outputKind == NativeOutputKind.TEST) {
+          linkerOpts.add("-lsqlite3")
+        }
       }
     }
   }
