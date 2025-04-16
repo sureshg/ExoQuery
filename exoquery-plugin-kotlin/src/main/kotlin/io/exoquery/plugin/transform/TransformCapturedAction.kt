@@ -31,9 +31,9 @@ class TransformCapturedAction(val superTransformer: VisitTransformExpressions): 
     val paramsExprModel = dynamics.makeParams()
     val newSqlAction =
       if (dynamics.noRuntimes()) {
-        SqlActionExpr.Uprootable.plantNewUprootable(xr, paramsExprModel)
+        SqlActionExpr.Uprootable.plantNewUprootable(xr, paramsExprModel, expression.type)
       } else {
-        SqlActionExpr.Uprootable.plantNewPluckable(xr, dynamics.makeRuntimes(), paramsExprModel)
+        SqlActionExpr.Uprootable.plantNewPluckable(xr, dynamics.makeRuntimes(), paramsExprModel, expression.type)
       }
 
     //logger.error("========== Output: ==========\n${newSqlAction.dumpKotlinLike()}")

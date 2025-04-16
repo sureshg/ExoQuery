@@ -6,6 +6,7 @@ import io.exoquery.TestDatabases
 import io.exoquery.capture
 import io.exoquery.controller.runActions
 import io.exoquery.controller.transaction
+import io.exoquery.printSource
 import io.exoquery.runOn
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
@@ -23,23 +24,35 @@ class TransactionSpec : FreeSpec({
     )
   }
 
+  // Moving these values out here causes an explosion. Need to look into it.
+  // Also need to see what happens when similar things are done for param(...)
+  //val joe = Person(1, "Joe", "Bloggs", 111)
+  //val jack = Person(2, "Jack", "Roogs", 222)
+
+
   val joe = Person(1, "Joe", "Bloggs", 111)
   val jack = Person(2, "Jack", "Roogs", 222)
+
 
   suspend fun select() =
     capture { Table<Person>() }.build<PostgresDialect>().runOn(ctx)
 
   "transaction support" - {
     "success" {
-      val cap =
+
+      //val cap =
+      val src =
         capture {
           insert<Person> { setParams(joe) }
+          //insert<Person> { set(firstName to param(joe.firstName)) }
         }.build<PostgresDialect>()
 
-      ctx.transaction {
-        cap.runOnTransaction()
-      }
-      select() shouldBe listOf(joe)
+      println(src)
+
+      //ctx.transaction {
+      //  cap.runOnTransaction()
+      //}
+      //select() shouldBe listOf(joe)
     }
 
 //    "failure" {

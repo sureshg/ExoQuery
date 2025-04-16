@@ -4,21 +4,29 @@ import io.decomat.Is
 import io.exoquery.parseError
 import io.exoquery.plugin.dataClassProperties
 import io.exoquery.plugin.isDataClass
+import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.CX
-import io.exoquery.plugin.transform.callDispatch
+import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irIfNull
+import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irNull
-import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrGetValue
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.types.isInt
 import org.jetbrains.kotlin.ir.types.isNullable
+import org.jetbrains.kotlin.ir.types.isString
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.ir.util.irCall
+import org.jetbrains.kotlin.ir.util.getPropertyGetter
+import org.jetbrains.kotlin.ir.util.shallowCopy
 
 object Elaborate {
   data class Path(val path: List<String>, val invocation: IrExpression, val type: IrType)
@@ -47,23 +55,34 @@ object Elaborate {
           !Ir.Type.Value[Is()].matchesAny(type)
       ) {
       val cls = type.classOrNull ?: parseError("Expected a class to elaborate, got ${type} which is invalid", parent)
+      val clsOwner = cls.owner
 
-      val safeFields = cls.owner.declarations.filterIsInstance<IrProperty>()
-      //error("----------- Safe fields: ${cls.owner.declarations.map { dec ->
-      //  ("--------------- ${dec::class.simpleName}, ${dec is IrProperty} --------------\n${dec.dumpKotlinLike()}\n-----------------")
+
+      //error("----------- Safe fields: ${cls.dataClassProperties().map { (name, tpe) ->
+      //  ("--------------- ${name} --------------\n${cls.getPropertyGetter(name)}\n-----------------")
       //}} -----------")
 
       cls.dataClassProperties().flatMap { (propertyName, propertyType) ->
-        val fieldOpt = safeFields.find { it.name.identifier == propertyName }?.backingField
-        if (fieldOpt != null) {
+        val property = clsOwner.declarations
+          .filterIsInstance<IrProperty>()
+          .firstOrNull { it.name.asString() == propertyName }
+          ?: error("Property $propertyName not found")
+
+        val getterSymbol = property?.getter?.symbol ?: error("Getter for $propertyName not found")
+
+        val backingFieldSymbol = property.backingField?.symbol
+        if (backingFieldSymbol != null && !backingFieldSymbol.isBound) {
+          error("Backing field for $propertyName is unbound!")
+        }
+
+        val explicitReceiver = parent
+        if (getterSymbol != null) {
           val call =
             with (builder) {
-              val getField = irGetField(parent, fieldOpt)
-              getField.superQualifierSymbol = cls
-              getField.receiver = parent
-              getField
+              irCall(getterSymbol).apply {
+                dispatchReceiver = explicitReceiver
+              }
             }
-
           invokeRecurse(currPath + propertyName, callNullSafe(parent, type, propertyType, call), propertyType)
         } else {
           emptyList()

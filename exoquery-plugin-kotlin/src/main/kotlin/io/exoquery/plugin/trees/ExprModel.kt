@@ -459,7 +459,9 @@ object SqlActionExpr {
     fun replant(paramsFrom: IrExpression): IrExpression {
       val strExpr = call(PT.io_exoquery_unpackAction).invoke(builder.irString(packedXR))
       val callParams = paramsFrom.callDispatch("params").invoke()
-      val make = makeClassFromString(PT.io_exoquery_SqlAction, listOf(strExpr, RuntimeEmpty(), callParams))
+      val inputType = paramsFrom.type.simpleTypeArgs[0]
+      val outputType = paramsFrom.type.simpleTypeArgs[1]
+      val make = makeClassFromString(PT.io_exoquery_SqlAction, listOf(strExpr, RuntimeEmpty(), callParams), listOf(inputType, outputType))
       return make
     }
 
@@ -476,17 +478,21 @@ object SqlActionExpr {
           )
         }
 
-      context(CX.Scope, CX.Builder) fun plantNewUprootable(xr: XR.Action, params: ParamsExpr): IrExpression {
+      context(CX.Scope, CX.Builder) fun plantNewUprootable(xr: XR.Action, params: ParamsExpr, originalType: IrType): IrExpression {
         val packedXR = xr.encode()
         val strExpr = call(PT.io_exoquery_unpackAction).invoke(builder.irString(packedXR))
-        val make = makeClassFromString(PT.io_exoquery_SqlAction, listOf(strExpr, RuntimeEmpty(), params.lift()))
+        val inputType = originalType.simpleTypeArgs[0]
+        val outputType = originalType.simpleTypeArgs[1]
+        val make = makeClassFromString(PT.io_exoquery_SqlAction, listOf(strExpr, RuntimeEmpty(), params.lift()), listOf(inputType, outputType))
         return make
       }
 
-      context(CX.Scope, CX.Builder) fun plantNewPluckable(xr: XR.Action, runtimes: RuntimesExpr, params: ParamsExpr): IrExpression {
+      context(CX.Scope, CX.Builder) fun plantNewPluckable(xr: XR.Action, runtimes: RuntimesExpr, params: ParamsExpr, originalType: IrType): IrExpression {
         val packedXR = xr.encode()
         val strExpr = call(PT.io_exoquery_unpackAction).invoke(builder.irString(packedXR))
-        val make = makeClassFromString(PT.io_exoquery_SqlAction, listOf(strExpr, runtimes.lift(), params.lift()))
+        val inputType = originalType.simpleTypeArgs[0]
+        val outputType = originalType.simpleTypeArgs[1]
+        val make = makeClassFromString(PT.io_exoquery_SqlAction, listOf(strExpr, runtimes.lift(), params.lift()), listOf(inputType, outputType))
         return make
       }
     }
