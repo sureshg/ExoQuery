@@ -117,13 +117,14 @@ class QuerySpec : FreeSpec({
     )
   }
 
-  "distinctOn" {
-    val q = capture { Table<Person>().distinctOn { it.firstName } }
-    q.build<SqliteDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
-      Person(1, "Joe", "Bloggs", 111),
-      Person(3, "Jim", "Roogs", 333)
-    )
-  }
+  // Does not exist in Sqlite
+  //"distinctOn" {
+  //  val q = capture { Table<Person>().distinctOn { it.firstName } }
+  //  q.build<SqliteDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
+  //    Person(1, "Joe", "Bloggs", 111),
+  //    Person(3, "Jim", "Roogs", 333)
+  //  )
+  //}
 
   "sort + drop + take" {
     val q = capture { Table<Person>().sortedBy { it.age }.drop(1).take(1) }

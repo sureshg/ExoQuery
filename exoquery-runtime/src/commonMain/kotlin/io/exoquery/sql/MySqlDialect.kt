@@ -33,7 +33,7 @@ class MySqlDialect(override val traceConf: TraceConfig = TraceConfig.empty) : Sq
   override fun limitOffsetToken(query: Statement, limit: XR.Expression?, offset: XR.Expression?): Token =
     when {
       limit == null && offset != null -> +"$query LIMIT 18446744073709551610 OFFSET ${offset.token}"
-      else -> query
+      else -> super.limitOffsetToken(query, limit, offset)
     }
 }
 

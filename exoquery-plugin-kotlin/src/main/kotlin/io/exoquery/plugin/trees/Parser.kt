@@ -4,6 +4,7 @@ import io.decomat.*
 import io.exoquery.CapturedBlock
 import io.exoquery.xr.SelectClause
 import io.exoquery.SqlQuery
+import io.exoquery.annotation.DslBooleanExpression
 import io.exoquery.annotation.DslFunctionCall
 import io.exoquery.annotation.DslNestingIgnore
 import io.exoquery.parseError
@@ -96,14 +97,20 @@ object CallParser {
   }
 
   context(CX.Scope, CX.Parsing, CX.Symbology)
-  private fun parseCall(reciever: IrExpression?, expr: IrCall): XR.U.QueryOrExpression =
-    when {
+  private fun parseCall(reciever: IrExpression?, expr: IrCall): XR.U.QueryOrExpression {
+    val tpe =
+      if (expr.symbol.owner.hasAnnotation<DslBooleanExpression>())
+        XRType.BooleanExpression
+      else
+        TypeParser.of(expr)
+
+    return when {
       reciever == null || reciever.type.isClass<CapturedBlock>() ->
         XR.GlobalCall(
           name = expr.symbol.owner.kotlinFqName.toXR(),
           args = expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() },
           callType = expr.extractCallType(),
-          type = TypeParser.of(expr),
+          type = tpe,
           loc = expr.loc
         )
       else ->
@@ -112,11 +119,12 @@ object CallParser {
           name = expr.symbol.safeName,
           args = expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() },
           originalHostType = expr.type.classId()?.toXR() ?: XR.ClassId.Empty,
-          type = TypeParser.of(expr),
+          type = tpe,
           loc = expr.loc,
           callType = expr.extractCallType()
         )
     }
+  }
 
   context(CX.Scope, CX.Parsing, CX.Symbology)
   private fun IrCall.extractCallType(): XR.CallType {

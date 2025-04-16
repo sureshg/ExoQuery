@@ -20,13 +20,14 @@ class QuerySpec : FreeSpec({
 
   beforeSpec {
     ctx.runActions(
+      // Note when doing 'SET IDENTITY_INSERT Person ON INSERT INTO Person' DONT put ';' because then the statement will be executed in a different run and the setting will not take
       """
       DELETE FROM Person;
       DELETE FROM Address;
       DELETE FROM Robot;
-      INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'Joe', 'Bloggs', 111);
-      INSERT INTO Person (id, firstName, lastName, age) VALUES (2, 'Joe', 'Doggs', 222);
-      INSERT INTO Person (id, firstName, lastName, age) VALUES (3, 'Jim', 'Roogs', 333);
+      SET IDENTITY_INSERT Person ON INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'Joe', 'Bloggs', 111) SET IDENTITY_INSERT Person OFF;
+      SET IDENTITY_INSERT Person ON INSERT INTO Person (id, firstName, lastName, age) VALUES (2, 'Joe', 'Doggs', 222) SET IDENTITY_INSERT Person OFF;
+      SET IDENTITY_INSERT Person ON INSERT INTO Person (id, firstName, lastName, age) VALUES (3, 'Jim', 'Roogs', 333) SET IDENTITY_INSERT Person OFF;
       INSERT INTO Address (ownerId, street, zip) VALUES (1, '123 Main St', '12345');
       INSERT INTO Address (ownerId, street, zip) VALUES (1, '456 Elm St', '67890');
       INSERT INTO Address (ownerId, street, zip) VALUES (2, '789 Oak St', '54321');
@@ -117,13 +118,14 @@ class QuerySpec : FreeSpec({
     )
   }
 
-  "distinctOn" {
-    val q = capture { Table<Person>().distinctOn { it.firstName } }
-    q.build<SqlServerDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
-      Person(1, "Joe", "Bloggs", 111),
-      Person(3, "Jim", "Roogs", 333)
-    )
-  }
+  // Does not exists in sqlserver
+  //"distinctOn" {
+  //  val q = capture { Table<Person>().distinctOn { it.firstName } }
+  //  q.build<SqlServerDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
+  //    Person(1, "Joe", "Bloggs", 111),
+  //    Person(3, "Jim", "Roogs", 333)
+  //  )
+  //}
 
   "sort + drop + take" {
     val q = capture { Table<Person>().sortedBy { it.age }.drop(1).take(1) }

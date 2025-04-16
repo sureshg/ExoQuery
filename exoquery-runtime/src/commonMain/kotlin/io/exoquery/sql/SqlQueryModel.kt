@@ -553,7 +553,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
             is XR.Drop -> {
               val b = base(head, alias, nestNextMap = false)
-              if (b.offset != null && b.limit != null)
+              if (b.offset == null && b.limit == null) // not sure why `&& b.limit == null`. Need to look into why it was introduced to Quill.
                 trace("Flattening| Drop [Simple]") andReturn {
                   b.copy(offset = num, type = type)
                 }

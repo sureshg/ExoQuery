@@ -1,6 +1,7 @@
 package io.exoquery
 
 import io.exoquery.annotation.Dsl
+import io.exoquery.annotation.DslBooleanExpression
 import io.exoquery.annotation.DslFunctionCall
 import io.exoquery.annotation.DslFunctionCallType
 import io.exoquery.annotation.DslNestingIgnore
@@ -403,9 +404,12 @@ interface CapturedBlock {
   fun <T : Comparable<T>> SqlQuery<T>.sum(): T = errorCap("The `min` expression of the Query was not inlined")
   @DslFunctionCall(DslFunctionCallType.QueryAggregator::class)
   fun <T> SqlQuery<T>.count(): T = errorCap("The `min` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.QueryAggregator::class)
+  @DslBooleanExpression
   fun <T> SqlQuery<T>.isNotEmpty(): Boolean = errorCap("The `isNotEmpty` expression of the Query was not inlined")
   @DslFunctionCall(DslFunctionCallType.QueryAggregator::class)
+  @DslBooleanExpression
   fun <T> SqlQuery<T>.isEmpty(): Boolean = errorCap("The `isEmpty` expression of the Query was not inlined")
 
 

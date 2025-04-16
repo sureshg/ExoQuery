@@ -61,6 +61,10 @@ annotation class DslNestingIgnore
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
+annotation class DslBooleanExpression
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
 annotation class ParamStatic(val type: KClass<out ParamSerializer<out Any>>)
 
 @Target(AnnotationTarget.FUNCTION)
