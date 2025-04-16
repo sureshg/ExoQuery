@@ -6,6 +6,7 @@ import io.exoquery.TestDatabases
 import io.exoquery.capture
 import io.exoquery.controller.jdbc.JdbcController
 import io.exoquery.controller.runActions
+import io.exoquery.postgres.ActionSpecExt.insertGeorgeAndJim
 import io.exoquery.runOn
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -97,12 +98,6 @@ class ActionSpec: FreeSpec({
     //}
   }
 
-  suspend fun JdbcController.insertGeorgeAndJim() =
-    this.runActions("""
-        INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'George', 'Googs', 555);
-        INSERT INTO Person (id, firstName, lastName, age) VALUES (2, 'Jim', 'Roogs', 222);
-      """.trimIndent())
-
   val joe = Person(1, "Joe", "Bloggs", 111)
   val george = Person(1, "George", "Googs", 555)
   val jim = Person(2, "Jim", "Roogs", 222)
@@ -178,57 +173,6 @@ class ActionSpec: FreeSpec({
     }
   }
 
-
-//  "update" - {
-//    "simple" {
-//      val q = capture {
-//        update<Person> { set(name to "Joe", age to 123) }.filter { p -> p.id == 1 }
-//      }
-//      shouldBeGolden(q.xr, "XR")
-//      shouldBeGolden(q.build<PostgresDialect>(), "SQL")
-//    }
-//    "no condition" {
-//      val q = capture {
-//        update<Person> { set(name to "Joe", age to 123) }.all()
-//      }
-//      shouldBeGolden(q.xr, "XR")
-//      shouldBeGolden(q.build<PostgresDialect>(), "SQL")
-//    }
-//    "with setParams" {
-//      val q = capture {
-//        update<Person> { setParams(Person(1, "Joe", 123)) }.filter { p -> p.id == 1 }
-//      }.determinizeDynamics()
-//      shouldBeGolden(q.xr, "XR")
-//      shouldBeGolden(q.build<PostgresDialect>(), "SQL")
-//    }
-//    "with setParams and exclusion" {
-//      val q = capture {
-//        update<Person> { setParams(Person(1, "Joe", 123)).excluding(id) }.filter { p -> p.id == 1 }
-//      }.determinizeDynamics()
-//      shouldBeGolden(q.xr, "XR")
-//      shouldBeGolden(q.build<PostgresDialect>(), "SQL")
-//    }
-//    "with returning" {
-//      val q = capture {
-//        update<Person> { set(name to "Joe", age to 123) }.filter { p -> p.id == 1 }.returning { p -> p.id }
-//      }
-//      val build = q.build<PostgresDialect>()
-//      shouldBeGolden(q.xr, "XR")
-//      shouldBeGolden(build, "SQL")
-//      shouldBeGolden(build.actionReturningKind.toString(), "returningType")
-//    }
-//    "with returningKeys" {
-//      val q = capture {
-//        update<Person> { set(name to "Joe", age to 123) }.filter { p -> p.id == 1 }.returningKeys { id }
-//      }
-//      val build = q.build<PostgresDialect>()
-//      shouldBeGolden(q.xr, "XR")
-//      shouldBeGolden(build, "SQL")
-//      shouldBeGolden(build.actionReturningKind.toString(), "returningType")
-//    }
-//  }
-
-
   "delete" - {
     "simple" {
       ctx.insertGeorgeAndJim()
@@ -265,41 +209,4 @@ class ActionSpec: FreeSpec({
       ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
     }
   }
-
-//  "delete" - {
-//    "simple" {
-//      val q = capture {
-//        delete<Person>().filter { p -> p.id == 1 }
-//      }
-//      shouldBeGolden(q.xr, "XR")
-//      shouldBeGolden(q.build<PostgresDialect>(), "SQL")
-//    }
-//    "no condition" {
-//      val q = capture {
-//        delete<Person>().all()
-//      }
-//      shouldBeGolden(q.xr, "XR")
-//      shouldBeGolden(q.build<PostgresDialect>(), "SQL")
-//    }
-//    "with returning" {
-//      val q = capture {
-//        delete<Person>().filter { p -> p.id == 1 }.returning { p -> p.id }
-//      }
-//      val build = q.build<PostgresDialect>()
-//      shouldBeGolden(q.xr, "XR")
-//      shouldBeGolden(build, "SQL")
-//      shouldBeGolden(build.actionReturningKind.toString(), "returningType")
-//    }
-//    "with returningKeys" {
-//      val q = capture {
-//        delete<Person>().filter { p -> p.id == 1 }.returningKeys { id }
-//      }
-//      val build = q.build<PostgresDialect>()
-//      shouldBeGolden(q.xr, "XR")
-//      shouldBeGolden(build, "SQL")
-//      shouldBeGolden(build.actionReturningKind.toString(), "returningType")
-//    }
-//  }
-
-
 })

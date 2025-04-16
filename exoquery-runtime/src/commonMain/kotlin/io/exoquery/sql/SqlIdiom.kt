@@ -22,6 +22,8 @@ interface SqlIdiom: HasPhasePrinting {
   override val traceType: TraceType get() = TraceType.SqlNormalizations
   abstract val useActionTableAliasAs: ActionTableAliasBehavior
 
+  val reservedKeywords: Set<String> get() = setOf()
+
   val concatFunction: String get() = "UNNEST"
   val aliasSeparator: String get() = "_"
   open fun joinAlias(alias: List<String>): String = alias.joinToString(aliasSeparator)
@@ -483,9 +485,16 @@ interface SqlIdiom: HasPhasePrinting {
 
   fun tokenizeGroupBy(values: XR.Expression): Token = values.token
   fun tokenOrderBy(criteria: List<OrderByCriteria>) = +"ORDER BY ${criteria.token { it.token }}"
-  fun tokenizeTable(name: String): Token = name.token
-  fun tokenizeAlias(alias: List<String>): Token = StringToken(this.joinAlias(alias))
 
+  fun escapeIfNeeded(name: String): Token =
+    if (reservedKeywords.contains(name))
+      "\"${name}\"".token
+    else
+      name.token
+
+  fun tokenizeTable(name: String): Token = escapeIfNeeded(name)
+  fun tokenizeAlias(alias: List<String>): Token = escapeIfNeeded(this.joinAlias(alias))
+  fun tokenizeColumn(name: String): Token = escapeIfNeeded(name)
 
   val SelectValue.token get(): Token = selectValueTokenImpl(this)
   fun selectValueTokenImpl(exprImpl: SelectValue): Token = with (exprImpl) {
@@ -761,7 +770,7 @@ interface SqlIdiom: HasPhasePrinting {
         // and we are selecting something from a nested expression
         // SELECT /*this ->*/ (someExpression).otherStuff FROM (....)
         else ->
-          +"${scopedTokenizer(ast)}.${(joinAlias(prefix).token)}"
+          +"${scopedTokenizer(ast)}.${(tokenizeColumn(joinAlias(prefix)).token)}"
       }
     }
   }

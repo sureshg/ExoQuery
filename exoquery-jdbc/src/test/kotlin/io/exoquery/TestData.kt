@@ -4,6 +4,7 @@ import io.exoquery.Person
 import io.exoquery.PostgresDialect
 import io.exoquery.capture
 import io.exoquery.controller.jdbc.JdbcController
+import io.exoquery.controller.runActions
 import io.exoquery.runOn
 
 suspend fun JdbcController.people() = capture { Table<Person>() }.build<PostgresDialect>().runOn(this)
@@ -23,3 +24,12 @@ val jim = Person(3, "Jim", "Roogs", 333)
 val george = Person(4, "George", "Googs", 444)
 val people = listOf(joe, joe2, jim)
 val allPeople = listOf(joe, joe2, jim, george)
+
+
+object ActionSpecExt {
+  suspend fun JdbcController.insertGeorgeAndJim() =
+    this.runActions("""
+        INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'George', 'Googs', 555);
+        INSERT INTO Person (id, firstName, lastName, age) VALUES (2, 'Jim', 'Roogs', 222);
+      """.trimIndent())
+}

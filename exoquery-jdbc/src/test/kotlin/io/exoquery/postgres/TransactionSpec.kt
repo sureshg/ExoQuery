@@ -24,15 +24,8 @@ class TransactionSpec : FreeSpec({
     )
   }
 
-  // Moving these values out here causes an explosion. Need to look into it.
-  // Also need to see what happens when similar things are done for param(...)
-  //val joe = Person(1, "Joe", "Bloggs", 111)
-  //val jack = Person(2, "Jack", "Roogs", 222)
-
-
   val joe = Person(1, "Joe", "Bloggs", 111)
   val jack = Person(2, "Jack", "Roogs", 222)
-
 
   suspend fun select() =
     capture { Table<Person>() }.build<PostgresDialect>().runOn(ctx)
@@ -79,45 +72,3 @@ class TransactionSpec : FreeSpec({
     }
   }
 })
-
-
-//class TransactionSpecOps<Session, Stmt, ExecutionOpts>(
-//  val ctx: ControllerTransactional<Session, Stmt, ExecutionOpts>,
-//) {
-//
-//  fun clearTables(): Unit = runBlocking {
-//    ctx.runActions(
-//      """
-//      DELETE FROM Person;
-//      DELETE FROM Address;
-//      """
-//    )
-//  }
-//
-//  fun success() = runBlocking {
-//    ctx.transaction {
-//      insert(joe).run()
-//    }
-//    select().runOn(ctx) shouldBe listOf(joe)
-//  }
-//
-//  fun failure() = runBlocking {
-//    insert(joe).runOn(ctx)
-//    shouldThrow<IllegalStateException> {
-//      ctx.transaction {
-//        insert(jack).run()
-//        throw IllegalStateException()
-//      }
-//    }
-//    select().runOn(ctx) shouldBe listOf(joe)
-//  }
-//
-//  fun nested() = runBlocking {
-//    ctx.transaction {
-//      ctx.transaction {
-//        insert(joe).run()
-//      }
-//    }
-//    select().runOn(ctx) shouldBe listOf(joe)
-//  }
-//}
