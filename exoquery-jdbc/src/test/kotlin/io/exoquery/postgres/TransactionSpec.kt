@@ -39,52 +39,44 @@ class TransactionSpec : FreeSpec({
 
   "transaction support" - {
     "success" {
-
-      //val cap =
-      val src =
+      ctx.transaction {
         capture {
           insert<Person> { setParams(joe) }
-          //insert<Person> { set(firstName to param(joe.firstName)) }
-        }.build<PostgresDialect>()
-
-      println(src)
-
-      //ctx.transaction {
-      //  cap.runOnTransaction()
-      //}
-      //select() shouldBe listOf(joe)
+        }.build<PostgresDialect>().runOnTransaction()
+      }
+      select() shouldBe listOf(joe)
     }
 
-//    "failure" {
-//      capture {
-//        insert<Person> { setParams(joe) }
-//      }.build<PostgresDialect>().runOn(ctx)
-//
-//      val cap = capture {
-//        insert<Person> { setParams(jack) }
-//      }.build<PostgresDialect>()
-//
-//      shouldThrow<IllegalStateException> {
-//        ctx.transaction {
-//          cap.runOnTransaction()
-//          throw IllegalStateException()
-//        }
-//      }
-//      select() shouldBe listOf(joe)
-//    }
-//
-//    "nested" {
-//      val cap = capture {
-//        insert<Person> { setParams(joe) }
-//      }.build<PostgresDialect>()
-//
-//      ctx.transaction {
-//        ctx.transaction {
-//          cap.runOnTransaction()
-//        }
-//      }
-//      select() shouldBe listOf(joe)
-//    }
+    "failure" {
+      capture {
+        insert<Person> { setParams(joe) }
+      }.build<PostgresDialect>().runOn(ctx)
+
+      val cap = capture {
+        insert<Person> { setParams(jack) }
+      }.build<PostgresDialect>()
+
+      shouldThrow<IllegalStateException> {
+        ctx.transaction {
+          cap.runOnTransaction()
+          throw IllegalStateException()
+        }
+      }
+      select() shouldBe listOf(joe)
+    }
+
+    "nested" {
+      val cap = capture {
+        insert<Person> { setParams(joe) }
+      }.build<PostgresDialect>()
+
+      ctx.transaction {
+        ctx.transaction {
+          cap.runOnTransaction()
+        }
+      }
+      select() shouldBe listOf(joe)
+    }
   }
 })
 

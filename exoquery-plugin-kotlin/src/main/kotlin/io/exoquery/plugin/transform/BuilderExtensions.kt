@@ -6,6 +6,8 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
@@ -13,7 +15,6 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
@@ -139,9 +140,9 @@ fun IrExpression.callDispatchWithParams(method: String, typeParams: List<IrType>
 fun IrExpression.callDispatchWithParamsAndOutput(method: String, typeParams: List<IrType>, fullOutputType: IrType): CallMethod = CallMethod(Caller.Dispatch(this), ReplacementMethodToCall(method), typeParams, fullOutputType)
 
 
-context (CX.Scope, CX.Builder) fun createLambda0(functionBody: IrExpression, functionParent: IrDeclarationParent): IrFunctionExpression =
+context (CX.Scope, CX.Builder) fun createLambda0(functionBody: IrExpression, functionParent: IrDeclarationParent, otherStatements: List<IrStatement> = listOf()): IrFunctionExpression =
   with(builder) {
-    val functionClosure = createLambda0Closure(functionBody, functionParent)
+    val functionClosure = createLambda0Closure(functionBody, functionParent, otherStatements)
     val functionType = pluginCtx.symbols.functionN(0).typeWith(functionClosure.returnType)
     IrFunctionExpressionImpl(startOffset, endOffset, functionType, functionClosure, IrStatementOrigin.LAMBDA)
   }
@@ -164,7 +165,7 @@ context (CX.Scope, CX.Builder) fun createLambdaN(functionBody: IrExpression, par
     IrFunctionExpressionImpl(startOffset, endOffset, functionType, functionClosure, IrStatementOrigin.LAMBDA)
   }
 
-context (CX.Scope, CX.Builder) fun createLambda0Closure(functionBody: IrExpression, functionParent: IrDeclarationParent): IrSimpleFunction {
+context (CX.Scope, CX.Builder) fun createLambda0Closure(functionBody: IrExpression, functionParent: IrDeclarationParent, otherStatements: List<IrStatement> = listOf()): IrSimpleFunction {
   return with(pluginCtx) {
     irFactory.buildFun {
       origin = IrDeclarationOrigin.LOCAL_FUNCTION_FOR_LAMBDA
@@ -186,6 +187,7 @@ context (CX.Scope, CX.Builder) fun createLambda0Closure(functionBody: IrExpressi
       body = pluginCtx.createIrBuilder(symbol).run {
         // don't use expr body, coroutine codegen can't generate for it.
         irBlockBody {
+          otherStatements.forEach { +it }
           +irReturn(functionBody)
         }
       }

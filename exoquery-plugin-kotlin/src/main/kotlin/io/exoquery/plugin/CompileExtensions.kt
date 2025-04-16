@@ -9,10 +9,12 @@ import io.exoquery.liftingError
 import io.exoquery.parseError
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.Caller
+import io.exoquery.plugin.transform.createLambda0
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.simpleValueArgs
 import io.exoquery.plugin.trees.simpleValueParams
 import io.exoquery.xr.XR
+import org.jetbrains.kotlin.backend.common.extensions.FirIncompatiblePluginAPI
 import org.jetbrains.kotlin.backend.jvm.ir.eraseTypeParameters
 import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
 import org.jetbrains.kotlin.backend.jvm.ir.isInPublicInlineScope
@@ -22,8 +24,10 @@ import org.jetbrains.kotlin.com.intellij.openapi.util.TextRange
 import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrFileEntry
+import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
+import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrField
@@ -39,6 +43,7 @@ import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.symbols.isPublicApi
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrNull
@@ -391,3 +396,61 @@ fun IrExpression.isSqlQuery() =
 context(CX.Scope)
 fun IrExpression.isSqlExpression() =
   this.type.isClass<SqlExpression<*>>()
+
+  /**
+   * In situations where a SqlAction is created and executed in the same block errors can result
+   * that seem to indicate that the .params call coming out of the initial expression is empty.
+   * Still in certain situations it works but in others it does not. This was first descovered in TransactionSpec
+   * where the following would not work:
+   * ```
+   * val joe = Person(1, "Joe", "Bloggs", 111)
+   * "transaction support" - {
+   *   "success" {
+   *       capture { insert<Person> { setParams(joe) } }.build<PostgresDialect>()
+   *    }
+   * }
+   * //> Compile Error:
+   * //> java.lang.IllegalStateException: IrFieldSymbolImpl is unbound. Signature: null
+   * ```
+   * While the following would:
+   * ```
+   * "transaction support" - {
+   *   "success" {
+   *       val joe = Person(1, "Joe", "Bloggs", 111)
+   *       capture { insert<Person> { setParams(joe) } }.build<PostgresDialect>()
+   *    }
+   * }
+   * ```
+   * It was then noted that the above consturct would trivially work if the capture block was writtein to a new variable
+   * ```
+   * "transaction support" - {
+   *   "success" {
+   *       val joe = Person(1, "Joe", "Bloggs", 111)
+   *       val cap = capture { insert<Person> { setParams(joe) } }
+   *       cap.build<PostgresDialect>()
+   *    }
+   * }
+   * ```
+   * This leads me to belive that specifically in the situation where the variable is not created,
+   * the way the `capture { ... }` is munged around inside of the TransformCompileQuery, the original
+   * expression becomes somehow invalid. Writing it to a variable seems to introduce some kind of stability
+   * that allows it to be resused. As of yet I have not seen similar issues with constructs like `param`
+   * but if they do arise, a similar solution (i.e. creating a run-function with a internal-variable
+   * pointing to the original expression) can be applied.
+   */
+context(CX.Scope, CX.Builder)
+fun makeRunFunction(statements: List<IrStatement>, returnExpr: IrExpression): IrExpression {
+  val runFunction = pluginCtx.referenceFunctions(CallableId(FqName("kotlin"), Name.identifier("run")))
+    .first { it.owner.valueParameters.singleOrNull()?.type is IrSimpleType } // get the generic run<T> function
+
+  val lambdaType = runFunction.owner.valueParameters[0].type
+  val returnType = runFunction.owner.returnType
+
+  val decl = currentDeclarationParent ?: parseError("Cannot get parent of the current declaration", returnExpr)
+  val lambda = createLambda0(returnExpr, decl, statements)
+
+  return builder.irCall(runFunction).apply {
+    putTypeArgument(0, returnExpr.type) // for example, T = String
+    putValueArgument(0, lambda)
+  }
+}

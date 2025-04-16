@@ -14,6 +14,7 @@ import io.exoquery.plugin.funName
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.location
+import io.exoquery.plugin.makeRunFunction
 import io.exoquery.plugin.ownerFunction
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.show
@@ -32,7 +33,9 @@ import io.exoquery.xr.XR
 import io.exoquery.xr.encode
 import io.exoquery.xr.toActionKind
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
+import org.jetbrains.kotlin.ir.builders.createTmpVariable
 import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -147,7 +150,6 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
 
                 val msgAdd = parsedArgs.queryLabel?.let { " ($it)" } ?: ""
                 this@Scope.logger.report("Compiled query in ${compileTime.inWholeMilliseconds}ms${msgAdd}: ${queryString}", expr)
-
                 SqlCompiledQueryExpr(sqlExpr, queryString, queryTokenized, false, parsedArgs.queryLabel, Phase.CompileTime, uprootable.packedXR, query.encode()).plant()
               }
             ) ?: run {
@@ -177,7 +179,10 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
                 val msgAdd = parsedArgs.queryLabel?.let { " ($it)" } ?: ""
                 logger.report("Compiled action in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)
 
-                SqlCompiledActionExpr(sqlExpr, queryString, queryTokenized, actionKind, actionReturningKind, parsedArgs.queryLabel, Phase.CompileTime, uprootable.packedXR).plant()
+                val sqlActionTmpVar = builder.scope.createTmpVariable(sqlExpr)
+                val output = SqlCompiledActionExpr(builder.irGet(sqlActionTmpVar), queryString, queryTokenized, actionKind, actionReturningKind, parsedArgs.queryLabel, Phase.CompileTime, uprootable.packedXR).plant()
+                // IMPORTANT notes inside of makeRunFunction as to why this is used here
+                makeRunFunction(listOf(sqlActionTmpVar), output)
               }
             ) ?: run {
               //logger.warn("The action could not be transformed at compile-time", expr.location())
