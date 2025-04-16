@@ -26,7 +26,11 @@ import javax.sql.DataSource
 suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: JdbcExecutionOptions = JdbcExecutionOptions()): Output =
   when (val action = this.toControllerAction(serializer)) {
     is Action -> action.runOn(database, options) as Output
-    is ActionReturningId<Output> -> action.runOn(database, options)
+    is ActionReturningId<Output> -> {
+      if (actionKind.isUpdateOrDelete() && database is JdbcControllers.Sqlite)
+        throw IllegalStateException("SQLite does not support returning ids with returningKeys. Use .retruning instead to add a RETRUNING clause to the query.")
+      action.runOn(database, options)
+    }
     is ActionReturningRow<Output> -> action.runOn(database, options)
   }
 

@@ -47,7 +47,7 @@ class SqlServerDialect(override val traceConf: TraceConfig = TraceConfig.empty) 
         tokenizeOutputtingDelete(query.kind, query.action)
       // If the returning-kind is Keys then we don't use the output-clause and rely on Sttement.generatedKeys (and similar APIs)
       else ->
-        xrActionTokenImpl(query)
+        super<SqlIdiom>.xrReturningTokenImpl(query)
     }
 
   fun tokenizeOutputtingInsert(expr: XR.Returning.Kind.Expression, insert: XR.Insert): Token = run {

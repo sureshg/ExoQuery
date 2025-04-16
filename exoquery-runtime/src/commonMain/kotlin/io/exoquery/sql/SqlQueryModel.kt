@@ -671,8 +671,12 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
               xrError("Invalid flattening, XR.TagForSqlQuery should have been reduced-out of the query construction already: ${this.showRaw()}")
             is XR.Union ->
               xrError("Union should have been handled by the SetOperationSqlQuery ${this.showRaw()}")
-            is XR.UnionAll ->
-              xrError("UnionAll should have been handled by the SetOperationSqlQuery ${this.showRaw()}")
+            is XR.UnionAll -> {
+              //xrError("UnionAll should have been handled by the SetOperationSqlQuery ${this.showRaw()}")
+              val setOp = SetOperationSqlQuery(invoke(a), UnionOperation, invoke(b), type)
+              FlattenSqlQuery(from = sources + QueryContext(setOp, alias.name), select = select(alias.name, type, loc), type = type)
+            }
+
             is XR.FunctionApply ->
               xrError("Invalid flattening, should have been beta-reduced already: ${this.showRaw()}")
 

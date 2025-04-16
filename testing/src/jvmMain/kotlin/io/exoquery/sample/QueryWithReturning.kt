@@ -1,17 +1,54 @@
 package io.exoquery.sample
 
 import io.exoquery.*
+import io.exoquery.annotation.CapturedFunction
+
+interface Nameable {
+  val name: String
+}
 
 fun main() {
-  data class Person(val name: String, val age: Int)
 
-  val myParam = "foo"
+  data class Person(override val name: String, val age: Int): Nameable
+  data class Robot(override val name: String, val model: String, val factoryId: Int): Nameable
+  data class Factory(val id: Int, val name: String)
+
+  @CapturedFunction
+  fun <N: Nameable> nameIsJoe(input: SqlQuery<N>) =
+    capture {
+      input.filter { p -> p.name == "Joe" }.map { p -> p.name }
+    }
+
+  // TODO add this case to the unit tests
+//  val q = capture {
+//    nameIsJoe(
+//      Table<Robot>().filter { r ->
+//        Table<Factory>().filter { f -> f.id == r.factoryId }.filter { f -> f.name == "aaa" }.isNotEmpty()
+//      }
+//      unionAll
+//      Table<Robot>().filter { r ->
+//        Table<Factory>().filter { f -> f.id == r.factoryId }.filter { f -> f.name == "bbb" }.isNotEmpty()
+//      }
+//    )
+//  }
+
+  @CapturedFunction
+  fun robotsWithFactoryName(factoryName: String) =
+    capture {
+      Table<Robot>().filter { r ->
+        Table<Factory>().filter { f -> f.id == r.factoryId }.filter { f -> f.name == factoryName }.isNotEmpty()
+      }
+    }
+
   val q = capture {
-    insert<Person> { set(name to param("Joe"), age to param(123)) }.returning { p -> p.name to param(myParam) }
+    nameIsJoe(
+      robotsWithFactoryName("aaa") unionAll robotsWithFactoryName("bbb")
+    )
   }
-  val b = q.build<PostgresDialect>().determinizeDynamics()
 
-  println(b.params)
+  /*
+  SELECT FROM nameIsJoe(SELECT * FROM Robots where model = 'R2D2')
+   */
 
-  println(b.token.showRaw())
+  println(q.buildPretty<PostgresDialect>().value)
 }

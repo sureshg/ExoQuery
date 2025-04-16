@@ -41,17 +41,15 @@ class TransactionSpec : FreeSpec({
     }
 
     "failure" {
-      capture {
-        insert<Person> { setParams(joe) }
-      }.build<PostgresDialect>().runOn(ctx)
+      // Insert joe record
+      capture { insert<Person> { setParams(joe) } }.build<PostgresDialect>().runOn(ctx)
 
-      val cap = capture {
-        insert<Person> { setParams(jack) }
-      }.build<PostgresDialect>()
 
       shouldThrow<IllegalStateException> {
         ctx.transaction {
-          cap.runOnTransaction()
+          capture {
+            insert<Person> { setParams(jack) }
+          }.build<PostgresDialect>().runOnTransaction()
           throw IllegalStateException()
         }
       }

@@ -26,7 +26,11 @@ import javax.sql.DataSource
 suspend fun <BatchInput, Input: Any, Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: JdbcExecutionOptions = JdbcExecutionOptions()): List<Output> =
   when (val action = this.toControllerBatchVerb(serializer)) {
     is BatchAction -> action.runOn(database, options) as List<Output>
-    is BatchActionReturningId<Output> -> action.runOn(database, options)
+    is BatchActionReturningId<Output> -> {
+      if (actionKind.isUpdateOrDelete() && database is JdbcControllers.Sqlite)
+        throw IllegalStateException("SQLite does not support returning ids with returningKeys. Use .retruning instead to add a RETRUNING clause to the query.")
+      action.runOn(database, options)
+    }
     is BatchActionReturningRow<Output> -> action.runOn(database, options)
   }
 
