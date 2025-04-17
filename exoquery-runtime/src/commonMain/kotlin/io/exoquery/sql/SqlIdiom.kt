@@ -796,6 +796,7 @@ interface SqlIdiom: HasPhasePrinting {
       is XR.OnConflict -> TODO()
       is XR.FilteredAction -> this.token
       is XR.Returning -> this.token
+      is XR.Free -> this.token
     }
   }
 

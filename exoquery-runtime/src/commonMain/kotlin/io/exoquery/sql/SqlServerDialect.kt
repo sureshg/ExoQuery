@@ -1,16 +1,15 @@
 package io.exoquery.sql
 
-import io.exoquery.sql.BooleanLiteralSupport
-import io.exoquery.sql.SqlIdiom
-import io.exoquery.sql.Statement
-import io.exoquery.sql.Token
+import io.exoquery.ActionKind
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.Tracer
 import io.exoquery.xr.XR
 import io.exoquery.util.unaryPlus
+import io.exoquery.xr.BetaReduction
+import io.exoquery.xr.BetaReduction.Companion.invoke
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.OP
-import io.exoquery.xrError
+import io.exoquery.xr.toActionKind
 
 class SqlServerDialect(override val traceConf: TraceConfig = TraceConfig.empty) : SqlIdiom, BooleanLiteralSupport {
   override val concatFunction: String = "+"
@@ -39,12 +38,19 @@ class SqlServerDialect(override val traceConf: TraceConfig = TraceConfig.empty) 
 
   override fun xrReturningTokenImpl(query: XR.Returning): Token =
     when {
-      query.kind is XR.Returning.Kind.Expression && query.action is XR.Insert ->
+      query.kind is XR.Returning.Kind.Expression && query.action.toActionKind() == ActionKind.Insert && query.action is XR.Insert ->
         tokenizeOutputtingInsert(query.kind, query.action)
-      query.kind is XR.Returning.Kind.Expression && query.action is XR.Update ->
+
+      query.kind is XR.Returning.Kind.Expression && query.action.toActionKind() == ActionKind.Update && query.action is XR.Update ->
         tokenizeOutputtingUpdate(query.kind, query.action)
-      query.kind is XR.Returning.Kind.Expression && query.action is XR.Delete ->
+      query.kind is XR.Returning.Kind.Expression && query.action.toActionKind() == ActionKind.Update && query.action is XR.FilteredAction && query.action.action is XR.Update ->
+        tokenizeOutputtingUpdate(query.kind, query.action.action, query.action)
+
+      query.kind is XR.Returning.Kind.Expression && query.action.toActionKind() == ActionKind.Delete && query.action is XR.Delete ->
         tokenizeOutputtingDelete(query.kind, query.action)
+      query.kind is XR.Returning.Kind.Expression && query.action.toActionKind() == ActionKind.Delete && query.action is XR.FilteredAction && query.action.action is XR.Delete ->
+        tokenizeOutputtingDelete(query.kind, query.action.action, query.action)
+
       // If the returning-kind is Keys then we don't use the output-clause and rely on Sttement.generatedKeys (and similar APIs)
       else ->
         super<SqlIdiom>.xrReturningTokenImpl(query)
@@ -53,36 +59,38 @@ class SqlServerDialect(override val traceConf: TraceConfig = TraceConfig.empty) 
   fun tokenizeOutputtingInsert(expr: XR.Returning.Kind.Expression, insert: XR.Insert): Token = run {
     val newAlias = insert.coreAlias().copy(name = "INSERTED")
     val returningClauseToken = protractReturning(expr, newAlias)
-    val query = insert.query as? XR.Entity ?: xrError("Insert query must be an entity but found: ${insert.query}")
-    val insertBase = tokenizeInsertBase(insert)
-    +"${insertBase} OUTPUT ${returningClauseToken}"
+    val query = insert.query
+    with (insert) {
+      val (columns, values) = columnsAndValues(assignments, exclusions).unzip()
+      +"INSERT INTO ${query.token}${` AS table`(alias)} (${columns.mkStmt(", ")}) OUTPUT ${returningClauseToken} VALUES ${tokenizeInsertAssignemnts(values)}"
+    }
   }
 
-  fun tokenizeOutputtingUpdate(expr: XR.Returning.Kind.Expression, update: XR.Update): Token = run {
+  fun tokenizeOutputtingUpdate(expr: XR.Returning.Kind.Expression, update: XR.Update, filterRaw: XR.FilteredAction? = null): Token = run {
     val newAlias = update.coreAlias().copy(name = "INSERTED")
     val returningClauseToken = protractReturning(expr, newAlias)
     fun updateBase() = +"${tokenizeUpdateBase(update)} OUTPUT ${returningClauseToken}"
     when {
-      update.query is XR.Filter && update.query.head is XR.Entity ->
-        +"${updateBase()} WHERE ${update.query.token}"
-      update.query is XR.Entity ->
-        updateBase()
+      filterRaw != null -> {
+        val filterWithCorrectAlias = BetaReduction(filterRaw.filter, filterRaw.alias to update.alias).asExpr()
+        +"${updateBase()} WHERE ${filterWithCorrectAlias.token}"
+      }
       else ->
-        xrError("Invalid query-clause in an Update. It can only be a XR Filter or Entity but was:\n${update.query.showRaw()}")
+        updateBase()
     }
   }
 
-  fun tokenizeOutputtingDelete(expr: XR.Returning.Kind.Expression, delete: XR.Delete): Token = run {
+  fun tokenizeOutputtingDelete(expr: XR.Returning.Kind.Expression, delete: XR.Delete, filterRaw: XR.FilteredAction? = null): Token = run {
     val newAlias = delete.coreAlias().copy(name = "DELETED")
     val returningClauseToken = protractReturning(expr, newAlias)
     fun deleteBase() = +"${tokenizeDeleteBase(delete)} OUTPUT ${returningClauseToken}"
     when {
-      delete.query is XR.Filter && delete.query.head is XR.Entity ->
-        +"${deleteBase()} WHERE ${delete.query.token}"
-      delete.query is XR.Entity ->
-        deleteBase()
+      filterRaw != null -> {
+        val filterWithCorrectAlias = BetaReduction(filterRaw.filter, filterRaw.alias to delete.alias).asExpr()
+        +"${deleteBase()} WHERE ${filterWithCorrectAlias.token}"
+      }
       else ->
-        xrError("Invalid query-clause in a Delete. It can only be a XR Filter or Entity but was:\n${delete.query.showRaw()}")
+        deleteBase()
     }
   }
 

@@ -27,8 +27,14 @@ suspend fun <BatchInput, Input: Any, Output> SqlCompiledBatchAction<BatchInput, 
   when (val action = this.toControllerBatchVerb(serializer)) {
     is BatchAction -> action.runOn(database, options) as List<Output>
     is BatchActionReturningId<Output> -> {
-      if (actionKind.isUpdateOrDelete() && database is JdbcControllers.Sqlite)
-        throw IllegalStateException("SQLite does not support returning ids with returningKeys. Use .retruning instead to add a RETRUNING clause to the query.")
+      when {
+        actionKind.isUpdateOrDelete() && database.isSqlite() ->
+          throw IllegalStateException("SQLite does not support returning ids with returningKeys. Use .returning instead to add a RETRUNING clause to the query.")
+        actionKind.isUpdateOrDelete() && database.isSqlServer() ->
+          throw IllegalStateException("SQL Server does not support returning ids with returningKeys. Use .returning instead to add a OUTPUT clause to the query.")
+        else ->
+          Unit
+      }
       action.runOn(database, options)
     }
     is BatchActionReturningRow<Output> -> action.runOn(database, options)

@@ -321,21 +321,8 @@ object ParseExpression {
         XR.MethodCall(parse(head), "contains", listOf(parse(params)), XR.CallType.PureFunction, cid, XRType.Value, expr.loc)
       },
 
-      case(Ir.Call.FunctionMem0[ExtractorsDomain.Call.InterpolateInvoke[Is()], Is.of("invoke", "asPure", "asConditon", "asPureConditon")]).thenThis { (components), _ ->
-        val segs = components.map { Seg.parse(it) }
-        val (partsRaw, paramsRaw) =
-          UnzipPartsParams<Seg>({ it is Seg.Const }, { a, b -> (a.constOrFail()).mergeWith(a.constOrFail()) }, { Seg.Const("") })
-            .invoke(segs)
-        val parts = partsRaw.map { it.constOrFail().value }
-        val paramsExprs = paramsRaw.map { it.exprOrFail() }
-        val paramsIrs = paramsExprs.map { parse(it.expr) }
-        when (this.funName) {
-          "invoke" -> XR.Free(parts, paramsIrs, false, false, TypeParser.of(this), expr.loc)
-          "asPure" -> XR.Free(parts, paramsIrs, true, false, TypeParser.of(this), expr.loc)
-          "asConditon" -> XR.Free(parts, paramsIrs, false, false, XRType.BooleanExpression, expr.loc)
-          "asPureConditon" -> XR.Free(parts, paramsIrs, true, false, XRType.BooleanExpression, expr.loc)
-          else -> parseError("Unknown Interpolate function: ${this.funName}", expr)
-        }
+      case(ParseFree.match()).thenThis { (components), _ ->
+        ParseFree.parse(expr, components, funName)
       },
 
       case(Ir.Call.FunctionMem0[Is(), Is("value")]).thenIf { useExpr, _ -> useExpr.type.isClass<SqlQuery<*>>() }.then { sqlQueryIr, _ ->

@@ -23,12 +23,21 @@ import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.serializer
 import javax.sql.DataSource
 
+fun JdbcController.isSqlite(): Boolean = this is JdbcControllers.Sqlite
+fun JdbcController.isSqlServer(): Boolean = this is JdbcControllers.SqlServer
+
 suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: JdbcExecutionOptions = JdbcExecutionOptions()): Output =
   when (val action = this.toControllerAction(serializer)) {
     is Action -> action.runOn(database, options) as Output
     is ActionReturningId<Output> -> {
-      if (actionKind.isUpdateOrDelete() && database is JdbcControllers.Sqlite)
-        throw IllegalStateException("SQLite does not support returning ids with returningKeys. Use .retruning instead to add a RETRUNING clause to the query.")
+      when {
+        actionKind.isUpdateOrDelete() && database.isSqlite() ->
+          throw IllegalStateException("SQLite does not support returning ids with returningKeys. Use .returning instead to add a RETRUNING clause to the query.")
+        actionKind.isUpdateOrDelete() && database.isSqlServer() ->
+          throw IllegalStateException("SQL Server does not support returning ids with returningKeys. Use .returning instead to add a OUTPUT clause to the query.")
+        else ->
+          Unit
+      }
       action.runOn(database, options)
     }
     is ActionReturningRow<Output> -> action.runOn(database, options)

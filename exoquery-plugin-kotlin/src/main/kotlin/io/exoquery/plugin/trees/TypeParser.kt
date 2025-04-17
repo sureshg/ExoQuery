@@ -113,6 +113,11 @@ object TypeParser {
         sqlQueryType.simpleTypeArgs.firstOrNull()?.let { parse(it) } ?: XRType.Generic
       },
 
+      // If it is an SqlAction, the 2nd argument is the return type so we need to use that is the IrType
+      case(Ir.Type.ClassOfType<io.exoquery.SqlAction<*, *>>()).then { sqlQueryType ->
+        sqlQueryType.simpleTypeArgs[1].let { parse(it) }
+      },
+
       // For now treat lists like value types, may way to change in future
       case(Ir.Type.KotlinList[Is()]).then { realType ->
         XRType.Value

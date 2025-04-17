@@ -481,13 +481,20 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class Free(@Slot val parts: List<String>, @Slot val params: List<XR>, val pure: Boolean, val transparent: Boolean, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, PC<Free> {
+  data class Free(@Slot val parts: List<String>, @Slot val params: List<XR>, val pure: Boolean, val transparent: Boolean, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, Action, PC<Free> {
     @Transient override val productComponents = productOf(this, parts, params)
     companion object {}
     override fun toString() = show()
     @Transient private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is Free && other.id() == cid
+
+    // Tokenization of actions requires being able to extract the alias from the XR.Action. If this is a free of an action we need to be able to do that.
+    val foundCoreAlias: Ident =
+      params.flatMap { param -> CollectXR.byType<XR.U.CoreAction>(param)}.firstOrNull()?.coreAlias() ?: Ident.Unused
+
+    override fun coreAlias(): Ident = foundCoreAlias
+
   }
 
   // ************************************************************************************************
@@ -1163,3 +1170,6 @@ fun XR.U.Terminal.withType(type: XRType): XR.Expression =
   when (this) {
     is XR.Ident -> XR.Ident(name, type, loc)
   }
+
+fun XR.Action.isCoreAction() =
+  this is XR.U.CoreAction

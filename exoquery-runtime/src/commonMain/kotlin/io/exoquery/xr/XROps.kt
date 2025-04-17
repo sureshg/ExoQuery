@@ -353,7 +353,10 @@ fun XR.Action.toActionKind(): ActionKind = when (this) {
   is XR.Delete -> ActionKind.Delete
   // The following contain nested actions inside, go into them and get the data
   is XR.Returning -> this.action.toActionKind()
-  is XR.Batching -> this.action.toActionKind()
   is XR.FilteredAction -> this.action.toActionKind()
   is XR.OnConflict -> this.insert.toActionKind()
+  is XR.Free ->
+    // TODO This is not exactly the best implementaiton. We should probably introduce a FreeKind to the XR
+    //      that we will capture by doing free("...").asInsert/Update/Delete
+    CollectXR.byType<XR.U.CoreAction>(this).firstOrNull()?.let { it.toActionKind() } ?: ActionKind.Update
 }

@@ -24,7 +24,6 @@ import io.exoquery.plugin.transform.containsBatchParam
 import io.exoquery.xr.XR
 import io.exoquery.xr.of
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
-import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.types.IrType
@@ -36,6 +35,18 @@ object ParseAction {
   fun parse(expr: IrExpression): XR.Action =
     on(expr).match<XR.Action> (
       // the `insert` part of capture { insert<Person> { set ... } }
+      case(ParseFree.match()).thenThis { (components), _ ->
+        ParseFree.parse(expr, components, funName)
+      },
+
+      case(SqlActionExpr.Uprootable[Is()]).thenThis { uprootable ->
+        val sqlActionIr = this
+        // Add all binds from the found SqlQuery instance, this will be truned into something like `currLifts + SqlQuery.lifts` late
+        binds.addAllParams(sqlActionIr)
+        // Then unpack and return the XR
+        uprootable.unpackOrErrorXR().successOrParseError(sqlActionIr)
+      },
+
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is.of("insert", "update"), Is.Companion()]).thenIfThis { _, _ -> ownerHasAnnotation<ExoInsert>() || ownerHasAnnotation<ExoUpdate>() }.thenThis { reciever, lambdaRaw ->
         val insertType = this.typeArguments.first() ?: parseError("Could not find the type argument of the insert/update call", expr)
         val compositeType = CompositeType.from(symName) ?: parseError("Unknown composite type: ${symName}", expr)

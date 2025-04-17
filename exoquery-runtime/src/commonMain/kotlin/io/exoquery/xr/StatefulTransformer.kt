@@ -362,6 +362,10 @@ interface StatefulTransformer<T> {
           val (bt, btt) = invoke(kind)
           Returning.cs(at, bt) to btt
         }
+        is Free -> {
+          val (paramsA, stateA) = applyList(params) { t, v -> t.invoke(v) }
+          Free.cs(parts, paramsA) to stateA
+        }
       }
     }
 

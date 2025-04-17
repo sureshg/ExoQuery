@@ -79,6 +79,7 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
       is XR.Returning -> this.token
       is XR.FilteredAction -> stmt("${action.token}.filter { ${alias.token} -> ${filter.token} }")
       is XR.OnConflict -> stmt("${this.token}")
+      is XR.Free -> this.token
     }
 
   val XR.Assignment.token: Token get() =

@@ -115,6 +115,7 @@ interface StatelessTransformer {
         is OnConflict -> invoke(this)
         is FilteredAction -> FilteredAction.csf(invoke(action), invokeIdent(alias), invoke(filter))(this)
         is Returning -> Returning.csf(invoke(action), invoke(kind))(this)
+        is Free -> Free.csf(parts, params.map { invoke(it) })(this)
       }
     }
 
