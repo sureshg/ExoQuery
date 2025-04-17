@@ -78,7 +78,7 @@ kotlin {
       "watchosSimulatorArm64"
     ).contains(it.name)
   }) {
-    if (isCI) {
+    if (true) {
       binaries.configureEach {
         // we only need to link sqlite for the test binaries
         if (outputKind == NativeOutputKind.TEST) {
