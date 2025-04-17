@@ -141,7 +141,12 @@ fun ContainerOfXR.spliceQuotations(): Pair<XR, List<Param<*>>> {
       }.withExpressionOf<XR.TagForSqlExpression> { tag ->
         quotationVases.find { it.first == tag.id }?.let { (id, vase) -> spliceQuotationsRecurse(vase) as XR.Expression }
           ?: throw IllegalArgumentException("Expression-Based vase with UID ${tag.id} could not be found!")
-      }.invoke(ast)
+      }.withActionOf<XR.TagForSqlAction> { tag ->
+        quotationVases.find { it.first == tag.id }?.let { (id, vase) -> spliceQuotationsRecurse(vase) as XR.Action }
+          ?: throw IllegalArgumentException("Action-Based vase with UID ${tag.id} could not be found!")
+      }
+      // Eventually need to have a TagForBatching for batching to be able to transfer across dynamic queries
+      .invoke(ast)
   }
   return BetaReduction.ofXR(spliceQuotationsRecurse(this)) to collectedParams.toList()
 }

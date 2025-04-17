@@ -2,7 +2,7 @@ package io.exoquery
 
 import io.exoquery.testdata.Person
 
-class FreeReq : GoldenSpecDynamic(FreeReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class FreeReq : GoldenSpecDynamic(FreeReqGoldenDynamic, Mode.ExoGoldenOverride(), {
 
   // TODO if 'free' not follorwed by anything there should be some kidn of compile error
   "static free" - {
@@ -19,8 +19,63 @@ class FreeReq : GoldenSpecDynamic(FreeReqGoldenDynamic, Mode.ExoGoldenTest(), {
       shouldBeGolden(capture { Table<Person>().filter { p -> free("MyFunction(${p.age})").asPureConditon() } }.build<PostgresDialect>())
     }
   }
-  "dynamic free" - {
 
+  "query with free" - {
+    "static query in free" {
+      val query = capture {
+        Table<Person>().filter { p -> p.name == "Joe" }
+      }
+      val free = capture {
+        free("beforeStuff() ${query} afterStuff()").asPure<SqlAction<Person, Long>>()
+      }
+      shouldBeGolden(free.build<PostgresDialect>())
+    }
+
+    "dynamic query in free" {
+      val query = capture {
+        Table<Person>().filter { p -> p.name == "Joe" }
+      }.dyanmic()
+
+      val free = capture {
+        free("beforeStuff() ${query} afterStuff()").asPure<SqlAction<Person, Long>>()
+      }
+      shouldBeGolden(free.build<PostgresDialect>())
+    }
+
+    "direct query in free" {
+      val free = capture {
+        free("beforeStuff() ${Table<Person>().filter { p -> p.name == "Joe" }} afterStuff()").asPure<SqlAction<Person, Long>>()
+      }
+      shouldBeGolden(free.build<PostgresDialect>())
+    }
+  }
+
+  "action with free" - {
+    "static action in free" {
+      val action = capture {
+        insert<Person> { setParams(Person(1, "Joe", 123)) }
+      }
+      val free = capture {
+        free("beforeStuff() ${action} afterStuff()").asPure<SqlAction<Person, Long>>()
+      }
+      shouldBeGolden(free.build<PostgresDialect>())
+    }
+    "dynamic action in free" {
+      val action = capture {
+        insert<Person> { setParams(Person(1, "Joe", 123)) }
+      }.dyanmic()
+
+      val free = capture {
+        free("beforeStuff() ${action} afterStuff()").asPure<SqlAction<Person, Long>>()
+      }
+      shouldBeGolden(free.build<PostgresDialect>())
+    }
+    "direct action in free" {
+      val free = capture {
+        free("beforeStuff() ${insert<Person> { setParams(Person(1, "Joe", 123)) }} afterStuff()").asPure<SqlAction<Person, Long>>()
+      }
+      shouldBeGolden(free.build<PostgresDialect>())
+    }
   }
 
 })

@@ -2,6 +2,7 @@ package io.exoquery.plugin
 
 import io.decomat.*
 import io.decomat.fail.fail
+import io.exoquery.SqlAction
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.annotation.*
@@ -396,6 +397,10 @@ fun IrExpression.isSqlQuery() =
 context(CX.Scope)
 fun IrExpression.isSqlExpression() =
   this.type.isClass<SqlExpression<*>>()
+
+context(CX.Scope)
+fun IrExpression.isSqlAction() =
+  this.type.isClass<SqlAction<*, *>>()
 
   /**
    * In situations where a SqlAction is created and executed in the same block errors can result

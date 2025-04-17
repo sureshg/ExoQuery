@@ -175,7 +175,7 @@ val OnConflict.OnConflict get() = this
 fun OnConflict.cs(action: XR.Insert, target: XR.OnConflict.Target, resolution: XR.OnConflict.Resolution) = io.exoquery.xr.XR.OnConflict.csf(action, target, resolution)(this)
 
 val FilteredAction.FilteredAction get() = this
-fun FilteredAction.cs(action: XR.Action, alias: XR.Ident, filter: XR.Expression) = io.exoquery.xr.XR.FilteredAction.csf(action, alias, filter)(this)
+fun FilteredAction.cs(action: XR.U.CoreAction, alias: XR.Ident, filter: XR.Expression) = io.exoquery.xr.XR.FilteredAction.csf(action, alias, filter)(this)
 
 val Returning.Returning get() = this
 fun Returning.cs(action: XR.Action, kind: Returning.Kind) = io.exoquery.xr.XR.Returning.csf(action, kind)(this)

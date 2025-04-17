@@ -27,6 +27,7 @@ sealed interface ActionKind {
   object Insert : ActionKind
   object Update : ActionKind
   object Delete : ActionKind
+  object Unknown : ActionKind
 }
 
 // TODO value needs to be Token and we need to write a lifter for Token

@@ -118,6 +118,10 @@ object TypeParser {
         sqlQueryType.simpleTypeArgs[1].let { parse(it) }
       },
 
+      case(Ir.Type.ClassOfType<io.exoquery.innerdsl.SqlActionFilterable<*, *>>()).then { sqlQueryType ->
+        sqlQueryType.simpleTypeArgs[1].let { parse(it) }
+      },
+
       // For now treat lists like value types, may way to change in future
       case(Ir.Type.KotlinList[Is()]).then { realType ->
         XRType.Value

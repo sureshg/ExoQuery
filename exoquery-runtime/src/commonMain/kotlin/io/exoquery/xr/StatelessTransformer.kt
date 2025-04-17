@@ -113,9 +113,11 @@ interface StatelessTransformer {
         is Update -> Update.csf(invoke(query), invokeIdent(alias), assignments.map { invoke(it) }, exclusions.map { invoke(it)})(this)
         is Delete -> Delete.csf(invoke(query), invokeIdent(alias))(this)
         is OnConflict -> invoke(this)
-        is FilteredAction -> FilteredAction.csf(invoke(action), invokeIdent(alias), invoke(filter))(this)
+        // TODO need to have invoke(action) here so that the Transformer will work on TransformAction, however need to think about potential consequences of casting here
+        is FilteredAction -> FilteredAction.csf(invoke(action) as XR.U.CoreAction, invokeIdent(alias), invoke(filter))(this)
         is Returning -> Returning.csf(invoke(action), invoke(kind))(this)
         is Free -> Free.csf(parts, params.map { invoke(it) })(this)
+        is TagForSqlAction -> this
       }
     }
 

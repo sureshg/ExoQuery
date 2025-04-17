@@ -51,6 +51,14 @@ internal class SwapTagsTransformer(tagMap: Map<BID, BID>): TransformXR(
         else -> null
       }
     }
+  },
+  transformAction = {
+    with(it) {
+      when (this) {
+        is XR.TagForSqlAction -> tagMap.get(id)?.let { XR.TagForSqlAction.csf(it)(this) }
+        else -> null
+      }
+    }
   }
 )
 
@@ -358,5 +366,6 @@ fun XR.Action.toActionKind(): ActionKind = when (this) {
   is XR.Free ->
     // TODO This is not exactly the best implementaiton. We should probably introduce a FreeKind to the XR
     //      that we will capture by doing free("...").asInsert/Update/Delete
-    CollectXR.byType<XR.U.CoreAction>(this).firstOrNull()?.let { it.toActionKind() } ?: ActionKind.Update
+    CollectXR.byType<XR.U.CoreAction>(this).firstOrNull()?.let { it.toActionKind() } ?: ActionKind.Unknown
+  is XR.TagForSqlAction -> ActionKind.Unknown
 }

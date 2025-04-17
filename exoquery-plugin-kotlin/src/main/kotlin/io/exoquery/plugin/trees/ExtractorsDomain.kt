@@ -68,6 +68,24 @@ object ExtractorsDomain {
       }
   }
 
+  object DynamicActionCall {
+    context(CX.Scope, CX.Symbology)
+    operator fun <AP: Pattern<IrExpression>> get(x: AP) =
+      customPattern1("DynamicActionCall", x) { expr: IrExpression ->
+        val matches = expr.match(
+          case(Ir.GetField[Is()]).thenIfThis { this.isExternal() && expr.isSqlAction() }.then { _ -> true },
+          case(Ir.GetValue[Is()]).thenIfThis { this.isExternal() && expr.isSqlAction() }.then { _ -> true },
+          case(Ir.Call[Is()]).thenIf { call ->
+            (call.simpleValueArgsCount == 0 && call.symbol.owner is IrSimpleFunction) || call.someOwnerHasAnnotation<CapturedDynamic>()
+          }.then { _ -> true }
+        ) ?: false
+        if (matches)
+          Components1(expr)
+        else
+          null
+      }
+  }
+
   sealed interface QueryDslFunction {
     context(CX.Scope) fun matchesMethod(it: IrCall): Boolean
     context(CX.Scope) fun extract(it: IrCall): Pair<RecieverCallData, ReplacementMethodToCall>?

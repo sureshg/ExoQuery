@@ -38,6 +38,11 @@ fun <CXR: ContainerOfXR> CXR.rekeyRuntimeBinds(): CXR {
           is XR.TagForSqlExpression -> if (bindMap.contains(it.id)) it.copy(id = bindMap[it.id]!!) else it
           else -> null
         }
+      }.withAction {
+        when (it) {
+          is XR.TagForSqlAction -> if (bindMap.contains(it.id)) it.copy(id = bindMap[it.id]!!) else it
+          else -> null
+        }
       }
       .invoke(ast)
 

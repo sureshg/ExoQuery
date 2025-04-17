@@ -197,6 +197,7 @@ class Lifter(val builderCtx: CX.Builder) {
       ActionKind.Insert -> makeObject<ActionKind.Insert>()
       ActionKind.Update -> makeObject<ActionKind.Update>()
       ActionKind.Delete -> makeObject<ActionKind.Delete>()
+      ActionKind.Unknown -> makeObject<ActionKind.Unknown>()
     }
 
   fun ActionReturningKind.lift(): IrExpression =

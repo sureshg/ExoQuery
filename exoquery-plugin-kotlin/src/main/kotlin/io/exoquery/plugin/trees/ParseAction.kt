@@ -32,7 +32,8 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 object ParseAction {
   context(CX.Scope, CX.Parsing, CX.Symbology, CX.Builder)
-  fun parse(expr: IrExpression): XR.Action =
+  // Parse an action, normally dynamic splicing of actions is not allowed, the only exception to this is from a free(... action ...) call where `action` is dynamic (see the ParseFree in ParserOps)
+  fun parse(expr: IrExpression, dynamicCallsAllowed: Boolean = false): XR.Action =
     on(expr).match<XR.Action> (
       // the `insert` part of capture { insert<Person> { set ... } }
       case(ParseFree.match()).thenThis { (components), _ ->
@@ -125,6 +126,11 @@ object ParseAction {
             else -> parseError("The `.returningKeys` function can only be called on a basic action i.e. insert, update, or delete or a basic-action with a filter but got:\n${parsed.showRaw()}", actionExpr)
           }
         XR.Returning(core, XR.Returning.Kind.Keys(alias, props), expr.loc)
+      },
+      case(ExtractorsDomain.DynamicActionCall[Is()]).thenIf { _ -> dynamicCallsAllowed }.then { call ->
+        val bid = BID.Companion.new()
+        binds.addRuntime(bid, expr)
+        XR.TagForSqlAction(bid, TypeParser.of(expr), expr.loc)
       }
     ) ?: parseError("Could not parse the action", expr)
 

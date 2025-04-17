@@ -29,6 +29,9 @@ data class SqlAction<Input, Output>(override val xr: XR.Action, override val run
   override fun withNonStrictEquality(): SqlAction<Input, Output> = copy(params = params.withNonStrictEquality())
 
   fun determinizeDynamics(): SqlAction<Input, Output> = DeterminizeDynamics().ofAction(this)
+
+  // Don't need to do anything special in order to convert runtime, just call a function that the TransformProjectCapture can't see through
+  fun dyanmic(): SqlAction<Input, Output> = this
 }
 
 data class SqlBatchAction<BatchInput, Input: Any, Output>(override val xr: XR.Batching, val batchParam: Sequence<BatchInput>, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfXR {

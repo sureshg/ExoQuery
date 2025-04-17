@@ -797,6 +797,7 @@ interface SqlIdiom: HasPhasePrinting {
       is XR.FilteredAction -> this.token
       is XR.Returning -> this.token
       is XR.Free -> this.token
+      is XR.TagForSqlAction -> xrError("TagForSqlAction should have been expanded out before this point")
     }
   }
 
@@ -852,10 +853,15 @@ interface SqlIdiom: HasPhasePrinting {
       // In Postgres-style RETURNING clause the RETURNING is always the last thing to be used so we can
       // use the action renderes first. In SQL-server that uses an OUTPUT clause this is not the case
       // and we need to repeat some logic here.
-      kind is XR.Returning.Kind.Expression && (action is XR.U.CoreAction || action is XR.FilteredAction) -> {
+      kind is XR.Returning.Kind.Expression && action is XR.U.CoreAction -> {
         val returningClauseToken = protractReturning(kind, action.coreAlias())
         +"${action.token} RETURNING ${returningClauseToken}"
       }
+      kind is XR.Returning.Kind.Expression && action is XR.FilteredAction -> {
+        val returningClauseToken = protractReturning(kind, action.coreAlias())
+        +"${action.token} RETURNING ${returningClauseToken}"
+      }
+
       // This is when an API like insert(...).returningColumns(...) is used.
       // In this case the PrepareStatement.getGeneratedKeys() should be used but there should
       // be no specific RETURNING clause in the SQL.

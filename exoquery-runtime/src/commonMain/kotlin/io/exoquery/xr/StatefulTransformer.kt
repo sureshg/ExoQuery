@@ -355,7 +355,8 @@ interface StatefulTransformer<T> {
         is FilteredAction -> {
           val (at, att) = invoke(action)
           val (bt, btt) = att.invoke(filter)
-          FilteredAction.cs(at, alias, bt) to btt
+          // TODO need to think about consequences of casting here
+          FilteredAction.cs(at as XR.U.CoreAction, alias, bt) to btt
         }
         is Returning -> {
           val (at, att) = invoke(action)
@@ -366,6 +367,7 @@ interface StatefulTransformer<T> {
           val (paramsA, stateA) = applyList(params) { t, v -> t.invoke(v) }
           Free.cs(parts, paramsA) to stateA
         }
+        is TagForSqlAction -> this to this@StatefulTransformer
       }
     }
 

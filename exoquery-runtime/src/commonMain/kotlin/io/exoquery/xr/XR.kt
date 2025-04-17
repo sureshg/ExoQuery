@@ -62,6 +62,7 @@ sealed interface XR {
     @Serializable
     sealed interface CoreAction: Action, XR {
       val alias: Ident
+      override fun coreAlias(): Ident
     }
 
     /**
@@ -692,6 +693,17 @@ sealed interface XR {
 
   @Serializable
   @Mat
+  data class TagForSqlAction(@Slot val id: BID, override val type: XRType, override val loc: Location = Location.Synth): XR.Action, PC<XR.TagForSqlAction> {
+    @Transient override val productComponents = productOf(this, id)
+    override fun toString() = show()
+    @Transient private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is TagForSqlAction && other.id() == cid
+    override fun coreAlias(): Ident? = null
+  }
+
+  @Serializable
+  @Mat
   data class TagForSqlQuery(@Slot val id: BID, override val type: XRType, override val loc: Location = Location.Synth): XR.Query, PC<XR.TagForSqlQuery> {
     @Transient override val productComponents = productOf(this, id)
     override fun toString() = show()
@@ -962,7 +974,7 @@ sealed interface XR {
 
   @Serializable
   sealed interface Action: XR {
-    fun coreAlias(): XR.Ident
+    fun coreAlias(): XR.Ident?
   }
 
   @Serializable
@@ -1008,7 +1020,7 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class FilteredAction(@Slot val action: XR.Action, @MSlot val alias: Ident, @Slot val filter: XR.Expression, override val loc: Location = Location.Synth): XR.Action, PC<FilteredAction> {
+  data class FilteredAction(@Slot val action: XR.U.CoreAction, @MSlot val alias: Ident, @Slot val filter: XR.Expression, override val loc: Location = Location.Synth): XR.Action, PC<FilteredAction> {
     @Transient override val productComponents = productOf(this, action, alias, filter)
     override val type: XRType = action.type
     companion object {}
@@ -1052,7 +1064,7 @@ sealed interface XR {
     @Transient private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Returning && other.id() == cid
-    override fun coreAlias(): XR.Ident = action.coreAlias()
+    override fun coreAlias(): XR.Ident? = action.coreAlias()
 
 
     @Serializable sealed interface Kind {

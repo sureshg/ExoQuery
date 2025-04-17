@@ -1,7 +1,7 @@
 package io.exoquery.plugin.trees
 
-import io.decomat.Is
-import io.decomat.Is.Companion.invoke
+import io.decomat.*
+import io.exoquery.BID
 import io.exoquery.CapturedBlock
 import io.exoquery.SqlAction
 import io.exoquery.SqlQuery
@@ -157,7 +157,7 @@ object ParseFree {
           // because we should not be creating any IR inside of the parser but it is needed for the Elaborator
           // which is used inside of the action parsing.
           with(makeBuilderCtx()) {
-            ParseAction.parse(paramExpr.expr)
+            ParseAction.parse(paramExpr.expr, true)
           }
         else ->
           ParseExpression.parse(paramExpr.expr)

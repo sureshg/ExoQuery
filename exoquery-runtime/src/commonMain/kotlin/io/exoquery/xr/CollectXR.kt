@@ -68,6 +68,7 @@ open class TransformXR(
   // the super-transformer to continue down the tree.
   val transformExpression: (XR.Expression) -> XR.Expression? = { null },
   val transformQuery: (XR.Query) -> XR.Query? = { null },
+  val transformAction: (XR.Action) -> XR.Action? = { null },
   val transformBranch: (XR.Branch) -> XR.Branch? = { null },
   val transformVariable: (XR.Variable) -> XR.Variable? = { null },
 ): StatelessTransformer {
@@ -77,6 +78,7 @@ open class TransformXR(
   override fun invoke(xr: XR.Expression): XR.Expression = transformExpression(xr) ?: super.invoke(xr)
   override fun invoke(xr: XR.Query): XR.Query = transformQuery(xr) ?: super.invoke(xr)
   override fun invoke(xr: XR.Branch): XR.Branch = transformBranch(xr) ?: super.invoke(xr)
+  override fun invoke(xr: XR.Action): XR.Action = transformAction(xr) ?: super.invoke(xr)
 
   companion object {
     fun Query(xr: XR.Query, transform: (XR.Query) -> XR.Query?): XR.Query =
@@ -91,6 +93,9 @@ open class TransformXR(
     fun Variable(xr: XR.Variable, transform: (XR.Variable) -> XR.Variable?): XR.Variable =
       TransformXR(transformVariable = transform).invoke(xr)
 
+    fun Action(xr: XR.Action, transform: (XR.Action) -> XR.Action?): XR.Action =
+      TransformXR(transformAction = transform).invoke(xr)
+
     fun build() = TransformerBuilder()
   }
 }
@@ -98,6 +103,7 @@ open class TransformXR(
 class TransformerBuilder {
   @PublishedApi internal var transformExpression: ((XR.Expression) -> XR.Expression?)? = null
   @PublishedApi internal var transformQuery: ((XR.Query) -> XR.Query?)? = null
+  @PublishedApi internal var transformAction: ((XR.Action) -> XR.Action?)? = null
 
   fun withQuery(transform: (XR.Query) -> XR.Query?) = run {
     transformQuery = transform
@@ -105,6 +111,11 @@ class TransformerBuilder {
   }
   fun withExpression(transform: (XR.Expression) -> XR.Expression?) = run {
     transformExpression = transform
+    this
+  }
+
+  fun withAction(transform: (XR.Action) -> XR.Action?) = run {
+    transformAction = transform
     this
   }
 
@@ -117,10 +128,19 @@ class TransformerBuilder {
     this
   }
 
+  internal inline fun <reified XRA: XR.Action> withActionOf(crossinline transform: (XRA) -> XR.Action?) = run {
+    transformAction = { if (it is XRA) transform(it) else null /* note if this returns a non-null value the transform recursion will stop so need to return null until an actual match is made */ }
+    this
+  }
+
   // MAKE SURE that the default value of these lambdas is always { null } since only that will make the
   // transfoemrs delegate to the super to transformer their branches. Remember that the null-check is
   // the equivalent of a partial-function-miss here since Kotlin has no partial functions. It tells
   // the super-transformer to continue down the tree.
-  operator fun invoke(xr: XR) = TransformXR(transformExpression ?: { null }, transformQuery ?: { null }).invoke(xr)
-  operator fun invoke(xr: XR.U.QueryOrExpression): XR.U.QueryOrExpression = TransformXR(transformExpression ?: { null }, transformQuery ?: { null }).invoke(xr)
+  operator fun invoke(xr: XR) =
+    TransformXR(transformExpression ?: { null }, transformQuery ?: { null }, transformAction ?: { null }).invoke(xr)
+  operator fun invoke(xr: XR.U.QueryOrExpression): XR.U.QueryOrExpression =
+    TransformXR(transformExpression ?: { null }, transformQuery ?: { null }, transformAction ?: { null }).invoke(xr)
+  operator fun invoke(xr: XR.Action): XR.Action =
+    TransformXR(transformExpression ?: { null }, transformQuery ?: { null }, transformAction ?: { null }).invoke(xr)
 }
