@@ -1,7 +1,7 @@
-package io.exoquery.postgres
+package io.exoquery.h2
 
 import io.exoquery.Person
-import io.exoquery.PostgresDialect
+import io.exoquery.H2Dialect
 import io.exoquery.TestDatabases
 import io.exoquery.allPeople
 import io.exoquery.capture
@@ -17,14 +17,15 @@ import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 
 class BatchActionSpec: FreeSpec ({
-  val ctx = TestDatabases.postgres
+  val ctx = TestDatabases.h2
 
   beforeEach {
     ctx.runActions(
       """
-      TRUNCATE TABLE Person RESTART IDENTITY CASCADE;
-      TRUNCATE TABLE Address RESTART IDENTITY CASCADE;
-      TRUNCATE TABLE Robot RESTART IDENTITY CASCADE;
+      DELETE FROM Person;
+      ALTER TABLE Person ALTER COLUMN id RESTART WITH 1;
+      DELETE FROM Address;
+      DELETE FROM Robot;
       """
     )
   }
@@ -36,7 +37,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(people.asSequence()) { p ->
         insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
       ctx.people() shouldContainExactlyInAnyOrder allPeople
     }
 
@@ -45,7 +46,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(people.asSequence()) { p ->
         insert<Person> { setParams(p) }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
       ctx.people() shouldContainExactlyInAnyOrder allPeople
     }
 
@@ -56,7 +57,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(insertPeople) { p ->
         insert<Person> { setParams(p).excluding(id) }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
       ctx.people() shouldContainExactlyInAnyOrder allPeople
     }
 
@@ -65,7 +66,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(people.asSequence()) { p ->
         insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returning { p -> p.id + 100 }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(101, 102, 103)
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(101, 102, 103)
       ctx.people() shouldContainExactlyInAnyOrder allPeople
     }
 
@@ -74,7 +75,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(people.asSequence()) { p ->
         insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returning { pp -> pp.id + 100 to param(p.firstName) }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf((101 to "Joe"), (102 to "Joe"), (103 to "Jim"))
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf((101 to "Joe"), (102 to "Joe"), (103 to "Jim"))
       ctx.people() shouldContainExactlyInAnyOrder people + george
     }
     "with returning keys" {
@@ -82,7 +83,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(people.asSequence()) { p ->
         insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returningKeys { id }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
       ctx.people() shouldContainExactlyInAnyOrder allPeople
     }
   }
@@ -96,7 +97,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(updatedPeople.asSequence()) { p ->
         update<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.filter { pp -> pp.id == param(p.id) }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
       ctx.people() shouldContainExactlyInAnyOrder allNewPeople
     }
 
@@ -106,7 +107,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(peopleWithOddIds) { p ->
         update<Person> { setParams(p).excluding(id) }.filter { pp -> pp.lastName == param(p.lastName) }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
       ctx.people() shouldContainExactlyInAnyOrder allNewPeople
     }
 
@@ -116,7 +117,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(peopleWithOddIds) { p ->
         update<Person> { setParams(p).excluding(id) }.filter { pp -> pp.lastName == param(p.lastName) }.returning { pp -> pp.id to param(p.firstName) }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1 to "Joe-A", 2 to "Joe-A", 3 to "Jim-A")
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1 to "Joe-A", 2 to "Joe-A", 3 to "Jim-A")
       ctx.people() shouldContainExactlyInAnyOrder allNewPeople
     }
 
@@ -125,7 +126,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(updatedPeople.asSequence()) { p ->
         update<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.filter { pp -> pp.id == param(p.id) }.returningKeys { id }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
       ctx.people() shouldContainExactlyInAnyOrder allNewPeople
     }
   }
@@ -139,7 +140,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(ids) { id ->
         delete<Person>().filter { pp -> pp.id == param(id) }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
       ctx.people() shouldContainExactlyInAnyOrder listOf(george)
     }
 
@@ -148,7 +149,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(people.asSequence()) { p ->
         delete<Person>().filter { pp -> pp.id == param(p.id) }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
       ctx.people() shouldContainExactlyInAnyOrder listOf(george)
     }
 
@@ -157,7 +158,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(ids) { id ->
         delete<Person>().filter { pp -> pp.id == param(id) }.returning { pp -> pp.id }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
       ctx.people() shouldContainExactlyInAnyOrder listOf(george)
     }
 
@@ -166,8 +167,29 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(ids) { pid ->
         delete<Person>().filter { pp -> pp.id == param(pid) }.returningKeys { id }
       }
-      q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
       ctx.people() shouldContainExactlyInAnyOrder listOf(george)
     }
   }
+
+  val people = listOf(
+    Person(1, "Joe", "Bloggs", 111),
+    Person(2, "Joe", "Doggs", 222),
+    Person(3, "Jim", "Roogs", 333)
+  )
+  val allPeople = people + george
+  val george = Person(1, "George", "Googs", 555)
+
+  suspend fun JdbcController.insertPerson(person: Person) =
+    this.runActions("""
+        INSERT INTO Person (id, firstName, lastName, age) VALUES (${person.id}, '${person.firstName}', '${person.lastName}', ${person.age});
+      """.trimIndent())
+
+  suspend fun JdbcController.insertAllPeople() =
+    this.runActions("""
+        INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'George', 'Googs', 555);
+        INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'Joe', 'Bloggs', 111);
+        INSERT INTO Person (id, firstName, lastName, age) VALUES (2, 'Joe', 'Doggs', 222);
+        INSERT INTO Person (id, firstName, lastName, age) VALUES (3, 'Jim', 'Roogs', 333);
+      """.trimIndent())
 })

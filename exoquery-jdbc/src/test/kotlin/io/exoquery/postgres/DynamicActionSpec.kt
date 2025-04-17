@@ -8,6 +8,9 @@ import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.capture
 import io.exoquery.controller.jdbc.JdbcController
 import io.exoquery.controller.runActions
+import io.exoquery.george
+import io.exoquery.insertAllPeople
+import io.exoquery.people
 import io.exoquery.runOn
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder

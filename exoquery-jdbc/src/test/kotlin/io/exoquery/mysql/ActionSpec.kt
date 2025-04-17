@@ -1,8 +1,7 @@
-package io.exoquery.sqlserver
+package io.exoquery.mysql
 
 import io.exoquery.Person
-import io.exoquery.SqlAction
-import io.exoquery.sql.SqlServerDialect
+import io.exoquery.sql.MySqlDialect
 import io.exoquery.TestDatabases
 import io.exoquery.capture
 import io.exoquery.controller.jdbc.JdbcController
@@ -15,14 +14,14 @@ import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 
 class ActionSpec: FreeSpec({
-  val ctx = TestDatabases.sqlServer
+  val ctx = TestDatabases.mysql
 
   beforeEach {
     ctx.runActions(
       """
-      TRUNCATE TABLE Person; DBCC CHECKIDENT ('Person', RESEED, 1);
-      DELETE FROM Address;
-      DELETE FROM Robot;
+      TRUNCATE TABLE Person RESTART IDENTITY CASCADE;
+      TRUNCATE TABLE Address RESTART IDENTITY CASCADE;
+      TRUNCATE TABLE Robot RESTART IDENTITY CASCADE;
       """
     )
   }
@@ -32,39 +31,35 @@ class ActionSpec: FreeSpec({
       val q = capture {
         insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }
       }
-      q.build<SqlServerDialect>().runOn(ctx) shouldBe 1
+      q.build<MySqlDialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldBe listOf(joe)
     }
     "simple with params" {
       val q = capture {
         insert<Person> { set(firstName to param("Joe"), lastName to param("Bloggs"), age to param(111)) }
       }
-      q.build<SqlServerDialect>().runOn(ctx) shouldBe 1
+      q.build<MySqlDialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldBe listOf(joe)
     }
     "simple with setParams" {
       val q = capture {
         insert<Person> { setParams(Person(1, "Joe", "Bloggs", 111)) }
       }
-      val qq = capture {
-        free("SET IDENTITY_INSERT Person ON\n ${q} \nSET IDENTITY_INSERT Person OFF").asPure<SqlAction<Person, Long>>()
-      }
-
-      qq.build<SqlServerDialect>().runOn(ctx) shouldBe 1
+      q.build<MySqlDialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldBe listOf(joe)
     }
     "simple with setParams and exclusion" {
       val q = capture {
         insert<Person> { setParams(Person(1, "Joe", "Bloggs", 111)).excluding(id) }
       }
-      q.build<SqlServerDialect>().runOn(ctx) shouldBe 1
+      q.build<MySqlDialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldBe listOf(joe)
     }
     "with returning" {
       val q = capture {
         insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id + 100 }
       }
-      val build = q.build<SqlServerDialect>()
+      val build = q.build<MySqlDialect>()
       build.runOn(ctx) shouldBe 101
       ctx.people() shouldBe listOf(joe)
     }
@@ -73,7 +68,7 @@ class ActionSpec: FreeSpec({
       val q = capture {
         insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id + 100 + param(n) }
       }
-      val build = q.build<SqlServerDialect>()
+      val build = q.build<MySqlDialect>()
       build.runOn(ctx) shouldBe 1101
       ctx.people() shouldBe listOf(joe)
     }
@@ -81,7 +76,7 @@ class ActionSpec: FreeSpec({
       val q = capture {
         insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id to p.firstName }
       }
-      val build = q.build<SqlServerDialect>()
+      val build = q.build<MySqlDialect>()
       build.runOn(ctx) shouldBe (1 to "Joe")
       ctx.people() shouldBe listOf(joe)
     }
@@ -89,10 +84,19 @@ class ActionSpec: FreeSpec({
       val q = capture {
         insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returningKeys { id }
       }
-      val build = q.build<SqlServerDialect>()
+      val build = q.build<MySqlDialect>()
       build.runOn(ctx) shouldBe 1
       ctx.people() shouldBe listOf(joe)
     }
+    // Not valid because firstName is not an inserted value
+    //"with returning keys multiple" {
+    //  val q = capture {
+    //    insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returningKeys { id to firstName }
+    //  }
+    //  val build = q.build<MySqlDialect>()
+    //  build.runOn(ctx) shouldBe (1 to "Joe")
+    //  ctx.people() shouldBe listOf(joe)
+    //}
   }
 
   val joe = Person(1, "Joe", "Bloggs", 111)
@@ -101,10 +105,8 @@ class ActionSpec: FreeSpec({
 
   suspend fun JdbcController.insertGeorgeAndJim() =
     this.runActions("""
-        SET IDENTITY_INSERT Person ON
-        INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'George', 'Googs', 555)
-        INSERT INTO Person (id, firstName, lastName, age) VALUES (2, 'Jim', 'Roogs', 222)
-        SET IDENTITY_INSERT Person OFF
+        INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'George', 'Googs', 555);
+        INSERT INTO Person (id, firstName, lastName, age) VALUES (2, 'Jim', 'Roogs', 222);
       """.trimIndent())
 
   "update" - {
@@ -113,7 +115,7 @@ class ActionSpec: FreeSpec({
       val q = capture {
         update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }
       }
-      q.build<SqlServerDialect>().runOn(ctx) shouldBe 1
+      q.build<MySqlDialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
     }
     "no condition" {
@@ -121,38 +123,40 @@ class ActionSpec: FreeSpec({
       val q = capture {
         update<Person> { set(firstName to param("Joe"), lastName to param("Bloggs"), age to 111) }.all()
       }
-      q.build<SqlServerDialect>().runOn(ctx) shouldBe 2
+      q.build<MySqlDialect>().runOn(ctx) shouldBe 2
       ctx.people() shouldContainExactlyInAnyOrder listOf(
         Person(1, "Joe", "Bloggs", 111),
         Person(2, "Joe", "Bloggs", 111)
       )
     }
-    // NOTE: Cannot update an identity column in SQL Server i.e. will throw:
-    //       com.microsoft.sqlserver.jdbc.SQLServerException: Cannot update identity column 'id'.
-    //"with setParams" {
-    //  ctx.insertGeorgeAndJim()
-    //  val updateCall = Person(1, "Joe", "Bloggs", 111)
-    //  val q = capture {
-    //    update<Person> { setParams(updateCall) }.filter { p -> p.id == 1 }
-    //  }
-    //  q.build<SqlServerDialect>().runOn(ctx) shouldBe 1
-    //  ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
-    //}
+    "with setParams" {
+      ctx.insertGeorgeAndJim()
+      val updateCall = Person(1, "Joe", "Bloggs", 111)
+      val q = capture {
+        // TODO need to make a warning when this situation happens, can't have param instances here
+        // update<Person> { setParams(Person(1, param("Joe"), param("Bloggs"), 111)) }.filter { p -> p.id == 1 }
+        update<Person> { setParams(updateCall) }.filter { p -> p.id == 1 }
+      }
+      q.build<MySqlDialect>().runOn(ctx) shouldBe 1
+      ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
+    }
     "with setParams and exclusion" {
       ctx.insertGeorgeAndJim()
+      // Set a large Id that should specifically be excluded from insertion
       val updateCall = Person(1000, "Joe", "Bloggs", 111)
       val q = capture {
+        // Set the ID to 0 so we can be sure
         update<Person> { setParams(updateCall).excluding(id) }.filter { p -> p.id == 1 }
       }
-      q.build<SqlServerDialect>().runOn(ctx) shouldBe 1
+      q.build<MySqlDialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
     }
     "with returning" {
       ctx.insertGeorgeAndJim()
       val q = capture {
         update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returning { p -> p.id + 100 }
-      }.determinizeDynamics()
-      val build = q.build<SqlServerDialect>()
+      }
+      val build = q.build<MySqlDialect>()
       build.runOn(ctx) shouldBe 101
       ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
     }
@@ -161,20 +165,19 @@ class ActionSpec: FreeSpec({
       val q = capture {
         update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returning { p -> p.id to p.firstName }
       }
-      val build = q.build<SqlServerDialect>()
+      val build = q.build<MySqlDialect>()
       build.runOn(ctx) shouldBe (1 to "Joe")
       ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
     }
-    // Not supported in SqlServer
-    //"with returningKeys" {
-    //  ctx.insertGeorgeAndJim()
-    //  val q = capture {
-    //    update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returningKeys { id }
-    //  }
-    //  val build = q.build<SqlServerDialect>()
-    //  build.runOn(ctx) shouldBe 1
-    //  ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
-    //}
+    "with returningKeys" {
+      ctx.insertGeorgeAndJim()
+      val q = capture {
+        update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returningKeys { id }
+      }
+      val build = q.build<MySqlDialect>()
+      build.runOn(ctx) shouldBe 1
+      ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
+    }
   }
 
   "delete" - {
@@ -183,7 +186,7 @@ class ActionSpec: FreeSpec({
       val q = capture {
         delete<Person>().filter { p -> p.id == 1 }
       }
-      q.build<SqlServerDialect>().runOn(ctx) shouldBe 1
+      q.build<MySqlDialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
     }
     "no condition" {
@@ -191,7 +194,7 @@ class ActionSpec: FreeSpec({
       val q = capture {
         delete<Person>().all()
       }
-      q.build<SqlServerDialect>().runOn(ctx) shouldBe 2
+      q.build<MySqlDialect>().runOn(ctx) shouldBe 2
       ctx.people() shouldBe emptyList()
     }
     "with returning" {
@@ -199,19 +202,18 @@ class ActionSpec: FreeSpec({
       val q = capture {
         delete<Person>().filter { p -> p.id == 1 }.returning { p -> p.id + 100 }
       }
-      val build = q.build<SqlServerDialect>()
+      val build = q.build<MySqlDialect>()
       build.runOn(ctx) shouldBe 101
       ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
     }
-    // Not supported in SqlServer
-    //"with returningKeys" {
-    //  ctx.insertGeorgeAndJim()
-    //  val q = capture {
-    //    delete<Person>().filter { p -> p.id == 1 }.returningKeys { id }
-    //  }
-    //  val build = q.build<SqlServerDialect>()
-    //  build.runOn(ctx) shouldBe 1
-    //  ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
-    //}
+    "with returningKeys" {
+      ctx.insertGeorgeAndJim()
+      val q = capture {
+        delete<Person>().filter { p -> p.id == 1 }.returningKeys { id }
+      }
+      val build = q.build<MySqlDialect>()
+      build.runOn(ctx) shouldBe 1
+      ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
+    }
   }
 })

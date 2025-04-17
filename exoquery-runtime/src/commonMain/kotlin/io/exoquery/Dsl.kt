@@ -423,6 +423,7 @@ interface CapturedBlock {
   fun <T> setParams<T>.excluding(vararg columns: Any): set<T> =
     errorCap("The `excluding` expression of the Query was not inlined")
 
+  // TODO add asAction<Input, Output> and asQuery<Output> to avoid asPure overuse
   operator fun <T> FreeBlock.invoke(): T = errorCap("The `invoke` expression of the Query was not inlined")
   fun <T> FreeBlock.asPure(): T = errorCap("The `invoke` expression of the Query was not inlined")
   fun FreeBlock.asConditon(): Boolean = errorCap("The `invoke` expression of the Query was not inlined")

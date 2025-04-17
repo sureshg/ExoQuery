@@ -1,4 +1,4 @@
-package io.exoquery.postgres
+package io.exoquery
 
 import io.exoquery.Person
 import io.exoquery.PostgresDialect
