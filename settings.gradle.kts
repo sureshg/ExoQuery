@@ -27,7 +27,7 @@ includeBuild("exoquery-plugin-kotlin")
 
 include("exoquery-controller-common")
 
-val isCI: Boolean by settings.extra { false }
+val isCI: Boolean = settings.extra.has("isCI")
 val isLocal = !isCI
 val isLinux = System.getProperty("os.name").toLowerCase().contains("linux")
 
