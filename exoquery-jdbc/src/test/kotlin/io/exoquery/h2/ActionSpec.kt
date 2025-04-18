@@ -9,6 +9,7 @@ import io.exoquery.controller.runActions
 import io.exoquery.joe
 import io.exoquery.people
 import io.exoquery.runOn
+import io.exoquery.sql.SqlServerDialect
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
@@ -56,31 +57,32 @@ class ActionSpec: FreeSpec({
       q.build<H2Dialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldBe listOf(joe)
     }
-    "with returning" {
-      val q = capture {
-        insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id + 100 }
-      }
-      val build = q.build<H2Dialect>()
-      build.runOn(ctx) shouldBe 101
-      ctx.people() shouldBe listOf(joe)
-    }
-    "with returning using param" {
-      val n = 1000
-      val q = capture {
-        insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id + 100 + param(n) }
-      }
-      val build = q.build<H2Dialect>()
-      build.runOn(ctx) shouldBe 1101
-      ctx.people() shouldBe listOf(joe)
-    }
-    "with returning - multiple" {
-      val q = capture {
-        insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id to p.firstName }
-      }
-      val build = q.build<H2Dialect>()
-      build.runOn(ctx) shouldBe (1 to "Joe")
-      ctx.people() shouldBe listOf(joe)
-    }
+    // 'RETURNING' clauses in SQL are not supported in H2
+    //"with returning" {
+    //  val q = capture {
+    //    insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id + 100 }
+    //  }
+    //  val build = q.build<H2Dialect>()
+    //  build.runOn(ctx) shouldBe 101
+    //  ctx.people() shouldBe listOf(joe)
+    //}
+    //"with returning using param" {
+    //  val n = 1000
+    //  val q = capture {
+    //    insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id + 100 + param(n) }
+    //  }
+    //  val build = q.build<H2Dialect>()
+    //  build.runOn(ctx) shouldBe 1101
+    //  ctx.people() shouldBe listOf(joe)
+    //}
+    //"with returning - multiple" {
+    //  val q = capture {
+    //    insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id to p.firstName }
+    //  }
+    //  val build = q.build<H2Dialect>()
+    //  build.runOn(ctx) shouldBe (1 to "Joe")
+    //  ctx.people() shouldBe listOf(joe)
+    //}
     "with returning keys" {
       val q = capture {
         insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returningKeys { id }
@@ -89,15 +91,14 @@ class ActionSpec: FreeSpec({
       build.runOn(ctx) shouldBe 1
       ctx.people() shouldBe listOf(joe)
     }
-    // Not valid because firstName is not an inserted value
-    //"with returning keys multiple" {
-    //  val q = capture {
-    //    insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returningKeys { id to firstName }
-    //  }
-    //  val build = q.build<H2Dialect>()
-    //  build.runOn(ctx) shouldBe (1 to "Joe")
-    //  ctx.people() shouldBe listOf(joe)
-    //}
+    "with returning keys - multiple" {
+      val q = capture {
+        insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returningKeys { id to firstName }
+      }
+      val build = q.build<SqlServerDialect>()
+      build.runOn(ctx) shouldBe (1 to "Joe")
+      ctx.people() shouldBe listOf(joe)
+    }
   }
 
   val joe = Person(1, "Joe", "Bloggs", 111)
@@ -152,24 +153,26 @@ class ActionSpec: FreeSpec({
       q.build<H2Dialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
     }
-    "with returning" {
-      ctx.insertGeorgeAndJim()
-      val q = capture {
-        update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returning { p -> p.id + 100 }
-      }
-      val build = q.build<H2Dialect>()
-      build.runOn(ctx) shouldBe 101
-      ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
-    }
-    "with returning - multiple" {
-      ctx.insertGeorgeAndJim()
-      val q = capture {
-        update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returning { p -> p.id to p.firstName }
-      }
-      val build = q.build<H2Dialect>()
-      build.runOn(ctx) shouldBe (1 to "Joe")
-      ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
-    }
+    // Not supported in H2
+    //"with returning" {
+    //  ctx.insertGeorgeAndJim()
+    //  val q = capture {
+    //    update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returning { p -> p.id + 100 }
+    //  }
+    //  val build = q.build<H2Dialect>()
+    //  build.runOn(ctx) shouldBe 101
+    //  ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
+    //}
+    // Not supported in H2
+    //"with returning - multiple" {
+    //  ctx.insertGeorgeAndJim()
+    //  val q = capture {
+    //    update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returning { p -> p.id to p.firstName }
+    //  }
+    //  val build = q.build<H2Dialect>()
+    //  build.runOn(ctx) shouldBe (1 to "Joe")
+    //  ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
+    //}
     "with returningKeys" {
       ctx.insertGeorgeAndJim()
       val q = capture {
@@ -178,6 +181,14 @@ class ActionSpec: FreeSpec({
       val build = q.build<H2Dialect>()
       build.runOn(ctx) shouldBe 1
       ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
+    }
+    "with returning keys - multiple" {
+      val q = capture {
+        insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returningKeys { id to firstName }
+      }
+      val build = q.build<SqlServerDialect>()
+      build.runOn(ctx) shouldBe (1 to "Joe")
+      ctx.people() shouldBe listOf(io.exoquery.joe)
     }
   }
 
@@ -198,23 +209,25 @@ class ActionSpec: FreeSpec({
       q.build<H2Dialect>().runOn(ctx) shouldBe 2
       ctx.people() shouldBe emptyList()
     }
-    "with returning" {
-      ctx.insertGeorgeAndJim()
-      val q = capture {
-        delete<Person>().filter { p -> p.id == 1 }.returning { p -> p.id + 100 }
-      }
-      val build = q.build<H2Dialect>()
-      build.runOn(ctx) shouldBe 101
-      ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
-    }
-    "with returningKeys" {
-      ctx.insertGeorgeAndJim()
-      val q = capture {
-        delete<Person>().filter { p -> p.id == 1 }.returningKeys { id }
-      }
-      val build = q.build<H2Dialect>()
-      build.runOn(ctx) shouldBe 1
-      ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
-    }
+    // Not supported in H2
+    //"with returning" {
+    //  ctx.insertGeorgeAndJim()
+    //  val q = capture {
+    //    delete<Person>().filter { p -> p.id == 1 }.returning { p -> p.id + 100 }
+    //  }
+    //  val build = q.build<H2Dialect>()
+    //  build.runOn(ctx) shouldBe 101
+    //  ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
+    //}
+    // H2 does not support this
+    //"with returningKeys" {
+    //  ctx.insertGeorgeAndJim()
+    //  val q = capture {
+    //    delete<Person>().filter { p -> p.id == 1 }.returningKeys { id }
+    //  }
+    //  val build = q.build<H2Dialect>()
+    //  build.runOn(ctx) shouldBe 1
+    //  ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
+    //}
   }
 })

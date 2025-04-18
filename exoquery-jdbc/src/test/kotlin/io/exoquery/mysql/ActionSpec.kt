@@ -19,9 +19,10 @@ class ActionSpec: FreeSpec({
   beforeEach {
     ctx.runActions(
       """
-      TRUNCATE TABLE Person RESTART IDENTITY CASCADE;
-      TRUNCATE TABLE Address RESTART IDENTITY CASCADE;
-      TRUNCATE TABLE Robot RESTART IDENTITY CASCADE;
+      DELETE FROM Person;
+      ALTER TABLE Person AUTO_INCREMENT = 1;
+      DELETE FROM Address;
+      DELETE FROM Robot;
       """
     )
   }
@@ -55,31 +56,32 @@ class ActionSpec: FreeSpec({
       q.build<MySqlDialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldBe listOf(joe)
     }
-    "with returning" {
-      val q = capture {
-        insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id + 100 }
-      }
-      val build = q.build<MySqlDialect>()
-      build.runOn(ctx) shouldBe 101
-      ctx.people() shouldBe listOf(joe)
-    }
-    "with returning using param" {
-      val n = 1000
-      val q = capture {
-        insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id + 100 + param(n) }
-      }
-      val build = q.build<MySqlDialect>()
-      build.runOn(ctx) shouldBe 1101
-      ctx.people() shouldBe listOf(joe)
-    }
-    "with returning - multiple" {
-      val q = capture {
-        insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id to p.firstName }
-      }
-      val build = q.build<MySqlDialect>()
-      build.runOn(ctx) shouldBe (1 to "Joe")
-      ctx.people() shouldBe listOf(joe)
-    }
+    // Not supported in MySQL
+    //"with returning" {
+    //  val q = capture {
+    //    insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id + 100 }
+    //  }
+    //  val build = q.build<MySqlDialect>()
+    //  build.runOn(ctx) shouldBe 101
+    //  ctx.people() shouldBe listOf(joe)
+    //}
+    //"with returning using param" {
+    //  val n = 1000
+    //  val q = capture {
+    //    insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id + 100 + param(n) }
+    //  }
+    //  val build = q.build<MySqlDialect>()
+    //  build.runOn(ctx) shouldBe 1101
+    //  ctx.people() shouldBe listOf(joe)
+    //}
+    //"with returning - multiple" {
+    //  val q = capture {
+    //    insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returning { p -> p.id to p.firstName }
+    //  }
+    //  val build = q.build<MySqlDialect>()
+    //  build.runOn(ctx) shouldBe (1 to "Joe")
+    //  ctx.people() shouldBe listOf(joe)
+    //}
     "with returning keys" {
       val q = capture {
         insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returningKeys { id }
@@ -151,33 +153,34 @@ class ActionSpec: FreeSpec({
       q.build<MySqlDialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
     }
-    "with returning" {
-      ctx.insertGeorgeAndJim()
-      val q = capture {
-        update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returning { p -> p.id + 100 }
-      }
-      val build = q.build<MySqlDialect>()
-      build.runOn(ctx) shouldBe 101
-      ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
-    }
-    "with returning - multiple" {
-      ctx.insertGeorgeAndJim()
-      val q = capture {
-        update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returning { p -> p.id to p.firstName }
-      }
-      val build = q.build<MySqlDialect>()
-      build.runOn(ctx) shouldBe (1 to "Joe")
-      ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
-    }
-    "with returningKeys" {
-      ctx.insertGeorgeAndJim()
-      val q = capture {
-        update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returningKeys { id }
-      }
-      val build = q.build<MySqlDialect>()
-      build.runOn(ctx) shouldBe 1
-      ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
-    }
+    // Not supported in MySQL
+    //"with returning" {
+    //  ctx.insertGeorgeAndJim()
+    //  val q = capture {
+    //    update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returning { p -> p.id + 100 }
+    //  }
+    //  val build = q.build<MySqlDialect>()
+    //  build.runOn(ctx) shouldBe 101
+    //  ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
+    //}
+    //"with returning - multiple" {
+    //  ctx.insertGeorgeAndJim()
+    //  val q = capture {
+    //    update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returning { p -> p.id to p.firstName }
+    //  }
+    //  val build = q.build<MySqlDialect>()
+    //  build.runOn(ctx) shouldBe (1 to "Joe")
+    //  ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
+    //}
+    //"with returningKeys" {
+    //  ctx.insertGeorgeAndJim()
+    //  val q = capture {
+    //    update<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.filter { p -> p.id == 1 }.returningKeys { id }
+    //  }
+    //  val build = q.build<MySqlDialect>()
+    //  build.runOn(ctx) shouldBe 1
+    //  ctx.people() shouldContainExactlyInAnyOrder listOf(joe, jim)
+    //}
   }
 
   "delete" - {
@@ -197,23 +200,24 @@ class ActionSpec: FreeSpec({
       q.build<MySqlDialect>().runOn(ctx) shouldBe 2
       ctx.people() shouldBe emptyList()
     }
-    "with returning" {
-      ctx.insertGeorgeAndJim()
-      val q = capture {
-        delete<Person>().filter { p -> p.id == 1 }.returning { p -> p.id + 100 }
-      }
-      val build = q.build<MySqlDialect>()
-      build.runOn(ctx) shouldBe 101
-      ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
-    }
-    "with returningKeys" {
-      ctx.insertGeorgeAndJim()
-      val q = capture {
-        delete<Person>().filter { p -> p.id == 1 }.returningKeys { id }
-      }
-      val build = q.build<MySqlDialect>()
-      build.runOn(ctx) shouldBe 1
-      ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
-    }
+    // Not supported in MySQL
+    //"with returning" {
+    //  ctx.insertGeorgeAndJim()
+    //  val q = capture {
+    //    delete<Person>().filter { p -> p.id == 1 }.returning { p -> p.id + 100 }
+    //  }
+    //  val build = q.build<MySqlDialect>()
+    //  build.runOn(ctx) shouldBe 101
+    //  ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
+    //}
+    //"with returningKeys" {
+    //  ctx.insertGeorgeAndJim()
+    //  val q = capture {
+    //    delete<Person>().filter { p -> p.id == 1 }.returningKeys { id }
+    //  }
+    //  val build = q.build<MySqlDialect>()
+    //  build.runOn(ctx) shouldBe 1
+    //  ctx.people() shouldContainExactlyInAnyOrder listOf(jim)
+    //}
   }
 })

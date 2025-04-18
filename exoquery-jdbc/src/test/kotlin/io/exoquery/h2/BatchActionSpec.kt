@@ -4,12 +4,15 @@ import io.exoquery.Person
 import io.exoquery.H2Dialect
 import io.exoquery.TestDatabases
 import io.exoquery.allPeople
+import io.exoquery.batchDeletePeople
+import io.exoquery.batchInsertPeople
 import io.exoquery.capture
 import io.exoquery.controller.jdbc.JdbcController
 import io.exoquery.controller.runActions
 import io.exoquery.george
 import io.exoquery.insertAllPeople
 import io.exoquery.insertPerson
+import io.exoquery.joe
 import io.exoquery.people
 import io.exoquery.runOn
 import io.kotest.core.spec.style.FreeSpec
@@ -33,8 +36,8 @@ class BatchActionSpec: FreeSpec ({
   "insert" - {
 
     "simple" {
-      ctx.insertPerson(george)
-      val q = capture.batch(people.asSequence()) { p ->
+      ctx.insertPerson(joe)
+      val q = capture.batch(batchInsertPeople.asSequence()) { p ->
         insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }
       }
       q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
@@ -42,8 +45,8 @@ class BatchActionSpec: FreeSpec ({
     }
 
     "simple with setParams" {
-      ctx.insertPerson(george)
-      val q = capture.batch(people.asSequence()) { p ->
+      ctx.insertPerson(joe)
+      val q = capture.batch(batchInsertPeople.asSequence()) { p ->
         insert<Person> { setParams(p) }
       }
       q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
@@ -51,9 +54,9 @@ class BatchActionSpec: FreeSpec ({
     }
 
     "simple with setParams and exclusion" {
-      ctx.insertPerson(george)
+      ctx.insertPerson(joe)
       // Modify the ids to make sure it is inserting records with a new Id, not the ones used here
-      val insertPeople = people.map { it.copy(id = it.id + 100) }.asSequence()
+      val insertPeople = batchInsertPeople.map { it.copy(id = it.id + 100) }.asSequence()
       val q = capture.batch(insertPeople) { p ->
         insert<Person> { setParams(p).excluding(id) }
       }
@@ -61,29 +64,29 @@ class BatchActionSpec: FreeSpec ({
       ctx.people() shouldContainExactlyInAnyOrder allPeople
     }
 
-    "with returning" {
-      ctx.insertPerson(george)
-      val q = capture.batch(people.asSequence()) { p ->
-        insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returning { p -> p.id + 100 }
-      }
-      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(101, 102, 103)
-      ctx.people() shouldContainExactlyInAnyOrder allPeople
-    }
-
-    "with returning and params" {
-      ctx.insertPerson(george)
-      val q = capture.batch(people.asSequence()) { p ->
-        insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returning { pp -> pp.id + 100 to param(p.firstName) }
-      }
-      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf((101 to "Joe"), (102 to "Joe"), (103 to "Jim"))
-      ctx.people() shouldContainExactlyInAnyOrder people + george
-    }
+    // Not supported in H2
+    //"with returning" {
+    //  ctx.insertPerson(joe)
+    //  val q = capture.batch(batchInsertPeople.asSequence()) { p ->
+    //    insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returning { p -> p.id + 100 }
+    //  }
+    //  q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(101, 102, 103)
+    //  ctx.people() shouldContainExactlyInAnyOrder allPeople
+    //}
+    //"with returning and params" {
+    //  ctx.insertPerson(joe)
+    //  val q = capture.batch(batchInsertPeople.asSequence()) { p ->
+    //    insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returning { pp -> pp.id + 100 to param(p.firstName) }
+    //  }
+    //  q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf((101 to "Joe"), (102 to "Joe"), (103 to "Jim"))
+    //  ctx.people() shouldContainExactlyInAnyOrder people + george
+    //}
     "with returning keys" {
-      ctx.insertPerson(george)
-      val q = capture.batch(people.asSequence()) { p ->
+      ctx.insertPerson(joe)
+      val q = capture.batch(batchInsertPeople.asSequence()) { p ->
         insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returningKeys { id }
       }
-      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
+      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(2, 3, 4)
       ctx.people() shouldContainExactlyInAnyOrder allPeople
     }
   }
@@ -111,15 +114,16 @@ class BatchActionSpec: FreeSpec ({
       ctx.people() shouldContainExactlyInAnyOrder allNewPeople
     }
 
-    "simple with setParams and exclusion and returning param" {
-      ctx.insertAllPeople()
-      val peopleWithOddIds = updatedPeople.asSequence().map { it.copy(id = it.id + 100) }
-      val q = capture.batch(peopleWithOddIds) { p ->
-        update<Person> { setParams(p).excluding(id) }.filter { pp -> pp.lastName == param(p.lastName) }.returning { pp -> pp.id to param(p.firstName) }
-      }
-      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1 to "Joe-A", 2 to "Joe-A", 3 to "Jim-A")
-      ctx.people() shouldContainExactlyInAnyOrder allNewPeople
-    }
+    // .returning is not supported in H2
+    //"simple with setParams and exclusion and returning param" {
+    //  ctx.insertAllPeople()
+    //  val peopleWithOddIds = updatedPeople.asSequence().map { it.copy(id = it.id + 100) }
+    //  val q = capture.batch(peopleWithOddIds) { p ->
+    //    update<Person> { setParams(p).excluding(id) }.filter { pp -> pp.lastName == param(p.lastName) }.returning { pp -> pp.id to param(p.firstName) }
+    //  }
+    //  q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1 to "Joe-A", 2 to "Joe-A", 3 to "Jim-A")
+    //  ctx.people() shouldContainExactlyInAnyOrder allNewPeople
+    //}
 
     "returningKeys" {
       ctx.insertAllPeople()
@@ -146,30 +150,30 @@ class BatchActionSpec: FreeSpec ({
 
     "using whole object" {
       ctx.insertAllPeople()
-      val q = capture.batch(people.asSequence()) { p ->
+      val q = capture.batch(batchDeletePeople.asSequence()) { p ->
         delete<Person>().filter { pp -> pp.id == param(p.id) }
       }
       q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
       ctx.people() shouldContainExactlyInAnyOrder listOf(george)
     }
 
-    "with returning" {
-      ctx.insertAllPeople()
-      val q = capture.batch(ids) { id ->
-        delete<Person>().filter { pp -> pp.id == param(id) }.returning { pp -> pp.id }
-      }
-      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
-      ctx.people() shouldContainExactlyInAnyOrder listOf(george)
-    }
-
-    "with returning keys" {
-      ctx.insertAllPeople()
-      val q = capture.batch(ids) { pid ->
-        delete<Person>().filter { pp -> pp.id == param(pid) }.returningKeys { id }
-      }
-      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
-      ctx.people() shouldContainExactlyInAnyOrder listOf(george)
-    }
+    // Neither of these are supported in H2
+    //"with returning" {
+    //  ctx.insertAllPeople()
+    //  val q = capture.batch(ids) { id ->
+    //    delete<Person>().filter { pp -> pp.id == param(id) }.returning { pp -> pp.id }
+    //  }
+    //  q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
+    //  ctx.people() shouldContainExactlyInAnyOrder listOf(george)
+    //}
+    //"with returning keys" {
+    //  ctx.insertAllPeople()
+    //  val q = capture.batch(ids) { pid ->
+    //    delete<Person>().filter { pp -> pp.id == param(pid) }.returningKeys { id }
+    //  }
+    //  q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
+    //  ctx.people() shouldContainExactlyInAnyOrder listOf(george)
+    //}
   }
 
   val people = listOf(

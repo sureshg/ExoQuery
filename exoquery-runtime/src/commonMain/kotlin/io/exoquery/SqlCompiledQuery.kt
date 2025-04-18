@@ -23,6 +23,7 @@ sealed interface Phase {
 
 sealed interface ActionKind {
   fun isUpdateOrDelete() = this == Update || this == Delete
+  fun isDelete() = this == Delete
 
   object Insert : ActionKind
   object Update : ActionKind

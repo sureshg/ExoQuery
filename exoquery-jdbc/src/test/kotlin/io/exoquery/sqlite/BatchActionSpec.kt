@@ -4,12 +4,15 @@ import io.exoquery.Person
 import io.exoquery.SqliteDialect
 import io.exoquery.TestDatabases
 import io.exoquery.allPeople
+import io.exoquery.batchDeletePeople
+import io.exoquery.batchInsertPeople
 import io.exoquery.capture
 import io.exoquery.controller.jdbc.JdbcController
 import io.exoquery.controller.runActions
 import io.exoquery.george
 import io.exoquery.insertAllPeople
 import io.exoquery.insertPerson
+import io.exoquery.joe
 import io.exoquery.people
 import io.exoquery.runOn
 import io.kotest.core.spec.style.FreeSpec
@@ -21,7 +24,9 @@ class BatchActionSpec: FreeSpec ({
 
   beforeEach {
     ctx.runActions(
+      // The `test` table is used to determine column increments, drop it to reset the IDs. However, in case it doesn't exist yet we need to create it.
       """
+      CREATE TABLE test(id INTEGER PRIMARY KEY AUTOINCREMENT); DROP TABLE test;
       DELETE FROM Person;
       DELETE FROM Address;
       DELETE FROM Robot;
@@ -32,8 +37,8 @@ class BatchActionSpec: FreeSpec ({
   "insert" - {
 
     "simple" {
-      ctx.insertPerson(george)
-      val q = capture.batch(people.asSequence()) { p ->
+      ctx.insertPerson(joe)
+      val q = capture.batch(batchInsertPeople.asSequence()) { p ->
         insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }
       }
       q.build<SqliteDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
@@ -41,8 +46,8 @@ class BatchActionSpec: FreeSpec ({
     }
 
     "simple with setParams" {
-      ctx.insertPerson(george)
-      val q = capture.batch(people.asSequence()) { p ->
+      ctx.insertPerson(joe)
+      val q = capture.batch(batchInsertPeople.asSequence()) { p ->
         insert<Person> { setParams(p) }
       }
       q.build<SqliteDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
@@ -50,9 +55,9 @@ class BatchActionSpec: FreeSpec ({
     }
 
     "simple with setParams and exclusion" {
-      ctx.insertPerson(george)
+      ctx.insertPerson(joe)
       // Modify the ids to make sure it is inserting records with a new Id, not the ones used here
-      val insertPeople = people.map { it.copy(id = it.id + 100) }.asSequence()
+      val insertPeople = batchInsertPeople.map { it.copy(id = it.id + 100) }.asSequence()
       val q = capture.batch(insertPeople) { p ->
         insert<Person> { setParams(p).excluding(id) }
       }
@@ -61,30 +66,31 @@ class BatchActionSpec: FreeSpec ({
     }
 
     "with returning" {
-      ctx.insertPerson(george)
-      val q = capture.batch(people.asSequence()) { p ->
+      ctx.insertPerson(joe)
+      val q = capture.batch(batchInsertPeople.asSequence()) { p ->
         insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returning { p -> p.id + 100 }
       }
-      q.build<SqliteDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(101, 102, 103)
+      q.build<SqliteDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(102, 103, 104)
       ctx.people() shouldContainExactlyInAnyOrder allPeople
     }
 
     "with returning and params" {
-      ctx.insertPerson(george)
-      val q = capture.batch(people.asSequence()) { p ->
+      ctx.insertPerson(joe)
+      val q = capture.batch(batchInsertPeople.asSequence()) { p ->
         insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returning { pp -> pp.id + 100 to param(p.firstName) }
       }
-      q.build<SqliteDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf((101 to "Joe"), (102 to "Joe"), (103 to "Jim"))
+      q.build<SqliteDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf((102 to "Joe"), (103 to "Jim"), (104 to "George"))
       ctx.people() shouldContainExactlyInAnyOrder people + george
     }
-    "with returning keys" {
-      ctx.insertPerson(george)
-      val q = capture.batch(people.asSequence()) { p ->
-        insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returningKeys { id }
-      }
-      q.build<SqliteDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 2, 3)
-      ctx.people() shouldContainExactlyInAnyOrder allPeople
-    }
+    // Not supported for Sqlite
+    //"with returning keys" {
+    //  ctx.insertPerson(joe)
+    //  val q = capture.batch(batchInsertPeople.asSequence()) { p ->
+    //    insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }.returningKeys { id }
+    //  }
+    //  q.build<SqliteDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
+    //  ctx.people() shouldContainExactlyInAnyOrder allPeople
+    //}
   }
 
   "update" - {
@@ -146,7 +152,7 @@ class BatchActionSpec: FreeSpec ({
 
     "using whole object" {
       ctx.insertAllPeople()
-      val q = capture.batch(people.asSequence()) { p ->
+      val q = capture.batch(batchDeletePeople.asSequence()) { p ->
         delete<Person>().filter { pp -> pp.id == param(p.id) }
       }
       q.build<SqliteDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)

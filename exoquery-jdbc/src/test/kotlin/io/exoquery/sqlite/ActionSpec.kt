@@ -18,7 +18,9 @@ class ActionSpec: FreeSpec({
 
   beforeEach {
     ctx.runActions(
+      // The `test` table is used to determine column increments, drop it to reset the IDs. However, in case it doesn't exist yet we need to create it.
       """
+      CREATE TABLE test(id INTEGER PRIMARY KEY AUTOINCREMENT); DROP TABLE test;
       DELETE FROM Person;
       DELETE FROM Address;
       DELETE FROM Robot;
