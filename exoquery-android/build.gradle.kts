@@ -54,7 +54,7 @@ kotlin {
 
       androidMain.dependencies {
         dependencies {
-          api("io.exoquery:controller-android:3.0.4")
+          api("io.exoquery:controller-android:3.1.0")
 
           api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
           api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
