@@ -1,6 +1,7 @@
 package io.exoquery
 
 import io.exoquery.annotation.TracesEnabled
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.util.TraceType
 
 class EmbeddedDistinctReq : GoldenSpecDynamic(EmbeddedDistinctReqGoldenDynamic, Mode.ExoGoldenTest(), {

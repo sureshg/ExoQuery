@@ -3,6 +3,8 @@ package io.exoquery
 import io.exoquery.controller.jdbc.JdbcControllers
 import io.exoquery.controller.jdbc.fromConfig
 import io.exoquery.controller.runActions
+import io.exoquery.jdbc.runOn
+import io.exoquery.sql.PostgresDialect
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable

@@ -1,5 +1,6 @@
 package io.exoquery
 
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.util.TraceType
 import io.exoquery.testdata.Address
 import io.exoquery.testdata.Person

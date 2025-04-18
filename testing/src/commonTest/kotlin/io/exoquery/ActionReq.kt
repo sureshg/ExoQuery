@@ -1,5 +1,6 @@
 package io.exoquery
 
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
 
 class ActionReq: GoldenSpecDynamic(ActionReqGoldenDynamic, Mode.ExoGoldenTest(), {

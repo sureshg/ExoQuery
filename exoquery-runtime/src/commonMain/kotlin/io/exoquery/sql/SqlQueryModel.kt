@@ -2,7 +2,7 @@
 
 package io.exoquery.sql
 
-import io.exoquery.PostgresDialect
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.printing.PrintXR
 import io.exoquery.sql.SqlQueryHelper.flattenDualHeadsIfPossible
 import io.exoquery.util.Globals

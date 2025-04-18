@@ -1,14 +1,14 @@
 package io.exoquery.postgres
 
 import io.exoquery.Person
-import io.exoquery.PostgresDialect
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.TestDatabases
 import io.exoquery.capture
 import io.exoquery.controller.jdbc.JdbcController
 import io.exoquery.controller.runActions
 import io.exoquery.joe
 import io.exoquery.people
-import io.exoquery.runOn
+import io.exoquery.jdbc.runOn
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe

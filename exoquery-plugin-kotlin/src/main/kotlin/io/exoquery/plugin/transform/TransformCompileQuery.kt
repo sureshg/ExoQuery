@@ -3,7 +3,7 @@ package io.exoquery.plugin.transform
 import com.github.vertical_blank.sqlformatter.SqlFormatter
 import io.decomat.*
 import io.exoquery.Phase
-import io.exoquery.PostgresDialect
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.ActionReturningKind
 import io.exoquery.SqlAction
 import io.exoquery.SqlBatchAction

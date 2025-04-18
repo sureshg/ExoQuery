@@ -1,6 +1,7 @@
 package io.exoquery
 
 import io.exoquery.annotation.CapturedFunction
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.sql.Renderer
 import io.exoquery.testdata.*
 

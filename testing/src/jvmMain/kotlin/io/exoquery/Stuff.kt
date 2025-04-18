@@ -1,4 +1,4 @@
-import io.exoquery.PostgresDialect
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.capture
 import io.exoquery.printSource
 

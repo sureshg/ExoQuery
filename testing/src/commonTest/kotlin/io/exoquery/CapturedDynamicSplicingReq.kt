@@ -1,6 +1,7 @@
 package io.exoquery
 
 import io.exoquery.annotation.CapturedDynamic
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
 import io.exoquery.xr.XR
 import io.exoquery.xr.rekeyRuntimeBinds

@@ -1,7 +1,7 @@
 package io.exoquery.postgres
 
 import io.exoquery.Person
-import io.exoquery.PostgresDialect
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.SqlExpression
 import io.exoquery.TestDatabases
 import io.exoquery.annotation.CapturedDynamic
@@ -11,7 +11,7 @@ import io.exoquery.controller.runActions
 import io.exoquery.george
 import io.exoquery.insertAllPeople
 import io.exoquery.people
-import io.exoquery.runOn
+import io.exoquery.jdbc.runOn
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe

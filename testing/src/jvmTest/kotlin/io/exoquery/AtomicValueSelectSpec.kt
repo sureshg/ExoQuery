@@ -2,6 +2,8 @@
 
 package io.exoquery
 
+import io.exoquery.sql.PostgresDialect
+
 class AtomicValueSelectSpec : GoldenSpec(AtomicValueSelectSpecGolden, {
   data class Person(val id: Int, val name: String, val age: Int)
   data class Robot(val ownerId: Int, val model: String)

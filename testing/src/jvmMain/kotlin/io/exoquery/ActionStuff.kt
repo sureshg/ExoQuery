@@ -1,5 +1,7 @@
 package io.exoquery
 
+import io.exoquery.sql.PostgresDialect
+
 fun main() {
   data class Name(val first: String, val last: String)
   data class Person(val id: Int, val name: Name, val age: Int)

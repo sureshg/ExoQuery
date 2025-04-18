@@ -3,6 +3,7 @@
 package io.exoquery
 
 import io.exoquery.capture.select
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Address
 import io.exoquery.testdata.Person
 import io.exoquery.testdata.Robot

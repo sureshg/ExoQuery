@@ -2,6 +2,7 @@ package io.exoquery
 
 import io.exoquery.serial.ParamSerializer
 import io.exoquery.serial.contextualSerializer
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.sql.Renderer
 import io.exoquery.testdata.Person
 import io.exoquery.testdata.*

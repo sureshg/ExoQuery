@@ -1,6 +1,6 @@
 package io.exoquery.sample
 
-import io.exoquery.PostgresDialect
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.SqlExpression
 import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.capture

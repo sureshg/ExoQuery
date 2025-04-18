@@ -1,5 +1,6 @@
 package io.exoquery
 
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.sql.Renderer
 
 fun main() {

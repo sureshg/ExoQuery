@@ -2,6 +2,7 @@ package io.exoquery.sample
 
 import io.exoquery.*
 import io.exoquery.annotation.CapturedFunction
+import io.exoquery.sql.PostgresDialect
 
 interface Nameable {
   val name: String

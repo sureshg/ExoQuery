@@ -4,6 +4,7 @@ package io.exoquery
 
 import io.exoquery.Ord.*
 import io.exoquery.capture.select
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.xr.OP
 import io.exoquery.xr.SX
 import io.exoquery.xr.SelectClause

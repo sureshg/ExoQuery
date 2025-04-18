@@ -1,5 +1,7 @@
 package io.exoquery
 
+import io.exoquery.sql.PostgresDialect
+
 // Note that the 1st time you overwrite the golden file it will still fail because the compile is using teh old version
 // Also note that it won't actually override the BasicQuerySanitySpecGolden file unless you change this one
 
