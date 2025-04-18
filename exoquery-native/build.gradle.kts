@@ -35,7 +35,8 @@ kotlin {
   sourceSets {
     val commonMain by getting {
       dependencies {
-        api("io.exoquery:controller-native:3.1.0")
+        implementation(project(":exoquery-controller-common"))
+        api("io.exoquery:controller-native:3.2.0.1")
 
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
         api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
@@ -59,6 +60,10 @@ kotlin {
 
   val isCI = project.hasProperty("isCI")
 
+  // Note that this will actually setup the kotlin targets,
+  // if you don't want to build them (e.g. you're not on an OSX host
+  // then you need to keep these disabled, for everyday development,
+  // we only want to enable these unless we are building on a CI)
   configure(targets.withType<KotlinNativeTarget>().filter {
     listOf(
       "iosX64",
@@ -78,7 +83,7 @@ kotlin {
       "watchosSimulatorArm64"
     ).contains(it.name)
   }) {
-    if (true) {
+    if (HostManager.hostIsMac) {
       binaries.configureEach {
         // we only need to link sqlite for the test binaries
         if (outputKind == NativeOutputKind.TEST) {

@@ -26,11 +26,12 @@ android {
 
   compileSdk = 34
   defaultConfig {
-    minSdk = 23
+    minSdk = 26
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   testOptions  {
+    targetSdk = 34
     unitTests.isIncludeAndroidResources = true
     //unitTests.all {
     //  it.useJUnitPlatform()
@@ -59,7 +60,7 @@ kotlin {
         dependencies {
           implementation(project(":exoquery-controller-common"))
 
-          api("io.exoquery:controller-android:3.1.0")
+          api("io.exoquery:controller-android:3.2.0.1")
 
           api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
           api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")

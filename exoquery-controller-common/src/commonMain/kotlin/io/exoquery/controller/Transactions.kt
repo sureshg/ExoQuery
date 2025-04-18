@@ -28,9 +28,9 @@ class CommonTransactionScope<ExecutionOpts>(private val scope: CoroutineScope, p
 
   inline suspend fun <Input, reified Output: Any> SqlCompiledAction<Input, Output>.runOnTransaction(serializer: KSerializer<Output>, options: ExecutionOpts = ctx.DefaultOpts()) =
     when (val action = this.toControllerAction(serializer)) {
-      is Action -> action.runOn(ctx) as Output
-      is ActionReturningId<Output> -> action.runOn(ctx)
-      is ActionReturningRow<Output> -> action.runOn(ctx)
+      is ControllerAction -> action.runOn(ctx) as Output
+      is ControllerActionReturning.Id<Output> -> action.runOn(ctx)
+      is ControllerActionReturning.Row<Output> -> action.runOn(ctx)
     }
 
   inline suspend fun <Input, reified Output: Any> SqlCompiledAction<Input, Output>.runOnTransaction(options: ExecutionOpts = ctx.DefaultOpts()) =
@@ -38,9 +38,9 @@ class CommonTransactionScope<ExecutionOpts>(private val scope: CoroutineScope, p
 
   inline suspend fun <BatchInput, Input: Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOnTransaction(serializer: KSerializer<Output>, options: ExecutionOpts = ctx.DefaultOpts()) =
     when (val action = this.toControllerBatchVerb(serializer)) {
-      is BatchAction -> action.runOn(ctx) as List<Output>
-      is BatchActionReturningId<Output> -> action.runOn(ctx)
-      is BatchActionReturningRow<Output> -> action.runOn(ctx)
+      is ControllerBatchAction -> action.runOn(ctx) as List<Output>
+      is ControllerBatchActionReturning.Id<Output> -> action.runOn(ctx)
+      is ControllerBatchActionReturning.Row<Output> -> action.runOn(ctx)
     }
 
   inline suspend fun <BatchInput, Input: Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOnTransaction(options: ExecutionOpts = ctx.DefaultOpts()) =

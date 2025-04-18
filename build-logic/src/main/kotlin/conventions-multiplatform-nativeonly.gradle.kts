@@ -36,12 +36,28 @@ kotlin {
   val mingCI = HostManager.hostIsMingw && isCI
   val macCI = HostManager.hostIsMac && isCI
 
-  // No Controller for JS yet
+  // Disabling JS for now because Kotest breaks on nested-tests (see here: https://github.com/kotest/kotest/pull/3913)
+  // If you actually run this command:
+  //   ./gradlew :testing:jsNodeTest --info
+  // You get errors like this:
+  // StatefulTransformerSpec.transforms asts using a transformation state[js, node, ChromeHeadless134.0.0.0, Linuxx86_64] FAILED
+  //    IllegalStateException: Nested tests are not supported
+  // Need to look into how we can flatten the tests.
+  // One possibility is writing our own spec like this: https://gist.github.com/BenWoodworth/0fd0e463fdfc71c30f2a114da5c14672
+  // Or using this library: https://opensavvy.gitlab.io/groundwork/prepared/docs/
+  // Should look more into this.
   //if (linuxCI)
-  //  js {
+  //  js(IR) {
   //    browser()
-  //    nodejs()
+  //    nodejs {
+  //      testTask {
+  //        useKarma {
+  //          useChromeHeadless()
+  //        }
+  //      }
+  //    }
   //  }
+
   if (linuxCI) linuxArm64()
   // LinuxCI Needs to know the OSX and MingW dependencies exist even though it does not build them so it can put them in the mmodules-list metadata in maven-central.
   if (linuxCI || macCI) macosArm64()

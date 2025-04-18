@@ -1,9 +1,8 @@
 package io.exoquery.jdbc
 
 import io.exoquery.SqlCompiledAction
-import io.exoquery.controller.Action
-import io.exoquery.controller.ActionReturningId
-import io.exoquery.controller.ActionReturningRow
+import io.exoquery.controller.ControllerAction
+import io.exoquery.controller.ControllerActionReturning
 import io.exoquery.controller.jdbc.JdbcExecutionOptions
 import io.exoquery.controller.jdbc.JdbcControllers
 import io.exoquery.controller.jdbc.JdbcController
@@ -23,8 +22,8 @@ fun JdbcController.isMysql(): Boolean = this is JdbcControllers.Mysql
 
 suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: JdbcExecutionOptions = JdbcExecutionOptions()): Output =
   when (val action = this.toControllerAction(serializer)) {
-    is Action -> action.runOn(database, options) as Output
-    is ActionReturningId<Output> -> {
+    is ControllerAction -> action.runOn(database, options) as Output
+    is ControllerActionReturning.Id<Output> -> {
       when {
         actionKind.isUpdateOrDelete() && database.isSqlite() ->
           throw IllegalStateException("SQLite does not support returning ids with returningKeys in UPDATE and DELETE queries. Use .returning instead to add a RETRUNING clause to the query.\n${MessagesRuntime.ReturningExplanation}")
@@ -37,7 +36,7 @@ suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: Jdb
       }
       action.runOn(database, options)
     }
-    is ActionReturningRow<Output> -> {
+    is ControllerActionReturning.Row<Output> -> {
       when {
         database.isH2() ->
           throw IllegalStateException("H2 Server does not support the action.returning(...) API. Only `returningKeys` can be used with H2 and only in INSERT and UPDATE queries.\n${MessagesRuntime.ReturningExplanation}")

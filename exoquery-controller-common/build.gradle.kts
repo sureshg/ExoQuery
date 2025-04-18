@@ -10,13 +10,22 @@ plugins {
 }
 
 kotlin {
-    jvm()
+    jvmToolchain(11)
+
+    jvm {
+        compilerOptions {
+            java {
+                sourceCompatibility = JavaVersion.VERSION_11
+                targetCompatibility = JavaVersion.VERSION_11
+            }
+        }
+    }
     linuxX64()
 
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("io.exoquery:controller-core:3.1.0")
+                implementation("io.exoquery:controller-core:3.2.0.1")
                 api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
                 api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
 

@@ -8,12 +8,11 @@ import io.exoquery.ParamMulti
 import io.exoquery.ParamSingle
 import io.exoquery.SqlCompiledAction
 import io.exoquery.SqlCompiledQuery
-import io.exoquery.controller.Action
-import io.exoquery.controller.ActionReturningId
-import io.exoquery.controller.ActionReturningRow
+import io.exoquery.controller.ControllerAction
+import io.exoquery.controller.ControllerActionReturning
 import io.exoquery.controller.Messages
 import io.exoquery.xrError
-import io.exoquery.controller.Query
+import io.exoquery.controller.ControllerQuery
 import io.exoquery.controller.StatementParam
 import io.exoquery.controller.native.NativeDatabaseController
 import io.exoquery.controller.runOn
@@ -37,8 +36,8 @@ internal fun <T: Any> Param<T>.toStatementParam(): StatementParam<T> =
       StatementParam<T>(this.serial.serializer, this.serial.cls, value as T)
   }
 
-internal fun <T> SqlCompiledQuery<T>.toControllerQuery(serializer: KSerializer<T>): Query<T> =
-  Query(token.build(), params.map { it.toStatementParam() }, serializer)
+internal fun <T> SqlCompiledQuery<T>.toControllerQuery(serializer: KSerializer<T>): ControllerQuery<T> =
+  ControllerQuery(token.build(), params.map { it.toStatementParam() }, serializer)
 
 suspend fun <T> SqlCompiledQuery<T>.runOn(database: NativeDatabaseController, serializer: KSerializer<T>) =
   this.toControllerQuery(serializer).runOn(database)
@@ -51,7 +50,7 @@ inline suspend fun <reified T: Any> SqlCompiledQuery<T>.runOn(database: NativeDa
 suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: NativeDatabaseController, serializer: KSerializer<Output>): Output =
   when(actionReturningKind) {
     is ActionReturningKind.None -> {
-      val action = Action(token.build(), params.map { it.toStatementParam() })
+      val action = ControllerAction(token.build(), params.map { it.toStatementParam() })
       // Check the kind of "Output" i.e. it needs to be a Long (we can use the descriptor-kind as a proxy for this and not need to pass a KClass in)
       if (serializer.descriptor.kind == PrimitiveKind.LONG)
         action.runOn(database) as Output
@@ -60,11 +59,11 @@ suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: Nat
     }
     is ActionReturningKind.ClauseInQuery -> {
       // Try not passing the keys explicitly? If it's a action-returning do we need them?
-      val actionReturning = ActionReturningRow(value, params.map { it.toStatementParam() }, serializer, listOf())
+      val actionReturning = ControllerActionReturning.Row(value, params.map { it.toStatementParam() }, serializer, listOf())
       actionReturning.runOn(database)
     }
      is ActionReturningKind.Keys -> {
-      val actionReturningId = ActionReturningId(value, params.map { it.toStatementParam() }, Long.serializer(), (actionReturningKind as ActionReturningKind.Keys).columns)
+      val actionReturningId = ControllerActionReturning.Id(value, params.map { it.toStatementParam() }, Long.serializer(), (actionReturningKind as ActionReturningKind.Keys).columns)
       val queryOutput = actionReturningId.runOn(database)
 
        if (actionKind != ActionKind.Insert)
