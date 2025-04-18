@@ -24,3 +24,5 @@ exoquery_test.db-shm
 exoquery_test.db-wal
 
 kotlin-js-store/
+
+local.properties

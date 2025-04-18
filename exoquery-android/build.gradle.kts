@@ -32,6 +32,9 @@ android {
 
   testOptions  {
     unitTests.isIncludeAndroidResources = true
+    //unitTests.all {
+    //  it.useJUnitPlatform()
+    //}
   }
 
   compileOptions {
@@ -54,6 +57,8 @@ kotlin {
 
       androidMain.dependencies {
         dependencies {
+          implementation(project(":exoquery-controller-common"))
+
           api("io.exoquery:controller-android:3.1.0")
 
           api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
@@ -69,7 +74,6 @@ kotlin {
 
           //implementation(kotlin("test-junit"))
           //implementation("junit:junit:4.13.2")
-          implementation("io.kotest:kotest-runner-junit5:6.0.0.M1")
           implementation(kotlin("test-common"))
           implementation(kotlin("test-annotations-common"))
 
@@ -88,7 +92,7 @@ kotlin {
 
           //implementation(kotlin("test-junit"))
           //implementation("junit:junit:4.13.2")
-          implementation("io.kotest:kotest-runner-junit5:6.0.0.M1")
+          implementation(kotlin("test"))
           implementation(kotlin("test-common"))
           implementation(kotlin("test-annotations-common"))
 
