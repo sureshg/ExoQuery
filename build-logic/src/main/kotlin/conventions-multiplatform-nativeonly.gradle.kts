@@ -75,12 +75,3 @@ kotlin {
   //if (linux || mac) watchosSimulatorArm64()
   if (linuxCI || mingCI) mingwX64()
 }
-
-tasks.withType<AbstractTestTask>().configureEach {
-    testLogging {
-        showStandardStreams = true
-        showExceptions = true
-        exceptionFormat = TestExceptionFormat.SHORT
-        events(TestLogEvent.STARTED, TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED)
-    }
-}

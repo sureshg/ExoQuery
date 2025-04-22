@@ -20,13 +20,3 @@ tasks.withType<org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack>().c
   sourceMaps = true
   mode = org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig.Mode.DEVELOPMENT
 }
-
-// TODO move to conventions
-tasks.withType<AbstractTestTask>().configureEach {
-    testLogging {
-        showStandardStreams = true
-        showExceptions = true
-        exceptionFormat = TestExceptionFormat.SHORT
-        events(TestLogEvent.STARTED, TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED)
-    }
-}
