@@ -1,0 +1,19 @@
+package io.exoquery
+
+
+import io.exoquery.sql.PostgresDialect
+import io.exoquery.sql.Renderer
+
+fun main() {
+  data class Person(val id: Int, val name: String, val age: Int)
+
+  val cap =
+    capture {
+      Table<Person>().filter { p -> p.name == "Joe" }
+    }
+
+  println("----------------- XR ---------------\n" + cap.xr.showRaw())
+  val built = cap.buildFor.Postgres()
+  //val built = cap.buildRuntime(PostgresDialect(), null, true)
+  println("----------------- SQL ---------------\n" + built.value)
+}

@@ -26,6 +26,9 @@ data class SqlAction<Input, Output>(override val xr: XR.Action, override val run
   fun <Dialect: SqlIdiom> buildPretty(): SqlCompiledAction<Input, Output> = errorCap("The buildPretty function body was not inlined")
   fun <Dialect: SqlIdiom> buildPretty(@ExoBuildFunctionLabel label: String): SqlCompiledAction<Input, Output> = errorCap("The buildPretty function body was not inlined")
 
+  val buildFor: BuildFor<SqlCompiledAction<Input, Output>>
+  val buildPrettyFor: BuildFor<SqlCompiledAction<Input, Output>>
+
   override fun withNonStrictEquality(): SqlAction<Input, Output> = copy(params = params.withNonStrictEquality())
 
   fun determinizeDynamics(): SqlAction<Input, Output> = DeterminizeDynamics().ofAction(this)
@@ -54,7 +57,13 @@ data class SqlBatchAction<BatchInput, Input: Any, Output>(override val xr: XR.Ba
   fun <Dialect: SqlIdiom> buildPretty(): SqlCompiledBatchAction<BatchInput, Input, Output> = errorCap("The buildPretty function body was not inlined")
   fun <Dialect: SqlIdiom> buildPretty(@ExoBuildFunctionLabel label: String): SqlCompiledBatchAction<BatchInput, Input, Output> = errorCap("The buildPretty function body was not inlined")
 
+  val buildFor: BuildFor<SqlCompiledBatchAction<BatchInput, Input, Output>>
+  val buildPrettyFor: BuildFor<SqlCompiledBatchAction<BatchInput, Input, Output>>
+
   override fun withNonStrictEquality(): SqlBatchAction<BatchInput, Input, Output> = copy(params = params.withNonStrictEquality())
 
   fun determinizeDynamics(): SqlBatchAction<BatchInput, Input, Output> = DeterminizeDynamics().ofBatchAction(this)
+
+  // Don't need to do anything special in order to convert runtime, just call a function that the TransformProjectCapture can't see through
+  fun dyanmic(): SqlBatchAction<BatchInput, Input, Output> = this
 }

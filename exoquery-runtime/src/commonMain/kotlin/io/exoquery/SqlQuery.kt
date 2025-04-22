@@ -43,6 +43,9 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
   fun <Dialect: SqlIdiom> buildPretty(): SqlCompiledQuery<T> = errorCap("The buildPretty function body was not inlined")
   fun <Dialect: SqlIdiom> buildPretty(@ExoBuildFunctionLabel label: String): SqlCompiledQuery<T> = errorCap("The buildPretty function body was not inlined")
 
+  val buildFor: BuildFor<SqlCompiledQuery<T>>
+  val buildPrettyFor: BuildFor<SqlCompiledQuery<T>>
+
   override fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): SqlQuery<T> =
     copy(xr = xr as? XR.Query ?: xrError("Failed to rebuild SqlQuery with XR of type ${xr::class} which was: ${xr.show()}"), runtimes = runtimes, params = params)
 

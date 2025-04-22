@@ -1,6 +1,7 @@
 package io.exoquery.annotation
 
 import io.exoquery.serial.ParamSerializer
+import io.exoquery.sql.SqlIdiom
 import io.exoquery.util.TraceType
 import kotlin.reflect.KClass
 
@@ -115,6 +116,14 @@ annotation class ExoCapture
 @Target(AnnotationTarget.VALUE_PARAMETER)
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoBuildFunctionLabel
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoBuildDatabaseSpecific(val dialect: KClass<out SqlIdiom>)
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoBuildDatabaseSpecificParent
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)

@@ -8,22 +8,23 @@ import io.exoquery.ActionReturningKind
 import io.exoquery.SqlAction
 import io.exoquery.SqlBatchAction
 import io.exoquery.SqlQuery
+import io.exoquery.annotation.ExoBuildDatabaseSpecific
 import io.exoquery.annotation.ExoBuildFunctionLabel
 import io.exoquery.parseError
-import io.exoquery.plugin.funName
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.location
 import io.exoquery.plugin.makeRunFunction
-import io.exoquery.plugin.ownerFunction
+import io.exoquery.plugin.ownerHasAnnotation
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.show
+import io.exoquery.plugin.trees.ExtractorsDomain
+import io.exoquery.plugin.trees.ExtractorsDomain.SqlBuildFunction
 import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.Lifter
 import io.exoquery.plugin.trees.SqlActionExpr
 import io.exoquery.plugin.trees.SqlBatchActionExpr
 import io.exoquery.plugin.trees.SqlQueryExpr
-import io.exoquery.plugin.trees.simpleValueParams
 import io.exoquery.plugin.zipArgsWithParamsOrFail
 import io.exoquery.sql.Renderer
 import io.exoquery.sql.SqlIdiom
@@ -41,26 +42,35 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
-import org.jetbrains.kotlin.ir.types.isNullableString
-import org.jetbrains.kotlin.ir.types.isString
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.utils.zipIfSizesAreEqual
 import kotlin.reflect.full.isSuperclassOf
 import kotlin.time.measureTimedValue
 
 
 class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
 
-  private fun isNamedBuild(name: String) = name == "build" || name == "buildPretty"
-
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun matches(expr: IrCall): Boolean =
-    (expr.dispatchReceiver?.type?.let { it.isClass<SqlQuery<*>>() || it.isClass<SqlAction<*, *>>() || it.isClass<SqlBatchAction<*, *, *>>() } ?: false) && isNamedBuild(expr.symbol.safeName)
+    SqlBuildFunction.matches(expr)
 
-  // TODO need lots of cleanup and separation of concerns here
-  // TODO propagate labels into the trace logger
+  private data class BuildFunctionArgs(val queryLabel: String?)
+
+  // Making args extraction somewhat modular so can add more args to the build function in the future
+  context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
+  private fun extractArgsFromCall(expr: IrCall): BuildFunctionArgs = run {
+    val partsWithParams = expr.zipArgsWithParamsOrFail()
+    val queryLabel =
+      partsWithParams
+        .find { (param, value) -> param.hasAnnotation<ExoBuildFunctionLabel>() }?.second
+        // If the of the parameter is null then it must not be present and we don't care. If it does exist make sure it's an IrConst
+        ?.let { it as? IrConst ?: parseError("A query-label must be a constant compile-time string but found: ${it.dumpKotlinLike()}", it) }
+        ?.let { it.value.toString() }
+
+    BuildFunctionArgs(queryLabel)
+  }
+
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun transform(expr: IrCall): IrExpression {
 
@@ -77,30 +87,17 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
 
     val transfomerScope = symbolSet
 
-    data class BuildFunctionArgs(val queryLabel: String?)
 
-    // Making args extraction somewhat modular so can add more args to the build function in the future
-    fun extractArgs() = run {
-      val partsWithParams = expr.zipArgsWithParamsOrFail()
-      val queryLabel =
-        partsWithParams
-          .find { (param, value) -> param.hasAnnotation<ExoBuildFunctionLabel>() }?.second
-          // If the of the parameter is null then it must not be present and we don't care. If it does exist make sure it's an IrConst
-          ?.let { it as? IrConst ?: parseError("A query-label must be a constant compile-time string but found: ${it.dumpKotlinLike()}", it) }
-          ?.let { it.value.toString() }
-
-      BuildFunctionArgs(queryLabel)
-    }
 
     // recurse down into the expression in order to make it into an Uprootable if needed
     return expr.match(
-      case(Ir.Call.FunctionMemN[Is(), Is.invoke { isNamedBuild(it) }, Is(/*This is the dialect*/)]).thenThis { sqlQueryExprRaw, _ ->
+      case(SqlBuildFunction[Is(), Is()]).thenThis { sqlQueryExprRaw, dialectType ->
         val isPretty = expr.symbol.safeName == "buildPretty"
-        val parsedArgs = extractArgs()
+        val parsedArgs = extractArgsFromCall(expr)
 
         val compileLocation = expr.location(currentFile.fileEntry)
         val fileLabel = (parsedArgs.queryLabel?.let {it + " - "} ?: "") + "file:${compileLocation.show()}"
-        val dialectType = this.typeArguments.first() ?: parseError("Need to pass a constructable dialect to the build method but no argument was provided", expr)
+
         val (traceConfig, writeSource) = ComputeEngineTracing.invoke(fileLabel, dialectType)
         val (construct, clsPackageName) = extractDialectConstructor(dialectType)
 
@@ -112,7 +109,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
         // which is invoked by the `superTransformer.visitExpression`.
         // In both of these cases superTransformer.recurse delegates-out to the correct transformer based on the type-match of the expression.
         val sqlExpr = superTransformer.recurse(sqlQueryExprRaw)
-        val containerType = expr.dispatchReceiver?.type ?: parseError("Invalid container type ${expr.dispatchReceiver?.type?.dumpKotlinLike()}. (Reciver ${expr.dispatchReceiver?.dumpKotlinLike()})", expr)
+        val containerType = sqlQueryExprRaw.type ?: parseError("Invalid container type ${expr.dispatchReceiver?.type?.dumpKotlinLike()}. (Reciver ${expr.dispatchReceiver?.dumpKotlinLike()})", expr)
         val dialect = ConstructCompiletimeDialect.of(clsPackageName, traceConfig)
 
         fun Token.renderQueryString(pretty: Boolean, xr: XR) = run {

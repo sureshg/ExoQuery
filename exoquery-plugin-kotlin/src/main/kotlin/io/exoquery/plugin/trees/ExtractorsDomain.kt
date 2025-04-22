@@ -4,6 +4,8 @@ import io.decomat.*
 import io.exoquery.*
 import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.annotation.CapturedFunction
+import io.exoquery.annotation.DslFunctionCall
+import io.exoquery.annotation.ExoBuildDatabaseSpecific
 import io.exoquery.annotation.ExoCapture
 import io.exoquery.annotation.ExoCaptureBatch
 import io.exoquery.annotation.ExoCaptureExpression
@@ -17,17 +19,63 @@ import io.exoquery.plugin.transform.UnaryOperators
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.OP
 import io.exoquery.xr.UnaryOperator
+import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.isString
 
 object ExtractorsDomain {
 
   fun IsSelectFunction() = Ir.Expr.ClassOf<SelectClauseCapturedBlock>()
+
+  object SqlBuildFunction {
+    fun isNamedCorrectly(name: String) = name == "build" || name == "buildPretty"
+
+    context(CX.Scope)
+    private fun isCompileableType(it: IrType) =
+      it.isClass<SqlQuery<*>>() || it.isClass<SqlAction<*, *>>() || it.isClass<SqlBatchAction<*, *, *>>()
+
+    context(CX.Scope)
+    fun matches(expr: IrCall) =
+      // One form is `query.build()` and the other is `query.buildFor.Postgres()`
+      (expr.dispatchReceiver?.type?.let { isCompileableType(it) }
+        ?: false) && isNamedCorrectly(expr.symbol.safeName) || expr.ownerHasAnnotation<ExoBuildDatabaseSpecific>()
+
+    context(CX.Scope, CX.Symbology)
+    operator fun <AP : Pattern<IrExpression>, BP : Pattern<IrType>> get(x: AP, y: BP) =
+      customPattern2("SqlBuildFunction", x, y) { call: IrCall ->
+        call.match(
+          case(Ir.Call.FunctionMemN[Is(), Is { isNamedCorrectly(it) }, Is(/*Args that we don't match on here*/)]).thenIf { sqlQueryExpr, _ -> isCompileableType(sqlQueryExpr.type) }.thenThis { sqlQueryExpr, _ ->
+            val dialectType = this.typeArguments.first() ?: parseError(
+              "Need to pass a constructable dialect to the build method but no argument was provided",
+              sqlQueryExpr
+            )
+            Components2(sqlQueryExpr, dialectType)
+          },
+          // The query.buildFor.Postgres() veriety
+          case(Ir.Call.FunctionMemN[Ir.Call.FunctionMemN[Is(), Is(), Is()], Is(), Is()]).thenIfThis { _, _ -> ownerHasAnnotation<ExoBuildDatabaseSpecific>() }
+            .thenIf { (sqlQueryExpr, _), _ -> isCompileableType(sqlQueryExpr.type) }
+            .thenThis { (sqlQueryExpr, _), _ ->
+              // Get the ExoBuildDatabaseSpecific from the Postgers() function call, then get it's Dialect::class type
+              val dialectTypeRef =
+                (this.symbol.owner.getAnnotationArgs<ExoBuildDatabaseSpecific>().firstOrNull()
+                  ?: parseError("Could not find ExoBuildDatabaseSpecific annotation", this))
+                    as? IrClassReference ?: parseError(
+                  "ExoBuildDatabaseSpecific annotation must have a single argument that is a class-reference (e.g. PostgresDialect::class)",
+                  this
+                )
+              val dialectType = dialectTypeRef.classType
+              Components2(sqlQueryExpr, dialectType)
+            }
+        )
+      }
+  }
+
 
   object DynamicQueryCall {
     context(CX.Scope, CX.Symbology)
