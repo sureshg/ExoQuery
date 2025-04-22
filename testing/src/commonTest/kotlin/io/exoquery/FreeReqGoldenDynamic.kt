@@ -29,15 +29,15 @@ object FreeReqGoldenDynamic: GoldenQueryFile {
     ),
     "action with free/static action in free" to cr(
       "beforeStuff() INSERT INTO Person (id, name, age) VALUES ({0:1}, {1:Joe}, {2:123}) afterStuff()",
-      "78d1786a-ba08-4d16-804d-fa50b265da82" to "1", "bb48be1e-fcc0-46c0-9018-b237ae5d4d94" to "Joe", "fa887de1-8cc4-431f-b7a9-23b083a0f28f" to "123"
+      "8b36e82d-c572-42d4-9649-916a4f9d5fa7" to "1", "480b3b5c-21de-4aee-82e2-239bf55ec747" to "Joe", "e958fdd1-527c-4e63-804d-76424b37f2d1" to "123"
     ),
     "action with free/dynamic action in free" to cr(
       "beforeStuff() INSERT INTO Person (id, name, age) VALUES ({0:1}, {1:Joe}, {2:123}) afterStuff()",
-      "ceb18cf6-3961-4b7e-8428-ec7c3f78de6d" to "1", "d8eb1ed6-18c9-43b2-9db7-47697e0382a8" to "Joe", "2db1bf13-39c5-4f5d-a8eb-9a2837ebacdb" to "123"
+      "d81c0c82-f566-4b82-a4ab-b6237df79f42" to "1", "6b454f23-f559-4c85-9e9a-e038adecd8d0" to "Joe", "12abbcc9-87ff-47a4-8c7d-6b98424b98f2" to "123"
     ),
     "action with free/direct action in free" to cr(
       "beforeStuff() INSERT INTO Person (id, name, age) VALUES ({0:1}, {1:Joe}, {2:123}) afterStuff()",
-      "1dde6fca-c3c1-4a26-a85a-1d1f611d67e7" to "1", "8195ad08-0c5b-4fd2-8248-d4d9bc7b99c4" to "Joe", "cc83f65a-0b93-447c-bacf-83d90f686406" to "123"
+      "02622ec9-71c4-4de5-8b6f-3c09938e02b5" to "1", "fde02390-f21a-4309-b596-d0f9d6925203" to "Joe", "71477a28-117b-452e-aafa-09b922880700" to "123"
     ),
   )
 }
