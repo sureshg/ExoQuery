@@ -60,7 +60,7 @@ kotlin {
         dependencies {
           implementation(project(":exoquery-controller-common"))
 
-          api("io.exoquery:controller-android:3.2.0.1")
+          api("io.exoquery:controller-android:3.2.0")
 
           api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
           api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")

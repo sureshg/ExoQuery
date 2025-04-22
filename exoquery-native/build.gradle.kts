@@ -36,7 +36,7 @@ kotlin {
     val commonMain by getting {
       dependencies {
         implementation(project(":exoquery-controller-common"))
-        api("io.exoquery:controller-native:3.2.0.1")
+        api("io.exoquery:controller-native:3.2.0")
 
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
         api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
