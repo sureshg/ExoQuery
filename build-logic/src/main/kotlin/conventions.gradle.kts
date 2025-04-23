@@ -1,6 +1,5 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 repositories {
     // Do NOT enable this otherwise all kinds of horror ensues. Not exactly sure why. Maybe something in the local repo interferes with the build. with builds.
@@ -10,13 +9,13 @@ repositories {
 }
 
 val kotlinVersion = "2.1.0"
-val pluginVersion = "1.0.0.PL"
-val runtimeVersion = "0.1.0"
+val pluginVersion = "0.1.0.PL"
+val extensionsVersion = "0.1.0"
 
 // For exoquery-runtime, exoquery-plugin-gradle, exoquery-plugin-kotlin
 extra["pluginProjectVersion"] = "${kotlinVersion}-${pluginVersion}"
 // For exoquery-controller-common, exoquery-jdbc, exoquery-android, exoquery-native
-extra["controllerProjectVersion"] = "${pluginVersion}-${runtimeVersion}"
+extra["controllerProjectVersion"] = "${pluginVersion}-${extensionsVersion}"
 
 group = "io.exoquery"
 // Default version is the plugin-project version. Overridden in the subprojects
