@@ -33,14 +33,9 @@ kotlin {
         val commonMain by getting {
             kotlin.srcDir("$buildDir/generated/ksp/metadata/commonMain/kotlin")
 
-
-
             dependencies {
-                // TODO probably the gradle plugin should add these?
                 api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
                 api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
-                implementation("io.kotest:kotest-framework-engine:6.0.0.M1")
-                implementation("io.kotest:kotest-assertions-core:6.0.0.M1")
 
                 api(kotlin("reflect"))
                 // Actually this is going to be 0.0.5 - using an unpublished one now
@@ -48,7 +43,6 @@ kotlin {
                 api("io.exoquery:pprint-kotlin-kmp:3.0.0")
                 // Actually this is going to be 0.0.5 - using an unpublished one now
                 api("io.exoquery:decomat-core:0.5.0")
-                api("io.exoquery:terpal-runtime:2.1.0-2.0.0.PL")
                 // This is a java-only library, I have no idea who it can even be here.
                 // maybe if I actually attempt to use it in KMP mode in a non-java target it will actually fail
                 api("com.github.vertical-blank:sql-formatter:2.0.4")
@@ -58,6 +52,8 @@ kotlin {
 
         val commonTest by getting {
             dependencies {
+                implementation("io.kotest:kotest-framework-engine:6.0.0.M1")
+                implementation("io.kotest:kotest-assertions-core:6.0.0.M1")
                 // Used to ad-hoc some examples but not needed.
                 //api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
                 //implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
@@ -109,12 +105,6 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         jvmTarget.set(JvmTarget.JVM_11)
     }
 }
-
-//kotlin.sourceSets.main {
-//    kotlin.srcDirs(
-//        file("$buildDir/generated/ksp/main/kotlin"),
-//    )
-//}
 
 repositories {
     mavenCentral()

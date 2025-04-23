@@ -22,16 +22,16 @@ allprojects {
 
 tasks.register("publishLinux") {
     dependsOn(
-        gradle.includedBuild(Release.Project.`exoquery-runtime`).task(":publishAllPublicationsToOss"),
+        gradle.includedBuild(Release.Project.`exoquery-runtime`).task(":publishAllPublicationsToOssRepository"),
         gradle.includedBuild(Release.Project.`exoquery-plugin-gradle`).task(":publish"),
         gradle.includedBuild(Release.Project.`exoquery-plugin-kotlin`).task(":publish"),
         // Even though targets like MacosX64 are not built or published on the linux CI, it needs to know
         // then in order to publish the right Maven-central metadata (i.e. the .module file) that details
         // which build-variants exist
-        ":${Release.Project.`exoquery-controller-common`}:publishAllPublicationsToOss",
-        ":${Release.Project.`exoquery-android`}:publishAllPublicationsToOss",
-        ":${Release.Project.`exoquery-native`}:publishAllPublicationsToOss",
-        ":${Release.Project.`exoquery-jdbc`}:publishAllPublicationsToOss",
+        ":${Release.Project.`exoquery-controller-common`}:publishAllPublicationsToOssRepository",
+        ":${Release.Project.`exoquery-android`}:publishAllPublicationsToOssRepository",
+        ":${Release.Project.`exoquery-native`}:publishAllPublicationsToOssRepository",
+        ":${Release.Project.`exoquery-jdbc`}:publishAllPublicationsToOssRepository",
     )
 }
 
@@ -49,19 +49,23 @@ tasks.register("publishLinuxLocal") {
 }
 
 tasks.register("publishMac") {
-    dependsOn(gradle.includedBuild(Release.Project.`exoquery-runtime`).task(":publishToMavenLocal"))
+    Release.macBuildCommands.forEach {
+        dependsOn(gradle.includedBuild(Release.Project.`exoquery-runtime`).task(":$it"))
+    }
     val targets =
         listOf(
             Release.Project.`exoquery-controller-common`,
             Release.Project.`exoquery-native`,
         ).flatMap { project ->
-            Release.macBuildCommands.map { task(":$project:$it") }
+            Release.macBuildCommands.map { ":$project:$it" }
         }
     dependsOn(*targets.toTypedArray())
 }
 
 tasks.register("publishWindows") {
-    dependsOn(gradle.includedBuild(Release.Project.`exoquery-runtime`).task(":publishToMavenLocal"))
+    Release.windowsBuildCommands.forEach {
+        dependsOn(gradle.includedBuild(Release.Project.`exoquery-runtime`).task(":$it"))
+    }
     val targets =
         listOf(
             Release.Project.`exoquery-controller-common`,
@@ -96,14 +100,13 @@ object Release {
             "watchosArm64",
             "macosX64",
             "macosArm64",
-            "iosSimulatorArm64",
-            "watchosSimulatorArm64",
-        ).map { "publish${it.capitalize()}PublicationToOss" }
+            "iosSimulatorArm64"
+        ).map { "publish${it.capitalize()}PublicationToOssRepository" }
 
     val windowsBuildCommands =
         listOf(
             "mingwX64"
-        )
+        ).map { "publish${it.capitalize()}PublicationToOssRepository" }
 
     fun String.capitalize() = this.replaceFirstChar { it.uppercase() }
 }

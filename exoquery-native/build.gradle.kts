@@ -73,11 +73,10 @@ kotlin {
       "macosX64",
       "macosArm64",
       "iosSimulatorArm64",
-      "watchosSimulatorArm64",
-      // These are not used yet but want to have then for when we enable these builds
-      "tvosSimulatorArm64",
-      "watchosDeviceArm64",
-      "watchosSimulatorArm64"
+      // These are not used yet
+      //"watchosDeviceArm64",
+      //"watchosSimulatorArm64"
+      //"tvosSimulatorArm64",
     ).contains(it.name)
   }) {
     if (HostManager.hostIsMac) {

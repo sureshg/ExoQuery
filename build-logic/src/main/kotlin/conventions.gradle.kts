@@ -21,9 +21,8 @@ group = "io.exoquery"
 // Default version is the plugin-project version. Overridden in the subprojects
 version = extra["pluginProjectVersion"].toString()
 
-object Versions {
-    val decomatVersion = "0.4.0"
-}
+val decomatVersion = "0.4.0"
+extra["decomatVersion"] = decomatVersion
 
 check("$version".isNotBlank() && version != "unspecified")
     { "invalid version $version" }

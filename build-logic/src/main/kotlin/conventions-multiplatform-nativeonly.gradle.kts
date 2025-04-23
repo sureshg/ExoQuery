@@ -28,12 +28,16 @@ kotlin {
   // I.e. set this environment variable specifically to true to build (most) targets
   val fullLocal = !isCI && ((System.getenv("EXOQUERY_FULL_LOCAL")?.toBoolean() ?: false) || project.hasProperty("isLocalMultiplatform"))
 
+  // Github sees these but no targets enabled below. Not sure why, maybe it doesn't see isCI. Need to investigage
   linuxX64()
   macosX64()
+  macosArm64()
 
   val linuxCI = HostManager.hostIsLinux && isCI
   val mingCI = HostManager.hostIsMingw && isCI
   val macCI = HostManager.hostIsMac && isCI
+
+  println("--------- Host Family: ${HostManager.host.family.name}, isCI: $isCI ---------")
 
   // Disabling JS for now because Kotest breaks on nested-tests (see here: https://github.com/kotest/kotest/pull/3913)
   // If you actually run this command:
@@ -68,9 +72,8 @@ kotlin {
   if (linuxCI || macCI) watchosArm32()
   if (linuxCI || macCI) watchosArm64()
   if (linuxCI || macCI) iosSimulatorArm64()
-  //if (linux || mac) watchosSimulatorArm64()
   //if (linux || mac) watchosDeviceArm64()
-  //if (linux || mac) tvosSimulatorArm64()
   //if (linux || mac) watchosSimulatorArm64()
+  //if (linux || mac) tvosSimulatorArm64()
   if (linuxCI || mingCI) mingwX64()
 }
