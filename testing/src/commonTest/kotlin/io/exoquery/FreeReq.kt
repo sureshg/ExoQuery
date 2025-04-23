@@ -3,7 +3,7 @@ package io.exoquery
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
 
-class FreeReq : GoldenSpecDynamic(FreeReqGoldenDynamic, Mode.ExoGoldenOverride(), {
+class FreeReq : GoldenSpecDynamic(FreeReqGoldenDynamic, Mode.ExoGoldenTest(), {
 
   // TODO if 'free' not follorwed by anything there should be some kidn of compile error
   "static free" - {
@@ -59,7 +59,7 @@ class FreeReq : GoldenSpecDynamic(FreeReqGoldenDynamic, Mode.ExoGoldenOverride()
       val free = capture {
         free("beforeStuff() ${action} afterStuff()").asPure<SqlAction<Person, Long>>()
       }
-      shouldBeGolden(free.build<PostgresDialect>())
+      shouldBeGolden(free.build<PostgresDialect>().determinizeDynamics())
     }
     "dynamic action in free" {
       val action = capture {
@@ -69,13 +69,13 @@ class FreeReq : GoldenSpecDynamic(FreeReqGoldenDynamic, Mode.ExoGoldenOverride()
       val free = capture {
         free("beforeStuff() ${action} afterStuff()").asPure<SqlAction<Person, Long>>()
       }
-      shouldBeGolden(free.build<PostgresDialect>())
+      shouldBeGolden(free.build<PostgresDialect>().determinizeDynamics())
     }
     "direct action in free" {
       val free = capture {
         free("beforeStuff() ${insert<Person> { setParams(Person(1, "Joe", 123)) }} afterStuff()").asPure<SqlAction<Person, Long>>()
       }
-      shouldBeGolden(free.build<PostgresDialect>())
+      shouldBeGolden(free.build<PostgresDialect>().determinizeDynamics())
     }
   }
 
