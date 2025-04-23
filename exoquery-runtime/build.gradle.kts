@@ -2,24 +2,19 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 plugins {
-    //id("publish")
-    //id("com.google.devtools.ksp") version "2.0.0-1.0.24"
-    //id("io.exoquery.terpal-plugin") version "2.0.0-1.0.0.PL"
-    //kotlin("jvm") version "2.0.0"
-    //kotlin("plugin.serialization") version "2.0.0"
-
     kotlin("multiplatform") version "2.1.0"
+    id("maven-publish")
+
     id("io.exoquery.terpal-plugin") version "2.1.0-2.0.0.PL"
     id("io.kotest.multiplatform") version "6.0.0.M1"
-    //id("maven-publish")
     id("conventions-multiplatform")
-    //id("publish")
-    //signing
-
+    id("publish")
 
     id("com.google.devtools.ksp") version "2.1.0-1.0.29"
     kotlin("plugin.serialization") version "2.1.0"
 }
+
+version = extra["pluginProjectVersion"].toString()
 
 dependencies {
     add("kspCommonMainMetadata", "io.exoquery:decomat-ksp:0.5.0")
@@ -32,13 +27,7 @@ kotlin {
     }
 
     jvm()
-    // ---- kspCommonMainMetadata won't actually exist without this and no KSP extensions for XR will be generated!
     linuxX64()
-    //@OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
-    //wasmJs {
-    //    nodejs()
-    //}
-    //iosX64()
 
     sourceSets {
         val commonMain by getting {
@@ -162,4 +151,16 @@ tasks.named<Test>("jvmTest") {
         )
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
+}
+
+// Add the kspCommonMainKotlinMetadata dependency to sourcesJar tasks if needed
+// for example:
+//tasks.findByName("jsSourcesJar")?.dependsOn("kspCommonMainKotlinMetadata")
+//tasks.findByName("jvmSourcesJar")?.dependsOn("kspCommonMainKotlinMetadata")
+//tasks.findByName("linuxX64SourcesJar")?.dependsOn("kspCommonMainKotlinMetadata")
+//tasks.findByName("mingwX64SourcesJar")?.dependsOn("kspCommonMainKotlinMetadata")
+//tasks.findByName("sourcesJar")?.dependsOn("kspCommonMainKotlinMetadata")
+// Preferably we can just use the following to get every target:
+tasks.filter { it.name == "sourcesJar" || it.name.endsWith("SourcesJar") }.forEach {
+    it.dependsOn("kspCommonMainKotlinMetadata")
 }

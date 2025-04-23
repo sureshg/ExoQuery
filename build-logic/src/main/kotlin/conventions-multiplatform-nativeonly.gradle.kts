@@ -11,9 +11,8 @@ plugins {
 
 
 repositories {
-  //mavenLocal() // Don't include this, it causes all sorts of build horror
   mavenCentral()
-  mavenLocal()
+  mavenLocal() // Always needs to be AFTER central
 }
 
 

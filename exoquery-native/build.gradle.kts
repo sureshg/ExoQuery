@@ -23,10 +23,7 @@ tasks.named { it == "linkDebugTestLinuxX64" }.configureEach { enabled = HostMana
 tasks.named { it == "mingwX64Test" }.configureEach { enabled = HostManager.hostIsMingw }
 tasks.named { it == "linkDebugTestMingwX64" }.configureEach { enabled = HostManager.hostIsMingw }
 
-repositories {
-  mavenCentral()
-  mavenLocal()
-}
+version = extra["controllerProjectVersion"].toString()
 
 kotlin {
 

@@ -6,6 +6,7 @@ import org.jetbrains.kotlin.konan.target.HostManager
 // Includes everything from multiplatform-native + jvm builds
 
 plugins {
+  id("conventions")
   id("conventions-multiplatform-nativeonly")
   kotlin("multiplatform")
 }

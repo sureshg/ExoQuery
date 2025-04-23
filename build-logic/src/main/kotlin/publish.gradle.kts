@@ -65,9 +65,9 @@ publishing {
     artifact(javadocJar)
 
     pom {
-      name.set("terpal")
-      description.set("Terpal - Custom string-interpolation for Kotlin")
-      url.set("https://github.com/exoquery/terpal")
+      name.set("exoquery")
+      description.set("ExoQuery - Language Integrated Query for Kotlin")
+      url.set("https://github.com/exoquery/exoquery")
 
       licenses {
         license {
@@ -87,9 +87,9 @@ publishing {
       }
 
       scm {
-        url.set("https://github.com/exoquery/terpal/tree/main")
-        connection.set("scm:git:git://github.com/ExoQuery/Terpal.git")
-        developerConnection.set("scm:git:ssh://github.com:ExoQuery/Terpal.git")
+        url.set("https://github.com/exoquery/exoquery/tree/main")
+        connection.set("scm:git:git://github.com/exoquery/exoquery.git")
+        developerConnection.set("scm:git:ssh://github.com:exoquery/exoquery.git")
       }
     }
   }

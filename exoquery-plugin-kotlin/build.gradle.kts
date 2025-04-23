@@ -1,8 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    //id("publish")
-    //kotlin("kapt") version "2.1.0"
     kotlin("jvm") version "2.1.0"
     id("maven-publish")
     id("conventions")
@@ -10,6 +8,8 @@ plugins {
     kotlin("plugin.serialization") version "2.1.0"
     kotlin("kapt") version "2.1.0"
 }
+
+version = extra["pluginProjectVersion"].toString()
 
 kotlin {
     jvmToolchain(17)

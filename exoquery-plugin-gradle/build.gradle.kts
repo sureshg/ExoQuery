@@ -10,6 +10,8 @@ plugins {
     id("com.github.gmazzo.buildconfig") version "3.1.0"
 }
 
+version = extra["pluginProjectVersion"].toString()
+
 kotlin {
     jvmToolchain(17)
 }

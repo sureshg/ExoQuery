@@ -9,9 +9,18 @@ repositories {
     mavenCentral()
 }
 
+val kotlinVersion = "2.1.0"
+val pluginVersion = "1.0.0.PL"
+val runtimeVersion = "0.1.0"
+
+// For exoquery-runtime, exoquery-plugin-gradle, exoquery-plugin-kotlin
+extra["pluginProjectVersion"] = "${kotlinVersion}-${pluginVersion}"
+// For exoquery-controller-common, exoquery-jdbc, exoquery-android, exoquery-native
+extra["controllerProjectVersion"] = "${pluginVersion}-${runtimeVersion}"
+
 group = "io.exoquery"
-// Everything inherits the version from here
-version = "2.1.0-2.0.0.PL"
+// Default version is the plugin-project version. Overridden in the subprojects
+version = extra["pluginProjectVersion"].toString()
 
 object Versions {
     val decomatVersion = "0.4.0"

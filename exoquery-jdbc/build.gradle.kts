@@ -2,7 +2,8 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
 
 plugins {
-  id("conventions-multiplatform")
+  // Only uses the base conventions-project because this builds only for jvm and all of those define native targets
+  id("conventions")
   kotlin("multiplatform") version "2.1.0"
   id("io.kotest.multiplatform") version "6.0.0.M1"
   id("io.exoquery.exoquery-plugin") version "2.1.0-2.0.0.PL"
@@ -11,7 +12,7 @@ plugins {
   kotlin("plugin.serialization") version "2.1.0"
 }
 
-val thisVersion = version
+version = extra["controllerProjectVersion"].toString()
 
 // Exclude the jb-annotations-kmp in favor of the official jebrains one (in dependencies below)
 configurations.forEach {
@@ -77,7 +78,7 @@ kotlin {
         // Hikari should be optional on a user-level. The contexts only need a DataSource instance.
         implementation("com.zaxxer:HikariCP:5.0.1")
         implementation("com.typesafe:config:1.4.1")
-        implementation("org.xerial:sqlite-jdbc:3.42.0.1")
+
         implementation("org.jetbrains:annotations:24.1.0")
       }
     }
@@ -92,23 +93,15 @@ kotlin {
         implementation("com.microsoft.sqlserver:mssql-jdbc:7.4.1.jre11")
         implementation("com.h2database:h2:2.2.224")
         implementation("com.oracle.ojdbc:ojdbc8:19.3.0.0")
+        implementation("org.xerial:sqlite-jdbc:3.42.0.1")
 
-        //implementation(kotlin("test"))
-        //implementation(kotlin("reflect"))
         implementation("io.kotest:kotest-runner-junit5:6.0.0.M1")
-
-        //implementation("io.kotest.extensions:kotest-extensions-testcontainers:2.0.2")
-
-        //implementation("io.kotest:kotest-framework-engine:6.0.0.M1")
-        //implementation("io.kotest:kotest-assertions-core:6.0.0.M1")
-
         implementation(kotlin("test-common"))
         implementation(kotlin("test-annotations-common"))
 
         // When running tests directly from intellij seems that this library needs to be referenced directly and not the bom-version
         // The other `platform` one causes an error: Caused by: java.lang.IllegalStateException: Missing embedded postgres binaries
         // (only when running directly from intellij using the GUI (i.e. Kotest plugin targets))
-        // TODO add conditional var that will choose which one of these to use
         implementation("io.zonky.test.postgres:embedded-postgres-binaries-linux-amd64:16.2.0")
         //implementation(project.dependencies.platform("io.zonky.test.postgres:embedded-postgres-binaries-bom:16.2.0"))
 

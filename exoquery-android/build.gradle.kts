@@ -15,7 +15,7 @@ plugins {
   //id("org.jetbrains.kotlin.android") version "1.9.23"
 }
 
-version = "1.2.0"
+version = extra["controllerProjectVersion"].toString()
 
 configurations.forEach {
   it.exclude(group = "com.sschr15.annotations", module = "jb-annotations-kmp")
