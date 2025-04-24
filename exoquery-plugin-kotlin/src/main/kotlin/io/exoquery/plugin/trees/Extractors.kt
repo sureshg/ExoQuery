@@ -4,10 +4,13 @@ package io.exoquery.plugin.trees
 
 import io.decomat.*
 import io.exoquery.ValueWithSerializer
+import io.exoquery.annotation.ExoEntity
+import io.exoquery.annotation.ExoField
 import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.ReceiverCaller
+import kotlinx.serialization.SerialName
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.*
@@ -169,12 +172,30 @@ object Ir {
         customPattern2("Type.DataClass", name, fields) { it: IrType ->
           val cls = it.classOrNull
           if (cls != null && cls.isDataClass()) {
-            val name = it.classFqName?.sanitizedClassName() ?: cls.safeName
-            val props = cls.dataClassProperties()
+            val name =
+                cls.owner.getAnnotationArgs<ExoEntity>().firstConstStringOrNull() // Try to get entity name from ExoEntity
+                ?: cls.owner.getAnnotationArgs<SerialName>().firstConstStringOrNull() // Then try SerialName from the class
+                ?: it.classFqName?.sanitizedClassName() // Then try the class fully-qualified name
+                ?: cls.safeName // If all else fails, use the class symbol name
+
+            val props = cls.owner.declarations.filterIsInstance<IrProperty>()
+            val propNames =
+              cls.dataClassProperties().map { (propName, propType) ->
+                val irProp =
+                  props.firstOrNull { it.name.asString() == propName } ?: error("Property $propName not found")
+
+                val realPropName =
+                  irProp.getAnnotationArgs<ExoField>().firstConstStringOrNull()
+                    ?: irProp.getAnnotationArgs<kotlinx.serialization.SerialName>().firstConstStringOrNull()
+                    ?: propName
+
+                realPropName to propType
+              }
+
             // Note that this was not matching without props.toList() because it was a Sequence object instead of a list
             // this is improtant to note since if the types to not line up the match won't happen although the IDE
             // or build will not complain about the mismatched types (at least during compilation of this file)
-            val output = Components2(name, props.toList())
+            val output = Components2(name, propNames.toList())
             output
           }
           else null
@@ -684,10 +705,21 @@ object Ir {
             }
           fun isComponent() = it.simpleValueArgsCount == 0 && it.symbol.safeName.matches(Regex("component[0-9]+"))
 
+          fun exoFieldArgValue() =
+            it.getPropertyAnnotationArgs<ExoField>().firstConstStringOrNull()
+
+          fun serialNameArgValue() =
+            it.getPropertyAnnotationArgs<SerialName>().firstConstStringOrNull()
+
           // if there is a reciever and a single value property then this is a property call and we return it, otherwise it is not
           when {
-            isProperty && reciever != null && it.simpleValueArgs.all { it != null } ->
-              Components2(reciever, PropertyKind.Named(it.symbol.sanitizedSymbolName()))
+            isProperty && reciever != null && it.simpleValueArgs.all { it != null } -> {
+              // @ExoField name takes priority, then serialNameArgValue, then use the property name
+              // In the future should add support for class-level naming schemes e.g. @ExoNaming(UnderScore), @ExoNaming(UnderScoreCapitalized)
+              val argValue = exoFieldArgValue() ?: serialNameArgValue() ?: it.symbol.sanitizedSymbolName()
+
+              Components2(reciever, PropertyKind.Named(argValue))
+            }
 
             isComponent() ->
               // Note that component is actually a 1-based index so need to subtract 1 to make it line up XRType field names (which we choose from based on it)

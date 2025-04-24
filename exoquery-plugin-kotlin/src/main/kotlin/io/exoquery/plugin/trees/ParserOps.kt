@@ -77,7 +77,7 @@ context(CX.Scope, CX.Symbology)
 fun IrDeclarationReference.isInternal(): Boolean = !isExternal()
 
 context(CX.Scope)
-fun IrGetValue.showLineage(): String {
+fun IrDeclarationReference.showLineage(): String {
   val collect = mutableListOf<String>()
   fun IrVariable.declSymbol(): String = if (this.isVar) "var" else "val"
 

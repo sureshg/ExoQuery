@@ -1,8 +1,12 @@
 package io.exoquery.plugin.trees
 
 import io.decomat.Is
+import io.exoquery.annotation.ExoField
 import io.exoquery.parseError
 import io.exoquery.plugin.dataClassProperties
+import io.exoquery.plugin.firstConstStringOrNull
+import io.exoquery.plugin.getAnnotation
+import io.exoquery.plugin.getAnnotationArgs
 import io.exoquery.plugin.isDataClass
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.CX
@@ -62,14 +66,19 @@ object Elaborate {
       //  ("--------------- ${name} --------------\n${cls.getPropertyGetter(name)}\n-----------------")
       //}} -----------")
 
+      val props = clsOwner.declarations.filterIsInstance<IrProperty>()
+
       cls.dataClassProperties().flatMap { (propertyName, propertyType) ->
-        val property = clsOwner.declarations
-          .filterIsInstance<IrProperty>()
-          .firstOrNull { it.name.asString() == propertyName }
-          ?: error("Property $propertyName not found")
+        val property = props.firstOrNull { it.name.asString() == propertyName } ?: error("Property $propertyName not found")
 
+        // To get the @ExoField or @SerialName annotation we need to get the getter in case this was overridden
+        val sqlPropertyName =
+          property.getAnnotationArgs<ExoField>().firstConstStringOrNull()
+            ?: property.getAnnotationArgs<kotlinx.serialization.SerialName>().firstConstStringOrNull()
+            ?: propertyName
+
+        // Need to call the getting-symbol in order to get the field value, also make sure the backing field is bound
         val getterSymbol = property?.getter?.symbol ?: error("Getter for $propertyName not found")
-
         val backingFieldSymbol = property.backingField?.symbol
         if (backingFieldSymbol != null && !backingFieldSymbol.isBound) {
           error("Backing field for $propertyName is unbound!")
@@ -83,7 +92,7 @@ object Elaborate {
                 dispatchReceiver = explicitReceiver
               }
             }
-          invokeRecurse(currPath + propertyName, callNullSafe(parent, type, propertyType, call), propertyType)
+          invokeRecurse(currPath + sqlPropertyName, callNullSafe(parent, type, propertyType, call), propertyType)
         } else {
           emptyList()
         }

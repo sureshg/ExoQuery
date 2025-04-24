@@ -13,6 +13,7 @@ import io.exoquery.plugin.logging.Location
 import io.exoquery.plugin.show
 import io.exoquery.plugin.source
 import io.exoquery.plugin.transform.CX
+import io.exoquery.plugin.util.LruCache
 import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
@@ -74,7 +75,13 @@ object TypeParser {
       parseErrorFromType("ERROR Could not parse the type: ${type.dumpKotlinLike()} (in the expression: `${expr.source()}`", expr)
     }
 
+  // Parsing large data-classes can get cumbersome, so we cache the results
+  val typeCache = LruCache<IrType, XRType>(50000)
+
   context(CX.Scope, CX.Parsing, CX.Symbology) private fun parse(expr: IrType): XRType =
+    typeCache.getOrPut(expr) { parseFull(expr) }
+
+  context(CX.Scope, CX.Parsing, CX.Symbology) private fun parseFull(expr: IrType): XRType =
     on(expr).match<XRType>(
       // TODO why for Components1 it's (type) bot for Components2 it's (type, type)
       //     think this is a bug with DecoMat.

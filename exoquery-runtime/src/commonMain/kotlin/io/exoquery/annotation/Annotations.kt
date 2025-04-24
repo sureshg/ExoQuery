@@ -107,6 +107,34 @@ annotation class ParamCustomValue
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoValue
 
+
+
+/**
+ * Use this to change the name of a column in a query if you do not want to use
+ * `@SerialName` from kotlinx.serialization. This is useful if you want to reuse
+ * the same generated class serializer for other situations (e.g. JSON serialization).
+ * Use it like this:
+ * ```
+ * data class Person(@ExoField("first_name") val firstName: String, @ExoField("last_name") val lastName: String)
+ * // Then when you capture a query like:
+ * capture { Table<Person>().filter { it.firstName == "Joe" }
+ * // It will come out as:
+ * // SELECT first_name, last_name FROM Person WHERE first_name = 'Joe'
+ * ```
+ * INTERNAL NOTE:
+ * Using a Target of AnnotationTarget.FIELD will place this on the backing field and it will need to be retrieved as:
+ *  `irCall.symbol.owner.correspondingPropertySymbol?.owner?.backingField?.annotations`
+ *  Instead of just:
+ *  `irCall .symbol.owner.correspondingPropertySymbol?.owner?.annotations`
+ */
+@Target(AnnotationTarget.PROPERTY)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoField(val name: String)
+
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoEntity(val name: String)
+
 // Using annotations to identify what functions capture queries/expressions/etc...
 // instead of parsing them by name is a more flexible approach.
 @Target(AnnotationTarget.FUNCTION)

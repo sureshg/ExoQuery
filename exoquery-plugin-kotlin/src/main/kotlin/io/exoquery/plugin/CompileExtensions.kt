@@ -145,6 +145,12 @@ fun IrClassSymbol.isDataClass() = this.owner.isData
 //  TODO()
 //}
 
+/**
+ * Useful for getting things like `@ExoField("first_name")` or `@SerialName("first_name")`
+ * after expressions like `irCall.getPropertyAnnotationArgs<ExoField>()` or `irProperty.getAnnotation<ExoField>()`
+ */
+fun List<IrExpression>.firstConstStringOrNull(): String? =
+  this.firstOrNull()?.let { it as? IrConst }?.value?.toString()
 
 fun IrClassSymbol.dataClassProperties() =
   if (this.isDataClass()) {
@@ -263,6 +269,18 @@ inline fun <reified T> classIdOf(): ClassId? = T::class.classId()
 inline fun <reified T> IrCall.ownerHasAnnotation() =
   this.symbol.owner.hasAnnotation<T>()
 
+fun IrCall.allOwnerAnnotations() =
+  this.symbol.owner.annotations + (this.symbol.owner.correspondingPropertySymbol?.owner?.annotations ?: listOf())
+
+fun IrCall.printAnnotationData() =
+  """
+    annotations: ${this.symbol.owner.annotations.map { it.dumpKotlinLike() }}
+    property annotations: ${(this.symbol.owner.correspondingPropertySymbol?.owner?.annotations ?: listOf()).map { it.dumpKotlinLike() }}
+    backing field annotations: ${(this.symbol.owner.correspondingPropertySymbol?.owner?.backingField?.annotations ?: listOf()).map { it.dumpKotlinLike() }}
+  """.trimIndent()
+
+
+
 inline fun <reified T> IrCall.someOwnerHasAnnotation() =
   this.symbol.owner.hasAnnotation<T>() || this.symbol.owner.correspondingPropertySymbol?.owner?.hasAnnotation<T>() ?: false
 
@@ -315,6 +333,11 @@ fun FqName.toXR(): XR.FqName = XR.FqName(this.pathSegments().map { it.identifier
 
 inline fun <reified T> IrAnnotationContainer.getAnnotationArgs(): List<IrExpression> {
   val annotation = annotations.find { it.type.isClassStrict<T>() }
+  return annotation?.valueArguments?.filterNotNull() ?: emptyList()
+}
+
+inline fun <reified T> IrCall.getPropertyAnnotationArgs(): List<IrExpression> {
+  val annotation = (this.symbol.owner.correspondingPropertySymbol?.owner?.annotations ?: listOf()).find { it.type.isClassStrict<T>() }
   return annotation?.valueArguments?.filterNotNull() ?: emptyList()
 }
 
