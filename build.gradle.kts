@@ -84,7 +84,7 @@ object Release {
         val `exoquery-plugin-kotlin` = "exoquery-plugin-kotlin"
 
         val `exoquery-controller-common` = "exoquery-controller-common"
-        val `exoquery-jdbc` = "exoquery-native"
+        val `exoquery-jdbc` = "exoquery-jdbc"
         val `exoquery-native` = "exoquery-native"
         val `exoquery-android` = "exoquery-android"
     }

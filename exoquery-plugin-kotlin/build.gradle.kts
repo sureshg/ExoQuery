@@ -10,6 +10,7 @@ plugins {
 }
 
 version = extra["pluginProjectVersion"].toString()
+val runtimeVersion = extra["pluginProjectVersion"].toString()
 
 kotlin {
     jvmToolchain(17)
@@ -34,7 +35,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEa
 val thisVersion = version
 
 dependencies {
-    api("io.exoquery:exoquery-runtime")
+    api("io.exoquery:exoquery-runtime:${runtimeVersion}")
 
     compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable")
 
