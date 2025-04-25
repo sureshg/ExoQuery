@@ -75,15 +75,13 @@ principles to the core.
 By using the `capture` function to deliniate relevant code snippets and a compiler-plugin to
 transform them, I can synthesize a SQL query the second your code is compiled in most cases.
 
-You can even see it in the build output in a file:
+You can even see it in the build output in a file. Have a look at the `build/generated/exoquery` directory.
 
-TODO Video
+TODO add picture
 
 ### So I can just use normal Kotlin to write Queries?
 
 That's right! You can use regular Kotlin constructs that you know and love in order to write SQL code including:
-
-TODO double-check these
 
 - Elvis operators
   ```kotlin
@@ -108,7 +106,7 @@ TODO double-check these
       else -> "child"
     } 
   }
-  //> SELECT CASE WHEN p.age >= 18 THEN 'adult' WHEN p.age < 18 AND p.age > 10 THEN 'minor' ELSE 'child' END FROM Person p
+  //>  SELECT CASE WHEN p.age >= 18 THEN 'adult' WHEN p.age < 18 AND p.age > 10 THEN 'minor' ELSE 'child' END AS value FROM Person p
   ```
 - Simple arithmetic, simple functions on datatypes
   ```kotlin
@@ -126,6 +124,7 @@ TODO double-check these
   val query: SqlQuery<Pair<String, String>> = capture {
     Table<Person>().map { p -> p.name to p.age }  
   }
+  //> SELECT p.name, p.age FROM Person p
   ```
   You can use pairs and tuples with the whole row too! See below for examples.
 
@@ -173,8 +172,13 @@ different kinds of things that you can capture:
 For most data types use `param(...)`. For example:
 ```Kotlin
 val runtimeName = "Joe"
-capture { Table<Person>().filter { p -> p.name == param(runtimeName) } }
+val q = capture { Table<Person>().filter { p -> p.name == param(runtimeName) } }
+q.buildFor.Postgres().runOn(myDatabase)
+//> SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ?
 ```
+The ExoQuery infrastructure will know to inject the value of `runtimeName` into the `?`
+placeholder in the prepared-statement of the database driver.
+
 This will work for primitives, and KMP and Java date-types (i.e. from `java.time.*`)
 ExoQuery uses kotlinx.serialization behind the scenes. In some cases you might
 want to use `paramCtx` to create a contextual parameter (Kotlin docs: [contextual-serialization](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#contextual-serialization)) or `paramCustom`
@@ -227,35 +231,164 @@ val output = query.buildFor.Postgres().runOn(controller)
 ```
 
 Have a look at code samples for starter projects here:
-- Basic Java project: 
-- Basic Linux Native project:
-- Android and OSX project: 
+- Basic Java project
+- Basic Linux Native project: TBD
+- Android and OSX project: TBD
 
 # ExoQuery Features
 
 ## Composing Queries
 
+ExoQuery compose allow you to perform functions on SqlQuery instances. These functions are not available outside of a
+compose block becuase the compose block delimiates the boundary of the query. SqlQuery instances created by the
+`Table<MyRow>` function representing simple table elements. Following functional-programming principles, 
+any transformation on any SqlQuery instance work, and work the same way.
+
 ### Map
 
+This is also known as an SQL projection. It allows you to select a subset of the columns in a table.
 ```Kotlin
 val q = capture {
   Table<Person>().map { p -> p.name }
 }
 q.buildFor.Postgres().runOn(myDatabase)
+//> SELECT p.id, p.name FROM Person p
 ```
 
 ### Filter
+
+This is also known as a SQL where clause. It allows you to filter the rows in a table.
 
 ```Kotlin
 val q = capture {
   Table<Person>().filter { p -> p.name == "Joe" }
 }
 q.buildFor.Postgres().runOn(myDatabase)
+//> SELECT p.id, p.name, p.age FROM Person p WHERE p.name = 'Joe'
 ```
 
+If you are using a `capture.select` block, you can also use the `where` function to filter the rows:
+```kotlin
+val q = capture.select {
+  val p = from(Table<Person>())
+  where { p.name == "Joe" }
+}
+```
 
+### Correlated Subqueries
+
+You can use a combine filter and map functions to create correlated subqueries. 
+For example, let's say we want to find all the people over the average age:
+```kotlin
+val q = capture {
+  Table<Person>().filter { p -> p.age > Table<Person>().map { it.age }.avg() }
+}
+//> SELECT p.id, p.name, p.age FROM Person p WHERE p.age > (SELECT avg(p1.age) FROM Person p1)
+```
+
+### SortedBy
+
+The kotlin collections `sortedBy` and `sortedByDescending` functions are also available on SqlQuery instances.
+```kotlin
+val q = capture {
+  Table<Person>().sortedBy { p -> p.name }
+}
+//> SELECT p.id, p.name, p.age FROM Person p ORDER BY p.name
+
+val q = capture {
+  Table<Person>().sortedByDescending { p -> p.name }
+}
+//> SELECT p.id, p.name, p.age FROM Person p ORDER BY p.name DESC
+```
+
+When you want to do advanced sorting (e.g. different sorting for different columns) use a `select` block 
+and the sortBy function inside.
+```kotlin
+val q = capture.select {
+  val p = from(Table<Person>())
+  sortBy(p.name to Asc, p.age to Desc)
+}
+//> SELECT p.id, p.name, p.age FROM Person p ORDER BY p.name ASC, p.age DESC
+```
 
 ### Joins
+
+Use the `capture.select` to do joins as many joins as you need.
+```kotlin
+val q: SqlQuery<Pair<Person, Address>> = 
+  capture.select {
+    val p = from(Table<Person>())
+    val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+    p to a
+  }
+q.buildFor.Postgres().runOn(myDatabase)
+//> SELECT p.id, p.name, p.age, a.ownerId, a.street, a.zip FROM Person p JOIN Address a ON a.personId = p.id
+```
+
+Let's add a left-join:
+```kotlin
+val q: SqlQuery<Pair<Person, Address?>> = 
+  capture.select {
+    val p = from(Table<Person>())
+    val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+    val f = joinLeft(Table<Furnitire>()) { f -> f.locatedAt == a.id }
+    Triple(p, a, f)
+  }
+//> SELECT p.id, p.name, p.age, a.ownerId, a.street, a.zip, f.name, f.locatedAt FROM Person p 
+//  LEFT JOIN Address a ON a.personId = p.id 
+//  LEFT JOIN Furnitire f ON f.locatedAt = a.id
+```
+Notice that the `Address` table is now nullable. This is because the left-join can return null values.
+
+What can go inside of the `capture.select` function is very carefully controlled by exoquery.
+It needs to be one of the following:
+- A `from` statement
+- A `join` or `leftJoin` statement
+- A `where` clause (see the [filter](#filter) section above for more details).
+- A `sortBy` clause (see the [sortBy](#sortedby) section above for more details).
+- A `groupBy` clause (see the [groupBy](#groupby) section below for more details).
+
+You can use all of these features all together. For example:
+```kotlin
+val q: SqlQuery<Pair<Person, Address>> = 
+  capture.select {
+    val p = from(Table<Person>())
+    val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+    where { p.name == "Joe" }
+    sortBy(p.name to Asc, p.age to Desc)
+    groupBy(p.name)
+    p to a
+  }
+
+q.buildFor.Postgres().runOn(myDatabase)
+//> SELECT p.id, p.name, p.age, a.ownerId, a.street, a.city FROM Person p 
+//  INNER JOIN Address a ON p.id = a.ownerId 
+//  WHERE p.age > 18 GROUP BY p.age, a.street ORDER BY p.age ASC, a.street DESC
+```
+
+### GroupBy
+
+Use a `capture.select` function to do groupBy. You can use the `groupBy` function to group by multiple columns.
+```kotlin
+val q: SqlQuery<Pair<Person, Address>> = 
+  capture.select {
+    val p = from(Table<Person>())
+    val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+    groupBy(p.name, a.street)
+    MyData(p.name, a.street, avg(p.age)) // Average age of all people named X on the same street
+  }
+//> SELECT p.name, a.street, avg(p.age) FROM Person p
+```
+
+## SQL Actions
+
+### Insert
+
+### Update
+
+### Delete
+
+### Batch Actions
 
 ## Column and Table Naming
 
@@ -288,14 +421,154 @@ data class CorpCustomer {
 }
 val q = capture { Table<CorpCustomer>() }
 q.buildFor.Postgres().runOn(myDatabase)
-//> 
+//> SELECT x.name, x.num_orders, x.created_at FROM corp_customer x
+```
+
+### Captured Functions
+
+Captured functions allow you to use kotlin functions inside of of blocks. Writing a captured function is as simple as adding
+the `@CapturedFunction` annotation to a function that returns a `SqlQuery<T>` or `SqlExpression<T>` instance.
+Recall that in the introduction we saw a captured function that calculated the P/E ratio of a stock:
+```kotlin
+  @CapturedFunction
+  fun peRatioWeighted(stock: Stock, weight: Double): Double = catpure.expression {
+    (stock.price / stock.earnings) * weight
+  }
+```
+Once this function is defined you can use it inside of a `capture` block like this:
+```kotlin
+capture {
+  Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap/totalWeight) } 
+}
+```
+
+Note that captured functions can call other captured functions, for example:
+```kotlin
+@CapturedFunction
+fun peRationSimple(stock: Stock): Double = catpure.expression {
+  stock.price / stock.earnings
+}
+@CapturedFunction
+fun peRatioWeighted(stock: Stock, weight: Double): Double = catpure.expression {
+  peRationSimple(stock) * weight
+}
+capture {
+  Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap/totalWeight) } 
+}
+```
+
+Also note that captured functions can make use of the context-reciver position. For example, let's make the
+`marketCap` field into a function:
+```kotlin
+@CapturedFunction
+fun Stock.marketCap() = capture.expression {
+    price * sharesOutstanding
+  }
+val q = capture {
+  val totalWeight = Table<Stock>().map { it.marketCap().use }.sum() // A local variable used in the query!
+  Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap().use/totalWeight) }
+}
+println(q.buildFor.Postgres().value)
+// SELECT (stock.price / stock.earnings) * ((this.price * this.sharesOutstanding) / (SELECT sum(this.price * this.sharesOutstanding) FROM Stock it)) AS value FROM Stock stock
+```
+
+### Polymorphic Query Abstraction
+
+Continuing from the section on [captured-functions](#captured-functions) above, captured functions can use generics and polymorphism in order to create highly abstractable query components.
+For example:
+```kotlin
+interface Locateable { val locationId: Int }
+data class Person(val name: String, val age: Int, locationId: Int)
+data class Robot(val model: String, val createdOn: LocalDate, val locationId: Int)
+data class Address(val id: Int, val street: String, val zip: String)
+
+// Now let's create a captured function that can be used with any Locateable object:
+@CapturedFunction
+fun <L: Locateable> joinLocation(locateable: SqlQuery<L>): SqlQuery<Pair<L, Address>> = 
+  capture.select {
+    val l = from(locateable)
+    val a = join(addresses) { a -> a.id == l.locationId }
+    l to a
+  }
+```
+Now I can use this function with the Person table
+```kotlin
+val people: SqlQuery<Pair<Person, Address>> = capture {
+  joinLocation(Table<Person>().filter { p -> p.name == "Joe" })
+}
+people.buildFor.Postgres().runOn(myDatabase)
+//> SELECT p.name, p.age, p.locationId, a.id, a.street, a.zip FROM Person p JOIN Address a ON a.id = p.locationId WHERE p.name = 'Joe'
+```
+As well as the Robot table:
+```kotlin
+val robots: SqlQuery<Pair<Robot, Address>> = capture {
+  joinLocation(Table<Robot>().filter { r -> r.model == "R2D2" })
+}
+//> SELECT r.model, r.createdOn, r.locationId, a.id, a.street, a.zip FROM Robot r JOIN Address a ON a.id = r.locationId WHERE r.model = 'R2D2'
+```
+
+You can then continue to compose the output of this function to get more and more powerful queries!
+
+### Local Variables
+Captured functions can also be used to define local variables inside of a `capture` block. In the introduction we saw
+a query that looked like this:
+```kotlin
+capture {
+  Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap/totalWeight) } 
+}
+```
+Note how I intentionally left the `totalWeight` variable undefined. Let's try to define it as a local varaible:
+```kotlin
+val q =
+  capture {
+    val totalWeight = Table<Stock>().map { it.marketCap().use }.sum() 
+    Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap/totalWeight) } 
+  }
+q.buildFor.Postgres().runOn(myDatabase)
+//> SELECT (stock.price / stock.earnings) * ((this.price * this.sharesOutstanding) / (SELECT sum(this.price * this.sharesOutstanding) FROM Stock it)) AS value FROM Stock stock
 ```
 
 ## Transactions
 
+ExoQuery supports transactions! Once a query or action is built e.g. once you do `.buildFor.Postgres()` you will get
+one of three possbile things:
+1. A `SqlCompiledQuery` object. This is a query that can be executed on the database.
+2. A `SqlCompiledAction` object. This is an action that can be executed on the database.
+3. A `SqlCompiledBatchAction` object This is a SQL batch action, typically it is not supported for transactions.
+
+Once you have imported a ExoQuery runner project (e.g. exoquery-jdbc) and created a DatabaseController
+(e.g. `JdbcControllers.Postgres`), you can run the query or action:
+```kotlin
+val ds: DataSource = ...
+val controller = JdbcControllers.Postgres(ds)
+
+val getJoes = capture {
+  Table<Person>().filter { p -> p.name == "Joe" }
+}.buildFor.Postgres()
+
+fun setJoesToJims(ids: List<String>) = capture {
+  update<Person> { set(name to "Jim").where { p -> p.id in params(ids) } }
+}.buildFor.Postgres()
+
+controller.transaction {
+  val allJoes = getJoes.runOn(controller)
+  // Execute some runtime logic to filter the people we want to update i.e. `shouldActuallyBeUpdated`
+  val someJoes = allJoes.filter { p -> shouldActuallyBeUpdated(p) }
+  setJoesToJims(someJoes).runOn(controller)
+}
+```
+
+
 ## Nested Datatypes
 
-## Captured Functions
+
+
 
 
 ## Parameters
+
+### param
+
+### params
+
+## Dynamic Queries

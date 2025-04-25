@@ -7,6 +7,7 @@ import io.exoquery.xr.copy.*
 import io.decomat.*
 import io.exoquery.util.TraceConfig
 
+// NOTE: Leaving Quill commneted-out code equivalents here for now for reference
 class AdHocReduction(val traceConfig: TraceConfig) {
 
   operator fun invoke(q: Query): XR.Query? =

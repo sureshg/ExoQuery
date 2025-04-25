@@ -1,6 +1,8 @@
 package io.exoquery
 
 import io.exoquery.sql.PostgresDialect
+import io.exoquery.testdata.Address
+import io.exoquery.testdata.Person
 import io.exoquery.util.TraceType
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
@@ -93,5 +95,20 @@ class SelectClauseQueryReq : GoldenSpecDynamic(SelectClauseQueryReqGoldenDynamic
       shouldBeGolden(people.xr, "XR")
       shouldBeGolden(people.build<PostgresDialect>(), "SQL")
     }
+
+  }
+
+  "join + where + groupBy + sortBy" {
+    val people =
+      capture.select {
+        val p = from(Table<Person>())
+        val a = join(Table<Address>()) { a -> p.id == a.ownerId }
+        where { p.age > 18 }
+        groupBy(p.age, a.street)
+        sortBy(p.age to Ord.Asc, a.street to Ord.Desc)
+        p to a
+      }
+    shouldBeGolden(people.xr, "XR")
+    shouldBeGolden(people.build<PostgresDialect>(), "SQL")
   }
 })

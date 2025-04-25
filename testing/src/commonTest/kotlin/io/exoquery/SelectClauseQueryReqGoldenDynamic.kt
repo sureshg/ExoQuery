@@ -48,5 +48,11 @@ object SelectClauseQueryReqGoldenDynamic: GoldenQueryFile {
     "table.emb?.field/sortBy/SQL" to cr(
       "SELECT p.first, p.last, p.age AS second FROM Person p ORDER BY p.age ASC, p.first DESC"
     ),
+    "join + where + groupBy + sortBy/XR" to kt(
+      "select { val p = from(Table(Person)); val a = join(Table(Address)) { p.id == a.ownerId }; where(p.age > 18); groupBy(TupleA2(first = p.age, second = a.street)); sortBy(TupleOrdering)(TupleA2(first = p.age, second = a.street)) }"
+    ),
+    "join + where + groupBy + sortBy/SQL" to cr(
+      "SELECT p.id, p.name, p.age, a.ownerId, a.street, a.city FROM Person p INNER JOIN Address a ON p.id = a.ownerId WHERE p.age > 18 GROUP BY p.age, a.street ORDER BY p.age ASC, a.street DESC"
+    ),
   )
 }

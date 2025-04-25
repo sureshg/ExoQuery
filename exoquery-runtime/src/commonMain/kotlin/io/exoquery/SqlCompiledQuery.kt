@@ -31,14 +31,16 @@ sealed interface ActionKind {
   object Unknown : ActionKind
 }
 
-// TODO value needs to be Token and we need to write a lifter for Token
-//      This probably needs to be something like SqlCompiledQuery<T> which has constructors
-//      SqlCompiledQuery.compileTime<T>(String|Token,Params,serialier<T>=some-default-value) and SqlCompiledQuery.runtime(query:SqlQuery,serialier<T>=some-default-value)
-//      (actually come to think of it, we can probably implement the dynamic path directly and have the staic path replace the build() method if it's possible)
-// needsTokenization is a flag indicating whether we need to call token.build to get the query or if we
-// can just use the value-string. Typically we cannot use the value-string because there is a paramList (since we don't know how many instances of "?" to use)
-// This needs to be checked from the Token at compile-time (also if the dialect requires numbered parameters
-// it is also useful to use Token)
+/**
+ * This is a runnable ExoQuery SqlQuery instance. The `value` variable contains the SQL string.
+ * In order to execute it import a exoquery runner project e.g. exoquery-jdbc, then create a controller and run it. For example:
+ * ```
+ * val ds: DataSource = ...
+ * val controller = JdbcControllers.Postgres(ds)
+ * val myQuery: SqlQuery<Person> = capture { Table<Person>().filter { p -> p.name == "Joe" } }
+ * val result: List<Person> = myQuery.buildFor.Postgres().runOn(controller)
+ * ```
+ */
 data class SqlCompiledQuery<T>(val value: String, override val token: Token, val needsTokenization: Boolean, val label: String?, val debugData: SqlCompiledQuery.DebugData): ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
 

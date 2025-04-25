@@ -24,6 +24,12 @@ object QueryReqGoldenDynamic: GoldenQueryFile {
     "query with filter" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.age > 18"
     ),
+    "filter + correlated isEmpty/XR" to kt(
+      "Table(Person).filter { p -> p.age > Table(Person).map { p -> p.age }.avg_MC() }"
+    ),
+    "filter + correlated isEmpty" to cr(
+      "SELECT p.id, p.name, p.age FROM Person p WHERE p.age > (SELECT avg(p1.age) FROM Person p1)"
+    ),
     "query with flatMap/XR" to kt(
       "Table(Person).flatMap { p -> Table(Address).filter { a -> a.ownerId == p.id } }"
     ),

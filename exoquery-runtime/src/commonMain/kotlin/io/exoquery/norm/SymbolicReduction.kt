@@ -15,6 +15,8 @@ import io.exoquery.xr.copy.*
  * queries. In Wadler's paper, he characterizes them as `for x in P ...``
  * whereas in Quill they are characterized as list comprehensions i.e.
  * `P.flatMap(x => ...)`.
+ *
+ * NOTE: Leaving Quill commneted-out code equivalents here for now for reference
  */
 class SymbolicReduction(val traceConfig: TraceConfig) {
   fun XR.FlatMap.hasTailPositionFlatJoin(): Boolean =

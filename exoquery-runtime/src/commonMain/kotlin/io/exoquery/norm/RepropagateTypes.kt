@@ -11,6 +11,7 @@ import io.exoquery.xr.XRType.*
 import io.exoquery.xr.TypeBehavior.ReplaceWithReduction as RWR
 import io.exoquery.xr.copy.*
 
+// NOTE: Leaving Quill commneted-out code equivalents here for now for reference
 class RepropagateTypes(val traceConfig: TraceConfig): StatelessTransformer {
   val trace: Tracer = Tracer(TraceType.RepropagateTypes, traceConfig, 1)
 

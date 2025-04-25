@@ -20,28 +20,16 @@ class Normalize(override val traceConf: TraceConfig, val disableApplyMap: Boolea
   val AdHocReductionPhase by lazy { AdHocReduction(traceConf) }
   val OrderTermsPhase by lazy { OrderTerms(traceConf) }
 
-//  override def apply(q: Ast): Ast =
-//    super.apply(BetaReduction(q))
-
   // Quill originally did this at the root-level. I think it is fine
   // to just do it for expressions because normalizations will propagate down to them anyway but I'm not 100% sure
   override fun invoke(xr: Expression): Expression =
     super.invoke(BetaReduction(xr).asExpr())
 
-//  override def apply(q: Action): Action =
-//    NormalizeReturningPhase(super.apply(q))
-
   override operator fun invoke(q: Query): Query =
     trace("Avoid Capture and Normalize $q into:") andReturn {
       val reduced = BetaReduction(q).asQuery()
       norm(DealiasPhase(AvoidAliasConflictPhase(reduced, false)))
-      //norm(AvoidAliasConflictPhase(q, false))
     }
-
-//  override def apply(q: Query): Query =
-//    trace"Avoid Capture and Normalize $q into:" andReturn
-//      norm(DealiasPhase(AvoidAliasConflict(q, false)))
-
 
   val applyMapInterp   = Tracer(TraceType.ApplyMap, traceConf, 1)
   val applyMapInstance = ApplyMap(traceConf)
@@ -56,7 +44,6 @@ class Normalize(override val traceConf: TraceConfig, val disableApplyMap: Boolea
   }
 
   private fun norm(q: Query): Query {
-    //fun normIfNew(qry: Query): Query? = if (qry != q) norm(qry) else null
     return NormalizeNestedStructuresPhase(q)?.let {
       demarcate("NormalizeNestedStructures", it)
       norm(it)
@@ -76,25 +63,26 @@ class Normalize(override val traceConf: TraceConfig, val disableApplyMap: Boolea
     ?: q
   }
 
-//  @tailrec
-//  private def norm(q: Query): Query =
-//    q match {
-//      case NormalizeNestedStructuresPhase(query) =>
-//        demarcate("NormalizeNestedStructures")(query)
-//        norm(query)
-//      case ApplyMapPhase(query) =>
-//        demarcate("ApplyMap")(query)
-//        norm(query)
-//      case SymbolicReductionPhase(query) =>
-//        demarcate("SymbolicReduction")(query)
-//        norm(query)
-//      case AdHocReductionPhase(query) =>
-//        demarcate("AdHocReduction")(query)
-//        norm(query)
-//      case OrderTermsPhase(query) =>
-//        demarcate("OrderTerms")(query)
-//        norm(query)
-//      case other =>
-//        other
-//    }
+  // This is the original Quill code that was used to recursively normalize
+  //  @tailrec
+  //  private def norm(q: Query): Query =
+  //    q match {
+  //      case NormalizeNestedStructuresPhase(query) =>
+  //        demarcate("NormalizeNestedStructures")(query)
+  //        norm(query)
+  //      case ApplyMapPhase(query) =>
+  //        demarcate("ApplyMap")(query)
+  //        norm(query)
+  //      case SymbolicReductionPhase(query) =>
+  //        demarcate("SymbolicReduction")(query)
+  //        norm(query)
+  //      case AdHocReductionPhase(query) =>
+  //        demarcate("AdHocReduction")(query)
+  //        norm(query)
+  //      case OrderTermsPhase(query) =>
+  //        demarcate("OrderTerms")(query)
+  //        norm(query)
+  //      case other =>
+  //        other
+  //    }
 }

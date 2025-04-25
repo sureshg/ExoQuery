@@ -10,6 +10,7 @@ import io.exoquery.xr.XR.*
 import io.exoquery.xr.*
 import io.exoquery.xr.copy.*
 
+// NOTE: Leaving Quill commneted-out code equivalents here for now for reference
 class ApplyMap(val traceConfig: TraceConfig) {
 
   val trace: Tracer =

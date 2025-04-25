@@ -9,6 +9,7 @@ import io.exoquery.xr.XR
 import io.exoquery.xr.XR.*
 import io.exoquery.xr.copy.*
 
+// NOTE: Leaving Quill commneted-out code equivalents here for now for reference
 data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boolean, val traceConfig: TraceConfig): StatefulTransformer<Set<String>> {
 
   fun Recurse(state: Set<String>) =

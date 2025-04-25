@@ -4,6 +4,7 @@ import io.exoquery.xr.StatelessTransformer
 import io.exoquery.xr.XR
 
 // Convert all instances of CustomQuery (that are convertable to regular XR).
+// Right now that is the only supported custom query
 object NormalizeCustomQueries: StatelessTransformer {
   override fun invoke(xr: XR.Query): XR.Query =
     when {

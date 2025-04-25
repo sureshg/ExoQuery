@@ -6,6 +6,7 @@ import io.exoquery.xr.XR.*
 import io.decomat.*
 import io.exoquery.xr.*
 
+// NOTE: Leaving Quill commneted-out code equivalents here for now for reference
 class OrderTerms(val traceConfig: TraceConfig) {
 
   operator fun invoke(xr: XR.Query): XR.Query? =

@@ -1,6 +1,7 @@
 package io.exoquery
 
 import io.exoquery.annotation.ExoBuildFunctionLabel
+import io.exoquery.norm.NormalizeCustomQueries
 import io.exoquery.printing.PrintMisc
 import io.exoquery.sql.SqlIdiom
 import io.exoquery.xr.RuntimeBuilder
@@ -13,9 +14,6 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
   fun dyanmic(): SqlQuery<T> = this
 
   fun show() = PrintMisc().invoke(this)
-  // TODO We can build the dynamic path here directly!... and have the static path replace the logic here
-  // TODO this needs to take a Dialect argument that is summoned on the compiler via Class.forName (also do the dynamic path if Class.forName was null and warn the user about that)
-  //      (note there there should also be some kind of global setting (or file-annotation) that makes failures happen in the case of the dynamic path)
 
   /*
   Argument taking the name of a query: (also make buildPretty) to pretty-print it
@@ -50,4 +48,5 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
     copy(xr = xr as? XR.Query ?: xrError("Failed to rebuild SqlQuery with XR of type ${xr::class} which was: ${xr.show()}"), runtimes = runtimes, params = params)
 
   override fun withNonStrictEquality(): SqlQuery<T> = copy(params = params.withNonStrictEquality())
+  fun normalizeSelects(): SqlQuery<T> = copy(xr = NormalizeCustomQueries(xr))
 }

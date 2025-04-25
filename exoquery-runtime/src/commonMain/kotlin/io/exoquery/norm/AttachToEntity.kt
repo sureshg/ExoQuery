@@ -49,6 +49,8 @@ import io.exoquery.xrError
  * }}}
  * This is of course completely incorrect because the ident {a1} should actually
  * be {a} referring to the ident of the outer FlatMap.
+ *
+ * NOTE: Leaving Quill commneted-out code equivalents here for now for reference
  */
 object AttachToEntity {
   fun XR.Query.isEntity() = this is XR.Entity || this is XR.Free

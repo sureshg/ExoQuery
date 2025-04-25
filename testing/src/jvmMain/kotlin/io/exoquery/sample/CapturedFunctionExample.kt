@@ -1,17 +1,8 @@
-package io.exoquery.examples
+package io.exoquery.sample
 
-import io.exoquery.*
 import io.exoquery.annotation.CapturedFunction
-import io.kotest.assertions.print.print
-import io.kotest.core.spec.style.FunSpec
-import org.junit.jupiter.api.Test
-
-class AnotherExample {
-  @Test
-  fun myStuff() {
-    main()
-  }
-}
+import io.exoquery.capture
+import io.exoquery.capture.invoke
 
 fun main() {
   data class Stock(val weight: Double, val sharesOutstanding: Int, val price: Double, val earnings: Double)
