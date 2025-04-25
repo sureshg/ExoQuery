@@ -359,7 +359,7 @@ interface CapturedBlock {
   // Used in groupBy and various other places to convert query to an expression
   // e.g. events.filter(ev -> people.map(p -> customFunction(p.age)).value() > ev.minAllowedAge).value()
   @Dsl
-  fun <T> SqlQuery<T>.value(): SqlExpression<T> = errorCap("The `value` expression of the Query was not inlined")
+  fun <T> SqlQuery<T>.value(): T = errorCap("The `value` expression of the Query was not inlined")
 
   /* ------------------------------------------------------------------------------------------------ */
   /* ----------------------------------------- Composition ------------------------------------------ */

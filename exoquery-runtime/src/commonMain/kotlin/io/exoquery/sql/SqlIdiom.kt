@@ -166,7 +166,7 @@ interface SqlIdiom: HasPhasePrinting {
    * In the AST this would be something like: `GlobalCall("kotlin.Int", "avg", listOf(QueryToExpr( <people.map(_.age)> )))`.
    * Now on an SQL level we don't
    */
-  val XR.QueryToExpr.token get(): Token = head.token
+  val XR.QueryToExpr.token get(): Token = +"(${head.token})"
 
   fun tokenizeMethodCallFqName(name: XR.FqName): Token =
     // TODO this should be per dialect, maybe even configureable. I.e. every dialect should have it's supported MethodCall functions

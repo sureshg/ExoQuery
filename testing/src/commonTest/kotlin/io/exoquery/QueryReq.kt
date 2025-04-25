@@ -45,6 +45,12 @@ class QueryReq : GoldenSpecDynamic(QueryReqGoldenDynamic, Mode.ExoGoldenTest(), 
     shouldBeGolden(people.build<PostgresDialect>())
   }
 
+  "filter + correlated + value" {
+    val people = capture { Table<Person>().filter { p -> p.age > Table<Person>().map { p -> avg(p.age) - min(p.age) }.value() } }
+    shouldBeGolden(people.xr, "XR")
+    shouldBeGolden(people.build<PostgresDialect>())
+  }
+
   "query with flatMap" {
     val people = capture { Table<Person>().flatMap { p -> Table<Address>().filter { a -> a.ownerId == p.id } } }
     shouldBeGolden(people.xr, "XR")

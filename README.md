@@ -123,10 +123,12 @@ That's right! You can use regular Kotlin constructs that you know and love in or
   ```kotlin
   val query: SqlQuery<Pair<String, String>> = capture {
     Table<Person>().map { p -> p.name to p.age }  
+     // or Triple(p.name, p.age, p.companyId), or MyDataClass(p.name, p.age, p.companyId)
   }
   //> SELECT p.name, p.age FROM Person p
   ```
-  You can use pairs and tuples with the whole row too! See below for examples.
+  You can use pairs and tuples with the whole row too! In fact, you can output any simple data-class.
+  See below for examples.
 
 ### What is this `capture` thing?
 
@@ -255,6 +257,15 @@ q.buildFor.Postgres().runOn(myDatabase)
 //> SELECT p.id, p.name FROM Person p
 ```
 
+You can also use the `.map` funtion to perform simple aggreations on tables. For example:
+```kotlin
+val q = capture {
+  Table<Person>().map { p -> Triple(min(p.age), max(p.age), avg(p.age)) }
+}
+q.buildFor.Postgres().runOn(myDatabase)
+//> SELECT min(p.age), max(p.age), avg(p.age) FROM Person p
+```
+
 ### Filter
 
 This is also known as a SQL where clause. It allows you to filter the rows in a table.
@@ -284,6 +295,22 @@ val q = capture {
   Table<Person>().filter { p -> p.age > Table<Person>().map { it.age }.avg() }
 }
 //> SELECT p.id, p.name, p.age FROM Person p WHERE p.age > (SELECT avg(p1.age) FROM Person p1)
+```
+
+Recall that you could table the `.map` function with table aggregations. Let's say you want to get
+not average but also use that together with another aggreagtor (e.g. the average minus the minimum).
+Normally you could use an expression `avg(p.age) + min(p.age)` with a the `.map` function.
+```kotlin
+val customExpr: SqlQuery<Double> = capture.select { Table<Person>().map { p -> avg(p.age) + min(p.age) } }
+```
+If you want to use a statement like this inside of a correlated subquery, we can use the `.value()`
+function inside of a capture block to convert a `SqlQuery<T>` into just `T`.
+```kotlin
+val q = capture {
+  Table<Person>().filter { p -> p.age > Table<Person>().map { p -> avg(p.age) + min(p.age) }.value() }
+}
+q.buildFor.Postgres().runOn(myDatabase)
+//> SELECT p.id, p.name, p.age FROM Person p WHERE p.age > (SELECT avg(p1.age) + min(p1.age) FROM Person p1)
 ```
 
 ### SortedBy

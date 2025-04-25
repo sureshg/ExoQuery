@@ -18,6 +18,12 @@ object QueryReqGoldenDynamic: GoldenQueryFile {
     "query with map" to cr(
       "SELECT p.name AS value FROM Person p"
     ),
+    "map with aggregation/XR" to kt(
+      "Table(Person).map { p -> avg_GC(p.age) }"
+    ),
+    "map with aggregation" to cr(
+      "SELECT avg(p.age) AS value FROM Person p"
+    ),
     "query with filter/XR" to kt(
       "Table(Person).filter { p -> p.age > 18 }"
     ),
@@ -29,6 +35,12 @@ object QueryReqGoldenDynamic: GoldenQueryFile {
     ),
     "filter + correlated isEmpty" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.age > (SELECT avg(p1.age) FROM Person p1)"
+    ),
+    "filter + correlated + value/XR" to kt(
+      "Table(Person).filter { p -> p.age.toDouble_MC() > Table(Person).map { p -> avg_GC(p.age) - min_GC(p.age) }.toExpr }"
+    ),
+    "filter + correlated + value" to cr(
+      "SELECT p.id, p.name, p.age FROM Person p WHERE p.age > (SELECT avg(p1.age) - min(p1.age) FROM Person p1)"
     ),
     "query with flatMap/XR" to kt(
       "Table(Person).flatMap { p -> Table(Address).filter { a -> a.ownerId == p.id } }"

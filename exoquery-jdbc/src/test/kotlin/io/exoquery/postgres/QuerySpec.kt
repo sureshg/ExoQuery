@@ -64,6 +64,15 @@ class QuerySpec : FreeSpec({
     )
   }
 
+  "filter with params list" {
+    val lastNames = listOf("Bloggs", "Doggs")
+    val q = capture { Table<Person>().filter { it.lastName in params(lastNames) } }
+    q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
+      Person(1, "Joe", "Bloggs", 111),
+      Person(2, "Joe", "Doggs", 222)
+    )
+  }
+
   "where" {
     val q = capture { Table<Person>().where { firstName == "Joe" } }
     q.build<PostgresDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
@@ -77,6 +86,25 @@ class QuerySpec : FreeSpec({
     q.build<PostgresDialect>().runOn(ctx) shouldBe listOf(
       Person(1, "Joe", "Bloggs", 111),
       Person(2, "Joe", "Doggs", 222)
+    )
+  }
+
+  "map with aggregations" {
+    val q = capture { Table<Person>().map { p -> Triple(min(p.age), max(p.age), avg(p.age)) } }
+    val query = q.build<PostgresDialect>()
+    val result = query.runOn(ctx)
+    result.size shouldBe 1
+    result[0].first shouldBe 111
+    result[0].second shouldBe 333
+    result[0].third.toInt() shouldBe 222
+  }
+
+  "co-related + valueOf" {
+    val q = capture { Table<Person>().filter { p -> p.age > Table<Person>().map { p -> avg(p.age) }.value() } }
+    val query = q.build<PostgresDialect>()
+    val result = query.runOn(ctx)
+    result shouldContainExactlyInAnyOrder listOf(
+      Person(3, "Jim", "Roogs", 333)
     )
   }
 
