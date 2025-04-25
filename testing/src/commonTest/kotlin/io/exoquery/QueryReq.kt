@@ -32,12 +32,11 @@ class QueryReq : GoldenSpecDynamic(QueryReqGoldenDynamic, Mode.ExoGoldenTest(), 
     shouldBeGolden(people.xr, "XR")
     shouldBeGolden(people.build<PostgresDialect>())
   }
-  // TODO syntax for this is broken, need to fix
-  //"query with where" {
-  //  val people = capture { Table<Person>().where { age > 18 } }
-  //  shouldBeGolden(people.xr, "XR")
-  //  shouldBeGolden(people.build<PostgresDialect>())
-  //}
+  "query with where" {
+    val people = capture { Table<Person>().where { age > 18 } }
+    shouldBeGolden(people.xr, "XR")
+    shouldBeGolden(people.build<PostgresDialect>())
+  }
 
   "filter + correlated isEmpty" {
     val people = capture { Table<Person>().filter { p -> p.age > Table<Person>().map { p -> p.age }.avg() } }

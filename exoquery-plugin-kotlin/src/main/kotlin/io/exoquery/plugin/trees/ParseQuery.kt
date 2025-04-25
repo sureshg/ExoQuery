@@ -29,6 +29,7 @@ import io.exoquery.plugin.symName
 import io.exoquery.plugin.toLocationXR
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.isBatchParam
+import io.exoquery.xr.BetaReduction
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import io.exoquery.xr.of
@@ -175,7 +176,11 @@ object ParseQuery {
       },
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is("where"), Ir.FunctionExpression.withBlock[Is(), Is()]]).then { head, (_, body) ->
         val ident = compRight.function.symbol.owner.extensionReceiverParameter?.makeIdent() ?: parseError("Could not parse the this-receiver for the where clause", expr)
-        XR.Filter(parse(head), ident, ParseExpression.parseFunctionBlockBody(body), expr.loc)
+        // Since the identifier for where clauses is typically going to be $this$where we want to replace with something more innocous e.g. 'x'
+        val whereBodyRaw = ParseExpression.parseFunctionBlockBody(body)
+        val identX = ident.copy(name = "x")
+        val whereBody = BetaReduction(whereBodyRaw, ident to identX).asExpr()
+        XR.Filter(parse(head), identX, whereBody, expr.loc)
       },
       // There are some situations where someone could do capture.expression { ... SqlQuery } and we need to handle that
       // later injecting that into a query-capture with a .use function. For example capture.expression { { p: Person -> flatJoin(addresses, ...) } }.

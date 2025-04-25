@@ -7,14 +7,39 @@ Language-Integrated Querying for Kotlin Mutiplatform
 
 Let's say something like:
 ```kotlin
-data class Person(val name: String, val age: Int)
-
-Table<Person>().map { p -> p.name }
+people.map { p -> p.name }
 ```
+
 Naturally we're pretty sure it should look something like:
 ```sql
 SELECT name FROM Person
 ```
+
+That is why in C# when you write a statement like this:
+```csharp
+var q = people.Select(p => p.name);   // Select is C#'s .map function
+```
+In LINQ we understand that it's this:
+```csharp
+var q = from p in people
+        select p.name
+```
+
+So in Kotlin, let's just do this:
+```kotlin
+val q = capture.select {
+  val p = from(people)
+  p.name
+}
+```
+
+Then build it for a specific SQL dialect and run it on a database!
+```kotlin
+val data: List<Person> = q.buildFor.Postgres().runOn(myDatabase)
+//> SELECT p.name FROM Person p
+```
+
+Welcome to ExoQuery!
 
 ### *...but wait, don't databases have complicated things like joins, case-statements, and subqueries?*
 
@@ -31,11 +56,18 @@ val companies: SqlQuery<Company> = capture { Table<Company>() }
 Here is a query with some Joins:
 ```kotlin
 capture.select {
-  val p = from(people)
-  val a = join(addresses) { a -> a.personId == p.id }
+  val p: Person  = from(people)
+  val a: Address = join(addresses) { a -> a.personId == p.id }
   Data(p.name, a.city)
 }
 //> SELECT p.name, a.city FROM Person p JOIN Address a ON a.personId = p.id
+```
+
+Compare compare to Microsoft LINQ where it would look like this:
+```csharp
+var q = from p in people
+        join a in addresses on a.personId == p.id
+        select Data(p.name, a.city)
 ```
 
 Let's add some case-statements:
@@ -51,17 +83,17 @@ capture.select {
 Now let's try a subquery:
 ```kotlin
 capture.select {
-  val p = from(
+  val (c, p) = from(
     select {
-      val c = from(companies /*SqlQuery<Company>*/)
-      val p = join(people /*SqlQuery<Person>*/) { p -> p.companyId == c.id }
-      p
-    }
+      val c: Company = from(companies)
+      val p: Person  = join(people) { p -> p.companyId == c.id }
+      c to p
+    } // -> SqlQuery<Pair<Company, Person>>
   )
-  val a = join(addresses /*SqlQuery<Address>*/) { a -> a.personId == p.id }
-  Data(p.name, a.city)
+  val a: Address = join(addresses) { a -> a.personId == p.id }
+  Data(p.name, c.name, a.city)
 }
-//> SELECT p.name, a.city FROM (
+//> SELECT p.name, c.name, a.city FROM (
 //   SELECT p.name, p.age, p.companyId FROM Person p JOIN companies c ON c.id = p.companyId
 //  ) p JOIN Address a ON a.personId = p.id
 ```
@@ -274,8 +306,9 @@ val q = capture {
 q.buildFor.Postgres().runOn(myDatabase)
 //> SELECT p.id, p.name, p.age FROM Person p WHERE p.name = 'Joe'
 ```
+You can also do `.where { name == "Joe" }` for a slightly more SQL-diomatic experience but this function is not as powerful.
 
-If you are using a `capture.select` block, you can also use the `where` function to filter the rows:
+Also, if you are using a `capture.select` block, you can also use the `where` function to filter the rows:
 ```kotlin
 val q = capture.select {
   val p = from(Table<Person>())
@@ -527,7 +560,8 @@ use the `where` clause to filter your update query.
 val person = Person(id = 1, "Joe", 44, 123)
 val q =
   capture {
-    update<Person> { setParams(person).excluding(id).where { id == param(joeId) } }
+    update<Person> { setParams(person).excluding(id) }
+      .where { id == param(joeId) }
   }
 q.buildFor.Postgres().runOn(myDatabase)
 //> UPDATE Person SET name = ?, age = ?, companyId = ? WHERE id = 1
@@ -539,21 +573,51 @@ val person = Person(id = 1, "Joe", 44, 123)
 
 val q =
   capture {
-    update<Person> { 
-      setParams(person).excluding(id).where { id == param(joeId) } }
-        .returning { p -> p.id }
+    update<Person> { setParams(person).excluding(id) }
+      .where { id == param(joeId) }
+      .returning { p -> p.id }
   }
 
 q.buildFor.Postgres().runOn(myDatabase) // Also works with SQLite
-//> UPDATE Person SET name = ?, age = ?, companyId = ? WHERE id = 1 RETURNING id
+//> UPDATE Person SET name = ?, age = ?, companyId = ? WHERE id = ? RETURNING id
 q.buildFor.SqlServer().runOn(myDatabase)
-//> UPDATE Person SET name = ?, age = ?, companyId = ? OUTPUT INSERTED.id WHERE id = 1
+//> UPDATE Person SET name = ?, age = ?, companyId = ? OUTPUT INSERTED.id WHERE id = ?
 ```
-
 
 ### Delete
 
+Delete works exactly the same as insert and updated but there is no `set` clause
+since no values are being set.
+
+
+```kotlin
+val joeId = 123
+val q =
+  capture {
+    delete<Person>.where { id == param(joeId) }
+  }
+q.buildFor.Postgres().runOn(myDatabase)
+//> DELETE FROM Person WHERE id = ?
+```
+
+The Delete DSL also supports `returning` clauses:
+```kotlin
+val joeId = 123
+val q = 
+  capture {
+    delete<Person>
+      .where { id == param(joeId) }
+      .returning { p -> p.id }
+  }
+q.buildFor.Postgres().runOn(myDatabase) // Also works with SQLite
+//> DELETE FROM Person WHERE id = ? RETURNING id
+q.buildFor.SqlServer().runOn(myDatabase)
+//> DELETE FROM Person OUTPUT DELETED.id WHERE id = ?
+```
+
 ### Batch Actions
+
+TODO
 
 ## Column and Table Naming
 
@@ -726,9 +790,7 @@ controller.transaction {
 
 ## Nested Datatypes
 
-
-
-
+TODO
 
 ## Parameters
 
