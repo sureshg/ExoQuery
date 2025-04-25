@@ -53,22 +53,19 @@ Now let's try a subquery:
 capture.select {
   val p = from(
     select {
-      val c = from(companies)
-      val p = join(people) { p -> p.companyId == c.id }
+      val c = from(companies /*SqlQuery<Company>*/)
+      val p = join(people /*SqlQuery<Person>*/) { p -> p.companyId == c.id }
       p
     }
   )
-  val a = join(addresses) { a -> a.personId == p.id }
+  val a = join(addresses /*SqlQuery<Address>*/) { a -> a.personId == p.id }
   Data(p.name, a.city)
 }
 //> SELECT p.name, a.city FROM (
 //   SELECT p.name, p.age, p.companyId FROM Person p JOIN companies c ON c.id = p.companyId
 //  ) p JOIN Address a ON a.personId = p.id
 ```
-
-The `select` and `catpure.select` functions return a `SqlQuery<T>` object, just like `Table<T>` does.
-ExoQuery is well-typed, functionally composeable, and deeply respects functional-programming
-principles to the core.
+Notice how the types compose completely fluidly? The output of a subquery is the same datatype as a table.
 
 ### *...but wait, how can you use `==`, or regular `if` or regular case classes in a DSL?*
 
@@ -408,10 +405,151 @@ val q: SqlQuery<Pair<Person, Address>> =
 ```
 
 ## SQL Actions
+ExoQuery has a simple DSL for performing SQL actions.
 
 ### Insert
 
+```kotlin
+val q =
+  capture {
+    insert<Person> { set(name to "Joe", age to 44, companyId to 123) }
+  }
+q.buildFor.Postgres().runOn(myDatabase)
+//> INSERT INTO Person (name, age, companyId) VALUES ('Joe', 44, 123)
+```
+Typically you will use `param` to insert data from runtime values:
+```kotlin
+val nameVal = "Joe"
+val ageVal = 44
+val companyIdVal = 123
+val q =
+  capture {
+    insert<Person> { set(name to param(nameVal), age to param(ageVal), companyId to param(companyIdVal)) }
+  }
+//> INSERT INTO Person (name, age, companyId) VALUES (?, ?, ?)
+```
+
+When this gets to cumbersome (and it will!) see how to insert a whole row.
+
+#### Insert a Whole Row
+
+You can insert and entire `person` object using `setParams`.
+```kotlin
+val person = Person("Joe", 44, 123)
+val q =
+  capture {
+    insert<Person> { setParams(person) }
+  }
+//> INSERT INTO Person (name, age, companyId) VALUES (?, ?, ?)
+```
+
+#### Insert with Exclusions
+
+Wait a second, don't database-model objects like `Person` typically have one or more primary keys key columns
+that need to be excluded during the insert because the database generates them?
+
+Here is how to do that:
+```kotlin
+val person = Person(id = 0, "Joe", 44, 123)
+
+val q =
+  capture {
+    insert<Person> { setParams(person).excluding(id) } // you can add multiple exclusions here e.g. exlcuding(id, id1, id2, ...)
+  }
+//> INSERT INTO Person (name, age, companyId) VALUES (?, ?, ?)
+```
+
+#### Insert with Returning ID
+
+What do we do if we need to know the row id of the row we just inserted?
+The best way to do that is to use the `returning` function to add a `RETURNING` clause to the insert statement.
+```kotlin
+data class Person(val id: Int, val name: String, val age: Int, val companyId: Int)
+
+val person = Person(id = 0, "Joe", 44, 123)
+val q =
+  capture {
+    insert<Person> { setParams(person).excluding(id) }.returning { p -> p.id }
+  }
+
+q.buildFor.Postgres().runOn(myDatabase) // Also works with SQLite
+//> INSERT INTO Person (name, age, companyId) VALUES (?, ?, ?) RETURNING id
+q.buildFor.SqlServer().runOn(myDatabase)
+//> INSERT INTO Person (name, age, companyId) OUTPUT INSERTED.id VALUES (?, ?, ?)
+```
+This will work for Postgres, SQLite, and SqlServer. For other databases use
+`.returningKeys { id }` which will instruct the database-driver to return the
+inserted row keys on a more low level. This function is more limited than what
+`returning` can do and it is prone to various database-driver quirks
+so be sure to test it on your database appropriately.
+
+The `returning` function is more flexible that `returningKeys` because it allows you to
+return not only any column in the inserted row but also collect these columns into
+a composite object of your choice. For example:
+```kotlin
+data class MyOutputData(val id: Int, val name: String)
+
+val person = Person(id = 0, "Joe", 44, 123)
+
+val q =
+  capture {
+    insert<Person> { setParams(person).excluding(id) }
+      .returning { p -> MyOutputData(p.id, p.name + "-suffix") }
+  }
+
+val output: List<MyOutputData> = q.buildFor.Postgres().runOn(myDatabase)
+//> INSERT INTO Person (name, age, companyId) VALUES (?, ?, ?) RETURNING id, name || '-suffix' AS name
+```
+
 ### Update
+
+The update statement is similar to the insert statement. You can use the `set` function to set the values of the 
+columns you want to update and typically you will use `param` to set SQL placeholders for runtime values. 
+Use a `.where` clause to filter your update query.
+```kotlin
+val joeName = "Joe"
+val joeAge = 44
+val joeId = 123
+
+val q =
+  capture {
+    update<Person> { set(name to param(joeName), age to param(joeAge))
+      .where { id == param(joeId) } }
+  }
+q.buildFor.Postgres().runOn(myDatabase)
+// > UPDATE Person SET name = ?, age = ?, companyId = ? WHERE id = 1
+```
+
+Similar to INSERT, you can use `setParams` to set columns from the entire `person` object.
+Combine this with `excluding` to exclude the primary key column from the update statement and
+use the `where` clause to filter your update query.
+```kotlin
+val person = Person(id = 1, "Joe", 44, 123)
+val q =
+  capture {
+    update<Person> { setParams(person).excluding(id).where { id == param(joeId) } }
+  }
+q.buildFor.Postgres().runOn(myDatabase)
+//> UPDATE Person SET name = ?, age = ?, companyId = ? WHERE id = 1
+```
+
+You can also use a `returning` clause to return the updated row if your database supports it.
+```kotlin
+val person = Person(id = 1, "Joe", 44, 123)
+
+val q =
+  capture {
+    update<Person> { 
+      setParams(person).excluding(id).where { id == param(joeId) } }
+        .returning { p -> p.id }
+  }
+
+q.buildFor.Postgres().runOn(myDatabase) // Also works with SQLite
+//> UPDATE Person SET name = ?, age = ?, companyId = ? WHERE id = 1 RETURNING id
+q.buildFor.SqlServer().runOn(myDatabase)
+//> UPDATE Person SET name = ?, age = ?, companyId = ? OUTPUT INSERTED.id WHERE id = 1
+```
+
 
 ### Delete
 

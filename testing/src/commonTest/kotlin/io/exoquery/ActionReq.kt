@@ -47,6 +47,7 @@ class ActionReq: GoldenSpecDynamic(ActionReqGoldenDynamic, Mode.ExoGoldenTest(),
       val build = q.build<PostgresDialect>()
       shouldBeGolden(q.xr, "XR")
       shouldBeGolden(build, "SQL")
+      shouldBeGolden(q.buildFor.SqlServer(), "SQL-SqlServer")
       shouldBeGolden(build.actionReturningKind.toString(), "returningType")
     }
     "with returning - multiple" {
@@ -56,6 +57,7 @@ class ActionReq: GoldenSpecDynamic(ActionReqGoldenDynamic, Mode.ExoGoldenTest(),
       val build = q.build<PostgresDialect>()
       shouldBeGolden(q.xr, "XR")
       shouldBeGolden(build, "SQL")
+      shouldBeGolden(q.buildFor.SqlServer(), "SQL-SqlServer")
       shouldBeGolden(build.actionReturningKind.toString(), "returningType")
     }
     "with returning params" {
@@ -125,6 +127,7 @@ class ActionReq: GoldenSpecDynamic(ActionReqGoldenDynamic, Mode.ExoGoldenTest(),
       val build = q.build<PostgresDialect>()
       shouldBeGolden(q.xr, "XR")
       shouldBeGolden(build, "SQL")
+      shouldBeGolden(q.buildFor.SqlServer(), "SQL-SqlServer")
       shouldBeGolden(build.actionReturningKind.toString(), "returningType")
     }
     "with returningKeys" {
