@@ -4,6 +4,7 @@ import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.Connection
 
@@ -14,6 +15,12 @@ object Users : IntIdTable() {
   val age = integer("age")
 }
 
+object Addresses: IntIdTable() {
+  val ownerId = reference("owner_id", Users)
+  val street = varchar("street", 100)
+  val city = varchar("city", 50)
+}
+
 fun databaseOps(emb: EmbeddedPostgres) {
   // Database connection
   val db = Database.connect(emb.postgresDatabase)
@@ -22,26 +29,21 @@ fun databaseOps(emb: EmbeddedPostgres) {
     // Ensure tables exist
     SchemaUtils.create(Users)
 
-    // Insert sample data
-    val userId = Users.insertAndGetId {
-      it[name] = "John Doe"
-      it[email] = "john.doe@example.com"
-      it[age] = 25
-    }
-
-
-    println("Inserted user with ID: $userId")
-
     // Custom query using SQL DSL
-    val sql =
-      Users.select(
-        Users.name,
-        Case().When(Users.age greater 18, stringLiteral("CAN_DRIVE"))
-          .Else(stringLiteral("CANNOT_DRIVE"))
-          .alias("can_drive")
-      ) .prepareSQL(QueryBuilder(false))
+//    val sql =
+//      Users.select(Users.name).where(
+//        (Users.name eq stringLiteral("joe"))
+//      )
 
-    println(sql)
+    val u = Users.alias("u")
+    val a = Addresses.alias("a")
+
+    val sql =
+      u.join(a, JoinType.INNER, Users.id, Addresses.ownerId)
+        .select(Users.id, Users.name, Addresses.street)
+
+    val rs = sql.execute(this)
+    println(rs)
   }
 }
 
