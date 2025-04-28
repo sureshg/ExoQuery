@@ -1,9 +1,19 @@
 # ExoQuery
-Language-Integrated Querying for Kotlin Mutiplatform
+Language Integrated Query for Kotlin Multiplatform
+
+* SQL Queries at Compile Time
+* Forget `eq`, use regular `==`
+* Forget `Case().When`, use regular `if` and `when`.
+* Forget `Column<T>`, use regular primitives! 
+* Select, Join, Insert, Update, and Delete, and Batch!
+* Functional, Composeable, Powerful, and Fun!
+
+[ExoQuery](https://github.com/user-attachments/assets/c3089ca8-702c-406c-9e11-42fe0f38d074)
 
 ## Introduction
 
 ### *Question: Why does querying a database need to be any harder than traversing an array?*
+---
 
 Let's say something like:
 ```kotlin
@@ -41,7 +51,9 @@ val data: List<Person> = q.buildFor.Postgres().runOn(myDatabase)
 
 Welcome to ExoQuery!
 
+---
 ### *...but wait, don't databases have complicated things like joins, case-statements, and subqueries?*
+---
 
 Let's take some data:
 ```kotlin
@@ -99,16 +111,23 @@ capture.select {
 ```
 Notice how the types compose completely fluidly? The output of a subquery is the same datatype as a table.
 
+---
 ### *...but wait, how can you use `==`, or regular `if` or regular case classes in a DSL?*
+---
 
 By using the `capture` function to deliniate relevant code snippets and a compiler-plugin to
 transform them, I can synthesize a SQL query the second your code is compiled in most cases.
 
+<img src="https://github.com/user-attachments/assets/aafeaa92-ea35-4c43-a1fc-a532f66583b6" width=50% height=50%>
+
+<br />
 You can even see it in the build output in a file. Have a look at the `build/generated/exoquery` directory.
 
-TODO add picture
+<img src="https://github.com/user-attachments/assets/fe00c574-ef03-4657-898b-afd37ef16e99" width=50% height=50%>
 
-### So I can just use normal Kotlin to write Queries?
+---
+### *So I can just use normal Kotlin to write Queries?*
+---
 
 That's right! You can use regular Kotlin constructs that you know and love in order to write SQL code including:
 
@@ -159,7 +178,9 @@ That's right! You can use regular Kotlin constructs that you know and love in or
   You can use pairs and tuples with the whole row too! In fact, you can output any simple data-class.
   See below for examples.
 
-### What is this `capture` thing?
+---
+### *What is this `capture` thing?*
+---
 
 The `capture` function is how ExoQuery knows whot code to capture inside of the Kotlin
 compiler plugin in order to be transformed into SQL. This is how ExoQuery is able to
@@ -191,14 +212,16 @@ different kinds of things that you can capture:
     { p: Person -> p.name == "Joe" }
   }
   ```
+  
   You can them use them with normal queries like this:
   ```kotlin
   // The .use function changes it from SqlExpression<(Person) -> Boolean> to just (Person) -> Boolean
   // you can only use it inside of a `capture` block. 
   capture { Table<Person>().filter { p -> nameIsJoe.use(p) } }
   ```
-
-### How do I use normal runtime data inside my SQL captures?
+---
+### *How do I use normal runtime data inside my SQL captures?*
+---
 
 For most data types use `param(...)`. For example:
 ```Kotlin
