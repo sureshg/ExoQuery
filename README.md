@@ -1195,7 +1195,8 @@ TBD
 
 # In the Nuts and Bolts
 
-> WARNING: This section is not for the faint of heart. Proceed with Caution!
+> WARNING: This section is not for the faint of heart. It is a deep-dive into the more obscure parts of ExoQuery,
+> and is not necessary to understand in order to use ExoQuery effectively. Please proceed with caution.
 
 ExoQuery is based on my learnings from the [Quill](https://github.com/zio/zio-quill) Language Integrated Query library
 that I have maintained for the better part of a decade. It incorporates fundamental ideas from Functional Programming,
