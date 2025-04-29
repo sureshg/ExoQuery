@@ -72,5 +72,11 @@ object QueryReqGoldenDynamic: GoldenQueryFile {
     "query with unionAll - symbolic" to cr(
       "(SELECT p.id, p.name, p.age FROM Person p WHERE p.age > 18) UNION ALL (SELECT p1.id, p1.name, p1.age FROM Person p1 WHERE p1.age < 18)"
     ),
+    "query with surrounding free/XR" to kt(
+      """free(", ${'$'}{Table(Person).filter { p -> p.name == Joe }},  FOR UPDATE").asPure()"""
+    ),
+    "query with surrounding free" to cr(
+      "SELECT p.id AS id, p.name AS name, p.age AS age FROM Person p WHERE p.name = 'Joe' FOR UPDATE"
+    ),
   )
 }

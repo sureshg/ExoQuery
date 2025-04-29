@@ -70,5 +70,12 @@ class QueryReq : GoldenSpecDynamic(QueryReqGoldenDynamic, Mode.ExoGoldenTest(), 
     shouldBeGolden(people.xr, "XR")
     shouldBeGolden(people.build<PostgresDialect>())
   }
+  "query with surrounding free" {
+    val q = capture {
+      free("${Table<Person>().filter { p -> p.name == "Joe" }} FOR UPDATE").asPure<SqlQuery<Person>>()
+    }
+    shouldBeGolden(q.xr, "XR")
+    shouldBeGolden(q.build<PostgresDialect>())
+  }
 
 })

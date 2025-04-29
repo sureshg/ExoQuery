@@ -238,7 +238,7 @@ ${ir?.dumpSimple()}
 
 val additionalPrint = if (additionalHeading.isNotEmpty()) " ($additionalHeading)" else ""
 
-val irsWithUnpacks = ir?.map { elem -> elem.prepareForPrinting() }
+val irsWithUnpacks = ir //ir?.map { elem -> elem.prepareForPrinting() }
 
 return """
 ***

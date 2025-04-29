@@ -66,16 +66,6 @@ class TransformCapturedBatchAction(val superTransformer: VisitTransformExpressio
   override fun transform(expression: IrCall): IrExpression {
     val (xr, dynamics, batchCollection) = parseCapturedBatchAction(expression, superTransformer)
 
-    //val res =
-    //  try {
-    //    val encode = EncodingXR.protoBuf.encodeToHexString(xr as XR) // Downcasting breaks it, otherwise is fine
-    //    val decode = EncodingXR.protoBuf.decodeFromHexString<XR.Batching>(encode)
-    //    decode
-    //  } catch (ex: Throwable) {
-    //    ex.stackTraceToString()
-    //  }
-    //logger.error("--------------- TransformCapturedBatchAction ----------------\n${xr.showRaw()}\n${res}")
-
     val paramsExprModel = dynamics.makeParams()
     val newSqlAction =
       if (dynamics.noRuntimes()) {

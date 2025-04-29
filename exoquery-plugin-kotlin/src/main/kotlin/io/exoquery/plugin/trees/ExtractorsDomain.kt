@@ -49,7 +49,9 @@ object ExtractorsDomain {
     context(CX.Scope, CX.Symbology)
     operator fun <AP : Pattern<IrExpression>, BP : Pattern<IrType>> get(x: AP, y: BP) =
       customPattern2("SqlBuildFunction", x, y) { call: IrCall ->
-        call.match(
+        if (!matches(call))
+          null
+        else call.match(
           case(Ir.Call.FunctionMemN[Is(), Is { isNamedCorrectly(it) }, Is(/*Args that we don't match on here*/)]).thenIf { sqlQueryExpr, _ -> isCompileableType(sqlQueryExpr.type) }.thenThis { sqlQueryExpr, _ ->
             val dialectType = this.typeArguments.first() ?: parseError(
               "Need to pass a constructable dialect to the build method but no argument was provided",

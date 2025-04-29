@@ -877,8 +877,20 @@ val q = capture {
 Free blocks are also useful for adding information before/after an entire query. For example:
 ```kotlin
 val q = capture {
-  free("${Table<Person>().filter { p -> p.name == "Joe" }} FOR UPDATE")
+  free("${Table<Person>().filter { p -> p.name == "Joe" }} FOR UPDATE").asPure<SqlQuery<Person>>()
 }
+```
+
+Free blocks can even be used with Action (i.e. insert, update, delete) statements:
+```kotlin
+val q = capture {
+  insert<Person> { setParams(Person(1, "Joe", "Bloggs", 111)) }
+}
+val qq = capture {
+  free("SET IDENTITY_INSERT Person ON ${q} SET IDENTITY_INSERT Person OFF").asPure<SqlAction<Person, Long>>()
+}
+qq.build<SqlServerDialect>().runOn(ctx)
+//> SET IDENTITY_INSERT Person ON  INSERT INTO Person (id, name, age, companyId) VALUES (?, ?, ?, ?) SET IDENTITY_INSERT Person OFF
 ```
 
 ## Parameters and Serialization

@@ -210,9 +210,23 @@ final data class FlattenSqlQuery(
 class SqlQueryApply(val traceConfig: TraceConfig) {
   val trace: Tracer = Tracer(TraceType.SqlQueryConstruct, traceConfig, 1)
 
-  operator fun invoke(query: XR.Query): SqlQueryModel =
+  fun of(query: XR.Query): SqlQueryModel =
+    invoke(query, true)
+
+  private fun invoke(query: XR.Query, topLevel: Boolean = false): SqlQueryModel =
     with(query) {
       when(this) {
+        // If at the top level of the query there's a Free, do NOT wrap it into a FlattenSqlQuery
+        // because if you do things like 'SELECT ... FOR UPDATE' will become inoperable (as they need to be on the top level)
+        is XR.Free if topLevel ->
+          trace("Construct TopLevel from: Free") andReturn {
+            TopLevelFree(this, type)
+          }
+        is XR.ExprToQuery if this.head is XR.Free && topLevel ->
+          trace("Construct TopLevel from: ExprToQuery") andReturn {
+            TopLevelFree(this.head, type)
+          }
+
         is XR.Union ->
           trace("Construct SqlQuery from: Union") andReturn {
             SetOperationSqlQuery(invoke(a), UnionOperation, invoke(b), query.type)
@@ -248,7 +262,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
         else ->
           trace("Construct SqlQuery from: Query").andReturn {
-  // TODO need to parse interpolations
+            // TODO need to parse interpolations
             flatten(this, XR.Ident("x", type, XR.Location.Synth))
           }
       }

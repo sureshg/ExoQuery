@@ -43,7 +43,7 @@ interface SqlIdiom: HasPhasePrinting {
 
   fun prepareQuery(xr: XR.Query): SqlQueryModel {
     val q = normalizeQuery(xr)
-    val sqlQuery = SqlQueryApply(traceConf)(q)
+    val sqlQuery = SqlQueryApply(traceConf).of(q)
     val root = { q: SqlQueryModel -> q }
     val output =
       root
@@ -355,12 +355,12 @@ interface SqlIdiom: HasPhasePrinting {
         // Right now we are not removing extra select clauses here (via RemoveUnusedSelects) since I am not sure what
         // kind of impact that could have on selects. Can try to do that in the future.
         if (Globals.querySubexpand) {
-          val nestedExpanded = ExpandNestedQueries(::joinAlias)(SqlQueryApply(traceConf)(this))
+          val nestedExpanded = ExpandNestedQueries(::joinAlias)(SqlQueryApply(traceConf).of(this))
           // TODO Need to implement
           //RemoveExtraAlias(strategy)(nestedExpanded).token
           nestedExpanded.token
         } else
-          SqlQueryApply(traceConf)(this).token
+          SqlQueryApply(traceConf).of(this).token
       }
     }
   }
