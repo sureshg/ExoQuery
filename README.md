@@ -4,8 +4,8 @@ Language Integrated Query for Kotlin Multiplatform
 * SQL Queries at Compile Time
 * Forget `eq`, use regular `==`
 * Forget `Case().When`, use regular `if` and `when`.
-* Forget `Column<T>`, use regular primitives! 
-* Select, Join, Insert, Update, and Delete, and Batch!
+* Forget `Column<T>`, use regular primitives!
+* Cross-Platform: JVM, iOS, Android, Linux, Windows, MacOS, JS-coming soon!
 * Functional, Composeable, Powerful, and Fun!
 
 [ExoQuery](https://github.com/user-attachments/assets/c3089ca8-702c-406c-9e11-42fe0f38d074)
@@ -57,9 +57,10 @@ Welcome to ExoQuery!
 
 Let's take some data:
 ```kotlin
-data class Person(val name: String, val age: Int, val companyId: Int)
-data class Address(val city: String, val personId: Int)
-data class Company(val name: String, val id: Int)
+@Ser data class Person(val name: String, val age: Int, val companyId: Int)
+@Ser data class Address(val city: String, val personId: Int)
+@Ser data class Company(val name: String, val id: Int)
+// Going to use @Ser as a concatenation of @Serializeable for now
 val people: SqlQuery<Person> = capture { Table<Person>() }
 val addresses: SqlQuery<Address> = capture { Table<Address>() }
 val companies: SqlQuery<Company> = capture { Table<Company>() }
@@ -285,11 +286,16 @@ val output = query.buildFor.Postgres().runOn(controller)
 ```
 
 Have a look at code samples for starter projects here:
-- Basic Java project
+- Basic Java project - https://github.com/ExoQuery/exoquery-sample-jdbc
 - Basic Linux Native project: TBD
 - Android and OSX project: TBD
 
 # ExoQuery Features
+
+ExoQuery has a plethora of features that allow you to write SQL queries, these are enumerated below. Instead
+of using reflection to encode and decode data, ExoQuery builds on top of the [Terpal-SQL](https://github.com/ExoQuery/terpal-sql)  database controller
+in order to encode and decode Kotlin data classes in a fully cross-platform way. Although you do not need data classes
+to be `@Serializeable` in order to build the actual queries, you do need it in order to run them.
 
 ## Composing Queries
 
@@ -640,7 +646,24 @@ q.buildFor.SqlServer().runOn(myDatabase)
 
 ### Batch Actions
 
-TODO
+Batch queries are supported (only JDBC for now) for insert, update, and delete actions as well as all of the
+features they support (e.g. returning, excluding, etc.).
+```kotlin
+val people = listOf(
+  Person(id = 0, name = "Joe", age = 33, companyId = 123),
+  Person(id = 0, name = "Jim", age = 44, companyId = 456),
+  Person(id = 0, name = "Jack", age = 55, companyId = 789)
+)
+val q =
+  capture { p ->
+    capture.batch(people) { p -> insert<Person> { set(name to param(p.name), age to param(p.age), companyId to (p.companyId)) } }
+  }
+
+q.buildFor.Postgres().runOn(myDatabase)
+//> INSERT INTO Person (name, age, companyId) VALUES (?, ?, ?)
+```
+This will tell the JDBC driver to use a PreparedStatement with `.addBatch()` and `executeBatch()` between which every
+insert will be executed. Batch queries for update and delete work the same way.
 
 ## Column and Table Naming
 
@@ -811,14 +834,247 @@ controller.transaction {
 ```
 
 
-## Nested Datatypes
+## Parameters and Serialization
 
-TODO
-
-## Parameters
+ExoQuery builds on top of kotlinx.serialization in order to encode/decode information into SQL prepared-statements and result-sets.
+The param function `param` is used to bring runtime data into `capture` functions which are processed at compile-time.
+It does this in an SQL-injection-proof fashion by using parameterized queries on the driver-level.
+```kotlin
+val runtimeName = "Joe"
+val q = capture { Table<Person>().filter { p -> p.name == param(runtimeName) } }
+q.buildFor.Postgres().runOn(myDatabase)
+//> SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ?
+```
 
 ### param
 
+The following data-types can be used with `param`
+- Primitives: String, Int, Long, Short, Byte, Float, Double, Boolean
+- Time Types: `java.util.Date`, LocalDate, LocalTime, LocalDateTime, ZonedDateTime, Instant, OffsetTime, OffsetDateTime
+- Kotlin Multiplatform Time Types: `kotlinx.datetime.LocalDate`, `kotlinx.datetime.LocalTime`, `kotlinx.datetime.LocalDateTime`, `kotlinx.datetime.Instant`
+- SQL Time Types: `java.sql.Date`, `java.sql.Timestamp`, `java.sql.Time`
+- Other: BigDecimal, ByteArray
+- Note that in all the time-types Nano-second granularity is not supported. It will be rounded to the nearest millisecond.
+
+Note that for Kotlin native things like `java.sql.Date` and `java.sql.Time` do not exist. Kotlin Multiplatform uses `kotlinx.datetime` objects instead.
+> If you've used [Terpal-SQL](https://github.com/ExoQuery/terpal-sql) you'll notice these are the same as the Wrapped-Types that it supports.
+> This is because Terpal-SQL and ExoQuery use the same underlying Database Controllers.
+
 ### params
 
+If you want to do in-set SQL checks with runtime collections, use the `params` function:
+```kotlin
+val runtimeNames = listOf("Joe", "Jim", "Jack")
+val q = capture { Table<Person>().filter { p -> p.name in params(runtimeNames) } }
+q.buildFor.Postgres().runOn(myDatabase)
+//> SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN (?, ?, ?)
+```
+Internally this is handled almost the same way as `param`. It finds an appropriate kotlinx.serialization
+Serializer and uses it to encode the collection into a SQL prepared-statement.
+
+(Note are also `paramsCustom` and `paramsCtx` functions that are analogous to `paramCustom` and `paramCtx` described below.)
+
+### paramCustom
+
+If you want to use a custom serializer for a specific type, you can use the `paramCustom` function.
+This is frequently useful when you want to map structured-data to a primitive type:
+```kotlin
+// Define a serializer for the custom type
+object EmailSerializer : KSerializer<Email> {
+  override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Email", PrimitiveKind.STRING)
+  override fun serialize(encoder: Encoder, value: Email) = encoder.encodeString(value.value)
+  override fun deserialize(decoder: Decoder) = Email(decoder.decodeString())
+}
+
+val email: Email = Email.safeEncode("joe@joesplace.com")
+val q = capture {
+  Table<User>().filter { p -> p.email == paramCustom(email, EmailSerializer) }
+}
+```
+
+If you're wondering what the User class looks like, remember that using Kotlin serialization,
+this kind of data most likely uses a [property-based-serialization](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-on-a-property) 
+annotation!
+
+```kotlin
+@Serializable
+data class User(
+  val id: Int,
+  val name: String,
+  @Serializable(with = EmailSerializer::class)
+  val email: Email
+)
+```
+
+You can essentially think of `paramCustom` as way to way to bring custom-serialized entities into a capture block. The way they are set up
+on the data-class coming out of the Query can be a [property-based](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-on-a-property) serializer, 
+a [particular-type](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-for-a-particular-type) serializer,
+a [file-specified](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-for-a-particular-type) serializer,
+or even a [typealias-serializer](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-for-a-particular-type) serializer.
+When you want to any of thse kinds of things brought in as `param` into a `capture` block, use `paramCustom` to do that.
+
+
+### paramCtx
+
+The `paramCtx` function allows you to use [contextual-serialization](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#contextual-serialization) 
+for a specific type. Essentially this is like telling ExoQuery, and kotlinx.serialization "don't worry about not having a serializer here... I got this."
+This means that you eventually need to provide a low-level Database-Driver encoder/decoder pair into Database-Controller that you are going to use.
+
+
+Lets say for example that you have a highly customized encoded type that can only be processed correctly at a low level.
+```kotlin
+data class ByteContent(val bytes: InputStream) {
+  companion object {
+    fun bytesFrom(input: InputStream) = ByteContent(ByteArrayInputStream(input.readAllBytes()))
+  }
+}
+```
+Then when creating the Database-Controller, provide a low-level encoder/decoder pair:
+```kotlin
+val myDatabase = object: JdbcControllers.Postgres(postgres.postgresDatabase) {
+  override val additionalDecoders =
+    super.additionalDecoders + JdbcDecoderAny.fromFunction { ctx, i -> ByteContent(ctx.row.getBinaryStream(i)) }
+  override val additionalEncoders =
+    super.additionalEncoders + JdbcEncoderAny.fromFunction(Types.BLOB) { ctx, v: ByteContent, i -> ctx.stmt.setBinaryStream(i, v.bytes) }
+}
+```
+
+Then you can execute queries using `ByteContent` instances like this:
+```kotlin
+val bc: ByteContent = ByteContent.bytesFrom(File("myfile.txt").inputStream())
+val q = capture {
+  Table<MyBlobTable>().filter { b -> b.content == paramCtx(bc) }
+}
+q.buildFor.Postgres().runOn(myDatabase)
+```
+
+If you are wondering how what `MyBlobTable` looks like, it is a simple data-class with a `ByteContent` field
+that specifies a contextual-serializer. This is in fact *required* so that you can get instances of `MyBlobTable`
+out of the database.
+```kotlin
+@Serializable
+data class Image(val id: Int, @Contextual val content: ByteContent)
+```
+
+Without this `q.buildFor.Postgres()` will work but `.runOn(myDatabase)` will not.
+
+> Note that this section is largely taken from [Custom Primitives](https://github.com/ExoQuery/terpal-sql?tab=readme-ov-file#custom-primitives)
+> in the Terpal-SQL Database Controller documentation which also points to a code-sample for a [Contextual Column Clob](https://github.com/ExoQuery/terpal-sql/blob/main/terpal-sql-jdbc/src/test/kotlin/io/exoquery/sql/examples/ContextualColumnCustom.kt).
+> If you are having any difficulty getting the above example to work with the Database-Controller, have a look at the link above.
+
+
+
+### Playing well with other Kotlinx Formats
+
+When using ExoQuery with kotlinx-serialization with other formats such as JSON in real-world situations, you may
+frequently need either different encodings or even entirely different schemas for the same data. For example, you may
+want to encode a `LocalDate` using the SQL `DATE` type, but when sending the data to a REST API you may want to encode
+the same `LocalDate` as a `String` in ISO-8601 format (i.e. using DateTimeFormatter.ISO_LOCAL_DATE).
+
+There are several ways to do this in Kotlinx-serialization, I will discuss two of them.
+
+#### Using a Contextual Serializer
+The simplest way to have a different encoding for the same data in different contexts is to use a contextual serializer.
+```kotlin
+@Serializable
+data class Customer(val id: Int, val firstName: String, val lastName: String, @Contextual val createdAt: LocalDate)
+
+// Database Schema:
+// CREATE TABLE customers (id INT, first_name TEXT, last_name TEXT, created_at DATE)
+
+// This Serializer encodes the LocalDate as a String in ISO-8601 format and it will only be used for JSON encoding.
+object DateAsIsoSerializer: KSerializer<LocalDate> {
+  override val descriptor = PrimitiveSerialDescriptor("LocalDate", PrimitiveKind.STRING)
+  override fun serialize(encoder: Encoder, value: LocalDate) = encoder.encodeString(value.format(DateTimeFormatter.ISO_LOCAL_DATE))
+  override fun deserialize(decoder: Decoder): LocalDate = LocalDate.parse(decoder.decodeString(), DateTimeFormatter.ISO_LOCAL_DATE)
+}
+
+// When working with the database, the LocalDate will be encoded as a SQL DATE type. The Terpal Driver knows
+// will behave this way by default when a field is marked as @Contextual.
+val ctx = JdbcController.Postgres.fromConfig("mydb")
+val c = Customer(1, "Alice", "Smith", LocalDate.of(2021, 1, 1))
+val q = capture {
+  insert<Customer> { set(firstName to param(c.firstName), lastName to param(c.lastName), createdAt to paramCtx(c.createdAt)) }
+}
+q.buildFor.Postgres().runOn(ctx)
+//> INSERT INTO customers (first_name, last_name, created_at) VALUES (?, ?, ?)
+
+// Then later when encoding the data as JSON, the make sure to specify the DateAsIsoSerializer in the serializers-module.
+val json = Json {
+  serializersModule = SerializersModule {
+    contextual(LocalDate::class, DateAsIsoSerializer)
+  }
+}
+val jsonCustomer = json.encodeToString(Customer.serializer(), customer)
+println(jsonCustomer)
+//> {"id":1,"firstName":"Alice","lastName":"Smith","createdAt":"2021-01-01"}
+```
+
+The Terpal-SQL repository has a useful code sample relevant to this use-case.
+See the [Playing Well using Different Encoders](terpal-sql-jdbc/src/test/kotlin/io/exoquery/sql/examples/PlayingWell_DifferentEncoders.kt)
+example for more details.
+
+#### Using Row-Surrogate Encoder
+When the changes in encoding between the Database and JSON are more complex, you may want to use a row-surrogate encoder.
+
+A row-surrogate encoder will take a data-class and copy it into another data-class (i.e. the surrogate data-class) whose schema is appropriate
+for the target format. The surrogate data-class needs to also be serializable and know how to create itself from the original data-class.
+
+```kotlin
+// Create the "original" data class
+@Serializable
+data class Customer(
+  val id: Int, 
+  val firstName: String, 
+  val lastName: String, 
+  @Serializable(with = DateAsIsoSerializer::class) val createdAt: LocalDate
+)
+
+// Create the "surrogate" data class
+@Serializable
+data class CustomerSurrogate(val id: Int, val firstName: String, val lastName: String, @Contextual val createdAt: LocalDate) {
+  fun toCustomer() = Customer(id, firstName, lastName, createdAt)
+  companion object {
+    fun fromCustomer(customer: Customer): CustomerSurrogate {
+      return CustomerSurrogate(customer.id, customer.firstName, customer.lastName, customer.createdAt)
+    }
+  }
+}
+```
+
+Then create a surrogate serializer which uses the surrogate data-class to encode the original data-class.
+```kotlin
+object CustomerSurrogateSerializer: KSerializer<Customer> {
+  override val descriptor = CustomerSurrogate.serializer().descriptor
+  override fun serialize(encoder: Encoder, value: Customer) = 
+    encoder.encodeSerializableValue(CustomerSurrogate.serializer(), CustomerSurrogate.fromCustomer(value))
+  override fun deserialize(decoder: Decoder): Customer = 
+    decoder.decodeSerializableValue(CustomerSurrogate.serializer()).toCustomer()
+}
+```
+
+Then use the surrogate serializer when reading data from the database.
+```kotlin
+// You can then use the surrogate class when reading/writing information from the database:
+val customers = capture {
+  Table<Customer>().filter { c -> c.firstName == "Joe" }
+}.buildFor.Postgres().runOn(ctx, CustomerSurrogateSerializer)
+//> SELECT c.id, c.firstName, c.lastName, c.createdAt FROM customers c WHERE c.firstName = 'Joe'
+
+// ...and use the regular data-class/serializer when encoding/decoding to JSON
+println(Json.encodeToString(ListSerializer(Customer.serializer()), customers))
+//> [{"id":1,"firstName":"Alice","lastName":"Smith","createdAt":"2021-01-01"}]
+```
+
+The Terpal-SQL repository has a useful code sample relevant to this use-case.
+See the [Playing Well using Row-Surrogate Encoder](terpal-sql-jdbc/src/test/kotlin/io/exoquery/sql/examples/PlayingWell_RowSurrogate.kt)
+section for more details.
+
+
+## Nested Datatypes
+
+TBD
+
 ## Dynamic Queries
+
+TBD
