@@ -14,6 +14,7 @@ import io.exoquery.annotation.FlatJoin
 import io.exoquery.annotation.FlatJoinLeft
 import io.exoquery.parseError
 import io.exoquery.parseErrorSym
+import io.exoquery.plugin.funName
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.isSqlQuery
@@ -72,6 +73,11 @@ object ParseQuery {
 
       else -> {
         on(expr).match<XR.Query>(
+          // Not sure why it doesn't detect this as a DSL-call (so that it can be put into parseDslCall)
+          case(ParseFree.match()).thenThis { (components), _ ->
+            ParseFree.parse(expr, components, funName)
+          },
+
           // TODO need to make sure 1st arg is SqlQuery instance and also the owner function has a @CapturedFunction annotate
           //     (also parser should check for any IrFunction that has a @CapturedFunction annotation that doesn't have scaffolding and immediately report an error on that)
           case(Ir.Call.FunctionUntethered2[Is(PT.io_exoquery_util_scaffoldCapFunctionQuery), Is(), Ir.Vararg[Is()]]).thenThis { sqlQueryArg, (args) ->
@@ -249,7 +255,7 @@ object ParseQuery {
       // This is the select defined in the capture-block (that returns SqlQuery<T> as opposed to the top-level one which returns @Captured SqlQuery<T>.
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is("select"), Ir.FunctionExpression[Is()]]).thenThis { _, (selectLambda) ->
         XR.CustomQueryRef(ParseSelectClause.parseSelectLambda(selectLambda))
-      },
+      }
     )
 
   context(CX.Scope, CX.Parsing, CX.Symbology)

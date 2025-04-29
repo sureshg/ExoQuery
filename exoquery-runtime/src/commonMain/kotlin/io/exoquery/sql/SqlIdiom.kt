@@ -375,28 +375,12 @@ interface SqlIdiom: HasPhasePrinting {
   val FlattenSqlQuery.token get(): Token = flattenSqlQueryTokenImpl(this)
   fun flattenSqlQueryTokenImpl(query: FlattenSqlQuery): Token =
     with (query) {
-
-//      def selectTokenizer: Token =
-//        select match {
-//          case Nil => stmt"*"
-//          case _   => select.token
-//        }
-
       val selectTokenizer by lazy {
         when {
           select.isEmpty() -> +"*"
           else -> select.token { it.token }
         }
       }
-
-//     def distinctTokenizer: Statement = (
-//      distinct match {
-//        case DistinctKind.Distinct          => stmt"DISTINCT "
-//        case DistinctKind.DistinctOn(props) => stmt"DISTINCT ON (${props.token}) "
-//        case DistinctKind.None              => emptyStatement
-//      }
-//    )
-
       val distinctTokenizer by lazy {
         when(distinct) {
           is DistinctKind.Distinct -> +"DISTINCT "
@@ -404,24 +388,7 @@ interface SqlIdiom: HasPhasePrinting {
           is DistinctKind.None -> +""
         }
       }
-
       val withDistinct by lazy { +"${distinctTokenizer}${selectTokenizer}" }
-
-//      def withFrom: Statement =
-//        from match {
-//          case Nil => withDistinct
-//          case head :: tail =>
-//            val t = tail.foldLeft(stmt"${head.token}") {
-//              case (a, b: FlatJoinContext) =>
-//                stmt"$a ${(b: FromContext).token}"
-//              case (a, b) =>
-//                stmt"$a, ${b.token}"
-//            }
-//
-//            stmt"$withDistinct FROM $t"
-//        }
-
-
       val withFrom by lazy {
         when {
           from.isEmpty() -> withDistinct
@@ -438,46 +405,24 @@ interface SqlIdiom: HasPhasePrinting {
           }
         }
       }
-
-//      def withWhere: Statement =
-//        where match {
-//          case None        => withFrom
-//          case Some(where) => stmt"$withFrom WHERE ${where.token}"
-//        }
-
       val withWhere by lazy {
         when {
           where != null -> +"$withFrom WHERE ${where.token}"
           else -> withFrom
         }
       }
-//    def withGroupBy: Statement =
-//      groupBy match {
-//        case None          => withWhere
-//        case Some(groupBy) => stmt"$withWhere GROUP BY ${tokenizeGroupBy(groupBy)}"
-//      }
-
       val withGroupBy by lazy {
         when {
           groupBy != null -> +"$withWhere GROUP BY ${tokenizeGroupBy(groupBy)}"
           else -> withWhere
         }
       }
-
-//      def withOrderBy: Statement =
-//        orderBy match {
-//          case Nil     => withGroupBy
-//          case orderBy => stmt"$withGroupBy ${tokenOrderBy(orderBy)}"
-//        }
-
       val withOrderBy by lazy {
         when {
           orderBy.isEmpty() -> withGroupBy
           else -> +"$withGroupBy ${tokenOrderBy(orderBy)}"
         }
       }
-
-      //def withLimitOffset: Token = limitOffsetToken(withOrderBy).token((limit, offset))
       val withLimitOffset by lazy { limitOffsetToken(withOrderBy, limit, offset) }
 
       +"SELECT ${withLimitOffset}"
@@ -597,49 +542,6 @@ interface SqlIdiom: HasPhasePrinting {
     }
   }
 
-
-//    case EqualityOperator.`_==`      => stmt"="
-//    case EqualityOperator.`_!=`      => stmt"<>"
-//    case BooleanOperator.`&&`        => stmt"AND"
-//    case BooleanOperator.`||`        => stmt"OR"
-//    case StringOperator.`+`          => stmt"||"
-//    case StringOperator.`startsWith` => fail("bug: this code should be unreachable")
-//    case StringOperator.`split`      => stmt"SPLIT"
-//    case NumericOperator.`-`         => stmt"-"
-//    case NumericOperator.`+`         => stmt"+"
-//    case NumericOperator.`*`         => stmt"*"
-//    case NumericOperator.`>`         => stmt">"
-//    case NumericOperator.`>=`        => stmt">="
-//    case NumericOperator.`<`         => stmt"<"
-//    case NumericOperator.`<=`        => stmt"<="
-//    case NumericOperator.`/`         => stmt"/"
-//    case NumericOperator.`%`         => stmt"%"
-//    case SetOperator.`contains`      => stmt"IN"
-
-//  case BinaryOperation(a, EqualityOperator.`_==`, NullValue) => stmt"${scopedTokenizer(a)} IS NULL"
-//  case BinaryOperation(NullValue, EqualityOperator.`_==`, b) => stmt"${scopedTokenizer(b)} IS NULL"
-//  case BinaryOperation(a, EqualityOperator.`_!=`, NullValue) => stmt"${scopedTokenizer(a)} IS NOT NULL"
-//  case BinaryOperation(NullValue, EqualityOperator.`_!=`, b) => stmt"${scopedTokenizer(b)} IS NOT NULL"
-///
-//  case BinaryOperation(a, StringOperator.`startsWith`, b) =>
-//     stmt"${scopedTokenizer(a)} LIKE (${(BinaryOperation(b, StringOperator.`+`, Constant.auto("%")): Ast).token})"
-//  case BinaryOperation(a, op @ StringOperator.`split`, b) =>
-//     stmt"${op.token}(${scopedTokenizer(a)}, ${scopedTokenizer(b)})"
-///
-//  case BinaryOperation(a, op @ SetOperator.`contains`, b) => SetContainsToken(scopedTokenizer(b), op.token, a.token)
-//  case BinaryOperation(a, op @ `&&`, b) =>
-//  (a, b) match {
-//    case (BinaryOperation(_, `||`, _), BinaryOperation(_, `||`, _)) =>
-//    stmt"${scopedTokenizer(a)} ${op.token} ${scopedTokenizer(b)}"
-//    case (BinaryOperation(_, `||`, _), _) => stmt"${scopedTokenizer(a)} ${op.token} ${b.token}"
-//    case (_, BinaryOperation(_, `||`, _)) => stmt"${a.token} ${op.token} ${scopedTokenizer(b)}"
-//    case _                                => stmt"${a.token} ${op.token} ${b.token}"
-//  }
-//  case BinaryOperation(a, op @ `||`, b) => stmt"${a.token} ${op.token} ${b.token}"
-//  case BinaryOperation(a, op, b)        => stmt"${scopedTokenizer(a)} ${op.token} ${scopedTokenizer(b)}"
-
-
-
   val FromContext.token get(): Token =
     when (this) {
       is TableContext -> +"${entity.token} ${alias.sane().token}"
@@ -660,8 +562,6 @@ interface SqlIdiom: HasPhasePrinting {
     when (this) {
       is Left -> +"LEFT JOIN"
       is Inner -> +"INNER JOIN"
-      // is RightJoin -> +"RIGHT JOIN"
-      // is FullJoin -> +"FULL JOIN"
     }
   }
 
@@ -669,13 +569,6 @@ interface SqlIdiom: HasPhasePrinting {
   fun xrEntityTokenImpl(entityImpl: XR.Entity): Token = with (entityImpl) {
     tokenizeTable(name)
   }
-
-//  case OrderByCriteria(ast, Asc)            => stmt"${scopedTokenizer(ast)} ASC"
-//  case OrderByCriteria(ast, Desc)           => stmt"${scopedTokenizer(ast)} DESC"
-//  case OrderByCriteria(ast, AscNullsFirst)  => stmt"${scopedTokenizer(ast)} ASC NULLS FIRST"
-//  case OrderByCriteria(ast, DescNullsFirst) => stmt"${scopedTokenizer(ast)} DESC NULLS FIRST"
-//  case OrderByCriteria(ast, AscNullsLast)   => stmt"${scopedTokenizer(ast)} ASC NULLS LAST"
-//  case OrderByCriteria(ast, DescNullsLast)  => stmt"${scopedTokenizer(ast)} DESC NULLS LAST"
 
   val OrderByCriteria.token get(): Token = xrOrderByCriteriaTokenImpl(this)
   fun xrOrderByCriteriaTokenImpl(orderByCriteriaImpl: OrderByCriteria): Token = with (orderByCriteriaImpl) {
@@ -699,21 +592,6 @@ interface SqlIdiom: HasPhasePrinting {
       else -> ast.token
     }
 
-//    ast match {
-//      case _: Query           => stmt"(${ast.token})"
-//      case _: BinaryOperation => stmt"(${ast.token})"
-//      case _: Tuple           => stmt"(${ast.token})"
-//      case _                  => ast.token
-//    }
-
-//  protected def limitOffsetToken(query: Statement)(implicit astTokenizer: Tokenizer[Ast], strategy: NamingStrategy) =
-//    Tokenizer[(Option[Ast], Option[Ast])] {
-//      case (None, None)                => query
-//      case (Some(limit), None)         => stmt"$query LIMIT ${limit.token}"
-//      case (Some(limit), Some(offset)) => stmt"$query LIMIT ${limit.token} OFFSET ${offset.token}"
-//      case (None, Some(offset))        => stmt"$query OFFSET ${offset.token}"
-//    }
-
   fun limitOffsetToken(query: Statement, limit: XR.Expression?, offset: XR.Expression?): Token =
     when {
       limit == null && offset == null -> query
@@ -723,20 +601,6 @@ interface SqlIdiom: HasPhasePrinting {
       else -> throw IllegalStateException("Invalid limit/offset combination")
     }
 
-
-//  def sqlQueryTokenizer(implicit
-//    astTokenizer: Tokenizer[Ast],
-//    strategy: NamingStrategy,
-//    idiomContext: IdiomContext
-//  ): Tokenizer[SqlQuery] = Tokenizer[SqlQuery] {
-//    case q: FlattenSqlQuery =>
-//      new FlattenSqlQueryTokenizerHelper(q).apply
-//    case SetOperationSqlQuery(a, op, b) =>
-//      stmt"(${a.token}) ${op.token} (${b.token})"
-//    case UnaryOperationSqlQuery(op, q) =>
-//      stmt"SELECT ${op.token} (${q.token})"
-//  }
-
   val SqlQueryModel.token get(): Token = xrSqlQueryModelTokenImpl(this)
   fun xrSqlQueryModelTokenImpl(queryImpl: SqlQueryModel): Token = with (queryImpl) {
     when (this) {
@@ -745,11 +609,6 @@ interface SqlIdiom: HasPhasePrinting {
       is UnaryOperationSqlQuery -> +"SELECT ${op.token} (${query.token})"
     }
   }
-
-//  implicit val setOperationTokenizer: Tokenizer[SetOperation] = Tokenizer[SetOperation] {
-//    case UnionOperation    => stmt"UNION"
-//    case UnionAllOperation => stmt"UNION ALL"
-//  }
 
   val SetOperation.token get(): Token =
     when (this) {
@@ -774,18 +633,6 @@ interface SqlIdiom: HasPhasePrinting {
       }
     }
   }
-
-//  TokenizeProperty.unnest(ast) match {
-//    // In the rare case that the Ident is invisible, do not show it. See the Ident documentation for more info.
-//    case (Ident.Opinionated(_, _, Hidden), prefix) =>
-//      stmt"${TokenizeProperty(name, prefix, strategy, renameable)}"
-//
-//    // The normal case where `Property(Property(Ident("realTable"), embeddedTableAlias), realPropertyAlias)`
-//    // becomes `realTable.realPropertyAlias`.
-//    case (ast, prefix) =>
-//      stmt"${scopedTokenizer(ast)}.${TokenizeProperty(name, prefix, strategy, renameable)}"
-//    }
-// }
 
   val XR.Action.token get(): Token = xrActionTokenImpl(this)
   fun xrActionTokenImpl(actionImpl: XR.Action): Token = with (actionImpl) {
@@ -917,15 +764,6 @@ interface SqlIdiom: HasPhasePrinting {
         ActionTableAliasBehavior.Hide -> emptyStatement
       }
 
-  // Scala
-//  private[getquill] def ` AS [table]`(implicit astTokenizer: Tokenizer[Ast], strategy: NamingStrategy) =
-//  useActionTableAliasAs match {
-//    case ActionTableAliasBehavior.UseAs =>
-//    actionAlias.map(alias => stmt" AS ${alias.token}").getOrElse(emptyStatement)
-//    case ActionTableAliasBehavior.SkipAs => actionAlias.map(alias => stmt" ${alias.token}").getOrElse(emptyStatement)
-//    case ActionTableAliasBehavior.Hide   => emptyStatement
-//  }
-
 
   val XR.Assignment.token get(): Token =
     columnAndValue(this).let { (column, value) -> +"${column.token} = ${value.token}" }
@@ -942,41 +780,4 @@ interface SqlIdiom: HasPhasePrinting {
 
   fun columnsAndValues(assignments: List<XR.Assignment>, exlcusions: List<XR.Property>): List<Pair<Token, Token>> =
     assignments.filterNot { exlcusions.contains(it.property) }.map { columnAndValue(it) }
-
-  // The regular property tokenizer now does this
-//  fun tokenizeColumn(property: XR.Property): Token =
-//    when {
-//      property.of is XR.Ident && property.of.isThisRef() -> property.name.token
-//      property.of is XR.Property -> "${tokenizeColumn(property.of)}.${property.name}".token
-//      else -> xrError("Invalid column setter: ${property.showRaw()}")
-//    }
-
-// Scala
-//  private[getquill] def columnsAndValues(
-//  assignments: List[Assignment]
-//  )(implicit astTokenizer: Tokenizer[Ast], strategy: NamingStrategy) = {
-//    val columns =
-//      assignments.map(assignment =>
-//    assignment.property match {
-//      case Property.Opinionated(_, key, renameable, visibility) => tokenizeColumn(strategy, key, renameable).token
-//      case _                                                    => fail(s"Invalid assignment value of ${assignment}. Must be a Property object.")
-//    }
-//    )
-//    val values = assignments.map(assignment => scopedTokenizer(assignment.value))
-//    (columns, values)
-//  }
-
-
-
-  // Scala
-//  private def insertInfo(
-//  insertEntityTokenizer: Tokenizer[Entity],
-//  entity: Entity,
-//  assignments: List[Assignment]
-//  )(implicit astTokenizer: Tokenizer[Ast], strategy: NamingStrategy) = {
-//    val table             = insertEntityTokenizer.token(entity)
-//    val (columns, values) = columnsAndValues(assignments)
-//    (table, columns, values)
-//  }
-
 }

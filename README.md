@@ -854,6 +854,32 @@ controller.transaction {
 }
 ```
 
+## Free Blocks
+
+In situations where you need to use a SQL UDF that is available directly on the database, or when you need
+to use custom SQL syntax that is not supported by ExoQuery, you can use a free block.
+```kotlin
+val q = capture {
+  Table<Person>().filter { p -> free("mySpecialDatabaseUDF(${p.name})") == "Joe" }
+}
+//> SELECT p.id, p.name, p.age FROM Person p WHERE mySpecialDatabaseUDF(p.name) = 'Joe'
+```
+
+You can pass param-calls into the free-block as well.
+```kotlin
+val myRuntimeVar = ...
+val q = capture {
+  Table<Person>().filter { p -> p.name == free("mySpecialDatabaseUDF(${param(myRuntimeVar)})") }
+}
+//> SELECT p.id, p.name, p.age FROM Person p WHERE p.name = mySpecialDatabaseUDF(?)
+```
+
+Free blocks are also useful for adding information before/after an entire query. For example:
+```kotlin
+val q = capture {
+  free("${Table<Person>().filter { p -> p.name == "Joe" }} FOR UPDATE")
+}
+```
 
 ## Parameters and Serialization
 
@@ -942,7 +968,7 @@ for a specific type. Essentially this is like telling ExoQuery, and kotlinx.seri
 This means that you eventually need to provide a low-level Database-Driver encoder/decoder pair into Database-Controller that you are going to use.
 
 
-Lets say for example that you have a highly customized encoded type that can only be processed correctly at a low level.
+Let's say for example that you have a highly customized encoded type that can only be processed correctly at a low level.
 ```kotlin
 data class ByteContent(val bytes: InputStream) {
   companion object {
