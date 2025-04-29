@@ -19,7 +19,7 @@ class CapturedDynamicSplicingReq : GoldenSpecDynamic(CapturedDynamicSplicingReqG
       Table<Person>().filter { p -> joinedClauses(capture.expression { p }).use }
     }
 
-    // Splice splice in the runtime qutoes and reconsturct the query so we can golden-test it
+    // Splice in the runtime quotes and reconstruct the query so we can golden-test it
     val (rekeyedAndSpliced, params) = filteredPeople.rekeyRuntimeBinds().spliceQuotations()
     val reconstructedQuery = SqlQuery<Person>(rekeyedAndSpliced as XR.Query, RuntimeSet.Empty, ParamSet(params)).determinizeDynamics()
 
