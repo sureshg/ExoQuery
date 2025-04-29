@@ -607,6 +607,7 @@ interface SqlIdiom: HasPhasePrinting {
       is FlattenSqlQuery -> token
       is SetOperationSqlQuery -> +"(${a.token}) ${op.token} (${b.token})"
       is UnaryOperationSqlQuery -> +"SELECT ${op.token} (${query.token})"
+      is TopLevelFree -> this.value.token
     }
   }
 

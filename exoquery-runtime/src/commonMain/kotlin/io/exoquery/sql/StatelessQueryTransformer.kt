@@ -12,6 +12,7 @@ abstract class StatelessQueryTransformer {
         is FlattenSqlQuery -> expandNested(this, level)
         is SetOperationSqlQuery -> SetOperationSqlQuery(invoke(a, level), op, invoke(b, level), type)
         is UnaryOperationSqlQuery -> UnaryOperationSqlQuery(op, invoke(query, level), type)
+        is TopLevelFree -> this
       }
     }
 

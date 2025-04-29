@@ -8,6 +8,7 @@ import io.exoquery.sql.SqlIdiom
 import io.exoquery.sql.SqlQueryModel
 import io.exoquery.sql.Statement
 import io.exoquery.sql.Token
+import io.exoquery.sql.TopLevelFree
 import io.exoquery.sql.UnaryOperationSqlQuery
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.Tracer
@@ -37,6 +38,7 @@ class SqliteDialect(override val traceConf: TraceConfig = TraceConfig.Companion.
       is FlattenSqlQuery -> token
       is SetOperationSqlQuery -> +"${a.token} ${op.token} ${b.token}"
       is UnaryOperationSqlQuery -> +"SELECT ${op.token} (${query.token})"
+      is TopLevelFree -> this.value.token
     }
   }
 

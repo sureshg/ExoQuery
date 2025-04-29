@@ -43,6 +43,7 @@ interface StatelessTransformer {
   operator fun invoke(xr: XR.FunctionN): XR.FunctionN = with(xr) { FunctionN.csf(params.map { invokeIdent(it) }, invoke(body))(this) }
   operator fun invoke(xr: GlobalCall): GlobalCall = with(xr) { GlobalCall.csf(name, args.map { invoke(it) })(this) }
   operator fun invoke(xr: MethodCall): MethodCall = with(xr) { MethodCall.csf(invoke(head), name, args.map { invoke(it) })(this) }
+  operator fun invoke(xr: XR.Free): Free = with(xr) { Free.csf(parts, params.map { invoke(it) })(this) }
 
   operator fun invoke(xr: XR.Expression): XR.Expression =
     with(xr) {
@@ -59,7 +60,7 @@ interface StatelessTransformer {
         is Block -> invoke(this)
         is Product -> Product.csf(fields.map { it.first to invoke(it.second) })(this)
         // Free can both be Expression and Query
-        is Free -> Free(parts, params.map { invoke(it) }, pure, transparent, type, loc)
+        is Free -> invoke(this)
         is MethodCall -> invoke(this)
         is GlobalCall -> invoke(this)
         is QueryToExpr -> QueryToExpr.csf(invoke(head))(this)
@@ -96,7 +97,7 @@ interface StatelessTransformer {
         is Nested -> Nested.csf(invoke(head))(this)
         is ExprToQuery -> ExprToQuery.csf(invoke(head))(this)
         // Free can both be Expression and Query
-        is Free -> Free.csf(parts, params.map { invoke(it) })(this)
+        is Free -> invoke(this)
         is TagForSqlQuery -> this
         is CustomQueryRef -> CustomQueryRef.csf(customQuery.handleStatelessTransform(this@StatelessTransformer))(this)
         is FunctionApply -> FunctionApply.csf(invoke(function), args.map { invoke(it) })(this)

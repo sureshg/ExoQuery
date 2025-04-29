@@ -84,6 +84,7 @@ sealed interface SqlQueryModel {
       is FlattenSqlQuery -> copy(type = f(type))
       is SetOperationSqlQuery -> copy(type = f(type))
       is UnaryOperationSqlQuery -> copy(type = f(type))
+      is TopLevelFree -> copy(type = f(type))
     }
 
   fun transformXR(f: StatelessTransformer): SqlQueryModel =
@@ -91,6 +92,7 @@ sealed interface SqlQueryModel {
       is FlattenSqlQuery -> this.transformXR(f) // call the transformXR on FlattenSqlQuery directly
       is SetOperationSqlQuery -> SetOperationSqlQuery(a.transformXR(f), op, b.transformXR(f), type)
       is UnaryOperationSqlQuery -> UnaryOperationSqlQuery(op, query.transformXR(f), type)
+      is TopLevelFree -> TopLevelFree(f.invoke(value) as XR.Free, type)
     }
 
   fun show(pretty: Boolean = false): String {
@@ -140,6 +142,10 @@ final data class UnaryOperationSqlQuery(
   override val type: XRType
 ): SqlQueryModel
 
+@Serializable
+final data class TopLevelFree(
+  val value: XR.Free, override val type: XRType
+): SqlQueryModel
 
 /**
  * Something that was fundemental about the Ast/XR that was not realized in Quill was that the fundemental differentiation
@@ -199,18 +205,6 @@ final data class FlattenSqlQuery(
       offset = offset?.let { f(it) },
       select = select.map { it.copy(expr = f(it.expr)) }
     )
-
-  /*
-    def mapAsts(f: Ast => Ast): FlattenSqlQuery =
-    copy(
-      where = where.map(f),
-      groupBy = groupBy.map(f),
-      orderBy = orderBy.map(o => o.copy(ast = f(o.ast))),
-      limit = limit.map(f),
-      offset = offset.map(f),
-      select = select.map(s => s.copy(ast = f(s.ast)))
-    )(quatType)
-   */
 }
 
 class SqlQueryApply(val traceConfig: TraceConfig) {
