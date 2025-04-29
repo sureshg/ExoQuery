@@ -4,8 +4,11 @@ import io.exoquery.sql.PostgresDialect
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.annotation.CapturedDynamic
+import io.exoquery.annotation.CapturedFunction
 import io.exoquery.capture
 import io.exoquery.capture.invoke
+import io.exoquery.printSource
+import io.exoquery.printSourceBefore
 import io.exoquery.printing.pprintMisc
 import io.exoquery.xr.rekeyRuntimeBinds
 
@@ -14,9 +17,18 @@ fun main() {
   data class Address(val ownerId: Int, val street: String, val zip: Int)
   data class Robot(val ownerId: Int, val model: String)
 
-  val q = capture {
-    free("${Table<Person>().filter { p -> p.name == "Joe" }} FOR UPDATE").asPure<SqlQuery<Person>>()
+
+
+  @CapturedFunction
+  fun <T: Person> forUpdate(v: SqlQuery<T>) = capture {
+    free("${v} FOR UPDATE").asPure<SqlQuery<T>>()
   }
+
+  val q = capture {
+    forUpdate(Table<Person>().filter { p -> p.age > 21 })
+  }.dyanmic()
+
+
   println(q.buildFor.Postgres().value)
 
   // TODO put this into a unit test

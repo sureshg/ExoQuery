@@ -856,6 +856,8 @@ controller.transaction {
 
 ## Free Blocks
 
+### Calling UDFs
+
 In situations where you need to use a SQL UDF that is available directly on the database, or when you need
 to use custom SQL syntax that is not supported by ExoQuery, you can use a free block.
 ```kotlin
@@ -874,12 +876,32 @@ val q = capture {
 //> SELECT p.id, p.name, p.age FROM Person p WHERE p.name = mySpecialDatabaseUDF(?)
 ```
 
+### Enriching Queries
+
+
 Free blocks are also useful for adding information before/after an entire query. For example:
 ```kotlin
 val q = capture {
   free("${Table<Person>().filter { p -> p.name == "Joe" }} FOR UPDATE").asPure<SqlQuery<Person>>()
 }
+//> SELECT p.id, p.name, p.age FROM Person p WHERE p.name = 'Joe' FOR UPDATE
 ```
+
+This is technique is quite powerful when combined with captured-functions to abstract out logic:
+```kotlin
+@CapturedFunction
+fun <T: Person> forUpdate(v: SqlQuery<T>) = capture {
+  free("${v} FOR UPDATE").asPure<SqlQuery<T>>()
+}
+
+val q = capture {
+  forUpdate(Table<Person>().filter { p -> p.age > 21 })
+}
+//> (SELECT p.id, p.name, p.age FROM Person p WHERE p.age > 21) FOR UPDATE
+```
+
+
+### Enriching Actions
 
 Free blocks can even be used with Action (i.e. insert, update, delete) statements:
 ```kotlin

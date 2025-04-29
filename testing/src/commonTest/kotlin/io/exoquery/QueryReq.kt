@@ -1,5 +1,6 @@
 package io.exoquery
 
+import io.exoquery.annotation.CapturedFunction
 import io.exoquery.sql.MySqlDialect
 import io.exoquery.sql.PostgresDialect
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -77,5 +78,27 @@ class QueryReq : GoldenSpecDynamic(QueryReqGoldenDynamic, Mode.ExoGoldenTest(), 
     shouldBeGolden(q.xr, "XR")
     shouldBeGolden(q.build<PostgresDialect>())
   }
-
+  "query with free in captured function" {
+    @CapturedFunction
+    fun <T> forUpdate(v: SqlQuery<T>) = capture {
+      free("${v} FOR UPDATE").asPure<SqlQuery<T>>()
+    }
+    val q = capture {
+      forUpdate(Table<Person>().filter { p -> p.age > 21 })
+    }
+    shouldBeGolden(q.xr, "XR")
+    shouldBeGolden(q.build<PostgresDialect>())
+  }
+  // BUG! This does not work correctly
+  //"query with free in captured function - receiver position" {
+  //  @CapturedFunction
+  //  fun <T> SqlQuery<T>.forUpdate() = capture {
+  //    free("${this@forUpdate} FOR UPDATE").asPure<SqlQuery<T>>()
+  //  }
+  //  val q = capture {
+  //    Table<Person>().filter { p -> p.age > 21 }.forUpdate()
+  //  }
+  //  shouldBeGolden(q.xr, "XR")
+  //  shouldBeGolden(q.build<PostgresDialect>())
+  //}
 })
