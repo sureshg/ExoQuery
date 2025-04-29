@@ -48,6 +48,19 @@ kotlin {
       }
     }
 
+    val jvmMain by getting {
+      dependencies {
+        api("io.exoquery:controller-jdbc:3.2.0")
+      }
+    }
+
+    nativeMain.dependencies {
+      dependencies {
+        api("io.exoquery:controller-native:3.2.0")
+      }
+    }
+
+
     // This is a library that tests will reuse so we need to put everything into the commonMain part
     // KMP doesn't allow reusing commonTest code even in upstream commonTest dependencies
     //val commonTest by getting {

@@ -1,23 +1,11 @@
 package io.exoquery.postgres
 
-import io.exoquery.Person
-import io.exoquery.sql.PostgresDialect
-import io.exoquery.TestDatabases
-import io.exoquery.allPeople
-import io.exoquery.batchDeletePeople
-import io.exoquery.batchInsertPeople
-import io.exoquery.capture
-import io.exoquery.controller.jdbc.JdbcController
+import io.exoquery.*
 import io.exoquery.controller.runActions
-import io.exoquery.george
-import io.exoquery.insertAllPeople
-import io.exoquery.insertPerson
-import io.exoquery.joe
-import io.exoquery.people
 import io.exoquery.jdbc.runOn
+import io.exoquery.sql.PostgresDialect
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
-import io.kotest.matchers.shouldBe
 
 class BatchActionSpec : FreeSpec({
   val ctx = TestDatabases.postgres

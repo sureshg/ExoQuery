@@ -1,38 +1,34 @@
 package io.exoquery.jdbc
 
 import io.exoquery.SqlCompiledAction
-import io.exoquery.controller.ControllerAction
-import io.exoquery.controller.ControllerActionReturning
-import io.exoquery.controller.jdbc.JdbcExecutionOptions
-import io.exoquery.controller.jdbc.JdbcControllers
+import io.exoquery.checkActionKindValidity
+import io.exoquery.controller.*
 import io.exoquery.controller.jdbc.JdbcController
-import io.exoquery.controller.runOn
-import io.exoquery.controller.toControllerAction
+import io.exoquery.controller.jdbc.JdbcControllers
+import io.exoquery.controller.jdbc.JdbcExecutionOptions
 import io.exoquery.printing.MessagesRuntime
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
 import javax.sql.DataSource
+import io.exoquery.runOn  as runOnCommon
 
 fun JdbcController.isSqlite(): Boolean = this is JdbcControllers.Sqlite
 fun JdbcController.isSqlServer(): Boolean = this is JdbcControllers.SqlServer
 fun JdbcController.isH2(): Boolean = this is JdbcControllers.H2
 fun JdbcController.isMysql(): Boolean = this is JdbcControllers.Mysql
 
+// For functionality that does not require database options, delegate to the common library
+inline suspend fun <Input, reified Output> SqlCompiledAction<Input, Output>.runOn(database: JdbcController) = runOnCommon(database)
+suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>) = runOnCommon(database, serializer)
 
-suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: JdbcExecutionOptions = JdbcExecutionOptions()): Output =
+// Otherwise need to use more specialized constructors
+suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: JdbcExecutionOptions = JdbcExecutionOptions()): Output = run {
+  val actionKind = this.actionKind
+  val dbType = identityDatabaseType(database)
   when (val action = this.toControllerAction(serializer)) {
     is ControllerAction -> action.runOn(database, options) as Output
     is ControllerActionReturning.Id<Output> -> {
-      when {
-        actionKind.isUpdateOrDelete() && database.isSqlite() ->
-          throw IllegalStateException("SQLite does not support returning ids with returningKeys in UPDATE and DELETE queries. Use .returning instead to add a RETRUNING clause to the query.\n${MessagesRuntime.ReturningExplanation}")
-        actionKind.isUpdateOrDelete() && database.isSqlServer() ->
-          throw IllegalStateException("SQL Server does not support returning ids with returningKeys in UPDATE and DELETE queries. Use .returning instead to add a OUTPUT clause to the query.\n${MessagesRuntime.ReturningExplanation}")
-        actionKind.isDelete() && database.isH2() ->
-          throw IllegalStateException("H2 only supports the `returningKeys` construct with INSERT and UPDATE queries (and H2 does not support `retruning` at all).\n${MessagesRuntime.ReturningExplanation}")
-        else ->
-          Unit
-      }
+      checkActionKindValidity(actionKind, dbType)
       action.runOn(database, options)
     }
     is ControllerActionReturning.Row<Output> -> {
@@ -43,6 +39,7 @@ suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: Jdb
       action.runOn(database, options)
     }
   }
+}
 
 inline suspend fun <Input, reified Output> SqlCompiledAction<Input, Output>.runOn(database: JdbcController, options: JdbcExecutionOptions = JdbcExecutionOptions()) =
   this.runOn(database, serializer<Output>(), options)

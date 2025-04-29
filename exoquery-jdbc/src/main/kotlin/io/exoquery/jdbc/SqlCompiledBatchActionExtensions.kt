@@ -1,13 +1,11 @@
 package io.exoquery.jdbc
 
 import io.exoquery.SqlCompiledBatchAction
-import io.exoquery.controller.ControllerBatchAction
-import io.exoquery.controller.ControllerBatchActionReturning
-import io.exoquery.controller.jdbc.JdbcExecutionOptions
-import io.exoquery.controller.jdbc.JdbcControllers
+import io.exoquery.checkActionKindValidity
+import io.exoquery.controller.*
 import io.exoquery.controller.jdbc.JdbcController
-import io.exoquery.controller.runOn
-import io.exoquery.controller.toControllerBatchVerb
+import io.exoquery.controller.jdbc.JdbcControllers
+import io.exoquery.controller.jdbc.JdbcExecutionOptions
 import io.exoquery.printing.MessagesRuntime
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
@@ -17,25 +15,12 @@ suspend fun <BatchInput, Input : Any, Output> SqlCompiledBatchAction<BatchInput,
   database: JdbcController,
   serializer: KSerializer<Output>,
   options: JdbcExecutionOptions = JdbcExecutionOptions()
-): List<Output> =
+): List<Output> = run {
+  val dbType = identityDatabaseType(database)
   when (val action = this.toControllerBatchVerb(serializer)) {
     is ControllerBatchAction -> action.runOn(database, options) as List<Output>
     is ControllerBatchActionReturning.Id<Output> -> {
-      when {
-        actionKind.isUpdateOrDelete() && database.isSqlite() ->
-          throw IllegalStateException("SQLite does not support returning ids with returningKeys in UPDATE and DELETE queries. Use .returning instead to add a RETRUNING clause to the query.\n${MessagesRuntime.ReturningExplanation}")
-        actionKind.isUpdateOrDelete() && database.isSqlServer() ->
-          throw IllegalStateException("SQL Server does not support returning ids with returningKeys in UPDATE and DELETE queries. Use .returning instead to add a OUTPUT clause to the query.\n${MessagesRuntime.ReturningExplanation}")
-        actionKind.isDelete() && database.isH2() ->
-          throw IllegalStateException("H2 only supports the `returningKeys` construct with INSERT and UPDATE queries (and H2 does not support `retruning` at all).\n${MessagesRuntime.ReturningExplanation}")
-        database.isSqlite() ->
-          throw IllegalStateException(
-            "SQLite has extremely strange behaviors with PrepareStatement.getGeneratedKeys and Batch Queries (that `query.returningKeys` relies on).\n" +
-                "For SQLite use `query.returning` to create a RETURNING clause instead.\n${MessagesRuntime.ReturningExplanation}"
-          )
-        else ->
-          Unit
-      }
+      checkActionKindValidity(this.actionKind, dbType)
       action.runOn(database, options)
     }
     is ControllerBatchActionReturning.Row<Output> -> {
@@ -46,6 +31,7 @@ suspend fun <BatchInput, Input : Any, Output> SqlCompiledBatchAction<BatchInput,
       action.runOn(database, options)
     }
   }
+}
 
 inline suspend fun <BatchInput, Input : Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOn(database: JdbcController, options: JdbcExecutionOptions = JdbcExecutionOptions()) =
   this.runOn(database, serializer<Output>(), options)

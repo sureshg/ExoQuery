@@ -1,20 +1,15 @@
 package io.exoquery.android
 
-import io.exoquery.IllegalSqlOperation
 import io.exoquery.Person
 import io.exoquery.SqliteDialect
 import io.exoquery.capture
-import io.exoquery.capture.invoke
 import io.exoquery.controller.android.AndroidDatabaseController
 import io.exoquery.controller.runActions
-import junit.framework.TestCase.assertEquals
-import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import kotlin.test.assertFailsWith
 
 @RunWith(RobolectricTestRunner::class)
 class ActionSpec {
@@ -73,7 +68,7 @@ class ActionSpec {
       insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }.returningKeys { id }
     }
     val build = q.build<SqliteDialect>()
-    build.runOn(ctx) shouldBe 1L
+    build.runOn(ctx) shouldBe 1
     ctx.people() shouldBe listOf(joe)
   }
 
