@@ -1220,12 +1220,19 @@ Note several things:
   `SqlQuery<T>` or `SqlExpression<T>` objects like this, you probably do not need captured-dynamics at all
   and instead should use compile-time [captured functions](#captured-functions).
 * Notice how above I used `capture.expression { c.signatureName }` nested inside another `capture` block.
-  This is required because `c.signatureName` is merely a `String`, not a `SqlExpression<String>` type. More importantly, it is a compile-time
-  *symbolic* value (i.e. literally the expression `"c.signatureName"`) that only the outer `capture` block can see, it doesn't actually exist "out there"
-  in the runtime scope of accessible variables. Therefore, unless we re-wrap it, it is forced to remain
-  inside the outer `capture` block in which it was defined.
-  (This kind of logic is not arbitrary or magical. It is deeply rooted in the principle of [Phase Consistency](https://gist.github.com/odersky/f91362f6d9c58cc1db53f3f443311140#the-phase-consistency-law)
-  so don't worry about it unless you have an interest in compiler metaprogramming theory.)
+  This is required because `c.signatureName` is merely a `String`, not a `SqlExpression<String>` type. 
+  More importantly, it is a compile-time *symbolic* value (i.e. literally the expression `"c.signatureName"`) 
+  that relies on the `c` variable, defined inside the parent capture block.
+  It is essential to understand that this `c` variable is not actually a real variable that exists "out there"
+  in the runtime scope of accessible variables. Unless we re-wrap it, it is forced to remain
+  inside the outer `capture` block in which it was defined.**
+
+
+> ** NOTE: This kind of logic is not arbitrary or magical. It is deeply rooted in the principle 
+> of [Phase Consistency](https://gist.github.com/odersky/f91362f6d9c58cc1db53f3f443311140#the-phase-consistency-law)
+> that is well understood in the academic literature of compiler metaprogramming theory. Don't bother learning
+> any of these things, you don't need to know them in order to use ExoQuery effectively. Only be aware of the fact
+> ExoQuery is fundamentally lawful behind the scenes.
 
 Another advantage of dynamic queries is that you can use them to create query-fragments inside of collections.
 For example, the following code takes a list of possible names and creates a `person.name == x || person.name == y || ...`
