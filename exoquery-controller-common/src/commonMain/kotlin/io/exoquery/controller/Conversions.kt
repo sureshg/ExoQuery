@@ -38,16 +38,16 @@ suspend fun <BatchInput, Input: Any, Output> SqlCompiledBatchAction<BatchInput, 
       //Action(token.build(), params.map { it.toStatementParam() })
       // Check the kind of "Output" i.e. it needs to be a Long (we can use the descriptor-kind as a proxy for this and not need to pass a KClass in)
       if (serializer.descriptor.kind == PrimitiveKind.LONG)
-        ControllerBatchAction(token.build(), produceBatchGroups().flatMap { g -> g.params.map { it.toStatementParam() } }) as BatchVerb<Output>
+        ControllerBatchAction(token.build(), produceBatchGroups().map { g -> g.params.flatMap { it.toStatementParam() } }) as BatchVerb<Output>
       else
         xrError("The action is not returning anything, but the serializer is not a Long. This is illegal. The serializer was:\n${serializer.descriptor}")
     }
     is ActionReturningKind.ClauseInQuery -> {
       // Try not passing the keys explicitly? If it's a action-returning do we need them?
-      ControllerBatchActionReturning.Row(value, produceBatchGroups().flatMap { g -> g.params.map { it.toStatementParam() } }, serializer, listOf())
+      ControllerBatchActionReturning.Row(value, produceBatchGroups().map { g -> g.params.flatMap { it.toStatementParam() } }, serializer, listOf())
     }
     is ActionReturningKind.Keys -> {
-      ControllerBatchActionReturning.Id(value, produceBatchGroups().flatMap { g -> g.params.map { it.toStatementParam() } }, serializer, (actionReturningKind as ActionReturningKind.Keys).columns)
+      ControllerBatchActionReturning.Id(value, produceBatchGroups().map { g -> g.params.flatMap { it.toStatementParam() } }, serializer, (actionReturningKind as ActionReturningKind.Keys).columns)
     }
   }
 

@@ -40,7 +40,9 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(batchInsertPeople.asSequence()) { p ->
         insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }
       }
-      q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
+        val b = q.build<H2Dialect>()
+      println(b)
+      b.runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
       ctx.people() shouldContainExactlyInAnyOrder allPeople
     }
 
