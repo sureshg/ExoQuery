@@ -94,7 +94,7 @@ class RuntimeBuilder(val dialect: SqlIdiom, val pretty: Boolean) {
     return ContainerBuildAction(queryString, queryToken)
   }
 
-  class TokenRealizer(val paramSet: ParamSet): StatelessTokenTransformer {
+  class TokenRealizer(val paramSet: ParamSet) : StatelessTokenTransformer {
     override fun invoke(token: ParamMultiToken): Token = token.realize(paramSet)
     override fun invoke(token: ParamSingleToken): Token = token.realize(paramSet)
     override fun invoke(token: ParamBatchToken): Token = token.realize(paramSet)

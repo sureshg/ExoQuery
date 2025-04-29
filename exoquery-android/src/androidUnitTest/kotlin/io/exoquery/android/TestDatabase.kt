@@ -8,7 +8,7 @@ import io.exoquery.controller.android.AndroidDatabaseController
 import kotlinx.coroutines.runBlocking
 import org.robolectric.shadows.ShadowLog
 
-object EmptyCallback: SupportSQLiteOpenHelper.Callback(1) {
+object EmptyCallback : SupportSQLiteOpenHelper.Callback(1) {
   override fun onCreate(db: SupportSQLiteDatabase) {}
   override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {}
 }
@@ -18,7 +18,7 @@ object TestDatabase {
   val ctx by lazy {
     // NOTE any stdio output here seems to be swallowed by Robolectric and/or the CI test runner
     ShadowLog.stream = System.out
-    System.setProperty("robolectric.logging","stdout")
+    System.setProperty("robolectric.logging", "stdout")
     runBlocking {
       AndroidDatabaseController.fromApplicationContext(databaseName, ApplicationProvider.getApplicationContext(), BasicSchemaTerpal)
     }

@@ -15,6 +15,7 @@ import io.exoquery.xrError
 sealed interface Token {
   // Builds the actual string to be used as the SQL query as opposed to just for display purposes
   fun build(): String
+
   // For cases where it is a Param actually plugin the value i.e. stringify it
   fun renderWith(renderer: Renderer): String
   fun showRaw(config: PPrinterConfig = PPrinterConfig()): String = PrintToken(config).invoke(this).toString()
@@ -22,7 +23,7 @@ sealed interface Token {
   fun simplify(): Token = this
 
   fun mapBids(bids: Map<BID, BID>) =
-    object: StatelessTokenTransformer {
+    object : StatelessTokenTransformer {
       override fun invoke(token: ParamSingleToken): Token = token.withBid(bid = bids[token.bid] ?: token.bid)
       override fun invoke(token: ParamMultiToken): Token = token.withBid(bid = bids[token.bid] ?: token.bid)
       override fun invoke(token: ParamSingleTokenRealized): Token = token.withBid(bids[token.bid] ?: token.bid)
@@ -83,53 +84,57 @@ sealed interface Token {
     return accum
   }
 }
-sealed interface TagToken: Token
 
-final data class StringToken(val string: String): Token {
+sealed interface TagToken : Token
+
+final data class StringToken(val string: String) : Token {
   override fun build(): String = string
   override fun renderWith(renderer: Renderer): String = string
 }
 
-final data class ParamSingleToken(val bid: BID): Token {
+final data class ParamSingleToken(val bid: BID) : Token {
   override fun build() = "<UNR?>"
   fun realize(paramSet: ParamSet) =
     ParamSingleTokenRealized(bid, paramSet.lifts.asSequence().filterIsInstance<ParamSingle<*>>().find { p -> p.id == bid })
+
   override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, null, false)
   fun withBid(bid: BID) = ParamSingleToken(bid)
 }
 
 // Allow for the possibility of `param` being an error so that we can introspect the tree for errors
 // withiout immediately failing on creation
-final data class ParamSingleTokenRealized(val bid: BID, val param: ParamSingle<*>?): Token {
+final data class ParamSingleTokenRealized(val bid: BID, val param: ParamSingle<*>?) : Token {
   override fun build(): String = param?.let { "?" } ?: xrError("Param not found for bid: ${bid}")
   override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, param, true)
   fun withBid(bid: BID) = ParamSingleTokenRealized(bid, param?.withNewBid(bid))
 }
 
-final data class ParamMultiToken(val bid: BID): Token {
+final data class ParamMultiToken(val bid: BID) : Token {
   override fun build() = "<UNRS?>"
   fun realize(paramSet: ParamSet) =
     ParamMultiTokenRealized(bid, paramSet.lifts.asSequence().filterIsInstance<ParamMulti<*>>().find { p -> p.id == bid })
+
   override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, null, false)
   fun withBid(bid: BID) = ParamMultiToken(bid)
 }
 
-final data class ParamMultiTokenRealized(val bid: BID, val param: ParamMulti<*>?): Token {
+final data class ParamMultiTokenRealized(val bid: BID, val param: ParamMulti<*>?) : Token {
   // NOTE probably more efficient to just count the param values and use .repeat() to get a list of "?"s
   override fun build(): String = param?.value?.map { _ -> "?" }?.joinToString(", ") ?: xrError("Param not found for bid: ${bid}")
   override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, param, true)
   fun withBid(bid: BID) = ParamMultiTokenRealized(bid, param?.withNewBid(bid))
 }
 
-final data class ParamBatchToken(val bid: BID): Token {
+final data class ParamBatchToken(val bid: BID) : Token {
   override fun build() = "<UNRB?>"
   fun realize(paramSet: ParamSet) =
     ParamBatchTokenRealized(bid, paramSet.lifts.asSequence().filterIsInstance<ParamBatchRefiner<*, *>>().find { p -> p.id == bid }, 0)
+
   override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, null, false)
   fun withBid(bid: BID) = ParamBatchToken(bid)
 }
 
-final data class ParamBatchTokenRealized(val bid: BID, val param: ParamBatchRefiner<*, *>?, val chunkIndex: Int): Token {
+final data class ParamBatchTokenRealized(val bid: BID, val param: ParamBatchRefiner<*, *>?, val chunkIndex: Int) : Token {
   override fun build(): String = param?.let { "?" } ?: xrError("Param not found for bid: ${bid}")
   override fun renderWith(renderer: Renderer): String = renderer.invoke(bid, param, true)
   fun withBid(bid: BID) = ParamBatchTokenRealized(bid, param?.withNewBid(bid), chunkIndex)
@@ -140,15 +145,16 @@ final data class ParamBatchTokenRealized(val bid: BID, val param: ParamBatchRefi
   }
 }
 
-final data class TokenContext(val content: Token, val kind: Kind): Token {
+final data class TokenContext(val content: Token, val kind: Kind) : Token {
   sealed interface Kind {
-    data object AssignmentBlock: Kind
+    data object AssignmentBlock : Kind
   }
+
   override fun build(): String = content.build()
   override fun renderWith(renderer: Renderer): String = content.renderWith(renderer)
 }
 
-final data class Statement(val tokens: List<Token>): Token {
+final data class Statement(val tokens: List<Token>) : Token {
   override fun build(): String = tokens.map { it.build() }.mkString()
   override fun renderWith(renderer: Renderer): String = tokens.map { it.renderWith(renderer) }.mkString()
 
@@ -160,7 +166,7 @@ final data class Statement(val tokens: List<Token>): Token {
     for (token in tokens) {
       if (accum.isNotEmpty() && token is StringToken && accum.last() is StringToken) {
         // Use StringBuilder here for efficiency but it is more algorithmically annoying
-        accum[accum.size-1] = StringToken((accum.last() as StringToken).string + token.string)
+        accum[accum.size - 1] = StringToken((accum.last() as StringToken).string + token.string)
       } else {
         accum.add(token)
       }
@@ -174,7 +180,7 @@ final data class Statement(val tokens: List<Token>): Token {
 
 }
 
-final data class SetContainsToken(val a: Token, val op: Token, val b: Token): Token {
+final data class SetContainsToken(val a: Token, val op: Token, val b: Token) : Token {
   override fun build(): String = "${a.build()} ${op.build()} parser(${b.build()})"
   override fun renderWith(renderer: Renderer): String = "${a.renderWith(renderer)} ${op.renderWith(renderer)} (${b.renderWith(renderer)})"
 }

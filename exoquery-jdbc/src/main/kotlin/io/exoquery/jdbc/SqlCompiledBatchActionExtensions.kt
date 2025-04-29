@@ -13,7 +13,11 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
 import javax.sql.DataSource
 
-suspend fun <BatchInput, Input: Any, Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: JdbcExecutionOptions = JdbcExecutionOptions()): List<Output> =
+suspend fun <BatchInput, Input : Any, Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOn(
+  database: JdbcController,
+  serializer: KSerializer<Output>,
+  options: JdbcExecutionOptions = JdbcExecutionOptions()
+): List<Output> =
   when (val action = this.toControllerBatchVerb(serializer)) {
     is ControllerBatchAction -> action.runOn(database, options) as List<Output>
     is ControllerBatchActionReturning.Id<Output> -> {
@@ -27,7 +31,8 @@ suspend fun <BatchInput, Input: Any, Output> SqlCompiledBatchAction<BatchInput, 
         database.isSqlite() ->
           throw IllegalStateException(
             "SQLite has extremely strange behaviors with PrepareStatement.getGeneratedKeys and Batch Queries (that `query.returningKeys` relies on).\n" +
-            "For SQLite use `query.returning` to create a RETURNING clause instead.\n${MessagesRuntime.ReturningExplanation}")
+                "For SQLite use `query.returning` to create a RETURNING clause instead.\n${MessagesRuntime.ReturningExplanation}"
+          )
         else ->
           Unit
       }
@@ -42,10 +47,10 @@ suspend fun <BatchInput, Input: Any, Output> SqlCompiledBatchAction<BatchInput, 
     }
   }
 
-inline suspend fun <BatchInput, Input: Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOn(database: JdbcController, options: JdbcExecutionOptions = JdbcExecutionOptions()) =
+inline suspend fun <BatchInput, Input : Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOn(database: JdbcController, options: JdbcExecutionOptions = JdbcExecutionOptions()) =
   this.runOn(database, serializer<Output>(), options)
 
-inline suspend fun <BatchInput, reified Input: Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOnPostgres(dataSource: DataSource) = run {
+inline suspend fun <BatchInput, reified Input : Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOnPostgres(dataSource: DataSource) = run {
   val controller = JdbcControllers.Postgres(dataSource)
   this.runOn(controller, serializer<Output>())
 }

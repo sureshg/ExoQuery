@@ -19,8 +19,8 @@ class MySqlDialect(override val traceConf: TraceConfig = TraceConfig.empty) : Sq
     }
   }
 
-  override fun xrOrderByCriteriaTokenImpl(orderByCriteriaImpl: OrderByCriteria): Token = with (orderByCriteriaImpl) {
-    when(this.ordering) {
+  override fun xrOrderByCriteriaTokenImpl(orderByCriteriaImpl: OrderByCriteria): Token = with(orderByCriteriaImpl) {
+    when (this.ordering) {
       XR.Ordering.AscNullsFirst -> +"${ast.token} ASC"
       XR.Ordering.DescNullsFirst -> +"ISNULL(${ast.token}) DESC, ${ast.token} DESC"
       XR.Ordering.AscNullsLast -> +"ISNULL(${ast.token}) ASC, ${ast.token} ASC"

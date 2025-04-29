@@ -10,7 +10,7 @@ import io.exoquery.xr.XR.*
 import io.exoquery.xr.copy.*
 
 // NOTE: Leaving Quill commneted-out code equivalents here for now for reference
-data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boolean, val traceConfig: TraceConfig): StatefulTransformer<Set<String>> {
+data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boolean, val traceConfig: TraceConfig) : StatefulTransformer<Set<String>> {
 
   fun Recurse(state: Set<String>) =
     AvoidAliasConflict(state, detemp, traceConfig)
@@ -197,7 +197,7 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
    * Note: Technically we could get rid of the UNCHECKED_CAST suppression and make two versions of this function, once for XR.Expression. and one for XR.Query
    */
   @Suppress("UNCHECKED_CAST")
-  fun <Body: XR> Ident.refreshInsideOf(body: Body, label: () -> String): Pair<XR.Ident, Body> {
+  fun <Body : XR> Ident.refreshInsideOf(body: Body, label: () -> String): Pair<XR.Ident, Body> {
     val id = this
     val fresh = freshIdent(id)
     val newBody =
@@ -259,8 +259,6 @@ data class AvoidAliasConflict(override val state: Set<String>, val detemp: Boole
 
   private inline fun <reified Q> recurseAndApply(head: XR.Query, x: Ident, body: XR.Query, label: String = "", crossinline f: (XR.Query, Ident, XR.Query) -> Q): Pair<Q, StatefulTransformer<Set<String>>> =
     recurseAndApplyGen<Q>(head, x, body, label) { q, i, b -> f(q as XR.Query, i, b as XR.Query) }
-
-
 
 
 // Scala

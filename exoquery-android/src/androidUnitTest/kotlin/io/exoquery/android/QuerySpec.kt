@@ -153,7 +153,7 @@ class QuerySpec {
 
   @Test
   fun `map`() = runBlocking {
-    val q = capture { Table<Person>().map { it.firstName to it.lastName }  }
+    val q = capture { Table<Person>().map { it.firstName to it.lastName } }
     q.build<SqliteDialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
       "Joe" to "Bloggs",
       "Joe" to "Doggs",
@@ -163,6 +163,7 @@ class QuerySpec {
 
   @Serializable
   data class Name(val first: String, val last: String)
+
   @Serializable
   data class CustomPerson(val name: Name, val age: Int)
 

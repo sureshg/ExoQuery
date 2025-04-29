@@ -1,11 +1,6 @@
 package io.exoquery.plugin.transform
 
-import io.exoquery.ActionKind
-import io.exoquery.Phase
-import io.exoquery.ActionReturningKind
-import io.exoquery.SqlCompiledAction
-import io.exoquery.SqlCompiledBatchAction
-import io.exoquery.SqlCompiledQuery
+import io.exoquery.*
 import io.exoquery.plugin.trees.Lifter
 import io.exoquery.plugin.trees.PT
 import io.exoquery.plugin.trees.simpleTypeArgs
@@ -37,7 +32,7 @@ data class SqlCompiledQueryExpr(
     // i.e. this is the SqlQuery.params call
     val callParamsFromSqlQuery = sqlQueryExpr.callDispatch("params").invoke()
 
-    return with (lifter) {
+    return with(lifter) {
       val labelExpr = if (label != null) label.lift() else irBuilder.irNull()
       makeWithTypes<SqlCompiledQuery<*>>(
         listOf(queryOutputType),
@@ -79,7 +74,7 @@ data class SqlCompiledActionExpr(
     val inputType = sqlActionExpr.type.simpleTypeArgs[0]
     val outputType = sqlActionExpr.type.simpleTypeArgs[1]
 
-    return with (lifter) {
+    return with(lifter) {
       val labelExpr = if (label != null) label.lift() else irBuilder.irNull()
       makeWithTypes<SqlCompiledAction<*, *>>(
         listOf(inputType, outputType),
@@ -122,7 +117,7 @@ data class SqlCompiledBatchActionExpr(
     val inputType = sqlBatchActionExpr.type.simpleTypeArgs[0]
     val outputType = sqlBatchActionExpr.type.simpleTypeArgs[1]
 
-    return with (lifter) {
+    return with(lifter) {
       val labelExpr = if (label != null) label.lift() else irBuilder.irNull()
       makeWithTypes<SqlCompiledBatchAction<*, *, *>>(
         listOf(inputType, outputType),

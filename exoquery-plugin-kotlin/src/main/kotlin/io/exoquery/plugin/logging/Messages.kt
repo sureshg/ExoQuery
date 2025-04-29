@@ -1,22 +1,20 @@
 package io.exoquery.plugin.logging
 
-import io.exoquery.annotation.CapturedFunction
 import io.exoquery.plugin.dataClassProperties
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.source
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.dumpKotlinLikePretty
-import io.exoquery.plugin.transform.prepareForPrinting
 import io.exoquery.plugin.trees.showLineage
 import org.jetbrains.kotlin.ir.IrElement
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.IrReturn
 import org.jetbrains.kotlin.ir.types.classOrNull
-import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
+// @formatter:off
 object Messages {
 
 context(CX.Parsing)
@@ -289,3 +287,4 @@ ${writeOutput(ir)}
 
 
 }
+// @formatter:on

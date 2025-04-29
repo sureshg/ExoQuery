@@ -19,7 +19,6 @@ fun JdbcController.isH2(): Boolean = this is JdbcControllers.H2
 fun JdbcController.isMysql(): Boolean = this is JdbcControllers.Mysql
 
 
-
 suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: JdbcController, serializer: KSerializer<Output>, options: JdbcExecutionOptions = JdbcExecutionOptions()): Output =
   when (val action = this.toControllerAction(serializer)) {
     is ControllerAction -> action.runOn(database, options) as Output

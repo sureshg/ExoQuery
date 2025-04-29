@@ -6,8 +6,9 @@ import io.exoquery.pprint.Tree
 import io.exoquery.printing.PrintMisc
 import io.exoquery.terpal.Interpolator
 
-data class DebugDump(val info: MutableList<DebugMsg> = mutableListOf()){
+data class DebugDump(val info: MutableList<DebugMsg> = mutableListOf()) {
   fun dump(str: String) = info.add(DebugMsg.Fragment(str))
+
   companion object {
     operator fun invoke(vararg msg: DebugMsg) = DebugDump(msg.toMutableList())
   }
@@ -15,9 +16,9 @@ data class DebugDump(val info: MutableList<DebugMsg> = mutableListOf()){
 
 
 sealed interface DebugMsg {
-  data class Fragment(val str: String): DebugMsg
-  data class Composite(val frags: List<DebugMsg>): DebugMsg
-  object Empty: DebugMsg
+  data class Fragment(val str: String) : DebugMsg
+  data class Composite(val frags: List<DebugMsg>) : DebugMsg
+  object Empty : DebugMsg
 }
 
 
@@ -32,13 +33,15 @@ class Tracer(
   val defaultIndent: Int = 0,
   val color: Boolean = true,
   val globalTracesEnabled: (TraceType) -> Boolean = { Globals.tracesEnabled(it) }
-): Interpolator<Any, Traceable> {
+) : Interpolator<Any, Traceable> {
 
   interface OutputSink {
     fun output(str: String): Unit
 
     companion object {
-      val None = object: OutputSink { override fun output(str: String) = Unit }
+      val None = object : OutputSink {
+        override fun output(str: String) = Unit
+      }
     }
   }
 
@@ -69,10 +72,10 @@ class Traceable(
 
   // Hiearchy representing the type of element to print once it is classified as a splice
   private sealed interface Printee {
-    data class Str(val value: String, val first: Boolean):Printee
-    data class Elem(val value: String):Printee
-    data class Simple(val value: String):Printee
-    object Separator:Printee
+    data class Str(val value: String, val first: Boolean) : Printee
+    data class Elem(val value: String) : Printee
+    data class Simple(val value: String) : Printee
+    object Separator : Printee
   }
 
   private val elementPrefix = "|  "
@@ -85,8 +88,8 @@ class Traceable(
 
   fun generateStringForCommand(value: Any, indent: Int): String {
     val objectString = printCommand.invoke(value).toString()
-    val oneLine      = objectString.toString().fitsOnOneLine
-    return when(oneLine) {
+    val oneLine = objectString.toString().fitsOnOneLine
+    return when (oneLine) {
       true -> "${indent.prefix}> ${objectString}"
       false -> "${indent.prefix}>\n${objectString.multiline(indent, elementPrefix)}"
     }
@@ -99,8 +102,9 @@ class Traceable(
 
   sealed interface Splice {
     val value: String
-    data class Simple(override val value: String): Splice // Simple splice into the string, don't indent etc...
-    data class Show(override val value: String): Splice // Indent, colorize the element etc...
+
+    data class Simple(override val value: String) : Splice // Simple splice into the string, don't indent etc...
+    data class Show(override val value: String) : Splice // Indent, colorize the element etc...
   }
 
   private fun readBuffers(parts: List<String>, params: List<Any>) = run {
@@ -142,7 +146,7 @@ class Traceable(
     while (elementsIter.hasNext()) {
       val nextElem = elementsIter.next()
       with(nextElem) {
-        when(this) {
+        when (this) {
           is Splice.Simple -> {
             sb.add(Printee.Simple(value))
             val nextPart = partsIter.next().trim()

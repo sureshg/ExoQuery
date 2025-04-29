@@ -17,7 +17,7 @@ class SqlNormalize(
   val equalityBehavior: EqualityBehavior = EqualityBehavior.AnsiEquality,
   override val traceConf: TraceConfig = TraceConfig.empty,
   val disableApplyMap: Boolean = false
-): HasPhasePrinting {
+) : HasPhasePrinting {
   override val traceType = TraceType.Normalizations
   override val trace by lazy { Tracer(traceType, traceConf, 1) }
 

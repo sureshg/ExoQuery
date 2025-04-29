@@ -36,7 +36,7 @@ interface StatelessTokenTransformer {
 
   companion object {
     operator fun invoke(f: (Token) -> Token?) =
-      object: StatelessTokenTransformer {
+      object : StatelessTokenTransformer {
         override fun invoke(token: Token): Token =
           f(token) ?: super.invoke(token)
       }

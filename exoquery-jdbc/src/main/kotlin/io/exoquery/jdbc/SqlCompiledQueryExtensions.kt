@@ -18,10 +18,10 @@ private interface ActionOutput<T> {
 suspend fun <T> SqlCompiledQuery<T>.runOn(database: JdbcController, serializer: KSerializer<T>, options: JdbcExecutionOptions = JdbcExecutionOptions()) =
   this.toControllerQuery(serializer).runOn(database, options)
 
-inline suspend fun <reified T: Any> SqlCompiledQuery<T>.runOn(database: JdbcController, options: JdbcExecutionOptions = JdbcExecutionOptions()) =
+inline suspend fun <reified T : Any> SqlCompiledQuery<T>.runOn(database: JdbcController, options: JdbcExecutionOptions = JdbcExecutionOptions()) =
   this.runOn(database, serializer(), options)
 
-inline suspend fun <reified T: Any> SqlCompiledQuery<T>.runOnPostgres(dataSource: DataSource) = run {
+inline suspend fun <reified T : Any> SqlCompiledQuery<T>.runOnPostgres(dataSource: DataSource) = run {
   val controller = JdbcControllers.Postgres(dataSource)
   this.runOn(controller, serializer())
 }

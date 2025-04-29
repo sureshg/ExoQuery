@@ -4,7 +4,7 @@ import io.exoquery.BID
 import io.exoquery.ContainerOfFunXR
 import io.exoquery.ContainerOfXR
 
-fun <CXR: ContainerOfXR> CXR.rekeyRuntimeBinds(): CXR {
+fun <CXR : ContainerOfXR> CXR.rekeyRuntimeBinds(): CXR {
   // Scala:
   //    def rekeyLeafBindsUsing(ast: Ast, bindMap: Map[String, String]) =
   //      Transform(ast) {
@@ -104,7 +104,6 @@ fun <CXR: ContainerOfXR> CXR.rekeyRuntimeBinds(): CXR {
 
 // Scala:
 //  def dedupeRuntimeBinds: Quoted[T] = {
-
 
 
 //    // need to rekey depth-first, otherwise the same uid might be rekeyed multiple times which is not the correct behavior

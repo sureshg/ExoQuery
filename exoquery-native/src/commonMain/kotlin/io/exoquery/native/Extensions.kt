@@ -26,7 +26,7 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.serializer
 
 // Change testing-controller to controller-common and it in there?
-internal fun <T: Any> Param<T>.toStatementParam(): StatementParam<T> =
+internal fun <T : Any> Param<T>.toStatementParam(): StatementParam<T> =
   when (this) {
     is ParamBatchRefiner<*, *> ->
       xrError("Attempted to convert batch-param refiner to a database-statement parameter. This is illegal, all batch-param refiners need to be converted into normal Param instances first. The incorrect refiner was:\n${this.description}")
@@ -42,13 +42,12 @@ internal fun <T> SqlCompiledQuery<T>.toControllerQuery(serializer: KSerializer<T
 suspend fun <T> SqlCompiledQuery<T>.runOn(database: NativeDatabaseController, serializer: KSerializer<T>) =
   this.toControllerQuery(serializer).runOn(database)
 
-inline suspend fun <reified T: Any> SqlCompiledQuery<T>.runOn(database: NativeDatabaseController) =
+inline suspend fun <reified T : Any> SqlCompiledQuery<T>.runOn(database: NativeDatabaseController) =
   this.runOn(database, serializer())
 
 
-
 suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: NativeDatabaseController, serializer: KSerializer<Output>): Output =
-  when(actionReturningKind) {
+  when (actionReturningKind) {
     is ActionReturningKind.None -> {
       val action = ControllerAction(token.build(), params.map { it.toStatementParam() })
       // Check the kind of "Output" i.e. it needs to be a Long (we can use the descriptor-kind as a proxy for this and not need to pass a KClass in)
@@ -62,25 +61,25 @@ suspend fun <Input, Output> SqlCompiledAction<Input, Output>.runOn(database: Nat
       val actionReturning = ControllerActionReturning.Row(value, params.map { it.toStatementParam() }, serializer, listOf())
       actionReturning.runOn(database)
     }
-     is ActionReturningKind.Keys -> {
+    is ActionReturningKind.Keys -> {
       val actionReturningId = ControllerActionReturning.Id(value, params.map { it.toStatementParam() }, Long.serializer(), (actionReturningKind as ActionReturningKind.Keys).columns)
       val queryOutput = actionReturningId.runOn(database)
 
-       if (actionKind != ActionKind.Insert)
-         illegalOp(MessagesNative.SqliteNativeCantReturningKeysIfNotInsert)
+      if (actionKind != ActionKind.Insert)
+        illegalOp(MessagesNative.SqliteNativeCantReturningKeysIfNotInsert)
 
-       // Insert output will always be a long, even if it's a returning Key (which only happens for inserts btw)
-       when(serializer.descriptor.kind) {
-         is PrimitiveKind.LONG -> queryOutput.toLong() as Output
-         is PrimitiveKind.INT -> queryOutput.toInt() as Output
-         is PrimitiveKind.SHORT -> queryOutput.toShort() as Output
-         is PrimitiveKind.BYTE -> queryOutput.toByte() as Output
-         is PrimitiveKind.CHAR -> queryOutput.toChar() as Output
-         is PrimitiveKind.FLOAT -> queryOutput.toFloat() as Output
-         is PrimitiveKind.DOUBLE -> queryOutput.toDouble() as Output
-         is PrimitiveKind.STRING -> queryOutput.toString() as Output
-         else -> xrError("Invalid serializer descriptor: ${serializer.descriptor}. The returningKeys call needs to be a primitive type when using Sqlite Native.")
-       }
+      // Insert output will always be a long, even if it's a returning Key (which only happens for inserts btw)
+      when (serializer.descriptor.kind) {
+        is PrimitiveKind.LONG -> queryOutput.toLong() as Output
+        is PrimitiveKind.INT -> queryOutput.toInt() as Output
+        is PrimitiveKind.SHORT -> queryOutput.toShort() as Output
+        is PrimitiveKind.BYTE -> queryOutput.toByte() as Output
+        is PrimitiveKind.CHAR -> queryOutput.toChar() as Output
+        is PrimitiveKind.FLOAT -> queryOutput.toFloat() as Output
+        is PrimitiveKind.DOUBLE -> queryOutput.toDouble() as Output
+        is PrimitiveKind.STRING -> queryOutput.toString() as Output
+        else -> xrError("Invalid serializer descriptor: ${serializer.descriptor}. The returningKeys call needs to be a primitive type when using Sqlite Native.")
+      }
     }
   }
 

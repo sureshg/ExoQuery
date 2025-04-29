@@ -17,7 +17,7 @@ data class SelectClause(
   val select: XR.Expression,
   override val type: XRType,
   override val loc: XR.Location = XR.Location.Synth
-): XR.CustomQuery.Convertable {
+) : XR.CustomQuery.Convertable {
 
   override fun toQueryXR(): XR.Query = SelectClauseToXR(this)
   fun allComponents(): List<SX> = assignments + listOfNotNull(where, groupBy, sortBy)
@@ -55,7 +55,7 @@ data class SelectClause(
     fun justSelect(select: XR.Expression, loc: XR.Location): SelectClause = SelectClause(emptyList(), null, null, null, select, select.type, loc)
 
     // A friendlier constructor for tests
-    fun of (
+    fun of(
       assignments: List<SX.U.Assignment>,
       where: SX.Where? = null,
       groupBy: SX.GroupBy? = null,
@@ -71,6 +71,7 @@ data class SelectClause(
 
 
   data class Id(val assignments: List<SX.U.Assignment>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?, val select: XR.Expression)
+
   @Transient
   val id = Id(assignments, where, groupBy, sortBy, select)
   override fun equals(other: Any?): Boolean = (this === other) || (other is SelectClause && id == other.id)

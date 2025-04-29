@@ -14,10 +14,11 @@ sealed interface QueryAccumState {
   fun isEmpty(): Boolean
   fun nonEmpty(): Boolean = !isEmpty()
 
-  data object Empty: QueryAccumState {
+  data object Empty : QueryAccumState {
     override fun isEmpty(): Boolean = true
   }
-  data class RealFile(val file: IrFile, val queries: MutableList<PrintableQuery> = mutableListOf()): QueryAccumState {
+
+  data class RealFile(val file: IrFile, val queries: MutableList<PrintableQuery> = mutableListOf()) : QueryAccumState {
     override fun isEmpty(): Boolean = queries.isEmpty()
 
     fun addQuery(printableQuery: PrintableQuery) {
@@ -26,12 +27,13 @@ sealed interface QueryAccumState {
   }
 
   sealed interface PathBehavior {
-    data object IncludePaths: PathBehavior
-    data object NoIncludePaths: PathBehavior
+    data object IncludePaths : PathBehavior
+    data object NoIncludePaths : PathBehavior
   }
+
   sealed interface LabelBehavior {
-    data object IncludeOnlyLabeled: LabelBehavior
-    data object IncludeAll: LabelBehavior
+    data object IncludeOnlyLabeled : LabelBehavior
+    data object IncludeAll : LabelBehavior
   }
 }
 
@@ -78,6 +80,7 @@ data class SymbolSet(
 ) {
 
   fun withSymbols(newSymbols: List<IrSymbol>) = SymbolSet(this.symbols + newSymbols, capturedFunctionParameters)
+
   // Add parameters for captured functions (don't think there are cases where this is called in a nested fasion i.e. there are symbols that should exist beforehand)
   fun withCapturedFunctionParameters(capFun: IrSimpleFunction) = run {
     // Note that it is possible for dispatch/extension params to be used inside a function e.g:

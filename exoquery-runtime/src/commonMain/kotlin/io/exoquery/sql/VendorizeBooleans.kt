@@ -18,7 +18,7 @@ import io.exoquery.xr.copy.UnaryOp
 import io.exoquery.xr.copy.cs
 import io.exoquery.xr.csf
 
-object VendorizeBooleans: StatelessTransformer {
+object VendorizeBooleans : StatelessTransformer {
   //  override def apply(ast: Ast): Ast =
   //    ast match {
   //      // Map clauses need values e.g. map(n=>n.status==true) => map(n=>if(n.status==true) 1 else 0)
@@ -29,7 +29,7 @@ object VendorizeBooleans: StatelessTransformer {
   //      case FlatJoin(typ, a, aliasA, on) =>
   //        FlatJoin(typ, a, aliasA, expressifyValue(apply(on)))
   override fun invoke(xr: XR.Query): XR.Query =
-    with (xr) {
+    with(xr) {
       when (this) {
         // Map clauses need values e.g. map(n=>n.status==true) => map(n=>if(n.status==true) 1 else 0)
         is XR.Map -> Map.cs(invoke(head), id, valuefyExpression(invoke(body)))
@@ -44,7 +44,7 @@ object VendorizeBooleans: StatelessTransformer {
 
 
   override fun invoke(xr: XR.Expression): XR.Expression =
-    with (xr) {
+    with(xr) {
       when {
         // Things that have ||, && between them are typically expressions, things like "true || e.isSomething"
         // need to be converted to "true == true || e.isSomething == true" so they are
@@ -99,7 +99,6 @@ object VendorizeBooleans: StatelessTransformer {
 //  }
 
 
-
   fun isOperatorOnExpressions(op: BinaryOperator) =
     when (op) {
       OP.or, OP.and -> true
@@ -129,7 +128,7 @@ object VendorizeBooleans: StatelessTransformer {
 //  }
 
   fun valuefyExpression(xr: XR.Expression): XR.Expression =
-    with (xr) {
+    with(xr) {
       when {
         type is XRType.BooleanExpression ->
           XR.When.makeIf(this, XR.Const.Boolean(true), XR.Const.Boolean(false), loc)
@@ -145,37 +144,37 @@ object VendorizeBooleans: StatelessTransformer {
 //  }
 
 
-    fun XR.When.allPartsBooleanValue(): Boolean =
-      branches.all { it.then.isBooleanValue() } && orElse.isBooleanValue()
+  fun XR.When.allPartsBooleanValue(): Boolean =
+    branches.all { it.then.isBooleanValue() } && orElse.isBooleanValue()
 
-    fun XR.When.reduceToExpression(): XR.Expression = run {
-      val conds = branches.map { expressifyValue(it.cond) }.reduce { a, b -> a `+and+` b }
-      val condThens = branches.map { expressifyValue(it.cond) `+and+` expressifyValue(it.then) }
-      val elseExpr = expressifyValue(orElse)
-      condThens.reduce { a, b -> a `+and+` b } `+or+` (XR.UnaryOp(OP.not, conds) `+and+` elseExpr)
-    }
+  fun XR.When.reduceToExpression(): XR.Expression = run {
+    val conds = branches.map { expressifyValue(it.cond) }.reduce { a, b -> a `+and+` b }
+    val condThens = branches.map { expressifyValue(it.cond) `+and+` expressifyValue(it.then) }
+    val elseExpr = expressifyValue(orElse)
+    condThens.reduce { a, b -> a `+and+` b } `+or+` (XR.UnaryOp(OP.not, conds) `+and+` elseExpr)
+  }
 
 
-    /*
-     * Generally speaking you need to add true==X to some X which is a boolean-value to make it a boolean-expression
-     * For example:
-     * SELECT ... WHERE person.isSober
-     *   => SELECT ... WHERE true==person.isSober
-     * However if you know the expression is conditional you can do better:
-     * SELECT ... WHERE CASE WHEN person.isSober THEN canDrinkMoreHere ELSE canGoToAnotherClub
-     *   => SELECT ... WHERE (person.isSober && canDrinkMoreHere) || (!person.isSober && canGoToAnotherClub)
-     */
-    fun expressifyValue(xr: XR.Expression): XR.Expression =
-      with (xr) {
-        when {
-          this is XR.When && this.allPartsBooleanValue() ->
-            this.reduceToExpression()
-          this.isBooleanValue() ->
-            XR.Const.Boolean(true) `+==+` xr
-          else ->
-            xr
-        }
+  /*
+   * Generally speaking you need to add true==X to some X which is a boolean-value to make it a boolean-expression
+   * For example:
+   * SELECT ... WHERE person.isSober
+   *   => SELECT ... WHERE true==person.isSober
+   * However if you know the expression is conditional you can do better:
+   * SELECT ... WHERE CASE WHEN person.isSober THEN canDrinkMoreHere ELSE canGoToAnotherClub
+   *   => SELECT ... WHERE (person.isSober && canDrinkMoreHere) || (!person.isSober && canGoToAnotherClub)
+   */
+  fun expressifyValue(xr: XR.Expression): XR.Expression =
+    with(xr) {
+      when {
+        this is XR.When && this.allPartsBooleanValue() ->
+          this.reduceToExpression()
+        this.isBooleanValue() ->
+          XR.Const.Boolean(true) `+==+` xr
+        else ->
+          xr
       }
+    }
 
 
 //  def expressifyValue(ast: Ast): Ast = ast match {

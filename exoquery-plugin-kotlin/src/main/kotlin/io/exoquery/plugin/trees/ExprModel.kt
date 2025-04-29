@@ -1,14 +1,7 @@
 package io.exoquery.plugin.trees
 
 import io.decomat.*
-import io.exoquery.BID
-import io.exoquery.Param
-import io.exoquery.ParamBatchRefiner
-import io.exoquery.ParamMulti
-import io.exoquery.ParamSingle
-import io.exoquery.ParamSet
-import io.exoquery.RuntimeSet
-import io.exoquery.parseError
+import io.exoquery.*
 import io.exoquery.plugin.classId
 import io.exoquery.plugin.classIdOf
 import io.exoquery.plugin.transform.*
@@ -16,9 +9,7 @@ import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
 import io.exoquery.xr.encode
 import kotlinx.serialization.decodeFromHexString
-import org.jetbrains.kotlin.backend.jvm.ir.kClassReference
 import org.jetbrains.kotlin.ir.IrElement
-import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irNull
@@ -27,24 +18,24 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
-import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrValueParameterSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.isNullablePrimitiveType
 import org.jetbrains.kotlin.ir.types.isPrimitiveType
 import org.jetbrains.kotlin.ir.types.isString
-import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 class RuntimesExpr(val runtimes: List<Pair<BID, IrExpression>>, val runtimesToCompose: List<IrExpression>) {
   context (CX.Scope, CX.Builder) fun lift(): IrExpression {
-    return with (makeLifter()) {
+    return with(makeLifter()) {
       val bindsList = runtimes.map { pair ->
         pair.lift(
-          {bid -> bid.lift()},
+          { bid -> bid.lift() },
           { it })
       }
       val newRuntimes: IrExpression = make<RuntimeSet>(bindsList.liftExpr<Pair<BID, IrExpression>>())
@@ -70,7 +61,7 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
    * ```
    */
   sealed interface Type {
-    sealed interface Single: Type {
+    sealed interface Single : Type {
       context (CX.Scope, CX.Builder) fun makeSerializer(): IrExpression
       context (CX.Scope, CX.Builder) fun makeValue(originalValue: IrExpression): IrExpression = originalValue
     }
@@ -81,7 +72,7 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
         // Both isNullablePrimitiveType() and isPrimitiveType() are not needed (the 1st one takes care of both) but doing this for clarity
         if (expr.type.isNullablePrimitiveType() || expr.type.isPrimitiveType() || expr.type.isString() || expr.type.isNullablePrimitiveType())
           ParamStatic(getSerializerForType(expr.type) ?: parseError("Could not create a primitive-type parser ofr the type ${expr.type.dumpKotlinLike()} whose class-id is ${expr.type.classId()}", expr))
-          //ParamStatic(expr.type.classId()!!)
+        //ParamStatic(expr.type.classId()!!)
         else
           ParamCtx(expr.type)
       }
@@ -89,9 +80,9 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
 
     context (CX.Scope, CX.Builder) fun build(bid: BID, originalValue: IrExpression, lifter: Lifter): IrExpression
 
-    data class ParamUsingBatchAlias(val batchVariable: IrValueParameter, val param: Type.Single, val suffix: String? = null): Type {
+    data class ParamUsingBatchAlias(val batchVariable: IrValueParameter, val param: Type.Single, val suffix: String? = null) : Type {
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValue: IrExpression, lifter: Lifter) =
-        with (lifter) {
+        with(lifter) {
           // Remember that the transformer (called below) that replaces the batch_varaible mutates the Ir so we need to make
           // copies of it in case the actual batch-variable is being reused for multiple expression (as it happens when we use capture.batch(people) { p -> ... setParams(p)... })
           // I.e. since during the eleboration phase, the actual `p` parameter gets copied so once we mutate it, it will be the same underlying instance for all
@@ -123,19 +114,20 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
           )
 
 
-
           val transformer =
-            object: IrElementTransformerVoid() {
+            object : IrElementTransformerVoid() {
               // Generic calls of IrElement bubble up to here
               override fun visitElement(expression: IrElement): IrElement {
                 if (expression is IrGetValue && expression.symbol.owner == batchVariable) expression.symbol = newSymbol
                 return super.visitElement(expression)
               }
+
               // IrGetValue and IrDeclarationReference bubble up to here
               override fun visitExpression(expression: IrExpression): IrExpression {
                 if (expression is IrGetValue && expression.symbol.owner == batchVariable) expression.symbol = newSymbol
                 return super.visitExpression(expression)
               }
+
               // Technically don't need this because it will bubble up to visitExpression but here for clarity
               override fun visitGetValue(expression: IrGetValue): IrExpression {
                 if (expression.symbol.owner == batchVariable) expression.symbol = newSymbol
@@ -172,12 +164,13 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
     data class ParamStatic(val classId: ClassId) : Type, Single {
       context (CX.Scope, CX.Builder) override fun makeSerializer() = makeObjectFromId(classId)
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValue: IrExpression, lifter: Lifter) =
-        with (lifter) {
+        with(lifter) {
           val value = makeValue(originalValue)
           val description = if (debugDataConfig.addParamDescriptions) value.dumpKotlinLike().lift() else builder.irNull()
           make<ParamSingle<*>>(bid.lift(), value, makeSerializer())
         }
     }
+
     /**
      * This comes out of paramCtx(value: T)
      * `type` is the type to use when calling io.exoquery.serial.contextualSerializer()
@@ -186,12 +179,13 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
     data class ParamCtx(val type: IrType) : Type, Single {
       context (CX.Scope, CX.Builder) override fun makeSerializer() = callWithParams("io.exoquery.serial", "contextualSerializer", listOf(type)).invoke()
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValue: IrExpression, lifter: Lifter) =
-        with (lifter) {
+        with(lifter) {
           val value = makeValue(originalValue)
           val description = if (debugDataConfig.addParamDescriptions) value.dumpKotlinLike().lift() else builder.irNull()
           make<ParamSingle<*>>(bid.lift(), value, makeSerializer())
         }
     }
+
     /**
      * This comes out of paramCustom(value: T, serializer: SerializationStrategy<T>)
      * ktSerializer is the SerializationStrategy (serializer arg) instance to be passed into ParamSerializer.Custom,
@@ -199,21 +193,22 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
      * complete with the serializer to pass in and the type to use when calling it.
      * originalValue is `value: T`.
      */
-    data class ParamCustom(val ktSerializer: IrExpression, val type: IrType): Type, Single {
+    data class ParamCustom(val ktSerializer: IrExpression, val type: IrType) : Type, Single {
       context (CX.Scope, CX.Builder) override fun makeSerializer() = callWithParams("io.exoquery.serial", "customSerializer", listOf(type)).invoke(ktSerializer)
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValue: IrExpression, lifter: Lifter) =
-        with (lifter) {
+        with(lifter) {
           val value = makeValue(originalValue)
           val description = if (debugDataConfig.addParamDescriptions) value.dumpKotlinLike().lift() else builder.irNull()
           make<ParamSingle<*>>(bid.lift(), value, makeSerializer())
         }
     }
+
     /** valueWithSet is the ValueWithSerializer instance passed to param */
-    data class ParamCustomValue(val valueWithSerializer: IrExpression): Type, Single {
+    data class ParamCustomValue(val valueWithSerializer: IrExpression) : Type, Single {
       context (CX.Scope, CX.Builder) override fun makeSerializer() = constructValueSerializer(valueWithSerializer)
       context (CX.Scope, CX.Builder) override fun makeValue(originalValue: IrExpression) = originalValue.callDispatch("value")()
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValue: IrExpression, lifter: Lifter) = run {
-        with (lifter) {
+        with(lifter) {
           val value = makeValue(originalValue)
           val description = if (debugDataConfig.addParamDescriptions) value.dumpKotlinLike().lift() else builder.irNull()
           make<ParamSingle<*>>(bid.lift(), value, makeSerializer())
@@ -236,36 +231,39 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
      */
     data class ParamListStatic(val classId: ClassId) : Type {
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValues: IrExpression, lifter: Lifter) =
-        with (lifter) {
+        with(lifter) {
           val valueType = originalValues.type.simpleTypeArgs.firstOrNull() ?: parseError("Could not get the first type-argument of the static-param list type: ${originalValues.dumpKotlinLike()}", originalValues)
           make<ParamMulti<*>>(bid.lift(), originalValues, makeObjectFromId(classId))
         }
     }
+
     data class ParamListCtx(val type: IrType) : Type {
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValues: IrExpression, lifter: Lifter) =
-        with (lifter) {
+        with(lifter) {
           val valueType = originalValues.type.simpleTypeArgs.firstOrNull() ?: parseError("Could not get the first type-argument of the context-param list type: ${originalValues.dumpKotlinLike()}", originalValues)
           make<ParamMulti<*>>(bid.lift(), originalValues, callWithParams("io.exoquery.serial", "contextualSerializer", listOf(type)).invoke())
         }
     }
+
     /**
      * Comes out of paramsCustom(values: List<T>, serializer: SerializationStrategy<T>)
      * ktSerializer is the SerializationStrategy (serializer arg) instance to be passed into ParamSerializer.Custom,
      * which is created via `io.exoquery.serial.customSerializer` below. The type is the type to use when calling it.
      * originalValues is the `values` arg of the params call above.
      */
-    data class ParamListCustom(val ktSerializer: IrExpression, val type: IrType): Type {
+    data class ParamListCustom(val ktSerializer: IrExpression, val type: IrType) : Type {
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValues: IrExpression, lifter: Lifter) =
         with(lifter) {
           val valueType = originalValues.type.simpleTypeArgs.firstOrNull() ?: parseError("Could not get the first type-argument of the custom-param list type: ${originalValues.dumpKotlinLike()}", originalValues)
           make<ParamMulti<*>>(bid.lift(), originalValues, callWithParams("io.exoquery.serial", "customSerializer", listOf(type)).invoke(ktSerializer))
         }
     }
-    data class ParamListCustomValue(val valueWithSerializer: IrExpression): Type {
+
+    data class ParamListCustomValue(val valueWithSerializer: IrExpression) : Type {
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValue: IrExpression, lifter: Lifter) = run {
         val paramSerializer = constructValueListSerializer(valueWithSerializer)
         val value = originalValue.callDispatch("values")()
-        with (lifter) {
+        with(lifter) {
           val valueType = value.type.simpleTypeArgs.firstOrNull() ?: parseError("Could not get the first type-argument of the custom-param-value list type: ${value.dumpKotlinLike()}", value)
           make<ParamMulti<*>>(bid.lift(), value, paramSerializer)
         }
@@ -285,17 +283,17 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
 class ParamsExpr(val paramBinds: List<ParamBind>, val paramsToCompose: List<IrExpression>) {
   context (CX.Scope, CX.Builder) fun lift(): IrExpression {
     val lifter = makeLifter()
-    return with (lifter) {
+    return with(lifter) {
       val paramsList = paramBinds.map { (bid, value, paramType) ->
         paramType.build(bid, value, lifter)
       }
       val newParams: IrExpression = make<ParamSet>(paramsList.liftExpr<Param<*>>())
       val out =
-      paramsToCompose
-        .map { it.callDispatch("params")() }
-        .fold(newParams, { acc, nextParams ->
-          acc.callDispatch("plus")(nextParams)
-        })
+        paramsToCompose
+          .map { it.callDispatch("params")() }
+          .fold(newParams, { acc, nextParams ->
+            acc.callDispatch("plus")(nextParams)
+          })
       out
     }
   }
@@ -347,7 +345,7 @@ object SqlExpressionExpr {
     }
 
     companion object {
-      context (CX.Scope) operator fun <AP: Pattern<Uprootable>> get(x: AP) =
+      context (CX.Scope) operator fun <AP : Pattern<Uprootable>> get(x: AP) =
         customPattern1("SqlExpressionExpr.Uprootable", x) { it: IrExpression ->
           it.match(
             // Match on: SqlExpression(unpackExpr(str))
@@ -382,8 +380,8 @@ object SqlExpressionExpr {
 }
 
 sealed interface UnpackResult<out T> {
-  data class Success<T>(val value: T): UnpackResult<T>
-  data class Failure(val e: Throwable): UnpackResult<Nothing>
+  data class Success<T>(val value: T) : UnpackResult<T>
+  data class Failure(val e: Throwable) : UnpackResult<Nothing>
 
   context(CX.Scope)
   fun successOrParseError(element: IrExpression) = when (this) {
@@ -414,7 +412,7 @@ object SqlQueryExpr {
     }
 
     companion object {
-      context (CX.Scope) operator fun <AP: Pattern<Uprootable>> get(x: AP) =
+      context (CX.Scope) operator fun <AP : Pattern<Uprootable>> get(x: AP) =
         customPattern1("SqlQueryExpr.Uprootable", x) { it: IrExpression ->
           it.match(
             case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is(PT.io_exoquery_SqlQuery), Ir.Call.FunctionUntethered1[Is(PT.io_exoquery_unpackQuery), Is()]])

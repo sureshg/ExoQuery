@@ -23,13 +23,13 @@ object PropertyMatryoshka {
       }
     }
 
-    operator fun <AP: Pattern<XR.Expression>, BP: Pattern<List<XR.Property>>> get(a: AP, b: BP) =
-      customPattern2("PropertyMatryoshka.traverse", a, b) { it: XR.Expression ->
-        when (it) {
-          is XR.Property -> traverse(it).let { (xr, path) -> Components2(xr, path) }
-          else -> null
-        }
+  operator fun <AP : Pattern<XR.Expression>, BP : Pattern<List<XR.Property>>> get(a: AP, b: BP) =
+    customPattern2("PropertyMatryoshka.traverse", a, b) { it: XR.Expression ->
+      when (it) {
+        is XR.Property -> traverse(it).let { (xr, path) -> Components2(xr, path) }
+        else -> null
       }
+    }
 }
 
 fun isPropertyOrCore(it: XR.Expression) =

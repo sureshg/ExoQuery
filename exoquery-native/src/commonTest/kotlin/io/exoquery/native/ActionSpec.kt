@@ -13,7 +13,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 
-class ActionSpec: FreeSpec({
+class ActionSpec : FreeSpec({
   val ctx = TestDatabase.ctx
 
   beforeEach {
@@ -100,10 +100,12 @@ class ActionSpec: FreeSpec({
   }
 
   suspend fun NativeDatabaseController.insertGeorgeAndJim() =
-    this.runActions("""
+    this.runActions(
+      """
         INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'George', 'Googs', 555);
         INSERT INTO Person (id, firstName, lastName, age) VALUES (2, 'Jim', 'Roogs', 222);
-      """.trimIndent())
+      """.trimIndent()
+    )
 
   val joe = Person(1, "Joe", "Bloggs", 111)
   val george = Person(1, "George", "Googs", 555)

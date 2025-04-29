@@ -6,6 +6,7 @@ import io.exoquery.xr.swapTags
 
 sealed interface ContainerOfXR {
   val xr: XR
+
   // I.e. runtime containers that are used in the expression (if any)
   val runtimes: RuntimeSet
   val params: ParamSet
@@ -16,20 +17,20 @@ sealed interface ContainerOfXR {
 
 
 // Less fungible i.e. always top-level and only for actions
-sealed interface ContainerOfActionXR: ContainerOfXR {
+sealed interface ContainerOfActionXR : ContainerOfXR {
   override val xr: XR.Action
   override fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): ContainerOfActionXR
   override fun withNonStrictEquality(): ContainerOfActionXR
 }
 
 // Specifically for fungible XR Query and Expression types that are composable (e.g. that can be in a RuntimeSet)
-sealed interface ContainerOfFunXR: ContainerOfXR {
+sealed interface ContainerOfFunXR : ContainerOfXR {
   override val xr: XR.U.QueryOrExpression
   override fun rebuild(xr: XR, runtimes: RuntimeSet, params: ParamSet): ContainerOfFunXR
   override fun withNonStrictEquality(): ContainerOfFunXR
 }
 
-data class SqlExpression<T>(override val xr: XR.Expression, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfFunXR {
+data class SqlExpression<T>(override val xr: XR.Expression, override val runtimes: RuntimeSet, override val params: ParamSet) : ContainerOfFunXR {
   fun determinizeDynamics(): SqlExpression<T> = DeterminizeDynamics().ofExpression(this)
 
   fun show() = PrintMisc().invoke(this)
@@ -97,7 +98,7 @@ internal class DeterminizeDynamics() {
     return SqlAction(newXR, RuntimeSet(newRuntimes.map { it.second to it.third }), ParamSet(newParams.map { it.third }))
   }
 
-  private fun <BatchInput, Input: Any, Output> recBatching(action: SqlBatchAction<BatchInput, Input, Output>): SqlBatchAction<BatchInput, Input, Output> {
+  private fun <BatchInput, Input : Any, Output> recBatching(action: SqlBatchAction<BatchInput, Input, Output>): SqlBatchAction<BatchInput, Input, Output> {
     val newParams = action.walkParams()
     val newRuntimes = action.walkRuntimes()
     val newXR = action.xr.swapTags(
@@ -106,14 +107,11 @@ internal class DeterminizeDynamics() {
     return SqlBatchAction(newXR, action.batchParam, RuntimeSet(newRuntimes.map { it.second to it.third }), ParamSet(newParams.map { it.third }))
   }
 
-  fun <BI, I: Any, O> ofBatchAction(action: SqlBatchAction<BI, I, O>): SqlBatchAction<BI, I, O> = recBatching(action)
+  fun <BI, I : Any, O> ofBatchAction(action: SqlBatchAction<BI, I, O>): SqlBatchAction<BI, I, O> = recBatching(action)
   fun <I, O> ofAction(action: SqlAction<I, O>): SqlAction<I, O> = recAction(action)
   fun <T> ofExpression(expr: SqlExpression<T>): SqlExpression<T> = recExpr(expr)
   fun <T> ofQuery(query: SqlQuery<T>): SqlQuery<T> = recQuery(query)
 }
-
-
-
 
 
 //fun <T> SqlExpression<T>.convertToQuery(): Query<T> = QueryContainer<T>(io.exoquery.xr.XR.ExprToQuery(xr), binds)

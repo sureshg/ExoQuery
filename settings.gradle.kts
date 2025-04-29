@@ -1,13 +1,13 @@
 pluginManagement {
-    includeBuild("exoquery-plugin-gradle")
-    includeBuild("build-logic")
+  includeBuild("exoquery-plugin-gradle")
+  includeBuild("build-logic")
 
-    repositories {
-        gradlePluginPortal()
-        mavenCentral()
-        mavenLocal()
-        google()
-    }
+  repositories {
+    gradlePluginPortal()
+    mavenCentral()
+    mavenLocal()
+    google()
+  }
 }
 
 // Need this or you will get:
@@ -17,9 +17,9 @@ pluginManagement {
 // at java.base/java.util.Optional.map(Optional.java:260)
 // at org.gradle.jvm.toolchain.internal.JavaToolchainQueryService.findInstalledToolchain(JavaToolchainQueryService.java:156)
 dependencyResolutionManagement {
-    repositories {
-        mavenCentral() // Required for toolchain resolution
-    }
+  repositories {
+    mavenCentral() // Required for toolchain resolution
+  }
 }
 
 includeBuild("exoquery-runtime")
@@ -33,21 +33,20 @@ val isLinux = System.getProperty("os.name").toLowerCase().contains("linux")
 
 // If it's a local build or we're building the CI onl linux include the android project
 if (isLocal || isLinux) {
-    val buildLabel =
-        if (isLocal) "Local"
-        else if (isLinux) "Linux"
-        else "Unknown"
+  val buildLabel =
+    if (isLocal) "Local"
+    else if (isLinux) "Linux"
+    else "Unknown"
 
-    println("------------------- Building JDBC/Android Libraries for ${buildLabel} Build -------------------")
-    include("exoquery-jdbc")
-    include("exoquery-android")
+  println("------------------- Building JDBC/Android Libraries for ${buildLabel} Build -------------------")
+  include("exoquery-jdbc")
+  include("exoquery-android")
 }
 
 include("exoquery-native")
 include("testing")
 
 rootProject.name = "exoquery"
-
 
 
 //pluginManagement {

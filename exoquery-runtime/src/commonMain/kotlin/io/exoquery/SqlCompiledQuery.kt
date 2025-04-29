@@ -1,19 +1,10 @@
 package io.exoquery
 
 import io.exoquery.printing.PrintMisc
-import io.exoquery.sql.ParamBatchToken
 import io.exoquery.sql.ParamBatchTokenRealized
-import io.exoquery.sql.ParamMultiToken
-import io.exoquery.sql.ParamMultiTokenRealized
-import io.exoquery.sql.ParamSingleToken
-import io.exoquery.sql.ParamSingleTokenRealized
-import io.exoquery.sql.SetContainsToken
 import io.exoquery.sql.SqlQueryModel
 import io.exoquery.sql.StatelessTokenTransformer
-import io.exoquery.sql.Statement
-import io.exoquery.sql.StringToken
 import io.exoquery.sql.Token
-import io.exoquery.sql.TokenContext
 import io.exoquery.xr.XR
 
 sealed interface Phase {
@@ -41,7 +32,7 @@ sealed interface ActionKind {
  * val result: List<Person> = myQuery.buildFor.Postgres().runOn(controller)
  * ```
  */
-data class SqlCompiledQuery<T>(val value: String, override val token: Token, val needsTokenization: Boolean, val label: String?, val debugData: SqlCompiledQuery.DebugData): ExoCompiled() {
+data class SqlCompiledQuery<T>(val value: String, override val token: Token, val needsTokenization: Boolean, val label: String?, val debugData: SqlCompiledQuery.DebugData) : ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
 
   // Similar concept tot the SqlQuery/SqlExpression.determinizeDynamics but it does not need to consider any nesting constructs
@@ -53,7 +44,15 @@ data class SqlCompiledQuery<T>(val value: String, override val token: Token, val
   data class DebugData(val phase: Phase, val originalXR: () -> XR.Query, val originalQuery: () -> SqlQueryModel)
 }
 
-data class SqlCompiledAction<Input, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val actionKind: ActionKind, val actionReturningKind: ActionReturningKind, val label: String?, val debugData: SqlCompiledAction.DebugData): ExoCompiled() {
+data class SqlCompiledAction<Input, Output>(
+  val value: String,
+  override val token: Token,
+  val needsTokenization: Boolean,
+  val actionKind: ActionKind,
+  val actionReturningKind: ActionReturningKind,
+  val label: String?,
+  val debugData: SqlCompiledAction.DebugData
+) : ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
 
   override fun determinizeDynamics(): SqlCompiledAction<Input, Output> =
@@ -65,10 +64,8 @@ data class SqlCompiledAction<Input, Output>(val value: String, override val toke
 }
 
 
-
-
 // Effective token refines tokens for that particular batch-input value, we only need it for debugging
-data class BatchParamGroup<BatchInput, Input: Any, Output>(val input: BatchInput, val params: List<Param<*>>, val effectiveToken: () -> Token) {
+data class BatchParamGroup<BatchInput, Input : Any, Output>(val input: BatchInput, val params: List<Param<*>>, val effectiveToken: () -> Token) {
   fun determinizeDynamics(): BatchParamGroup<BatchInput, Input, Output> = run {
     val (token, params) = determinizeToken(effectiveToken(), params)
     this.copy(params = params, effectiveToken = { token })
@@ -76,7 +73,16 @@ data class BatchParamGroup<BatchInput, Input: Any, Output>(val input: BatchInput
 }
 
 // TODO since we're providing the batch-parameter at the last moment, we need a function that replaces ParamBatchRefiner to ParamSingle instances and create BatchGroups
-data class SqlCompiledBatchAction<BatchInput, Input: Any, Output>(val value: String, override val token: Token, val needsTokenization: Boolean, val actionKind: ActionKind, val actionReturningKind: ActionReturningKind, val batchParam: Sequence<BatchInput>, val label: String?, val debugData: SqlCompiledBatchAction.DebugData): ExoCompiled() {
+data class SqlCompiledBatchAction<BatchInput, Input : Any, Output>(
+  val value: String,
+  override val token: Token,
+  val needsTokenization: Boolean,
+  val actionKind: ActionKind,
+  val actionReturningKind: ActionReturningKind,
+  val batchParam: Sequence<BatchInput>,
+  val label: String?,
+  val debugData: SqlCompiledBatchAction.DebugData
+) : ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
 
   val effectiveQuery by lazy { token.build() }

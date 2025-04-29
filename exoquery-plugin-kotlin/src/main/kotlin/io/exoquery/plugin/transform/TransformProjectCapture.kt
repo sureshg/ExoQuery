@@ -8,33 +8,25 @@ import io.exoquery.SqlAction
 import io.exoquery.SqlBatchAction
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
-import io.exoquery.parseError
 import io.exoquery.plugin.isClass
-import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
-import io.exoquery.plugin.trees.Ir
-import io.exoquery.plugin.trees.SqlActionExpr
-import io.exoquery.plugin.trees.SqlBatchActionExpr
-import io.exoquery.plugin.trees.SqlExpressionExpr
-import io.exoquery.plugin.trees.SqlQueryExpr
-import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
-import org.jetbrains.kotlin.ir.builders.irCall
+import io.exoquery.plugin.trees.*
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
-class TransformProjectCapture(val superTransformer: VisitTransformExpressions): FalliableTransformer<IrExpression>() {
+class TransformProjectCapture(val superTransformer: VisitTransformExpressions) : FalliableTransformer<IrExpression>() {
 
   context(CX.Scope, CX.Builder)
   private fun IrExpression.isContainerOfXR(): Boolean =
     this.type.isClass<SqlExpression<*>>() || this.type.isClass<SqlQuery<*>>() || this.type.isClass<SqlAction<*, *>>() || this.type.isClass<SqlBatchAction<*, *, *>>()
 
   sealed interface ExprType {
-    data object Expr: ExprType
-    data object Query: ExprType
-    data object Action: ExprType
-    data object ActionBatch: ExprType
+    data object Expr : ExprType
+    data object Query : ExprType
+    data object Action : ExprType
+    data object ActionBatch : ExprType
   }
 
   context(CX.Scope, CX.Builder, CX.Symbology)

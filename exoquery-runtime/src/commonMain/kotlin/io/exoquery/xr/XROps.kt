@@ -31,9 +31,9 @@ fun XR.Action.swapTags(tagMap: Map<BID, BID>): XR.Action =
 fun XR.Batching.swapTags(tagMap: Map<BID, BID>): XR.Batching =
   SwapTagsTransformer(tagMap).invoke(this)
 
-internal class SwapTagsTransformer(tagMap: Map<BID, BID>): TransformXR(
+internal class SwapTagsTransformer(tagMap: Map<BID, BID>) : TransformXR(
   transformExpression = {
-    with (it) {
+    with(it) {
       when (this) {
         is XR.TagForParam ->
           tagMap.get(id)?.let { XR.TagForParam.csf(it)(this) }
@@ -86,8 +86,9 @@ CollectAst(ast) {
 // case(When.SingleBranch[Is(), Is()])
 
 val XR.When.Companion.CondThen get() = CondThen()
+
 class CondThen {
-  operator fun <AP: Pattern<A>, A: XR.Expression, BP: Pattern<XR.Expression>> get(cond: AP, then: BP) =
+  operator fun <AP : Pattern<A>, A : XR.Expression, BP : Pattern<XR.Expression>> get(cond: AP, then: BP) =
     customPattern2("When.SingleBranch", cond, then) { it: XR.When ->
       with(it) {
         when {
@@ -99,15 +100,16 @@ class CondThen {
 }
 
 object PairOf {
-  operator fun <AP: Pattern<A>, BP: Pattern<B>, A, B> get(a: AP, b: BP) =
+  operator fun <AP : Pattern<A>, BP : Pattern<B>, A, B> get(a: AP, b: BP) =
     customPattern2("PairOf", a, b) { it: Pair<A, B> ->
       Components2(it.first, it.second)
     }
 }
 
 val XR.When.Companion.CondThenElse get() = CondThenElse()
+
 class CondThenElse {
-  operator fun <AP: Pattern<A>, A: XR.Expression, BP: Pattern<Pair<XR.Expression, XR.Expression>>> get(cond: AP, thenElse: BP) =
+  operator fun <AP : Pattern<A>, A : XR.Expression, BP : Pattern<Pair<XR.Expression, XR.Expression>>> get(cond: AP, thenElse: BP) =
     customPattern2("When.CondThenElse", cond, thenElse) { it: XR.When ->
       with(it) {
         when {
@@ -125,8 +127,9 @@ fun XR.contains(other: XR) =
   }.isNotEmpty()
 
 val XR.BinaryOp.Companion.ProductNullCheck get() = ProductNullCheck()
+
 class ProductNullCheck {
-  operator fun <AP: Pattern<XR.Expression>> get(x: AP) =
+  operator fun <AP : Pattern<XR.Expression>> get(x: AP) =
     customPattern1("When.ProductNullCheck", x) { it: XR.BinaryOp ->
       on(it).match(
         case(XR.BinaryOp.OneSideIs[IsTypeProduct(), Is.of(OP.`==`, OP.`!=`), NullXR()]).thenThis { a, b ->
@@ -137,8 +140,9 @@ class ProductNullCheck {
 }
 
 val XR.When.Companion.IfNullThenNull get() = IfNullThenNull()
+
 class IfNullThenNull {
-  operator fun <AP: Pattern<XR.Expression>, BP: Pattern<XR.Expression>> get(notNull: AP, orElse: BP) =
+  operator fun <AP : Pattern<XR.Expression>, BP : Pattern<XR.Expression>> get(notNull: AP, orElse: BP) =
     customPattern2("When.IfNullThenNull", notNull, orElse) { it: XR.When ->
       on(it).match(
         case(XR.When.IfNull[Is(), Is()]).thenThis { notNullSide, (then, orElse) ->
@@ -152,8 +156,9 @@ class IfNullThenNull {
 }
 
 val XR.When.Companion.IfNull get() = IfNull()
+
 class IfNull {
-  operator fun <AP: Pattern<XR.Expression>, BP: Pattern<Pair<XR.Expression, XR.Expression>>> get(notNullSide: AP, thenElse: BP) =
+  operator fun <AP : Pattern<XR.Expression>, BP : Pattern<Pair<XR.Expression, XR.Expression>>> get(notNullSide: AP, thenElse: BP) =
     customPattern2("When.IfNull", notNullSide, thenElse) { it: XR.When ->
       on(it).match(
         case(XR.When.CondThen[XR.BinaryOp.OneSideIs[NullXR(), Is<OP.`==`>(), Is()], Is()]).thenThis { (nullSide, notNullSide), thenSide ->
@@ -165,8 +170,9 @@ class IfNull {
 
 
 val XR.When.Companion.IfCondThenFalseOrTrue get() = IfCondThenFalseOrTrue()
+
 class IfCondThenFalseOrTrue {
-  operator fun <AP: Pattern<XR.Expression>> get(x: AP) =
+  operator fun <AP : Pattern<XR.Expression>> get(x: AP) =
     customPattern1("When.IfNullThenFalseOrTrue", x) { it: XR.When ->
       on(it).match(
         case(XR.When.CondThenElse[Is(), Is()]).thenThis { cond, (thenSide, elseSide) ->
@@ -181,8 +187,9 @@ class IfCondThenFalseOrTrue {
 
 
 val XR.When.Companion.IfCondThenTrueOrFalse get() = IfCondThenTrueOrFalse()
+
 class IfCondThenTrueOrFalse {
-  operator fun <AP: Pattern<XR.Expression>> get(x: AP) =
+  operator fun <AP : Pattern<XR.Expression>> get(x: AP) =
     customPattern1("When.IfNullThenTrueOrFalse", x) { it: XR.When ->
       on(it).match(
         case(XR.When.CondThenElse[Is(), Is()]).thenThis { cond, (thenSide, elseSide) ->
@@ -196,8 +203,9 @@ class IfCondThenTrueOrFalse {
 }
 
 val XR.When.Companion.NullIfNullOrX get() = NullIfNullOrX()
+
 class NullIfNullOrX {
-  operator fun <AP: Pattern<XR.Expression>, BP: Pattern<XR.Expression>> get(notNullSide: AP, elseClause: BP) =
+  operator fun <AP : Pattern<XR.Expression>, BP : Pattern<XR.Expression>> get(notNullSide: AP, elseClause: BP) =
     customPattern1("When.NullIfNullOrX", notNullSide) { it: XR.When ->
       // if (x == null) null else x
       on(it).match(
@@ -211,7 +219,7 @@ class NullIfNullOrX {
     }
 }
 
-operator fun <OP: Pattern<UnaryOperator>, AP: Pattern<A>, A: XR.Expression> XR.UnaryOp.Companion.get(op: OP, expr: AP) =
+operator fun <OP : Pattern<UnaryOperator>, AP : Pattern<A>, A : XR.Expression> XR.UnaryOp.Companion.get(op: OP, expr: AP) =
   customPattern1("When.UnaryOp", expr) { it: XR.UnaryOp ->
     if (op.matchesAny(it.op) && expr.matchesAny(it.expr)) {
       Components1(it.expr)
@@ -220,7 +228,7 @@ operator fun <OP: Pattern<UnaryOperator>, AP: Pattern<A>, A: XR.Expression> XR.U
     }
   }
 
-operator fun <AP: Pattern<XR.Expression>, MP: Pattern<OP>, BP: Pattern<XR.Expression>> XR.BinaryOp.Companion.get(a: AP, m: MP, b: BP) =
+operator fun <AP : Pattern<XR.Expression>, MP : Pattern<OP>, BP : Pattern<XR.Expression>> XR.BinaryOp.Companion.get(a: AP, m: MP, b: BP) =
   customPattern2("BinaryOp3", a, b) { it: XR.BinaryOp ->
     if (m.matchesAny(it.op) && a.matchesAny(it.a) && b.matchesAny(it.b)) {
       Components2(it.a, it.b)
@@ -231,8 +239,9 @@ operator fun <AP: Pattern<XR.Expression>, MP: Pattern<OP>, BP: Pattern<XR.Expres
 
 
 val XR.BinaryOp.Companion.OneSideIs get() = OneSideIs()
+
 class OneSideIs {
-  operator fun <OneSide: Pattern<XR.Expression>, OP: Pattern<BinaryOperator>, OtherSide: Pattern<XR.Expression>> get(oneSide: OneSide, op: OP, otherSide: OtherSide) =
+  operator fun <OneSide : Pattern<XR.Expression>, OP : Pattern<BinaryOperator>, OtherSide : Pattern<XR.Expression>> get(oneSide: OneSide, op: OP, otherSide: OtherSide) =
     customPattern2("When.OneSideIs", oneSide, otherSide) { it: XR.BinaryOp ->
       if (op.matchesAny(it.op)) {
         if (oneSide.matchesAny(it.a)) {
@@ -249,8 +258,9 @@ class OneSideIs {
 }
 
 val XR.When.Companion.XIsNotNullOrNull get() = XIsNotNullOrNull()
+
 class XIsNotNullOrNull {
-  operator fun <AP: Pattern<XR.Expression>> get(x: AP) =
+  operator fun <AP : Pattern<XR.Expression>> get(x: AP) =
     customPattern1("When.XIsNotNullOrNull", x) { it: XR.When ->
       on(it).match(
         // if (x != null) x else null -> x
@@ -265,8 +275,9 @@ fun IsTypeProduct() = Is<XR.Expression> { it.type is XRType.Product }
 fun NullXR() = Is<XR.Expression> { it is XR.Const.Null }
 
 val XR.BinaryOp.Companion.NotEq get() = BinaryOpNotEq()
+
 class BinaryOpNotEq {
-  operator fun <AP: Pattern<XR.Expression>, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
+  operator fun <AP : Pattern<XR.Expression>, BP : Pattern<XR.Expression>> get(x: AP, y: BP) =
     customPattern2("When.BinaryOpNotEq", x, y) { it: XR.BinaryOp ->
       on(it).match(
         case(XR.BinaryOp[Is(), Is()]).thenThis { a, op, b ->
@@ -277,8 +288,9 @@ class BinaryOpNotEq {
 }
 
 val XR.BinaryOp.Companion.EqEq get() = BinaryOpEqEq()
+
 class BinaryOpEqEq {
-  operator fun <AP: Pattern<XR.Expression>, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
+  operator fun <AP : Pattern<XR.Expression>, BP : Pattern<XR.Expression>> get(x: AP, y: BP) =
     customPattern2("When.BinaryOpEqEq", x, y) { it: XR.BinaryOp ->
       on(it).match(
         case(XR.BinaryOp[Is(), Is()]).thenThis { a, op, b ->
@@ -290,8 +302,9 @@ class BinaryOpEqEq {
 
 
 val XR.Map.Companion.DistinctHead get() = DistinctHeadMap()
+
 class DistinctHeadMap() {
-  operator fun <AP: Pattern<Q>, Q: XR.Query, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
+  operator fun <AP : Pattern<Q>, Q : XR.Query, BP : Pattern<XR.Expression>> get(x: AP, y: BP) =
     customPattern2M("XR.Map.DistinctHead", x, y) { it: XR.Map ->
       with(it) {
         when {
@@ -304,8 +317,9 @@ class DistinctHeadMap() {
 
 
 val XR.SortBy.Companion.DistinctHead get() = DistinctHeadMatchSortBy()
+
 class DistinctHeadMatchSortBy() {
-  operator fun <AP: Pattern<Q>, Q: XR.Query, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
+  operator fun <AP : Pattern<Q>, Q : XR.Query, BP : Pattern<XR.Expression>> get(x: AP, y: BP) =
     customPattern2M("XR.SortBy.DistinctHead", x, y) { it: XR.SortBy ->
       with(it) {
         when {
@@ -332,25 +346,25 @@ object CID {
 }
 
 fun XR.ClassId.isWholeNumber(): Boolean =
-  when(this) {
+  when (this) {
     CID.kotlin_Int, CID.kotlin_Long, CID.kotlin_Short -> true
     else -> false
   }
 
 fun XR.ClassId.isFloatingPoint(): Boolean =
-  when(this) {
+  when (this) {
     CID.kotlin_Double, CID.kotlin_Float -> true
     else -> false
   }
 
 fun XR.ClassId.isNumeric(): Boolean =
-  when(this) {
+  when (this) {
     CID.kotlin_Int, CID.kotlin_Long, CID.kotlin_Short, CID.kotlin_Double, CID.kotlin_Float -> true
     else -> false
   }
 
 fun String.isConverterFunction(): Boolean =
-  when(this) {
+  when (this) {
     "toLong", "toInt", "toShort", "toDouble", "toFloat", "toBoolean" -> true
     else -> false
   }

@@ -4,15 +4,16 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.parseError
+import io.exoquery.plugin.trees.ExtractorsDomain
+import io.exoquery.plugin.trees.Parser
+import io.exoquery.plugin.trees.SqlExpressionExpr
 import io.exoquery.xr.XR
-import io.exoquery.plugin.trees.*
-import io.exoquery.plugin.printing.dumpSimple
-import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.expressions.IrBlockBody
+import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 
 
-class TransformCapturedExpression(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+class TransformCapturedExpression(val superTransformer: VisitTransformExpressions) : Transformer<IrCall>() {
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun matches(expression: IrCall): Boolean =
     ExtractorsDomain.Call.CaptureExpression[Is()].matchesAny(expression)
@@ -38,7 +39,7 @@ class TransformCapturedExpression(val superTransformer: VisitTransformExpression
 
   companion object {
     context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
-    fun parseSqlExpression(expression: IrCall, superTransformer: VisitTransformExpressions)  = run {
+    fun parseSqlExpression(expression: IrCall, superTransformer: VisitTransformExpressions) = run {
       val bodyRaw =
         on(expression).match(
           // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall

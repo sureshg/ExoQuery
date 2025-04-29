@@ -1,15 +1,6 @@
 package io.exoquery
 
-import io.exoquery.sql.BooleanLiteralSupport
-import io.exoquery.sql.FlattenSqlQuery
-import io.exoquery.sql.OrderByCriteria
-import io.exoquery.sql.SetOperationSqlQuery
-import io.exoquery.sql.SqlIdiom
-import io.exoquery.sql.SqlQueryModel
-import io.exoquery.sql.Statement
-import io.exoquery.sql.Token
-import io.exoquery.sql.TopLevelFree
-import io.exoquery.sql.UnaryOperationSqlQuery
+import io.exoquery.sql.*
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.Tracer
 import io.exoquery.util.unaryPlus
@@ -19,9 +10,134 @@ class SqliteDialect(override val traceConf: TraceConfig = TraceConfig.Companion.
   override val concatFunction: String = "||"
   override val useActionTableAliasAs = SqlIdiom.ActionTableAliasBehavior.UseAs
   override val trace: Tracer by lazy { Tracer(traceType, traceConf, 1) }
-  override val reservedKeywords: Set<String> = setOf("abort", "action", "add", "after", "all", "alter", "analyze", "and", "as", "asc", "attach", "autoincrement", "before", "begin", "between", "by", "cascade", "case", "cast", "check", "collate", "column", "commit", "conflict", "constraint", "create", "cross", "current_date", "current_time", "current_timestamp", "database", "default", "deferrable", "deferred", "delete", "desc", "detach", "distinct", "drop", "each", "else", "end", "escape", "except", "exclusive", "exists", "explain", "fail", "for", "foreign", "from", "full", "glob", "group", "having", "if", "ignore", "immediate", "in", "index", "indexed", "initially", "inner", "insert", "instead", "intersect", "into", "is", "isnull", "join", "key", "left", "like", "limit", "match", "natural", "no", "not", "notnull", "null", "of", "offset", "on", "or", "order", "outer", "plan", "pragma", "primary", "query", "raise", "recursive", "references", "regexp", "reindex", "release", "rename", "replace", "restrict", "right", "rollback", "row", "savepoint", "select", "set", "table", "temp", "temporary", "then", "to", "transaction", "trigger", "union", "unique", "update", "using", "vacuum", "values", "view", "virtual", "when", "where", "with", "without")
+  override val reservedKeywords: Set<String> = setOf(
+    "abort",
+    "action",
+    "add",
+    "after",
+    "all",
+    "alter",
+    "analyze",
+    "and",
+    "as",
+    "asc",
+    "attach",
+    "autoincrement",
+    "before",
+    "begin",
+    "between",
+    "by",
+    "cascade",
+    "case",
+    "cast",
+    "check",
+    "collate",
+    "column",
+    "commit",
+    "conflict",
+    "constraint",
+    "create",
+    "cross",
+    "current_date",
+    "current_time",
+    "current_timestamp",
+    "database",
+    "default",
+    "deferrable",
+    "deferred",
+    "delete",
+    "desc",
+    "detach",
+    "distinct",
+    "drop",
+    "each",
+    "else",
+    "end",
+    "escape",
+    "except",
+    "exclusive",
+    "exists",
+    "explain",
+    "fail",
+    "for",
+    "foreign",
+    "from",
+    "full",
+    "glob",
+    "group",
+    "having",
+    "if",
+    "ignore",
+    "immediate",
+    "in",
+    "index",
+    "indexed",
+    "initially",
+    "inner",
+    "insert",
+    "instead",
+    "intersect",
+    "into",
+    "is",
+    "isnull",
+    "join",
+    "key",
+    "left",
+    "like",
+    "limit",
+    "match",
+    "natural",
+    "no",
+    "not",
+    "notnull",
+    "null",
+    "of",
+    "offset",
+    "on",
+    "or",
+    "order",
+    "outer",
+    "plan",
+    "pragma",
+    "primary",
+    "query",
+    "raise",
+    "recursive",
+    "references",
+    "regexp",
+    "reindex",
+    "release",
+    "rename",
+    "replace",
+    "restrict",
+    "right",
+    "rollback",
+    "row",
+    "savepoint",
+    "select",
+    "set",
+    "table",
+    "temp",
+    "temporary",
+    "then",
+    "to",
+    "transaction",
+    "trigger",
+    "union",
+    "unique",
+    "update",
+    "using",
+    "vacuum",
+    "values",
+    "view",
+    "virtual",
+    "when",
+    "where",
+    "with",
+    "without"
+  )
 
-  override fun xrOrderByCriteriaTokenImpl(orderByCriteriaImpl: OrderByCriteria): Token = with (orderByCriteriaImpl) {
+  override fun xrOrderByCriteriaTokenImpl(orderByCriteriaImpl: OrderByCriteria): Token = with(orderByCriteriaImpl) {
     when (this.ordering) {
       is XR.Ordering.Asc -> +"${scopedTokenizer(ast)} ASC"
       is XR.Ordering.Desc -> +"${scopedTokenizer(ast)} DESC"
@@ -33,7 +149,7 @@ class SqliteDialect(override val traceConf: TraceConfig = TraceConfig.Companion.
   }
 
   // Sqlite doesn't like parans around union clauses
-  override fun xrSqlQueryModelTokenImpl(queryImpl: SqlQueryModel): Token = with (queryImpl) {
+  override fun xrSqlQueryModelTokenImpl(queryImpl: SqlQueryModel): Token = with(queryImpl) {
     when (this) {
       is FlattenSqlQuery -> token
       is SetOperationSqlQuery -> +"${a.token} ${op.token} ${b.token}"

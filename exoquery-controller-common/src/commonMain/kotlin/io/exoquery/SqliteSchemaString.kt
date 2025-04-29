@@ -1,7 +1,7 @@
 package io.exoquery
 
 val SqliteSchemaString =
-"""
+  """
 CREATE TABLE IF NOT EXISTS Person (
     id INTEGER PRIMARY KEY,
     firstName VARCHAR(255),

@@ -4,16 +4,18 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.match
 import io.exoquery.parseError
-import io.exoquery.plugin.trees.*
-import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
+import io.exoquery.plugin.trees.ExtractorsDomain
+import io.exoquery.plugin.trees.Parser
+import io.exoquery.plugin.trees.SqlQueryExpr
+import io.exoquery.plugin.trees.simpleValueArgs
 import io.exoquery.xr.XR
-import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 
-class TransformSelectClause(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+class TransformSelectClause(val superTransformer: VisitTransformExpressions) : Transformer<IrCall>() {
 
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun matches(expression: IrCall): Boolean =
@@ -38,17 +40,19 @@ class TransformSelectClause(val superTransformer: VisitTransformExpressions): Tr
 
   companion object {
     context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
-    fun parseSelectClause(selectExpressionRaw: IrCall, superTransformer: VisitTransformExpressions)  = run {
+    fun parseSelectClause(selectExpressionRaw: IrCall, superTransformer: VisitTransformExpressions) = run {
       // since there could be SqlQuery clauses inside we need to recurisvely transform the stuff inside the Select-Clause first
       // therefore we need to call the super-transform on the select lambda
       val selectLambda =
         selectExpressionRaw.match(
           case(ExtractorsDomain.Call.CaptureSelect[Is()]).then {
-            val selectLambdaRaw = it.simpleValueArgs.firstOrNull() ?: parseError("The select clause must have a lambda as the first argument but it was null or empty (${it.simpleValueArgs.firstOrNull()})", selectExpressionRaw)
+            val selectLambdaRaw =
+              it.simpleValueArgs.firstOrNull() ?: parseError("The select clause must have a lambda as the first argument but it was null or empty (${it.simpleValueArgs.firstOrNull()})", selectExpressionRaw)
             superTransformer.recurse(selectLambdaRaw)
           }
           // TODO use Messages.kt, use better example
-        ) ?: parseError("Parsing Failed\n================== The clause was not a property select-expression (was the owner annotated correctly?): ==================\n" + selectExpressionRaw.dumpKotlinLike() + "\n--------------------------\n" + selectExpressionRaw.dumpSimple())
+        )
+          ?: parseError("Parsing Failed\n================== The clause was not a property select-expression (was the owner annotated correctly?): ==================\n" + selectExpressionRaw.dumpKotlinLike() + "\n--------------------------\n" + selectExpressionRaw.dumpSimple())
 
       val (selectClause, dynamics) = Parser.scoped { Parser.parseSelectClauseLambda(selectLambda) }
       // Store the selectClause inside a XR.CustomQueryRef instance so that we can invoke the XR serialization and "plant" it into the IR

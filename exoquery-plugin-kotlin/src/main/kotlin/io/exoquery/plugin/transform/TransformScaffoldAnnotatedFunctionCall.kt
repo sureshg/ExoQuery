@@ -3,26 +3,23 @@ package io.exoquery.plugin.transform
 import io.exoquery.annotation.CapturedFunction
 import io.exoquery.parseError
 import io.exoquery.plugin.hasAnnotation
-import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
 import io.exoquery.plugin.trees.simpleValueArgs
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irVararg
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.makeNullable
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 
 context(CX.Scope, CX.Builder)
 fun IrCall.zeroisedArgs(): IrCall {
   val call = this
-  return with (builder) {
+  return with(builder) {
     val newCall = irCall(call.symbol)
 
     // The dispatch-reciever to a annotated function remains, the extension reciever gets dropped and used like a variable
@@ -42,7 +39,7 @@ fun buildScaffolding(zeroisedCall: IrExpression, scaffoldType: IrType, originalA
 }
 
 
-class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransformExpressions) : Transformer<IrCall>() {
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun matches(call: IrCall): Boolean =
     call.symbol.owner.hasAnnotation<CapturedFunction>()
@@ -89,8 +86,6 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
       TransformProjectCapture(superTransformer).transform(zeroizedCallRaw) ?: parseError("Could not capture-project the call", zeroizedCallRaw)
 
 
-
-
     // Note that the one case that we haven't considered aboive is where the argument to the function call i.e. People.filterAge
     // itself is a uprootable variable for example:
     //   val drivingPeople = captured { Table<Person>().filter { p -> p.age > 18 } }    // a.k.a. SqlQuery(xr=People.filterAge)
@@ -103,7 +98,7 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
     //   val drivingJoes = scaffoldCapFunctionQuery(SqlQuery((people)=>people.filterJoe <- i.e. `joes`), args=[SqlQuery(xr=People.filterAge)])
     //   (and if there are any parameters it it the argument becomes:
     //    args=[SqlQuery(xr=People.filterAge), params=drivingPeople.params])
-    val projectedArgs = originalArgs.map { arg -> arg?.let{ superTransformer.recurse(it) ?: it } }
+    val projectedArgs = originalArgs.map { arg -> arg?.let { superTransformer.recurse(it) ?: it } }
 
     //val zeroizedCall = zeroizedCallRaw as IrCall
 

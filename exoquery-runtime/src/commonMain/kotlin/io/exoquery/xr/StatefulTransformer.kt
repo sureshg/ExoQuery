@@ -16,8 +16,8 @@ import io.exoquery.xr.copy.*
  * `root(XR)` which all elements will go through before going to the corresponding
  * branch-level invoke functions.
  */
-interface StatefulTransformerSingleRoot<T>: StatefulTransformer<T> {
-  fun <X> root(xr: X): Pair<X, StatefulTransformerSingleRoot<T>, > where X: XR
+interface StatefulTransformerSingleRoot<T> : StatefulTransformer<T> {
+  fun <X> root(xr: X): Pair<X, StatefulTransformerSingleRoot<T>> where X : XR
 
   private fun invokeSuper(xr: Expression): Pair<Expression, StatefulTransformer<T>> = super.invoke(xr)
   override fun invoke(xr: Expression): Pair<Expression, StatefulTransformer<T>> {
@@ -52,9 +52,9 @@ interface StatefulTransformerSingleRoot<T>: StatefulTransformer<T> {
 
 //data class DebugDump(val info: MutableList<DebugMsg> = mutableListOf()){
 //  fun dump(str: String) = info.add(DebugMsg.Fragment(str))
-    //  companion object {
+//  companion object {
 //    operator fun invoke(vararg msg: DebugMsg) = DebugDump(msg.toMutableList())
-      //  }
+//  }
 //}
 
 interface StatefulTransformer<T> {
@@ -244,7 +244,7 @@ interface StatefulTransformer<T> {
     }
 
   operator fun invoke(xr: XR.U.QueryOrExpression): Pair<XR.U.QueryOrExpression, StatefulTransformer<T>> =
-    when(xr) {
+    when (xr) {
       is XR.Query -> invoke(xr)
       is XR.Expression -> invoke(xr)
     }
@@ -297,7 +297,7 @@ interface StatefulTransformer<T> {
 
   // Need to have a specifc insert-invoke because OnConflict uses it directly
   operator fun invoke(xr: XR.Insert): Pair<XR.Insert, StatefulTransformer<T>> =
-    with (xr) {
+    with(xr) {
       val (at, att) = invoke(query)
       val (bt, btt) = att.applyList(assignments) { t, v -> t.invoke(v) }
       val (ct, ctt) = btt.applyList(exclusions) { t, v -> t.invoke(v) }
@@ -305,7 +305,7 @@ interface StatefulTransformer<T> {
     }
 
   operator fun invoke(xr: XR.OnConflict.Target): Pair<XR.OnConflict.Target, StatefulTransformer<T>> =
-    with (xr) {
+    with(xr) {
       when (this) {
         is XR.OnConflict.Target.NoTarget -> this to this@StatefulTransformer
         is XR.OnConflict.Target.Properties -> {
@@ -316,7 +316,7 @@ interface StatefulTransformer<T> {
     }
 
   operator fun invoke(xr: XR.OnConflict.Resolution): Pair<XR.OnConflict.Resolution, StatefulTransformer<T>> =
-    with (xr) {
+    with(xr) {
       when (this) {
         is XR.OnConflict.Resolution.Ignore -> this to this@StatefulTransformer
         is XR.OnConflict.Resolution.Update -> {
@@ -327,13 +327,13 @@ interface StatefulTransformer<T> {
     }
 
   operator fun invoke(xr: XR.Batching): Pair<XR.Batching, StatefulTransformer<T>> =
-    with (xr) {
+    with(xr) {
       val (at, att) = invoke(action)
       Batching.cs(xr.alias, at) to att
     }
 
   operator fun invoke(xr: XR.Action): Pair<XR.Action, StatefulTransformer<T>> =
-    with (xr) {
+    with(xr) {
       when (this) {
         is Insert -> invoke(this)
         is Update -> {

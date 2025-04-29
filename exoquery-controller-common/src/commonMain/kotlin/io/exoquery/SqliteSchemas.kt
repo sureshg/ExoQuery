@@ -8,7 +8,7 @@ import io.exoquery.controller.Controller
 import io.exoquery.controller.runActions
 import io.exoquery.controller.sqlite.TerpalSchema
 
-object EmptySchema: SqlSchema<QueryResult.Value<Unit>> {
+object EmptySchema : SqlSchema<QueryResult.Value<Unit>> {
   override val version: Long = 1
   override fun create(driver: SqlDriver): QueryResult.Value<Unit> = QueryResult.Unit
   override fun migrate(
@@ -129,7 +129,7 @@ object EmptySchema: SqlSchema<QueryResult.Value<Unit>> {
 //  ) = QueryResult.Unit
 //}
 
-object BasicSchemaTerpal: TerpalSchema<Unit> {
+object BasicSchemaTerpal : TerpalSchema<Unit> {
   override val version: Long = 1
   override suspend fun create(driver: Controller<*>): Unit {
     driver.runActions(SqliteSchemaString)
@@ -139,6 +139,7 @@ object BasicSchemaTerpal: TerpalSchema<Unit> {
     driver: Controller<*>,
     oldVersion: Long,
     newVersion: Long,
-    vararg callbacks: io.exoquery.controller.sqlite.CallAfterVersion) {
+    vararg callbacks: io.exoquery.controller.sqlite.CallAfterVersion
+  ) {
   }
 }

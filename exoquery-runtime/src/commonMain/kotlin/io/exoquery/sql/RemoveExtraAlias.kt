@@ -8,7 +8,7 @@ import io.exoquery.xr.XR
  * as well as entities whose aliases are the same as their selection e.g. "select x.foo as foo"
  * since this just adds syntactic noise.
  */
-class RemoveExtraAlias: StatelessQueryTransformer() {
+class RemoveExtraAlias : StatelessQueryTransformer() {
   // Remove aliases that are the same as as the select values. Since a strategy may change the name,
   // use a heuristic where if the column naming strategy make the property name be different from the
   // alias, keep the column property name.

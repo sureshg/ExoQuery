@@ -1,6 +1,7 @@
 package io.exoquery.plugin.printing
 
-import io.exoquery.fansi.Str
+import io.exoquery.fansi.Color.Green
+import io.exoquery.fansi.Color.Red
 import io.exoquery.plugin.safeName
 import org.jetbrains.kotlin.com.intellij.openapi.util.text.StringUtil
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
@@ -18,19 +19,6 @@ import org.jetbrains.kotlin.types.Variance
 import org.jetbrains.kotlin.util.capitalizeDecapitalize.toLowerCaseAsciiOnly
 import org.jetbrains.kotlin.utils.addIfNotNull
 import org.jetbrains.kotlin.utils.addToStdlib.ifTrue
-import io.exoquery.fansi.Color.Green
-import io.exoquery.fansi.Color.Red
-import io.exoquery.fansi.Color.Yellow
-import io.exoquery.fansi.Color.LightYellow
-import io.exoquery.fansi.Color.DarkGray
-import io.exoquery.fansi.Color.LightGray
-import io.exoquery.fansi.Color.LightGreen
-import io.exoquery.fansi.Color.Blue
-import io.exoquery.fansi.Color.Cyan
-import io.exoquery.fansi.Color.Magenta
-import io.exoquery.fansi.Color.LightMagenta
-import io.exoquery.kmp.pprint
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 
 fun IrElement.render() =
@@ -205,11 +193,11 @@ class RenderIrElementVisitorSimple(normalizeNames: Boolean = false, private val 
   override fun visitSimpleFunction(declaration: IrSimpleFunction, data: Nothing?): String =
     declaration.runTrimEnd {
       "[IrSimpleFunction] ${renderOriginIfNonTrivial()} " +
-      "$name" +
-      renderTypeParameters() +
-      renderValueParameterTypes() +
-      ": ${renderReturnType(this@RenderIrElementVisitorSimple, verboseErrorTypes)} " +
-      renderSimpleFunctionFlags()
+          "$name" +
+          renderTypeParameters() +
+          renderValueParameterTypes() +
+          ": ${renderReturnType(this@RenderIrElementVisitorSimple, verboseErrorTypes)} " +
+          renderSimpleFunctionFlags()
     }
 
   private fun IrFunction.renderValueParameterTypes(): String =
@@ -222,18 +210,18 @@ class RenderIrElementVisitorSimple(normalizeNames: Boolean = false, private val 
   override fun visitConstructor(declaration: IrConstructor, data: Nothing?): String =
     declaration.runTrimEnd {
       "[IrConstructor] ${renderOriginIfNonTrivial()}" +
-      "visibility:$visibility " +
-      renderTypeParameters() + " " +
-      renderValueParameterTypes() + " " +
-      "returnType:${renderReturnType(this@RenderIrElementVisitorSimple, verboseErrorTypes)} " +
-      renderConstructorFlags()
+          "visibility:$visibility " +
+          renderTypeParameters() + " " +
+          renderValueParameterTypes() + " " +
+          "returnType:${renderReturnType(this@RenderIrElementVisitorSimple, verboseErrorTypes)} " +
+          renderConstructorFlags()
     }
 
   override fun visitProperty(declaration: IrProperty, data: Nothing?): String =
     declaration.runTrimEnd {
       "[IrProperty] ${renderOriginIfNonTrivial()}" +
-      "name:$name visibility:$visibility modality:$modality " +
-      renderPropertyFlags()
+          "name:$name visibility:$visibility modality:$modality " +
+          renderPropertyFlags()
     }
 
   override fun visitField(declaration: IrField, data: Nothing?): String =
@@ -259,24 +247,24 @@ class RenderIrElementVisitorSimple(normalizeNames: Boolean = false, private val 
   override fun visitValueParameter(declaration: IrValueParameter, data: Nothing?): String =
     declaration.runTrimEnd {
       "[IrValueParameter] ${renderOriginIfNonTrivial()}" +
-      "name:$name " +
-      (if (index >= 0) "index:$index " else "") +
-      "type:${type.render()} " +
-      (varargElementType?.let { "varargElementType:${it.render()} " } ?: "") +
-      renderValueParameterFlags()
+          "name:$name " +
+          (if (index >= 0) "index:$index " else "") +
+          "type:${type.render()} " +
+          (varargElementType?.let { "varargElementType:${it.render()} " } ?: "") +
+          renderValueParameterFlags()
     }
 
   override fun visitLocalDelegatedProperty(declaration: IrLocalDelegatedProperty, data: Nothing?): String =
     declaration.runTrimEnd {
       "[IrLocalDelegatedProperty] ${declaration.renderOriginIfNonTrivial()}" +
-      "name:$name type:${type.render()} flags:${renderLocalDelegatedPropertyFlags()}"
+          "name:$name type:${type.render()} flags:${renderLocalDelegatedPropertyFlags()}"
     }
 
   override fun visitTypeAlias(declaration: IrTypeAlias, data: Nothing?): String =
     declaration.run {
       "[IrTypeAlias] ${declaration.renderOriginIfNonTrivial()}" +
-      "name:$name visibility:$visibility expandedType:${expandedType.render()}" +
-      renderTypeAliasFlags()
+          "name:$name visibility:$visibility expandedType:${expandedType.render()}" +
+          renderTypeAliasFlags()
     }
 
   override fun visitExpressionBody(body: IrExpressionBody, data: Nothing?): String =
@@ -321,8 +309,7 @@ class RenderIrElementVisitorSimple(normalizeNames: Boolean = false, private val 
 
   override fun visitCall(expression: IrCall, data: Nothing?): String {
     val reciever =
-      expression.dispatchReceiver?.let { "dispatch=${it.type.classFqName?.asString()}" } ?:
-        expression.extensionReceiver?.let { "extension=${it.type.classFqName?.asString()}" } ?: "<>"
+      expression.dispatchReceiver?.let { "dispatch=${it.type.classFqName?.asString()}" } ?: expression.extensionReceiver?.let { "extension=${it.type.classFqName?.asString()}" } ?: "<>"
 
     //return "[IrCall] ${expression.symbol.safeName} "
     // This doesn't seem to fail, only the Fansi thing!
@@ -394,8 +381,8 @@ class RenderIrElementVisitorSimple(normalizeNames: Boolean = false, private val 
 
   override fun visitFunctionReference(expression: IrFunctionReference, data: Nothing?): String =
     "FUNCTION_REFERENCE '${expression.symbol.renderReference()}' " +
-    "type=${expression.type.render()} origin=${expression.origin} " +
-    "reflectionTarget=${renderReflectionTarget(expression)}"
+        "type=${expression.type.render()} origin=${expression.origin} " +
+        "reflectionTarget=${renderReflectionTarget(expression)}"
 
   override fun visitRawFunctionReference(expression: IrRawFunctionReference, data: Nothing?): String =
     "RAW_FUNCTION_REFERENCE '${expression.symbol.renderReference()}' type=${expression.type.render()}"
@@ -464,7 +451,7 @@ class RenderIrElementVisitorSimple(normalizeNames: Boolean = false, private val 
   @OptIn(ObsoleteDescriptorBasedAPI::class)
   override fun visitErrorDeclaration(declaration: IrErrorDeclaration, data: Nothing?): String =
     "ERROR_DECL ${declaration.descriptor::class.java.simpleName} " +
-    descriptorRendererForErrorDeclarations.renderDescriptor(declaration.descriptor.original)
+        descriptorRendererForErrorDeclarations.renderDescriptor(declaration.descriptor.original)
 
   override fun visitErrorExpression(expression: IrErrorExpression, data: Nothing?): String =
     "ERROR_EXPR '${expression.description}' type=${expression.type.render()}"
@@ -812,9 +799,9 @@ private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?, rend
 private fun renderClassWithRenderer(declaration: IrClass, renderer: RenderIrElementVisitorSimple?, verboseErrorTypes: Boolean) =
   declaration.runTrimEnd {
     "[IrClass] ${renderOriginIfNonTrivial()}" +
-    "$kind name:$name modality:$modality visibility:$visibility " +
-    renderClassFlags() +
-    "superTypes:[${superTypes.joinToString(separator = "; ") { it.renderTypeWithRenderer(renderer, verboseErrorTypes) }}]"
+        "$kind name:$name modality:$modality visibility:$visibility " +
+        renderClassFlags() +
+        "superTypes:[${superTypes.joinToString(separator = "; ") { it.renderTypeWithRenderer(renderer, verboseErrorTypes) }}]"
   }
 
 private fun renderEnumEntry(declaration: IrEnumEntry) = declaration.runTrimEnd {
@@ -833,13 +820,13 @@ private fun renderField(declaration: IrField, renderer: RenderIrElementVisitorSi
 private fun renderTypeParameter(declaration: IrTypeParameter, renderer: RenderIrElementVisitorSimple?, verboseErrorTypes: Boolean) =
   declaration.runTrimEnd {
     "[IrTypeParameter] ${renderOriginIfNonTrivial()}" +
-    "name:$name index:$index variance:$variance " +
-    "superTypes:[${
-      superTypes.joinToString(separator = "; ") {
-        it.renderTypeWithRenderer(
-          renderer, verboseErrorTypes
-        )
-      }
-    }] " +
-    "reified:$isReified"
+        "name:$name index:$index variance:$variance " +
+        "superTypes:[${
+          superTypes.joinToString(separator = "; ") {
+            it.renderTypeWithRenderer(
+              renderer, verboseErrorTypes
+            )
+          }
+        }] " +
+        "reified:$isReified"
   }

@@ -10,16 +10,11 @@ import io.exoquery.plugin.trees.ExtractorsDomain
 import io.exoquery.plugin.trees.Parser
 import io.exoquery.plugin.trees.SqlActionExpr
 import io.exoquery.plugin.trees.SqlBatchActionExpr
-import io.exoquery.unpackBatchAction
-import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
-import io.exoquery.xr.encode
-import kotlinx.serialization.decodeFromHexString
-import kotlinx.serialization.encodeToHexString
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
-class TransformCapturedAction(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+class TransformCapturedAction(val superTransformer: VisitTransformExpressions) : Transformer<IrCall>() {
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun matches(expression: IrCall): Boolean =
     ExtractorsDomain.Call.CaptureAction[Is.Companion()].matchesAny(expression)
@@ -39,9 +34,10 @@ class TransformCapturedAction(val superTransformer: VisitTransformExpressions): 
     //logger.error("========== Output: ==========\n${newSqlAction.dumpKotlinLike()}")
     return newSqlAction
   }
+
   companion object {
     context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
-    fun parseCapturedAction(expression: IrCall, superTransformer: VisitTransformExpressions)  = run {
+    fun parseCapturedAction(expression: IrCall, superTransformer: VisitTransformExpressions) = run {
       val bodyExpr =
         on(expression).match(
           // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
@@ -57,7 +53,7 @@ class TransformCapturedAction(val superTransformer: VisitTransformExpressions): 
   }
 }
 
-class TransformCapturedBatchAction(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+class TransformCapturedBatchAction(val superTransformer: VisitTransformExpressions) : Transformer<IrCall>() {
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun matches(expression: IrCall): Boolean =
     ExtractorsDomain.Call.CaptureBatchAction[Is.Companion()].matchesAny(expression)
@@ -77,9 +73,10 @@ class TransformCapturedBatchAction(val superTransformer: VisitTransformExpressio
     //logger.error("========== Output: ==========\n${newSqlAction.dumpKotlinLike()}")
     return newSqlAction
   }
+
   companion object {
     context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
-    fun parseCapturedBatchAction(expression: IrCall, superTransformer: VisitTransformExpressions)  = run {
+    fun parseCapturedBatchAction(expression: IrCall, superTransformer: VisitTransformExpressions) = run {
       val (batchData, bodyExpr) =
         on(expression).match(
           // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall

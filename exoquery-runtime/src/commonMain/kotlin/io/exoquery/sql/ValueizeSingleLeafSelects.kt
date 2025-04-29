@@ -10,7 +10,7 @@ import io.exoquery.xr.XRType
 // MAKE SURE THIS RUNS BEFORE ExpandNestedQueries otherwise it will be incorrect, it should only run for single-selects from atomic values,
 // if the ExpandNestedQueries ran it could be a single field that is coming from a case class e.g. case class MySingleValue(stuff: Int) that is being selected from
 // (Note, no such thing as a Naming strategy in Kotlin implementation, fields of property classes are renamed in the parsing phase)
-class ValueizeSingleLeafSelects(): StatelessQueryTransformer() {
+class ValueizeSingleLeafSelects() : StatelessQueryTransformer() {
   val ValueFieldName = "value"
 
   protected fun productize(origType: XRType) =
@@ -46,7 +46,7 @@ class ValueizeSingleLeafSelects(): StatelessQueryTransformer() {
     // where we turn it into `SELECT p.name AS value FROM Person p`
     fun aliasSelects(selectValues: List<SelectValue>): List<SelectValue> =
       when {
-        selectValues.size == 1 && selectValues.first().type.isLeaf()  ->
+        selectValues.size == 1 && selectValues.first().type.isLeaf() ->
           selectValues.first().let { sv ->
             // interesting to explore cases where it could already be a path e.g. it's a subselect like select { val a = from(...); a.b.c.atom }
             listOf(sv.copy(alias = sv.alias + ValueFieldName))
@@ -58,15 +58,17 @@ class ValueizeSingleLeafSelects(): StatelessQueryTransformer() {
       if (leafValuedFroms.isNotEmpty()) {
         q.transformXR(object : StatelessTransformer {
           override fun invoke(xr: XR.Expression): XR.Expression =
-            // TODO Are there situations where indiscrmimanantly replacing things like this is problematic?
-            //      if we switch to beta reduction we need to collect the values first which is less efficient
-            //      or perhaps the dangerous cases have already been taken care of by dealising
-            //BetaReduction(xr, TypeBehavior.ReplaceWithReduction, CollectXR.byType<Ident>(xr)
-            //  .filter { leafValuedFroms.contains(it) }
+          // TODO Are there situations where indiscrmimanantly replacing things like this is problematic?
+          //      if we switch to beta reduction we need to collect the values first which is less efficient
+          //      or perhaps the dangerous cases have already been taken care of by dealising
+          //BetaReduction(xr, TypeBehavior.ReplaceWithReduction, CollectXR.byType<Ident>(xr)
+          //  .filter { leafValuedFroms.contains(it) }
             //  .map { it to valueize(it) })
 
             when (xr) {
-              is XR.Ident -> { if (leafValuedFroms.contains(xr)) valueize(xr) else xr }
+              is XR.Ident -> {
+                if (leafValuedFroms.contains(xr)) valueize(xr) else xr
+              }
               else -> super.invoke(xr)
             }
         })
@@ -81,13 +83,13 @@ class ValueizeSingleLeafSelects(): StatelessQueryTransformer() {
     return out
   }
 
-// Turn every `FROM primitive-x` into a `FROM case-class(x.primitive)`
-override protected fun expandContext(s: FromContext): FromContext =
-  super.expandContext(s).let { valueized ->
-    when {
-      valueized is QueryContext && valueized.type.isLeaf() ->
-        QueryContext(valueized.query.transformType { productize(it) }, valueized.alias)
-      else -> valueized
+  // Turn every `FROM primitive-x` into a `FROM case-class(x.primitive)`
+  override protected fun expandContext(s: FromContext): FromContext =
+    super.expandContext(s).let { valueized ->
+      when {
+        valueized is QueryContext && valueized.type.isLeaf() ->
+          QueryContext(valueized.query.transformType { productize(it) }, valueized.alias)
+        else -> valueized
+      }
     }
-  }
 }

@@ -3,8 +3,8 @@ package io.exoquery.xr
 import io.exoquery.xr.XR.*
 import io.exoquery.xr.XR.Map // Make sure to explicitly have this import or Scala will use Map the collection
 
-interface StatelessTransformerSingleRoot: StatelessTransformer {
-  fun <X> root(xr: X): X where X: XR
+interface StatelessTransformerSingleRoot : StatelessTransformer {
+  fun <X> root(xr: X): X where X : XR
 
   // Need to override the things that otherwise wouldn't go through the root
   override fun invoke(xr: Expression): Expression = super.invoke(root(xr))
@@ -111,7 +111,7 @@ interface StatelessTransformer {
     with(xr) {
       when (this) {
         is Insert -> invoke(this)
-        is Update -> Update.csf(invoke(query), invokeIdent(alias), assignments.map { invoke(it) }, exclusions.map { invoke(it)})(this)
+        is Update -> Update.csf(invoke(query), invokeIdent(alias), assignments.map { invoke(it) }, exclusions.map { invoke(it) })(this)
         is Delete -> Delete.csf(invoke(query), invokeIdent(alias))(this)
         is OnConflict -> invoke(this)
         // TODO need to have invoke(action) here so that the Transformer will work on TransformAction, however need to think about potential consequences of casting here

@@ -40,17 +40,26 @@ object PrintXRType {
 fun qprint(xr: XR) = PrintXR.Color.invoke(xr)
 fun pprintMisc(any: Any?) = PrintMisc().invoke(any)
 
-class PrintToken(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Token>(config) {
+class PrintToken(config: PPrinterConfig = PPrinterConfig()) : PPrinterManual<Token>(config) {
   fun treeifyThis(x: Token, elementName: String?) = treeify(x, elementName, escapeUnicode = config.defaultEscapeUnicode, showFieldNames = config.defaultShowFieldNames)
 
   override fun treeify(x: Token, elementName: String?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree =
     when (x) {
       is ParamMultiToken -> Tree.Apply("ParamMultiToken", iteratorOf(Tree.Literal(x.bid.value, "bid")))
-      is ParamMultiTokenRealized -> Tree.Apply("ParamMultiTokenRealized", iteratorOf(Tree.Literal(x.bid.value, "bid"), x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.value.toString()))) } ?: Tree.Literal("null", "param")))
+      is ParamMultiTokenRealized -> Tree.Apply(
+        "ParamMultiTokenRealized",
+        iteratorOf(Tree.Literal(x.bid.value, "bid"), x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.value.toString()))) } ?: Tree.Literal("null", "param")))
       is ParamSingleToken -> Tree.Apply("ParamSingleToken", iteratorOf(Tree.Literal(x.bid.value, "bid")))
-      is ParamSingleTokenRealized -> Tree.Apply("ParamSingleTokenRealized", iteratorOf(Tree.Literal(x.bid.value, "bid"), x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.value.toString()))) } ?: Tree.Literal("null", "param")))
+      is ParamSingleTokenRealized -> Tree.Apply(
+        "ParamSingleTokenRealized",
+        iteratorOf(Tree.Literal(x.bid.value, "bid"), x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.value.toString()))) } ?: Tree.Literal("null", "param")))
       is ParamBatchToken -> Tree.Apply("ParamBatchToken", iteratorOf(Tree.Literal(x.bid.value, "bid")))
-      is ParamBatchTokenRealized -> Tree.Apply("ParamBatchTokenRealized", iteratorOf(Tree.Literal(x.bid.value, "bid"), Tree.Literal(x.chunkIndex.toString(), "chunkIndex"), x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.showValue().toString()))) } ?: Tree.Literal("null", "param")))
+      is ParamBatchTokenRealized -> Tree.Apply(
+        "ParamBatchTokenRealized",
+        iteratorOf(
+          Tree.Literal(x.bid.value, "bid"),
+          Tree.Literal(x.chunkIndex.toString(), "chunkIndex"),
+          x.param?.let { Tree.Apply("List", iteratorOf(Tree.Literal(it.showValue().toString()))) } ?: Tree.Literal("null", "param")))
       is SetContainsToken -> Tree.Apply("SetContainsToken", iteratorOf(treeifyThis(x.a, "a"), treeifyThis(x.op, "op"), treeifyThis(x.b, "b")))
       is Statement -> Tree.Apply("Statement", x.tokens.map { treeifyThis(it, null) }.iterator())
       is StringToken -> Tree.Apply("StringToken", iteratorOf(Tree.Literal(x.string, "string")))
@@ -58,7 +67,7 @@ class PrintToken(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Toke
     }
 }
 
-class PrintMisc(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Any?>(config) {
+class PrintMisc(config: PPrinterConfig = PPrinterConfig()) : PPrinterManual<Any?>(config) {
   fun treeifyThis(x: Any?, elementName: String?) = treeify(x, elementName, escapeUnicode = config.defaultEscapeUnicode, showFieldNames = config.defaultShowFieldNames)
 
   override fun treeify(x: Any?, elementName: String?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree =
@@ -76,40 +85,53 @@ class PrintMisc(config: PPrinterConfig = PPrinterConfig()): PPrinterManual<Any?>
 
       is RuntimeSet -> Tree.Apply("RuntimeSet", x.runtimes.map { (id, xr) -> Tree.KeyValue(id.value, treeifyThis(xr, null)) }.iterator())
       is ShowTree -> x.showTree(config)
-      is ParamSingle<*> -> Tree.Apply("ParamSingle", iteratorOf(Tree.Literal(x.id.value), Tree.Literal(x.value.toString()), Tree.Literal(x.serial.serializer.descriptor.kind.toString()), Tree.Literal(x.description.toString())))
-      is ParamMulti<*> -> Tree.Apply("ParamMulti", iteratorOf(Tree.Literal(x.id.value), Tree.Literal(x.value.toString()), Tree.Literal(x.serial.serializer.descriptor.kind.toString()), Tree.Literal(x.description.toString())))
-      is ParamBatchRefiner<*, *> -> Tree.Apply("ParamBatchRefiner", iteratorOf(Tree.Literal(x.id.value), Tree.Literal(x.serial.serializer.descriptor.kind.toString()), Tree.Literal(x.description.toString().replace("\n", ""))))
+      is ParamSingle<*> -> Tree.Apply(
+        "ParamSingle",
+        iteratorOf(Tree.Literal(x.id.value), Tree.Literal(x.value.toString()), Tree.Literal(x.serial.serializer.descriptor.kind.toString()), Tree.Literal(x.description.toString()))
+      )
+      is ParamMulti<*> -> Tree.Apply(
+        "ParamMulti",
+        iteratorOf(Tree.Literal(x.id.value), Tree.Literal(x.value.toString()), Tree.Literal(x.serial.serializer.descriptor.kind.toString()), Tree.Literal(x.description.toString()))
+      )
+      is ParamBatchRefiner<*, *> -> Tree.Apply(
+        "ParamBatchRefiner",
+        iteratorOf(Tree.Literal(x.id.value), Tree.Literal(x.serial.serializer.descriptor.kind.toString()), Tree.Literal(x.description.toString().replace("\n", "")))
+      )
 
       // Treeify the following: val value: String, override val token: Token, val needsTokenization: Boolean, val returningType: ReturningType, val label: String?, val phase: Phase
-      is SqlCompiledAction<*, *> -> Tree.Apply("SqlCompiledAction", iteratorOf(
-        Tree.KeyValue("value", Tree.Literal(x.value)),
-        Tree.KeyValue("token", PrintToken().treeifyThis(x.token, "token")),
-        Tree.KeyValue("params", Tree.Apply("List", x.params.map { treeifyThis(it, null) }.iterator())),
-        //Tree.KeyValue("needsTokenization", Tree.Literal("${x.needsTokenization}")),
-        Tree.KeyValue("returningType", Tree.Literal(x.actionReturningKind.toString())),
-        Tree.KeyValue("label", Tree.Literal(x.label ?: "null")),
-        Tree.KeyValue("phase", Tree.Literal(x.debugData.phase.toString())),
-        Tree.KeyValue("originalXR", treeifyThis(x.debugData.originalXR(), "originalXR"))
-      ))
+      is SqlCompiledAction<*, *> -> Tree.Apply(
+        "SqlCompiledAction", iteratorOf(
+          Tree.KeyValue("value", Tree.Literal(x.value)),
+          Tree.KeyValue("token", PrintToken().treeifyThis(x.token, "token")),
+          Tree.KeyValue("params", Tree.Apply("List", x.params.map { treeifyThis(it, null) }.iterator())),
+          //Tree.KeyValue("needsTokenization", Tree.Literal("${x.needsTokenization}")),
+          Tree.KeyValue("returningType", Tree.Literal(x.actionReturningKind.toString())),
+          Tree.KeyValue("label", Tree.Literal(x.label ?: "null")),
+          Tree.KeyValue("phase", Tree.Literal(x.debugData.phase.toString())),
+          Tree.KeyValue("originalXR", treeifyThis(x.debugData.originalXR(), "originalXR"))
+        )
+      )
 
-      is SqlCompiledBatchAction<*, *, *> -> Tree.Apply("SqlCompiledBatchAction", iteratorOf(
-        Tree.KeyValue("value", Tree.Literal(x.value)),
-        Tree.KeyValue("token", PrintToken().treeifyThis(x.token, "token")),
-        Tree.KeyValue("params", Tree.Apply("List", x.params.map { treeifyThis(it, null) }.iterator())),
-        //Tree.KeyValue("needsTokenization", Tree.Literal("${x.needsTokenization}")),
-        Tree.KeyValue("returningType", Tree.Literal(x.actionReturningKind.toString())),
-        Tree.KeyValue("batchParam", Tree.Apply("List", x.batchParam.map { Tree.Literal(it.toString()) }.iterator())),
-        Tree.KeyValue("label", Tree.Literal(x.label ?: "null")),
-        Tree.KeyValue("phase", Tree.Literal(x.debugData.phase.toString())),
-        Tree.KeyValue("originalXR", treeifyThis(x.debugData.originalXR(), "originalXR"))
-      ))
+      is SqlCompiledBatchAction<*, *, *> -> Tree.Apply(
+        "SqlCompiledBatchAction", iteratorOf(
+          Tree.KeyValue("value", Tree.Literal(x.value)),
+          Tree.KeyValue("token", PrintToken().treeifyThis(x.token, "token")),
+          Tree.KeyValue("params", Tree.Apply("List", x.params.map { treeifyThis(it, null) }.iterator())),
+          //Tree.KeyValue("needsTokenization", Tree.Literal("${x.needsTokenization}")),
+          Tree.KeyValue("returningType", Tree.Literal(x.actionReturningKind.toString())),
+          Tree.KeyValue("batchParam", Tree.Apply("List", x.batchParam.map { Tree.Literal(it.toString()) }.iterator())),
+          Tree.KeyValue("label", Tree.Literal(x.label ?: "null")),
+          Tree.KeyValue("phase", Tree.Literal(x.debugData.phase.toString())),
+          Tree.KeyValue("originalXR", treeifyThis(x.debugData.originalXR(), "originalXR"))
+        )
+      )
 
       else -> super.treeify(x, elementName, escapeUnicode, showFieldNames)
     }
 }
 
 // Simple printer for things like SelectClause that skip the loc/file fields. In the future may want to make skippable fields configurable in the constructor
-class PrintSkipLoc<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = PrintXR.defaultConfig): PPrinter<T>(serializer, config) {
+class PrintSkipLoc<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = PrintXR.defaultConfig) : PPrinter<T>(serializer, config) {
   override fun <E> treeifyComposite(elem: Treeifyable.Elem<E>, elementName: String?, showFieldNames: Boolean): Tree =
     when (val x = elem.value) {
       is XR -> PrintXR(XR.serializer(), config).treeifyThis(x, elementName)
@@ -126,7 +148,7 @@ class PrintSkipLoc<T>(serializer: SerializationStrategy<T>, config: PPrinterConf
     }
 }
 
-class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = defaultConfig): PPrinter<T>(serializer, config) {
+class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = defaultConfig) : PPrinter<T>(serializer, config) {
 
   fun treeifyThis(x: T, elementName: String?) =
     treeify(x, elementName, escapeUnicode = config.defaultEscapeUnicode, showFieldNames = defaultConfig.defaultShowFieldNames)
@@ -170,7 +192,6 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
 
       else -> super.treeifyComposite(elem, elementName, showFieldNames)
     }
-
 
 
   private fun String.toLit() = Tree.Literal(this, null)
@@ -220,14 +241,18 @@ class PrintXR<T>(serializer: SerializationStrategy<T>, config: PPrinterConfig = 
   companion object {
     val defaultConfig = PPrinterConfig(defaultWidth = 200, defaultShowFieldNames = false)
     val BlackWhite =
-      PrintXR(XR.serializer(), PPrinterConfig().copy(
-        defaultShowFieldNames = false,
-        colorLiteral = Attrs.Empty,
-        colorApplyPrefix = Attrs.Empty
-      ))
+      PrintXR(
+        XR.serializer(), PPrinterConfig().copy(
+          defaultShowFieldNames = false,
+          colorLiteral = Attrs.Empty,
+          colorApplyPrefix = Attrs.Empty
+        )
+      )
     val Color =
-      PrintXR(XR.serializer(), PPrinterConfig().copy(
-        defaultShowFieldNames = false
-      ))
+      PrintXR(
+        XR.serializer(), PPrinterConfig().copy(
+          defaultShowFieldNames = false
+        )
+      )
   }
 }

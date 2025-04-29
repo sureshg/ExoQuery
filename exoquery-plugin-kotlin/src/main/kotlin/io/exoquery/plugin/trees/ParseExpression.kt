@@ -4,82 +4,22 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.match
 import io.decomat.on
-import io.exoquery.BID
-import io.exoquery.Params
-import io.exoquery.SqlExpression
-import io.exoquery.SqlQuery
-import io.exoquery.annotation.DslFunctionCall
-import io.exoquery.annotation.DslNestingIgnore
-import io.exoquery.annotation.ParamCtx
-import io.exoquery.annotation.ParamCustom
-import io.exoquery.annotation.ParamCustomValue
-import io.exoquery.annotation.ParamPrimitive
-import io.exoquery.annotation.ParamStatic
-import io.exoquery.parseError
-import io.exoquery.plugin.classId
-import io.exoquery.plugin.classIdOf
-import io.exoquery.plugin.funName
-import io.exoquery.plugin.getAnnotationArgs
-import io.exoquery.plugin.isClass
-import io.exoquery.plugin.isClassStrict
-import io.exoquery.plugin.isSqlQuery
-import io.exoquery.plugin.loc
-import io.exoquery.plugin.location
-import io.exoquery.plugin.locationXR
-import io.exoquery.plugin.logging.CompileLogger
+import io.exoquery.*
+import io.exoquery.annotation.*
+import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.logging.Messages.ValueLookupComingFromExternalInExpression
-import io.exoquery.plugin.ownerHasAnnotation
 import io.exoquery.plugin.printing.dumpSimple
-import io.exoquery.plugin.safeName
-import io.exoquery.plugin.show
-import io.exoquery.plugin.toXR
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.containsBatchParam
-import io.exoquery.plugin.transform.dumpKotlinLikePretty
 import io.exoquery.plugin.transform.isBatchParam
-import io.exoquery.plugin.varargValues
-import io.exoquery.serial.ParamSerializer
-import io.exoquery.terpal.UnzipPartsParams
-import io.exoquery.xr.`+and+`
-import io.exoquery.xr.`+or+`
-import io.exoquery.xr.CID
-import io.exoquery.xr.XR
-import io.exoquery.xr.XRType
-import io.exoquery.xr.isConverterFunction
-import io.exoquery.xr.isNumeric
-import io.exoquery.xr.of
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.LocalTime
-import org.jetbrains.kotlin.backend.common.lower.loops.isInductionVariable
-import org.jetbrains.kotlin.ir.IrElement
+import io.exoquery.xr.*
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.expressions.IrBlockBody
-import org.jetbrains.kotlin.ir.expressions.IrBranch
-import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
-import org.jetbrains.kotlin.ir.expressions.IrConst
-import org.jetbrains.kotlin.ir.expressions.IrConstKind
-import org.jetbrains.kotlin.ir.expressions.IrDeclarationReference
-import org.jetbrains.kotlin.ir.expressions.IrElseBranch
-import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrGetValue
-import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
-import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.isBoolean
-import org.jetbrains.kotlin.ir.types.isChar
-import org.jetbrains.kotlin.ir.types.isDouble
-import org.jetbrains.kotlin.ir.types.isFloat
-import org.jetbrains.kotlin.ir.types.isInt
-import org.jetbrains.kotlin.ir.types.isLong
-import org.jetbrains.kotlin.ir.types.isShort
-import org.jetbrains.kotlin.ir.types.isString
+import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.name.ClassId
 
 /**
  * Parses the tree and collets dynamic binds as it goes. The parser should be exposed
@@ -90,6 +30,7 @@ object ParseExpression {
     data class Const(val value: String) : Seg {
       fun mergeWith(other: Const): Const = Const(value + other.value)
     }
+
     data class Expr(val expr: IrExpression) : Seg
     companion object {
       fun parse(expr: IrExpression): Seg =
@@ -98,12 +39,14 @@ object ParseExpression {
           else -> Expr(expr)
         }
     }
+
     context(CX.Scope, CX.Parsing, CX.Symbology)
     fun constOrFail(): Const =
       when (this) {
         is Const -> this
         is Expr -> parseError("Expected a constant segment, but found an expression segment: Seg.Expr(${expr.dumpKotlinLike()})", this.expr)
       }
+
     context(CX.Scope, CX.Parsing, CX.Symbology)
     fun exprOrFail(): Expr =
       when (this) {
@@ -138,10 +81,10 @@ object ParseExpression {
         parse(irReturnValue)
       },
       case(Ir.BlockBody.StatementsWithReturn[Is(), Is()]).then { stmts, ret ->
-          val vars = stmts.map { parseBlockStatement(it) }
-          val retExpr = parse(ret)
-          XR.Block(vars, retExpr, blockBody.locationXR())
-        }
+        val vars = stmts.map { parseBlockStatement(it) }
+        val retExpr = parse(ret)
+        XR.Block(vars, retExpr, blockBody.locationXR())
+      }
     ) ?: parseError("Could not parse IrBlockBody:\n${blockBody.dumpKotlinLike()}")
 
   context(CX.Scope, CX.Parsing, CX.Symbology) fun parse(expr: IrExpression): XR.Expression =
@@ -203,8 +146,9 @@ object ParseExpression {
         val paramBindTypeRaw =
           when {
             this.ownerHasAnnotation<ParamStatic>() -> {
-              val staticRef = this.symbol.owner.getAnnotationArgs<ParamStatic>().firstOrNull()?.let { param -> param as? IrClassReference
-                ?: parseError("ParamStatic annotation must have a single argument that is a class-reference (e.g. PureFunction::class)", this)
+              val staticRef = this.symbol.owner.getAnnotationArgs<ParamStatic>().firstOrNull()?.let { param ->
+                param as? IrClassReference
+                  ?: parseError("ParamStatic annotation must have a single argument that is a class-reference (e.g. PureFunction::class)", this)
               } ?: parseError("Could not find ParamStatic annotation", this)
               val classId = staticRef.classType.classId() ?: parseError("Could not find classId for ParamStatic annotation", this)
               ParamBind.Type.ParamStatic(classId)
@@ -267,8 +211,9 @@ object ParseExpression {
           when {
             // currently not used because the specific ones have been commented out. Waiting for @SignatureName in KMP
             this.ownerHasAnnotation<ParamStatic>() -> {
-              val staticRef = this.symbol.owner.getAnnotationArgs<ParamStatic>().firstOrNull()?.let { param -> param as? IrClassReference
-                ?: parseError("ParamStatic annotation must have a single argument that is a class-reference (e.g. PureFunction::class)", this)
+              val staticRef = this.symbol.owner.getAnnotationArgs<ParamStatic>().firstOrNull()?.let { param ->
+                param as? IrClassReference
+                  ?: parseError("ParamStatic annotation must have a single argument that is a class-reference (e.g. PureFunction::class)", this)
               } ?: parseError("Could not find ParamStatic annotation", this)
               val classId = staticRef.classType.classId() ?: parseError("Could not find classId for ParamStatic annotation", this)
               ParamBind.Type.ParamListStatic(classId)
@@ -300,7 +245,10 @@ object ParseExpression {
         val varsUsed = IrTraversals.collectGetValue(paramValue)
         varsUsed.forEach { varUsed ->
           if (varUsed.isCurrentlyActiveBatchParam()) {
-            parseError("Cannot use the batch-parameter `${varUsed.symbol.safeName}` with multi-parameter functions (i.e. params, paramsCtx, paramsCustom, etc.). The batch-parameter is only used for single-parameter functions (i.e. param, paramCtx, paramCustom, etc.).", varUsed)
+            parseError(
+              "Cannot use the batch-parameter `${varUsed.symbol.safeName}` with multi-parameter functions (i.e. params, paramsCtx, paramsCustom, etc.). The batch-parameter is only used for single-parameter functions (i.e. param, paramCtx, paramCustom, etc.).",
+              varUsed
+            )
           }
           if (varUsed.isInternal())
             parseError(
@@ -368,10 +316,16 @@ object ParseExpression {
         val output = XR.BinaryOp(x, op, y, expr.loc)
 
         if (y.type.isProduct() && !(x is XR.Const.Null && yExpr.isGetTemporaryVar())) {
-          parseError("Invalid right-hand-side argument ${y.show()} (whose type was ${y.type.shortString()}) in the expression ${output.show()}. Cannot directly call operators (including null-checks) on variables representing composite types (i.e. rows-types and anything representing a group of columns) because this cannot be done in SQL. Instead, call the null-check on a column variable.", expr)
+          parseError(
+            "Invalid right-hand-side argument ${y.show()} (whose type was ${y.type.shortString()}) in the expression ${output.show()}. Cannot directly call operators (including null-checks) on variables representing composite types (i.e. rows-types and anything representing a group of columns) because this cannot be done in SQL. Instead, call the null-check on a column variable.",
+            expr
+          )
         }
         if (x.type.isProduct() && !(y is XR.Const.Null && xExpr.isGetTemporaryVar())) {
-          parseError("Invalid left-hand-side argument ${x.show()} (whose type was ${x.type.shortString()}) in the expression ${output.show()}.  Cannot directly call operators (including null-checks) on variables representing composite types (i.e. rows-types and anything representing a group of columns) because this cannot be done in SQL. Instead, call the null-check on a column variable.", expr)
+          parseError(
+            "Invalid left-hand-side argument ${x.show()} (whose type was ${x.type.shortString()}) in the expression ${output.show()}.  Cannot directly call operators (including null-checks) on variables representing composite types (i.e. rows-types and anything representing a group of columns) because this cannot be done in SQL. Instead, call the null-check on a column variable.",
+            expr
+          )
         }
 
         output
@@ -435,12 +389,12 @@ object ParseExpression {
         val allReturnsAreBoolean = cases.all { it.result.type.isClass<Boolean>() }
         // Kotlin converts (A && B) to `if(A) B else false`. This undoes that
         if (
-            allReturnsAreBoolean &&
-            elseBranch != null && casesAst.size == 1
-              && casesAst.first().then.type is XRType.Boolean
-              // Implicitly the else-clause in this case cannot have additional conditions
-              && elseBranch.cond == XR.Const.Boolean(true) && elseBranch.then == XR.Const.Boolean(false)
-          ) {
+          allReturnsAreBoolean &&
+          elseBranch != null && casesAst.size == 1
+          && casesAst.first().then.type is XRType.Boolean
+          // Implicitly the else-clause in this case cannot have additional conditions
+          && elseBranch.cond == XR.Const.Boolean(true) && elseBranch.then == XR.Const.Boolean(false)
+        ) {
           val firstClause = casesAst.first()
           firstClause.cond `+and+` firstClause.then
         }
@@ -454,8 +408,7 @@ object ParseExpression {
         ) {
           val firstClause = casesAst.first()
           firstClause.cond `+or+` elseBranch.then
-        }
-        else {
+        } else {
           val elseBranchOrLast = elseBranch ?: casesAst.lastOrNull() ?: parseError("Empty when expression not allowed:\n${this.dumpKotlinLike()}")
           XR.When(casesAst, elseBranchOrLast.then, expr.loc)
         }

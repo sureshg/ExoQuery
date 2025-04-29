@@ -1,7 +1,6 @@
 package io.exoquery.plugin.trees
 
 import io.exoquery.plugin.safeName
-import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.name.FqName
@@ -18,7 +17,7 @@ fun String.sanitizeIdentName() =
   else
     this.replace("<", "").replace(">", "")
 
-val IrValueParameter.unadulteratedName:String get() = this.name.asString()
+val IrValueParameter.unadulteratedName: String get() = this.name.asString()
 
 fun IrSymbol.sanitizedSymbolName(): String =
   ((this.owner as? IrValueParameter)?.let { it.unadulteratedName } ?: this.safeName).sanitizeIdentName()

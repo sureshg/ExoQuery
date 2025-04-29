@@ -30,7 +30,7 @@ android {
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
-  testOptions  {
+  testOptions {
     targetSdk = 34
     unitTests.isIncludeAndroidResources = true
     //unitTests.all {
@@ -45,67 +45,67 @@ android {
 }
 
 kotlin {
-    androidTarget {
-      compilations.all {
-        kotlinOptions {
-          jvmTarget = "17"
-        }
-      }
-      publishLibraryVariants("release", "debug")
-    }
-
-    sourceSets {
-
-      androidMain.dependencies {
-        dependencies {
-          implementation(project(":exoquery-controller-common"))
-
-          api("io.exoquery:controller-android:3.2.0")
-
-          api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
-          api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
-          api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
-          implementation("androidx.sqlite:sqlite-framework:2.4.0")
-        }
-      }
-
-      val androidInstrumentedTest by getting {
-        dependencies {
-          implementation(project(":exoquery-controller-common"))
-
-          //implementation(kotlin("test-junit"))
-          //implementation("junit:junit:4.13.2")
-          implementation(kotlin("test-common"))
-          implementation(kotlin("test-annotations-common"))
-
-          implementation("org.robolectric:robolectric:4.13")
-          implementation("androidx.test:core:1.6.1")
-          implementation("androidx.test:runner:1.6.1")
-          implementation("app.cash.sqldelight:android-driver:2.0.2")
-          implementation("androidx.test.ext:junit:1.1.3")
-          implementation("androidx.test.espresso:espresso-core:3.4.0")
-        }
-      }
-
-      val androidUnitTest by getting {
-        dependencies {
-          implementation(project(":exoquery-controller-common"))
-
-          //implementation(kotlin("test-junit"))
-          //implementation("junit:junit:4.13.2")
-          implementation(kotlin("test"))
-          implementation(kotlin("test-common"))
-          implementation(kotlin("test-annotations-common"))
-
-          implementation("org.robolectric:robolectric:4.13")
-          implementation("androidx.test:core:1.6.1")
-          implementation("androidx.test:runner:1.6.1")
-          implementation("app.cash.sqldelight:android-driver:2.0.2")
-          implementation("androidx.test.ext:junit:1.1.3")
-          implementation("androidx.test.espresso:espresso-core:3.4.0")
-        }
+  androidTarget {
+    compilations.all {
+      kotlinOptions {
+        jvmTarget = "17"
       }
     }
+    publishLibraryVariants("release", "debug")
+  }
+
+  sourceSets {
+
+    androidMain.dependencies {
+      dependencies {
+        implementation(project(":exoquery-controller-common"))
+
+        api("io.exoquery:controller-android:3.2.0")
+
+        api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
+        api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
+        api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+        implementation("androidx.sqlite:sqlite-framework:2.4.0")
+      }
+    }
+
+    val androidInstrumentedTest by getting {
+      dependencies {
+        implementation(project(":exoquery-controller-common"))
+
+        //implementation(kotlin("test-junit"))
+        //implementation("junit:junit:4.13.2")
+        implementation(kotlin("test-common"))
+        implementation(kotlin("test-annotations-common"))
+
+        implementation("org.robolectric:robolectric:4.13")
+        implementation("androidx.test:core:1.6.1")
+        implementation("androidx.test:runner:1.6.1")
+        implementation("app.cash.sqldelight:android-driver:2.0.2")
+        implementation("androidx.test.ext:junit:1.1.3")
+        implementation("androidx.test.espresso:espresso-core:3.4.0")
+      }
+    }
+
+    val androidUnitTest by getting {
+      dependencies {
+        implementation(project(":exoquery-controller-common"))
+
+        //implementation(kotlin("test-junit"))
+        //implementation("junit:junit:4.13.2")
+        implementation(kotlin("test"))
+        implementation(kotlin("test-common"))
+        implementation(kotlin("test-annotations-common"))
+
+        implementation("org.robolectric:robolectric:4.13")
+        implementation("androidx.test:core:1.6.1")
+        implementation("androidx.test:runner:1.6.1")
+        implementation("app.cash.sqldelight:android-driver:2.0.2")
+        implementation("androidx.test.ext:junit:1.1.3")
+        implementation("androidx.test.espresso:espresso-core:3.4.0")
+      }
+    }
+  }
 
 }
 

@@ -1,19 +1,12 @@
 package io.exoquery.plugin.trees
 
-import io.decomat.*
-import io.exoquery.BID
+import io.decomat.Is
 import io.exoquery.CapturedBlock
 import io.exoquery.SqlAction
 import io.exoquery.SqlQuery
 import io.exoquery.parseError
-import io.exoquery.plugin.classIdOf
-import io.exoquery.plugin.funName
-import io.exoquery.plugin.isClass
-import io.exoquery.plugin.isClassStrict
-import io.exoquery.plugin.loc
-import io.exoquery.plugin.safeName
+import io.exoquery.plugin.*
 import io.exoquery.plugin.transform.CX
-import io.exoquery.plugin.transform.containsBatchParam
 import io.exoquery.plugin.trees.ParseExpression.Seg
 import io.exoquery.serial.ParamSerializer
 import io.exoquery.terpal.UnzipPartsParams
@@ -24,26 +17,10 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import org.jetbrains.kotlin.ir.IrElement
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.declarations.IrVariable
-import org.jetbrains.kotlin.ir.declarations.nameWithPackage
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrDeclarationReference
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrGetValue
-import org.jetbrains.kotlin.ir.expressions.IrValueAccessExpression
-import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.isBoolean
-import org.jetbrains.kotlin.ir.types.isChar
-import org.jetbrains.kotlin.ir.types.isDouble
-import org.jetbrains.kotlin.ir.types.isFloat
-import org.jetbrains.kotlin.ir.types.isInt
-import org.jetbrains.kotlin.ir.types.isLong
-import org.jetbrains.kotlin.ir.types.isShort
-import org.jetbrains.kotlin.ir.types.isString
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.name.ClassId
 
 
@@ -60,9 +37,9 @@ fun IrDeclarationReference.isCapturedVariable(): Boolean {
     when {
       recurseCount == 0 -> false
       elem is IrFunction && elem.extensionReceiverParameter?.type?.isClass<CapturedBlock>() ?: false -> true
-      elem is IrFunction -> rec(elem.symbol.owner.parent, recurseCount-1)
-      elem is IrValueParameter -> rec(elem.symbol.owner.parent, recurseCount-1)
-      elem is IrVariable -> rec(elem.symbol.owner.parent, recurseCount-1)
+      elem is IrFunction -> rec(elem.symbol.owner.parent, recurseCount - 1)
+      elem is IrValueParameter -> rec(elem.symbol.owner.parent, recurseCount - 1)
+      elem is IrVariable -> rec(elem.symbol.owner.parent, recurseCount - 1)
       else -> false
     }
 
@@ -83,11 +60,13 @@ fun IrDeclarationReference.showLineage(): String {
 
   tailrec fun rec(elem: IrElement, recurseCount: Int): Unit {
     val prefix =
-      "${(elem as? IrFunction)?.let { "fun " + it.symbol.safeName +"(...)" } 
-        ?: (elem as? IrVariable)?.let { "${it.declSymbol()} " + it.symbol.safeName } 
-        ?: (elem as? IrValueParameter)?.let { "param " + it.symbol.safeName }
-        ?: (elem as? IrFile)?.let { "File(${it.nameWithPackage})" }  
-        ?: (elem::class.simpleName ?: "Unknown")}"
+      "${
+        (elem as? IrFunction)?.let { "fun " + it.symbol.safeName + "(...)" }
+          ?: (elem as? IrVariable)?.let { "${it.declSymbol()} " + it.symbol.safeName }
+          ?: (elem as? IrValueParameter)?.let { "param " + it.symbol.safeName }
+          ?: (elem as? IrFile)?.let { "File(${it.nameWithPackage})" }
+          ?: (elem::class.simpleName ?: "Unknown")
+      }"
 
     when {
       recurseCount == 0 -> {
@@ -100,15 +79,15 @@ fun IrDeclarationReference.showLineage(): String {
       }
       elem is IrFunction -> {
         collect.add("${prefix}->fun.Owner")
-        rec(elem.symbol.owner.parent, recurseCount-1)
+        rec(elem.symbol.owner.parent, recurseCount - 1)
       }
       elem is IrValueParameter -> {
         collect.add("${prefix}->param.Owner")
-        rec(elem.symbol.owner.parent, recurseCount-1)
+        rec(elem.symbol.owner.parent, recurseCount - 1)
       }
       elem is IrVariable -> {
         collect.add("${prefix}->${elem.declSymbol()}.Owner")
-        rec(elem.symbol.owner.parent, recurseCount-1)
+        rec(elem.symbol.owner.parent, recurseCount - 1)
       }
       else ->
         collect.add(prefix)

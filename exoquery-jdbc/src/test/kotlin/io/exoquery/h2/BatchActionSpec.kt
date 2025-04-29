@@ -19,7 +19,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 
-class BatchActionSpec: FreeSpec ({
+class BatchActionSpec : FreeSpec({
   val ctx = TestDatabases.h2
 
   beforeEach {
@@ -40,7 +40,7 @@ class BatchActionSpec: FreeSpec ({
       val q = capture.batch(batchInsertPeople.asSequence()) { p ->
         insert<Person> { set(firstName to param(p.firstName), lastName to param(p.lastName), age to param(p.age)) }
       }
-        val b = q.build<H2Dialect>()
+      val b = q.build<H2Dialect>()
       println(b)
       b.runOn(ctx) shouldContainExactlyInAnyOrder listOf(1, 1, 1)
       ctx.people() shouldContainExactlyInAnyOrder allPeople
@@ -187,15 +187,19 @@ class BatchActionSpec: FreeSpec ({
   val george = Person(1, "George", "Googs", 555)
 
   suspend fun JdbcController.insertPerson(person: Person) =
-    this.runActions("""
+    this.runActions(
+      """
         INSERT INTO Person (id, firstName, lastName, age) VALUES (${person.id}, '${person.firstName}', '${person.lastName}', ${person.age});
-      """.trimIndent())
+      """.trimIndent()
+    )
 
   suspend fun JdbcController.insertAllPeople() =
-    this.runActions("""
+    this.runActions(
+      """
         INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'George', 'Googs', 555);
         INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'Joe', 'Bloggs', 111);
         INSERT INTO Person (id, firstName, lastName, age) VALUES (2, 'Joe', 'Doggs', 222);
         INSERT INTO Person (id, firstName, lastName, age) VALUES (3, 'Jim', 'Roogs', 333);
-      """.trimIndent())
+      """.trimIndent()
+    )
 })

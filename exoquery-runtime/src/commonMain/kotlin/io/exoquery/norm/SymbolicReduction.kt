@@ -141,7 +141,7 @@ class SymbolicReduction(val traceConfig: TraceConfig) {
         this is XR.FlatMap && head is XR.Union -> {
           val (a, b) = Pair(head.a, head.b)
           val (c, d) = Pair(id, body)
-          with (head) {
+          with(head) {
             Union.cs(FlatMap.cs(a, c, d), FlatMap.cs(b, c, d))
           }
         }
@@ -157,13 +157,13 @@ class SymbolicReduction(val traceConfig: TraceConfig) {
         this is XR.FlatMap && head is XR.UnionAll -> {
           val (a, b) = Pair(head.a, head.b)
           val (c, d) = Pair(id, body)
-          with (head) {
+          with(head) {
             UnionAll.cs(FlatMap.cs(a, c, d), FlatMap.cs(b, c, d))
           }
         }
 
 
-      else -> null
+        else -> null
+      }
     }
-  }
 }

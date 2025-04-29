@@ -1,24 +1,14 @@
 package io.exoquery.plugin.trees
 
+//import io.exoquery.xr.XR.Query
+
 import io.exoquery.*
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.call
 import io.exoquery.plugin.transform.callDispatch
-import io.exoquery.sql.TokenContext
-import io.exoquery.sql.ParamBatchToken
-import io.exoquery.sql.ParamBatchTokenRealized
-import io.exoquery.sql.ParamMultiToken
-import io.exoquery.sql.ParamMultiTokenRealized
-import io.exoquery.sql.ParamSingleToken
-import io.exoquery.sql.ParamSingleTokenRealized
-import io.exoquery.sql.SetContainsToken
-import io.exoquery.sql.Statement
-import io.exoquery.sql.StringToken
-import io.exoquery.sql.Token
+import io.exoquery.sql.*
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
-//import io.exoquery.xr.XR.Query
-
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -46,8 +36,10 @@ class Lifter(val builderCtx: CX.Builder) {
   inline fun <reified T> makeObject(): IrGetObjectValue = runScoped { io.exoquery.plugin.trees.makeObject<T>() }
   fun makeClassFromId(id: ClassId, args: List<IrExpression>, types: List<IrType> = listOf()) =
     runScoped { io.exoquery.plugin.trees.makeClassFromId(id, args, types) }
+
   fun makeObjectFromId(id: ClassId): IrGetObjectValue =
     runScoped { io.exoquery.plugin.trees.makeObjectFromId(id) }
+
   inline fun <reified T> makeWithTypes(types: List<IrType>, args: List<IrExpression>): IrConstructorCall =
     runScoped { io.exoquery.plugin.trees.makeWithTypes<T>(types, args) }
 
@@ -62,7 +54,7 @@ class Lifter(val builderCtx: CX.Builder) {
   fun String.lift(): IrExpression = irBuilder.irString(this)
 
   val listOfRef =
-    context.referenceFunctions(CallableId(FqName("kotlin.collections"), Name.identifier("listOf") ))
+    context.referenceFunctions(CallableId(FqName("kotlin.collections"), Name.identifier("listOf")))
       // Get the 1st variadic instance of listOf (note that some variations have zero args so need to do firstOrNull)
       .first { it.owner.valueParameters.firstOrNull()?.isVararg ?: false }
 

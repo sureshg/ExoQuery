@@ -108,7 +108,6 @@ annotation class ParamCustomValue
 annotation class ExoValue
 
 
-
 /**
  * Use this to change the name of a column in a query if you do not want to use
  * `@SerialName` from kotlinx.serialization. This is useful if you want to reuse

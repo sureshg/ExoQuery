@@ -36,7 +36,7 @@ class ApplyMap(val traceConfig: TraceConfig) {
   }
 
   object MapWithoutInfixes {
-    operator fun <AP: Pattern<XR.Query>, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
+    operator fun <AP : Pattern<XR.Query>, BP : Pattern<XR.Expression>> get(x: AP, y: BP) =
       customPattern2M("MapWithoutInfixes", x, y) { it: XR.Query ->
         with(it) {
           when {
@@ -49,7 +49,7 @@ class ApplyMap(val traceConfig: TraceConfig) {
   }
 
   object DetachableMap {
-    operator fun <AP: Pattern<XR.Query>, BP: Pattern<XR.Expression>> get(x: AP, y: BP) =
+    operator fun <AP : Pattern<XR.Query>, BP : Pattern<XR.Expression>> get(x: AP, y: BP) =
       customPattern2M("DetachableMap", x, y) { it: XR.Map ->
         with(it) {
           when {

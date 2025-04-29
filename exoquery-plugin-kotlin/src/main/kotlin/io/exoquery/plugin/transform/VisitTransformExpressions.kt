@@ -12,11 +12,13 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.expressions.IrBlockBody
+import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 data class VisitorContext(val symbolSet: SymbolSet, val queriesAccum: FileQueryAccum) {
   fun withNewAccum() = VisitorContext(symbolSet, FileQueryAccum.empty())
@@ -119,7 +121,7 @@ class VisitTransformExpressions(
     return ret
   }
 
-  private fun <R> runInContext(scopeContext:CX.Scope, builderContext: CX.Builder, visitorContext: VisitorContext, runBlock: context (CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum) () -> R): R =
+  private fun <R> runInContext(scopeContext: CX.Scope, builderContext: CX.Builder, visitorContext: VisitorContext, runBlock: context (CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum) () -> R): R =
     runBlock(scopeContext, builderContext, CX.Symbology(visitorContext.symbolSet), CX.QueryAccum(visitorContext.queriesAccum))
 
   override fun visitFunctionNew(declaration: IrFunction, data: VisitorContext): IrStatement {
@@ -139,8 +141,8 @@ class VisitTransformExpressions(
     }
   }
 
-  data class ScopedRunner(val scopeContext:CX.Scope, val builderContext: CX.Builder, val visitorContext: VisitorContext) {
-    fun <R: IrElement> run(expression: R, block: context (CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum) () -> R): R =
+  data class ScopedRunner(val scopeContext: CX.Scope, val builderContext: CX.Builder, val visitorContext: VisitorContext) {
+    fun <R : IrElement> run(expression: R, block: context (CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum) () -> R): R =
       try {
         block(scopeContext, builderContext, CX.Symbology(visitorContext.symbolSet), CX.QueryAccum(visitorContext.queriesAccum))
       } catch (e: ParseError) {
@@ -220,9 +222,8 @@ class VisitTransformExpressions(
         transformSelectClause.matches(expression) -> transformSelectClause.transform(expression)
         transformCaptureAction.matches(expression) -> transformCaptureAction.transform(expression)
         transformCaptureBatchAction.matches(expression) -> transformCaptureBatchAction.transform(expression)
-          // Is this an sqlQuery.build(PostgresDialect) call? if yes see if the it is a compile-time query and transform it
+        // Is this an sqlQuery.build(PostgresDialect) call? if yes see if the it is a compile-time query and transform it
         transformCompileQuery.matches(expression) -> transformCompileQuery.transform(expression)
-
 
 
         //showAnnotations.matches(expression) -> showAnnotations.transform(expression)
@@ -236,8 +237,6 @@ class VisitTransformExpressions(
     }
   }
 }
-
-
 
 
 /** Finds the line and column of [irElement] within this file. */

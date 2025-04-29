@@ -10,13 +10,13 @@ import io.exoquery.xr.*
 import io.exoquery.xr.copy.*
 import io.exoquery.xrError
 
-data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig): StatefulTransformer<Ident?> {
+data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig) : StatefulTransformer<Ident?> {
   val trace: Tracer =
     Tracer(TraceType.Standard, traceConfig, 1)
 
   override operator fun invoke(q: Query): Pair<Query, StatefulTransformer<Ident?>> =
     with(q) {
-      when(this) {
+      when (this) {
         is FlatMap -> {
           val (a, b, c, _) = dealias(head, id, body)
           val (cn, cnt) = invoke(c) // need to recursively dealias this clause e.g. if it is a map-clause that has another alias inside
@@ -87,7 +87,7 @@ data class Dealias(override val state: XR.Ident?, val traceConfig: TraceConfig):
         is FunctionApply, is FunctionN, is Ident ->
           xrError("Dealiasing not supported (it should have been done already) for: ${this.showRaw()}")
       }
-  }
+    }
 
   data class DealiasResultA(val a: Query, val b: Ident, val c: Expression, val newState: StatefulTransformer<Ident?>)
   data class DealiasResultB(val a: Query, val b: Ident, val c: Query, val newState: StatefulTransformer<Ident?>)

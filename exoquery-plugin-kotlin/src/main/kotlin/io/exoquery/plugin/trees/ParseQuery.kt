@@ -4,30 +4,11 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.match
 import io.decomat.on
-import io.exoquery.BID
-import io.exoquery.CapturedBlock
-import io.exoquery.SqlQuery
-import io.exoquery.annotation.Dsl
-import io.exoquery.annotation.DslFunctionCall
-import io.exoquery.annotation.DslNestingIgnore
-import io.exoquery.annotation.FlatJoin
-import io.exoquery.annotation.FlatJoinLeft
-import io.exoquery.parseError
-import io.exoquery.parseErrorSym
-import io.exoquery.plugin.funName
-import io.exoquery.plugin.hasAnnotation
-import io.exoquery.plugin.isClass
-import io.exoquery.plugin.isSqlQuery
-import io.exoquery.plugin.loc
-import io.exoquery.plugin.location
-import io.exoquery.plugin.locationXR
+import io.exoquery.*
+import io.exoquery.annotation.*
+import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.Messages
-import io.exoquery.plugin.ownerFunName
-import io.exoquery.plugin.ownerHasAnnotation
 import io.exoquery.plugin.printing.dumpSimple
-import io.exoquery.plugin.safeName
-import io.exoquery.plugin.symName
-import io.exoquery.plugin.toLocationXR
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.isBatchParam
 import io.exoquery.xr.BetaReduction
@@ -106,7 +87,7 @@ object ParseQuery {
             XR.FunctionApply(warppedQueryCall, parsedArgs, expr.loc)
           },
 
-          case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym->
+          case(Ir.GetValue[Is()]).thenIfThis { this.isCapturedVariable() || this.isCapturedFunctionArgument() }.thenThis { sym ->
             if (this.isBatchParam()) parseError(Messages.UsingBatchParam, expr)
             XR.Ident(sym.sanitizedSymbolName(), TypeParser.of(this), this.locationXR())
           },
@@ -141,7 +122,7 @@ object ParseQuery {
               val bid = BID.Companion.new()
               binds.addRuntime(bid, expr)
               XR.TagForSqlQuery(bid, TypeParser.of(expr), expr.loc)
-          }
+            }
         ) ?: run {
           val additionalHelp =
             when {
@@ -152,7 +133,7 @@ object ParseQuery {
                    |first and then pass it into the block.
                 """.trimMargin()
 
-                expr is IrGetValue ->
+              expr is IrGetValue ->
                 """|It looks like the variable `${expr.symbol.safeName}` is coming from outside the capture/select block
                    |but it could not be parsed as a static or dynamic query call of type SqlQuery<T>. We detected that
                    |it's type is ${expr.type.dumpKotlinLike()} which cannot be used (${expr.type.isClass<SqlQuery<*>>()}, ${expr.symbol.owner.type.annotations.map { it.dumpKotlinLike() }}).
@@ -208,12 +189,15 @@ object ParseQuery {
         ) ?: parseError("Could not parse flatJoin", expr)
       },
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is("flatMap"), Is()]).thenThis { head, lambda ->
-          lambda.match(
-            case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { tail ->
-              XR.FlatMap(parse(head), firstParam().makeIdent(), parse(tail), expr.loc)
-            }
-            // TODO for this error message need to have a advanced "mode" that will print out the RAW IR
-          ) ?: parseError("SqlQuery.flatMap(...) lambdas can only be single-statement expressions, they cannot be block-lambdas like:\n${lambda.dumpKotlinLike()}\n-----------------------------------\n${lambda.dumpSimple()}", lambda)
+        lambda.match(
+          case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { tail ->
+            XR.FlatMap(parse(head), firstParam().makeIdent(), parse(tail), expr.loc)
+          }
+          // TODO for this error message need to have a advanced "mode" that will print out the RAW IR
+        ) ?: parseError(
+          "SqlQuery.flatMap(...) lambdas can only be single-statement expressions, they cannot be block-lambdas like:\n${lambda.dumpKotlinLike()}\n-----------------------------------\n${lambda.dumpSimple()}",
+          lambda
+        )
       },
       case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<SqlQuery<*>>(), Is.of("distinct", "nested")]).thenThis { head, _ ->
         when (symName) {

@@ -1,18 +1,19 @@
 package io.exoquery.plugin.trees
 
-import io.decomat.*
+import io.decomat.Is
+import io.decomat.case
+import io.decomat.match
+import io.decomat.on
 import io.exoquery.Ord
 import io.exoquery.SelectClauseCapturedBlock
 import io.exoquery.parseError
 import io.exoquery.plugin.loc
 import io.exoquery.plugin.location
-import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.toLocationXR
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.trees.ExtractorsDomain.Call.`x to y`
-import io.exoquery.xr.BetaReduction
 import io.exoquery.xr.SX
 import io.exoquery.xr.SelectClause
 import io.exoquery.xr.XR
@@ -61,7 +62,7 @@ object ParseSelectClause {
         val (onTable, joinCondLambda) = args
         val varNameIdent = XR.Ident(varName.sanitizeIdentName(), TypeParser.of(this.comp), this.comp.loc)
         val joinType =
-          when(joinFunc.symbol.safeName) {
+          when (joinFunc.symbol.safeName) {
             "join" -> XR.JoinType.Inner
             "joinLeft" -> XR.JoinType.Left
             else -> parseError("Unknown Join Type: ${joinFunc.symbol.safeName}", expr)
@@ -103,8 +104,7 @@ object ParseSelectClause {
         val groupings = argValues.map { ParseExpression.parse(it) }
         if (groupings.size == 1) {
           SX.GroupBy(groupings.first(), this.loc)
-        }
-        else {
+        } else {
           SX.GroupBy(XR.Product.TupleSmartN(groupings, this.loc), this.loc)
         }
       },
@@ -114,8 +114,7 @@ object ParseSelectClause {
         if (clausesRaw.size == 1) {
           val (expr, ord) = clausesRaw.first()
           SX.SortBy(expr, ord, this.loc)
-        }
-        else {
+        } else {
           val (exprs, clauses) = clausesRaw.unzip()
           SX.SortBy(XR.Product.TupleSmartN(exprs, this.loc), XR.Ordering.TupleOrdering(clauses), this.loc)
         }
@@ -144,6 +143,9 @@ object ParseSelectClause {
         case(Ir.Expr.ClassOf<Ord.DescNullsFirst>()).then { XR.Ordering.DescNullsFirst },
         case(Ir.Expr.ClassOf<Ord.AscNullsLast>()).then { XR.Ordering.AscNullsLast },
         case(Ir.Expr.ClassOf<Ord.DescNullsLast>()).then { XR.Ordering.DescNullsLast },
-      ) ?: parseError("Could not parse an ordering from the expression: ${expr.dumpSimple()}. Orderings must be specified as one of the following compile-time constant values: Asc, Desc, AscNullsFirst, DescNullsFirst, AscNullsLast, DescNullsLast", expr)
+      ) ?: parseError(
+        "Could not parse an ordering from the expression: ${expr.dumpSimple()}. Orderings must be specified as one of the following compile-time constant values: Asc, Desc, AscNullsFirst, DescNullsFirst, AscNullsLast, DescNullsLast",
+        expr
+      )
   }
 }

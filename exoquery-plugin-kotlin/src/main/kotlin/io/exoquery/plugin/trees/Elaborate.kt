@@ -5,32 +5,17 @@ import io.exoquery.annotation.ExoField
 import io.exoquery.parseError
 import io.exoquery.plugin.dataClassProperties
 import io.exoquery.plugin.firstConstStringOrNull
-import io.exoquery.plugin.getAnnotation
 import io.exoquery.plugin.getAnnotationArgs
 import io.exoquery.plugin.isDataClass
-import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.CX
 import org.jetbrains.kotlin.ir.builders.irCall
-import org.jetbrains.kotlin.ir.builders.irGet
-import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irIfNull
-import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irNull
-import org.jetbrains.kotlin.ir.builders.irString
-import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrGetValue
-import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
-import org.jetbrains.kotlin.ir.types.isInt
 import org.jetbrains.kotlin.ir.types.isNullable
-import org.jetbrains.kotlin.ir.types.isString
-import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.getPropertyGetter
-import org.jetbrains.kotlin.ir.util.shallowCopy
 
 object Elaborate {
   data class Path(val path: List<String>, val invocation: IrExpression, val type: IrType)
@@ -54,10 +39,10 @@ object Elaborate {
   context(CX.Scope, CX.Builder)
   private fun invokeRecurse(currPath: List<String>, parent: IrExpression, type: IrType): List<Path> = run {
     if (
-        type.isDataClass() &&
-          // Double-check the type parser to make sure the type is not actually supposed to be used as a leaf (I.e. make sure it has no ExoValue or Contextual annotation)
-          !Ir.Type.Value[Is()].matchesAny(type)
-      ) {
+      type.isDataClass() &&
+      // Double-check the type parser to make sure the type is not actually supposed to be used as a leaf (I.e. make sure it has no ExoValue or Contextual annotation)
+      !Ir.Type.Value[Is()].matchesAny(type)
+    ) {
       val cls = type.classOrNull ?: parseError("Expected a class to elaborate, got ${type} which is invalid", parent)
       val clsOwner = cls.owner
 
@@ -87,7 +72,7 @@ object Elaborate {
         val explicitReceiver = parent
         if (getterSymbol != null) {
           val call =
-            with (builder) {
+            with(builder) {
               irCall(getterSymbol).apply {
                 dispatchReceiver = explicitReceiver
               }
@@ -106,7 +91,7 @@ object Elaborate {
   private fun callNullSafe(parent: IrExpression, parentType: IrType, targetType: IrType, call: IrExpression) = run {
     //val call = parent.callDispatch(propertyName).invoke()
     if (parentType.isNullable()) {
-      with (builder) {
+      with(builder) {
         irIfNull(targetType, parent, irNull(targetType), call)
       }
     } else {

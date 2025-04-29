@@ -2,30 +2,15 @@ package io.exoquery.plugin.transform
 
 import com.github.vertical_blank.sqlformatter.SqlFormatter
 import io.decomat.*
-import io.exoquery.Phase
-import io.exoquery.sql.PostgresDialect
-import io.exoquery.ActionReturningKind
-import io.exoquery.SqlAction
-import io.exoquery.SqlBatchAction
-import io.exoquery.SqlQuery
-import io.exoquery.annotation.ExoBuildDatabaseSpecific
+import io.exoquery.*
 import io.exoquery.annotation.ExoBuildFunctionLabel
-import io.exoquery.parseError
-import io.exoquery.plugin.hasAnnotation
-import io.exoquery.plugin.isClass
-import io.exoquery.plugin.location
-import io.exoquery.plugin.makeRunFunction
-import io.exoquery.plugin.ownerHasAnnotation
-import io.exoquery.plugin.safeName
-import io.exoquery.plugin.show
-import io.exoquery.plugin.trees.ExtractorsDomain
+import io.exoquery.plugin.*
 import io.exoquery.plugin.trees.ExtractorsDomain.SqlBuildFunction
-import io.exoquery.plugin.trees.Ir
 import io.exoquery.plugin.trees.Lifter
 import io.exoquery.plugin.trees.SqlActionExpr
 import io.exoquery.plugin.trees.SqlBatchActionExpr
 import io.exoquery.plugin.trees.SqlQueryExpr
-import io.exoquery.plugin.zipArgsWithParamsOrFail
+import io.exoquery.sql.PostgresDialect
 import io.exoquery.sql.Renderer
 import io.exoquery.sql.SqlIdiom
 import io.exoquery.sql.Token
@@ -33,7 +18,6 @@ import io.exoquery.util.TraceConfig
 import io.exoquery.xr.XR
 import io.exoquery.xr.encode
 import io.exoquery.xr.toActionKind
-import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.builders.createTmpVariable
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -49,7 +33,7 @@ import kotlin.reflect.full.isSuperclassOf
 import kotlin.time.measureTimedValue
 
 
-class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+class TransformCompileQuery(val superTransformer: VisitTransformExpressions) : Transformer<IrCall>() {
 
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun matches(expr: IrCall): Boolean =
@@ -88,7 +72,6 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
     val transfomerScope = symbolSet
 
 
-
     // recurse down into the expression in order to make it into an Uprootable if needed
     return expr.match(
       case(SqlBuildFunction[Is(), Is()]).thenThis { sqlQueryExprRaw, dialectType ->
@@ -96,7 +79,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
         val parsedArgs = extractArgsFromCall(expr)
 
         val compileLocation = expr.location(currentFile.fileEntry)
-        val fileLabel = (parsedArgs.queryLabel?.let {it + " - "} ?: "") + "file:${compileLocation.show()}"
+        val fileLabel = (parsedArgs.queryLabel?.let { it + " - " } ?: "") + "file:${compileLocation.show()}"
 
         val (traceConfig, writeSource) = ComputeEngineTracing.invoke(fileLabel, dialectType)
         val (construct, clsPackageName) = extractDialectConstructor(dialectType)
@@ -214,7 +197,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
               }
             ) ?: run {
               logger.warn("The batch-action could not be transformed at compile-time", expr.location())
-              with (Lifter(this@Builder)) {
+              with(Lifter(this@Builder)) {
                 val labelExpr = if (parsedArgs.queryLabel != null) parsedArgs.queryLabel.lift() else irBuilder.irNull()
                 // we still know it's x.build or x.buildPretty so just use that (for now ignore formatting if it is at runtime)
                 val dialect = buildRuntimeDialect(construct, traceConfig)
@@ -230,9 +213,9 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
   }
 
   sealed interface ContainerType {
-    data object Query: ContainerType
-    data object Action: ContainerType
-    data object BatchAction: ContainerType
+    data object Query : ContainerType
+    data object Action : ContainerType
+    data object BatchAction : ContainerType
     companion object {
       context(CX.Scope)
       fun determine(type: IrType) =
@@ -247,7 +230,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
 
   context(CX.Scope, CX.Builder)
   fun callBuildRuntime(construct: IrConstructorSymbol, traceConfig: TraceConfig, queryLabel: String?, isPretty: Boolean, sqlQueryExpr: IrExpression): IrExpression = run {
-    with (Lifter(this@Builder)) {
+    with(Lifter(this@Builder)) {
       val labelExpr = if (queryLabel != null) queryLabel.lift() else irBuilder.irNull()
       // we still know it's x.build or x.buildPretty so just use that (for now ignore formatting if it is at runtime)
       val dialect = buildRuntimeDialect(construct, traceConfig)
@@ -258,7 +241,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions): Tr
   context(CX.Scope, CX.Builder)
   fun buildRuntimeDialect(construct: IrConstructorSymbol, traceConfig: TraceConfig) =
     builder.irCall(construct).apply {
-      with (makeLifter()) {
+      with(makeLifter()) {
         putValueArgument(0, traceConfig.lift(options.projectDir))
       }
     }
@@ -274,6 +257,6 @@ object ConstructCompiletimeDialect {
           .constructors.find {
             it.parameters.size == 1 && it.parameters.first().type.kotlin.isSuperclassOf(TraceConfig::class)
           }?.let { it.newInstance(traceConfig) } as SqlIdiom
-            ?: parseError("The dialect class ${fullPath} must have a 1-arg constructor that takes a trace-config but it did not")
+          ?: parseError("The dialect class ${fullPath} must have a 1-arg constructor that takes a trace-config but it did not")
     }
 }

@@ -16,7 +16,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 
-class DynamicActionSpec: FreeSpec({
+class DynamicActionSpec : FreeSpec({
   val ctx = TestDatabases.postgres
 
   beforeEach {
@@ -32,6 +32,7 @@ class DynamicActionSpec: FreeSpec({
   "should be able to construct a dynamic clause using parameterization" {
     val expectedPeople = people.map { p -> p.copy(firstName = p.firstName + "-A") } + george
     val namesToModify = people.map { it.lastName }
+
     @CapturedDynamic
     fun conditionClause(p: SqlExpression<Person>) =
       namesToModify

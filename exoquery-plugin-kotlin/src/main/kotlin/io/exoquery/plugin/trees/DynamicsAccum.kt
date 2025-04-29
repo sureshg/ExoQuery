@@ -1,17 +1,18 @@
 package io.exoquery.plugin.trees
 
 import io.exoquery.BID
-import io.exoquery.plugin.printing.PrintCompiletimes
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
 class DynamicsAccum {
   // instances of ContainerOfXR (maybe think about something more typed here, or check that the IrExpresssion is a ContainerOfXR when adding)
   private val runtimesCollect = mutableListOf<Pair<BID, IrExpression>>()
+
   // Other instances of SqlExpression or SqlQuery (i.e. from other uprootable SqlExpression instances that we need to compose)
   private val allRuntimesCollect = mutableListOf<IrExpression>()
 
   // instances of Params (maybe think about something more typed here, or check that the IrExpresssion is a Params when adding)
   private val paramsCollect = mutableListOf<ParamBind>()
+
   // Other instances of SqlExpression or SqlQuery (i.e. from other uprootable SqlExpression instances that we need to compose)
   private val allParamsCollect = mutableListOf<IrExpression>()
 
@@ -23,11 +24,12 @@ class DynamicsAccum {
 
   // TODO have a similar technique for lifts
 
-  fun noRuntimes():Boolean = runtimesCollect.isEmpty()
+  fun noRuntimes(): Boolean = runtimesCollect.isEmpty()
 
   fun addRuntime(bindId: BID, bind: IrExpression) {
     runtimesCollect.add(bindId to bind)
   }
+
   fun addAllRuntimes(sqlExpressionInstance: IrExpression) {
     allRuntimesCollect.add(sqlExpressionInstance)
   }
@@ -35,6 +37,7 @@ class DynamicsAccum {
   fun addAllParams(sqlExpressionInstance: IrExpression) {
     allParamsCollect.add(sqlExpressionInstance)
   }
+
   fun addParam(bindId: BID, value: IrExpression, paramType: ParamBind.Type) {
     // Note that the bind-expression is the same as the value of the parameter is all cases except for a ValueWithSerializer
     // where the .value field is taken out of it first

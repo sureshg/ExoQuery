@@ -2,7 +2,6 @@ package io.exoquery.plugin.trees
 
 import io.decomat.*
 import io.exoquery.CapturedBlock
-import io.exoquery.xr.SelectClause
 import io.exoquery.SqlQuery
 import io.exoquery.annotation.DslBooleanExpression
 import io.exoquery.annotation.DslFunctionCall
@@ -41,7 +40,7 @@ object Parser {
   context(CX.Scope, CX.Symbology, CX.Parsing) fun parseQueryFromBlock(expr: IrBlockBody): Pair<XR.Query, DynamicsAccum> =
     run {
       val parsedQuery =
-        on(expr).match<XR.Query> (
+        on(expr).match<XR.Query>(
           case(Ir.BlockBody.ReturnOnly[Is()]).then { ParseQuery.parse(it) }
         ) ?: run {
           ParseExpression.parseFunctionBlockBody(expr).asQuery()
@@ -70,7 +69,6 @@ object Parser {
 context(CX.Scope, CX.Parsing, CX.Symbology)
 fun IrValueParameter.makeIdent() =
   XR.Ident(this.unadulteratedName.sanitizeIdentName(), TypeParser.of(this), this.locationXR())
-
 
 
 fun IrFunctionExpression.firstParam() =
@@ -130,13 +128,12 @@ object CallParser {
   private fun IrCall.extractCallType(): XR.CallType {
     val arg =
       (this.symbol.owner.getAnnotationArgs<DslFunctionCall>().firstOrNull() ?: parseError("Could not find DslFunctionCall annotation", this))
-        as? IrClassReference ?: parseError("DslFunctionCall annotation must have a single argument that is a class-reference (e.g. PureFunction::class)", this)
+          as? IrClassReference ?: parseError("DslFunctionCall annotation must have a single argument that is a class-reference (e.g. PureFunction::class)", this)
     val argXR =
       arg.classType.classFqName?.shortName()?.asString()?.let { XR.CallType.fromClassString(it) }
         ?: parseError("Could not parse CallType from: ${arg.dumpKotlinLike()}", arg)
     return argXR
   }
-
 
 
 }

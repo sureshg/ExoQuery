@@ -45,7 +45,7 @@ class QueryFile(
         // fileGenerationPath: /home/me/project/build/generated/exo
         val fileGenerationPath = Path.of(config.generationDir)
         // fileGenerationPath: /home/me/project/build/generated/exo/linuxX64/linuxX64Main/com/someplace/
-        val outputPath =  fileGenerationPath.resolve(config.targetName).resolve(config.sourceSetName).resolve(Path.of(packageName))
+        val outputPath = fileGenerationPath.resolve(config.targetName).resolve(config.sourceSetName).resolve(Path.of(packageName))
         outputPath to false
       }
     val dirOfFile = pathOfFile.toFile()
@@ -147,7 +147,8 @@ class QueryFile(
            |${e.stackTraceToString()}
            |================= Queries
            |${queries}
-           """.trimMargin())
+           """.trimMargin()
+      )
     }
   }
 }

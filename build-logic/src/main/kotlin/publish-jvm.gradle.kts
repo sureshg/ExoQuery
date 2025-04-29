@@ -170,25 +170,25 @@ val noSign = project.hasProperty("nosign")
 val doNotSign = isLocal || noSign
 
 signing {
-    // Sign if we're not doing a local build and we haven't specifically disabled it
-    if (!doNotSign) {
-        val signingKeyRaw = System.getenv("NEW_SIGNING_KEY_ID_BASE64")
-        if (signingKeyRaw == null) error("ERROR: No Signing Key Found")
-        // Seems like the right way was to have newlines after all the exported (ascii armored) lines
-        // and you can put them into the github-var with newlines but if you
-        // include the "-----BEGIN PGP PRIVATE KEY BLOCK-----" and "-----END PGP PRIVATE KEY BLOCK-----"
-        // parts with that then errors happen. Have a look at https://github.com/gradle/gradle/issues/15718 for more detail
-        // Ultimately however `iurysza` is only partially correct and they key-itself does not need to be escaped
-        // and can be put into a github-var with newlines.
-        val signingKey =
-            "-----BEGIN PGP PRIVATE KEY BLOCK-----\n\n${signingKeyRaw}\n-----END PGP PRIVATE KEY BLOCK-----"
-        useInMemoryPgpKeys(
-            System.getenv("NEW_SIGNING_KEY_ID_BASE64_ID"),
-            signingKey,
-            System.getenv("NEW_SIGNING_KEY_ID_BASE64_PASS")
-        )
-        sign(publishing.publications)
-    }
+  // Sign if we're not doing a local build and we haven't specifically disabled it
+  if (!doNotSign) {
+    val signingKeyRaw = System.getenv("NEW_SIGNING_KEY_ID_BASE64")
+    if (signingKeyRaw == null) error("ERROR: No Signing Key Found")
+    // Seems like the right way was to have newlines after all the exported (ascii armored) lines
+    // and you can put them into the github-var with newlines but if you
+    // include the "-----BEGIN PGP PRIVATE KEY BLOCK-----" and "-----END PGP PRIVATE KEY BLOCK-----"
+    // parts with that then errors happen. Have a look at https://github.com/gradle/gradle/issues/15718 for more detail
+    // Ultimately however `iurysza` is only partially correct and they key-itself does not need to be escaped
+    // and can be put into a github-var with newlines.
+    val signingKey =
+      "-----BEGIN PGP PRIVATE KEY BLOCK-----\n\n${signingKeyRaw}\n-----END PGP PRIVATE KEY BLOCK-----"
+    useInMemoryPgpKeys(
+      System.getenv("NEW_SIGNING_KEY_ID_BASE64_ID"),
+      signingKey,
+      System.getenv("NEW_SIGNING_KEY_ID_BASE64_PASS")
+    )
+    sign(publishing.publications)
+  }
 }
 
 // If not present :exoquery-plugin-gradle:publishToMavenLocal is called it will fail with:
@@ -202,18 +202,18 @@ if (isLocal) {
 
 // Fix for Kotlin issue: https://youtrack.jetbrains.com/issue/KT-61313
 tasks.withType<Sign>().configureEach {
-    val pubName = name.removePrefix("sign").removeSuffix("Publication")
+  val pubName = name.removePrefix("sign").removeSuffix("Publication")
 
-    // These tasks only exist for native targets, hence findByName() to avoid trying to find them for other targets
+  // These tasks only exist for native targets, hence findByName() to avoid trying to find them for other targets
 
-    // Task ':linkDebugTest<platform>' uses this output of task ':sign<platform>Publication' without declaring an explicit or implicit dependency
-    tasks.findByName("linkDebugTest$pubName")?.let {
-        mustRunAfter(it)
-    }
-    // Task ':compileTestKotlin<platform>' uses this output of task ':sign<platform>Publication' without declaring an explicit or implicit dependency
-    tasks.findByName("compileTestKotlin$pubName")?.let {
-        mustRunAfter(it)
-    }
+  // Task ':linkDebugTest<platform>' uses this output of task ':sign<platform>Publication' without declaring an explicit or implicit dependency
+  tasks.findByName("linkDebugTest$pubName")?.let {
+    mustRunAfter(it)
+  }
+  // Task ':compileTestKotlin<platform>' uses this output of task ':sign<platform>Publication' without declaring an explicit or implicit dependency
+  tasks.findByName("compileTestKotlin$pubName")?.let {
+    mustRunAfter(it)
+  }
 }
 
 // Was having odd issues happening in CI releases like this:
@@ -221,6 +221,6 @@ tasks.withType<Sign>().configureEach {
 // I tried a few things that caused other issues. Ultimately the working solution I got from here:
 // https://github.com/gradle/gradle/issues/26091#issuecomment-1722947958
 tasks.withType<AbstractPublishToMaven>().configureEach {
-    val signingTasks = tasks.withType<Sign>()
-    mustRunAfter(signingTasks)
+  val signingTasks = tasks.withType<Sign>()
+  mustRunAfter(signingTasks)
 }

@@ -1,21 +1,19 @@
 package io.exoquery
 
 import io.exoquery.plugin.location
-import io.exoquery.plugin.printing.Messages
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.source
 import io.exoquery.plugin.symName
 import io.exoquery.plugin.transform.CX
-import io.exoquery.plugin.transform.dumpKotlinLikePretty
 import io.exoquery.plugin.transform.prepareForPrinting
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
-class LiftingError(val msg: String): Exception(msg)
+class LiftingError(val msg: String) : Exception(msg)
+
 fun liftingError(msg: String): Nothing = throw LiftingError(msg)
 
 class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) : Exception(msg) {
@@ -32,12 +30,24 @@ class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) 
 
         val printingElement = element.prepareForPrinting()
         val rawExpression =
-          try { printingElement.dumpKotlinLike() } catch (e: Throwable) {
-            try { element.dumpKotlinLike() } catch (e: Throwable) { e.stackTraceToString() }
+          try {
+            printingElement.dumpKotlinLike()
+          } catch (e: Throwable) {
+            try {
+              element.dumpKotlinLike()
+            } catch (e: Throwable) {
+              e.stackTraceToString()
+            }
           }
         val rawExpressionTree =
-          try { printingElement.dumpSimple() } catch (e: Throwable) {
-            try { element.dumpSimple() } catch (e: Throwable) { e.stackTraceToString() }
+          try {
+            printingElement.dumpSimple()
+          } catch (e: Throwable) {
+            try {
+              element.dumpSimple()
+            } catch (e: Throwable) {
+              e.stackTraceToString()
+            }
           }
 
         """|[ExoQuery] Could not understand an expression or query due to an error: ${msg}.${expressionPart}

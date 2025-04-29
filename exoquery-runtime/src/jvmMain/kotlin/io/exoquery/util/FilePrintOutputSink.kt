@@ -11,7 +11,7 @@ import java.nio.file.StandardOpenOption
 // NOTE if it wasn't for the buffer compilation would be blocked
 // on every print-line of the tracer. Want to explore even better solutions
 // that use suspended functions.
-class FilePrintOutputSink private constructor(val writer: BufferedWriter): Tracer.OutputSink {
+class FilePrintOutputSink private constructor(val writer: BufferedWriter) : Tracer.OutputSink {
   override fun output(str: String) {
     writer.write(str)
   }

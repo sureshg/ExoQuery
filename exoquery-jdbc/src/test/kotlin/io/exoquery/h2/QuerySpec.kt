@@ -133,7 +133,7 @@ class QuerySpec : FreeSpec({
   }
 
   "map" {
-    val q = capture { Table<Person>().map { it.firstName to it.lastName }  }
+    val q = capture { Table<Person>().map { it.firstName to it.lastName } }
     q.build<H2Dialect>().runOn(ctx) shouldContainExactlyInAnyOrder listOf(
       "Joe" to "Bloggs",
       "Joe" to "Doggs",
@@ -143,6 +143,7 @@ class QuerySpec : FreeSpec({
 
   @Serializable
   data class Name(val first: String, val last: String)
+
   @Serializable
   data class CustomPerson(val name: Name, val age: Int)
 

@@ -4,12 +4,14 @@ import io.decomat.Is
 import io.decomat.case
 import io.decomat.on
 import io.exoquery.parseError
-import io.exoquery.plugin.trees.*
-import io.exoquery.plugin.printing.dumpSimple
-import org.jetbrains.kotlin.ir.expressions.*
+import io.exoquery.plugin.trees.ExtractorsDomain
+import io.exoquery.plugin.trees.Parser
+import io.exoquery.plugin.trees.SqlQueryExpr
+import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 
 
-class TransformCapturedQuery(val superTransformer: VisitTransformExpressions): Transformer<IrCall>() {
+class TransformCapturedQuery(val superTransformer: VisitTransformExpressions) : Transformer<IrCall>() {
 
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun matches(expression: IrCall): Boolean =
@@ -35,7 +37,7 @@ class TransformCapturedQuery(val superTransformer: VisitTransformExpressions): T
 
   companion object {
     context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
-    fun parseCapturedQuery(expression: IrCall, superTransformer: VisitTransformExpressions)  = run {
+    fun parseCapturedQuery(expression: IrCall, superTransformer: VisitTransformExpressions) = run {
       val bodyExpr =
         on(expression).match(
           // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall

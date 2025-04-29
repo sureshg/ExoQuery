@@ -15,7 +15,7 @@ class NormalizeNestedStructures(val normalize: StatelessTransformer) {
 
   operator fun invoke(q: Query): Query? =
     with(q) {
-      when(this) {
+      when (this) {
         is Entity -> null
         is Map -> Map.cs(normalize(head), id, normalize(body)).nullIfSameAs(q)
         is FlatMap -> FlatMap.cs(normalize(head), id, normalize(body)).nullIfSameAs(q)

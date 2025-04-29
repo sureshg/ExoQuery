@@ -1,44 +1,50 @@
-CREATE TABLE Person (
+CREATE TABLE Person
+(
     id IDENTITY,
     firstName VARCHAR(255),
-    lastName VARCHAR(255),
-    age INT
+    lastName  VARCHAR(255),
+    age       INT
 );
 
-CREATE TABLE Address (
+CREATE TABLE Address
+(
     ownerId INT,
-    street VARCHAR,
-    zip INT
+    street  VARCHAR,
+    zip     INT
 );
 
-CREATE TABLE Robot (
+CREATE TABLE Robot
+(
     ownerId INT,
-    model VARCHAR(255),
-    age INT
+    model   VARCHAR(255),
+    age     INT
 );
 
-CREATE TABLE Product(
+CREATE TABLE Product
+(
     description VARCHAR(255),
     id IDENTITY,
-    sku BIGINT
+    sku         BIGINT
 );
 
-CREATE TABLE KmpTestEntity(
-    timeLocalDate      DATE,                     -- java.time.LocalDate
-    timeLocalTime      TIME,                     -- java.time.LocalTime
-    timeLocalDateTime  TIMESTAMP,                -- java.time.LocalDateTime
-    timeInstant        TIMESTAMP WITH TIME ZONE,  -- java.time.Instant
-    timeLocalDateOpt      DATE,
-    timeLocalTimeOpt      TIME,
-    timeLocalDateTimeOpt  TIMESTAMP,
-    timeInstantOpt        TIMESTAMP WITH TIME ZONE
+CREATE TABLE KmpTestEntity
+(
+    timeLocalDate        DATE,                     -- java.time.LocalDate
+    timeLocalTime        TIME,                     -- java.time.LocalTime
+    timeLocalDateTime    TIMESTAMP,                -- java.time.LocalDateTime
+    timeInstant          TIMESTAMP WITH TIME ZONE, -- java.time.Instant
+    timeLocalDateOpt     DATE,
+    timeLocalTimeOpt     TIME,
+    timeLocalDateTimeOpt TIMESTAMP,
+    timeInstantOpt       TIMESTAMP WITH TIME ZONE
 
 );
 
-CREATE TABLE TimeEntity(
-    sqlDate        DATE,                     -- java.sql.Date
-    sqlTime        TIME,                     -- java.sql.Time
-    sqlTimestamp   TIMESTAMP,                -- java.sql.Timestamp
+CREATE TABLE TimeEntity
+(
+    sqlDate            DATE,                     -- java.sql.Date
+    sqlTime            TIME,                     -- java.sql.Time
+    sqlTimestamp       TIMESTAMP,                -- java.sql.Timestamp
     timeLocalDate      DATE,                     -- java.time.LocalDate
     timeLocalTime      TIME,                     -- java.time.LocalTime
     timeLocalDateTime  TIMESTAMP,                -- java.time.LocalDateTime
@@ -49,8 +55,13 @@ CREATE TABLE TimeEntity(
     timeOffsetDateTime TIMESTAMP WITH TIME ZONE  -- java.time.OffsetDateTime
 );
 
-CREATE TABLE IF NOT EXISTS EncodingTestEntity(
-    stringMan VARCHAR(255),
+CREATE TABLE IF NOT EXISTS EncodingTestEntity
+(
+    stringMan
+    VARCHAR
+(
+    255
+),
     booleanMan BOOLEAN,
     byteMan SMALLINT,
     shortMan SMALLINT,
@@ -59,8 +70,14 @@ CREATE TABLE IF NOT EXISTS EncodingTestEntity(
     floatMan FLOAT,
     doubleMan DOUBLE PRECISION,
     byteArrayMan BYTEA,
-    customMan VARCHAR(255),
-    stringOpt VARCHAR(255),
+    customMan VARCHAR
+(
+    255
+),
+    stringOpt VARCHAR
+(
+    255
+),
     booleanOpt BOOLEAN,
     byteOpt SMALLINT,
     shortOpt SMALLINT,
@@ -69,14 +86,27 @@ CREATE TABLE IF NOT EXISTS EncodingTestEntity(
     floatOpt FLOAT,
     doubleOpt DOUBLE PRECISION,
     byteArrayOpt BYTEA,
-    customOpt VARCHAR(255)
-);
+    customOpt VARCHAR
+(
+    255
+)
+    );
 
-CREATE TABLE IF NOT EXISTS JavaTestEntity(
-    bigDecimalMan DECIMAL(5,2),
+CREATE TABLE IF NOT EXISTS JavaTestEntity
+(
+    bigDecimalMan
+    DECIMAL
+(
+    5,
+    2
+),
     javaUtilDateMan TIMESTAMP,
     uuidMan UUID,
-    bigDecimalOpt DECIMAL(5,2),
+    bigDecimalOpt DECIMAL
+(
+    5,
+    2
+),
     javaUtilDateOpt TIMESTAMP,
     uuidOpt UUID
-);
+    );

@@ -12,12 +12,12 @@ import io.exoquery.xr.TypeBehavior.ReplaceWithReduction as RWR
 import io.exoquery.xr.copy.*
 
 // NOTE: Leaving Quill commneted-out code equivalents here for now for reference
-class RepropagateTypes(val traceConfig: TraceConfig): StatelessTransformer {
+class RepropagateTypes(val traceConfig: TraceConfig) : StatelessTransformer {
   val trace: Tracer = Tracer(TraceType.RepropagateTypes, traceConfig, 1)
 
   fun XRType.retypeFrom(other: XRType): XRType =
     when {
-      this is BooleanValue && other is  BooleanExpression -> BooleanValue
+      this is BooleanValue && other is BooleanExpression -> BooleanValue
       this is BooleanExpression && other is BooleanValue -> BooleanValue
       this is Value && other is BooleanValue -> BooleanValue
       this is Value && other is BooleanExpression -> Value
@@ -85,6 +85,7 @@ class RepropagateTypes(val traceConfig: TraceConfig): StatelessTransformer {
     val cr = BetaReduction.ofQuery(c, RWR, b to br)
     trace("Repropagate ${a.type.shortString()} from ${a} into:") andReturn { f(ar, br, invoke(cr)) }
   }
+
   fun applyBody(a: XR.Query, b: XR.Ident, c: XR.Expression, f: (XR.Query, XR.Ident, XR.Expression) -> XR.Query): XR.Query = run {
     val ar = invoke(a)
     val br = b.retypeFrom(ar.type)
@@ -101,7 +102,7 @@ class RepropagateTypes(val traceConfig: TraceConfig): StatelessTransformer {
 //  }
 
   override fun invoke(e: Query): Query =
-    with (e) {
+    with(e) {
       when (this) {
         is Filter -> applyBody(head, id, body) { a, b, c -> Filter.cs(a, b, c) }
         is XR.Map -> applyBody(head, id, body) { a, b, c -> Map.cs(a, b, c) }

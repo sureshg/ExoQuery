@@ -12,17 +12,18 @@ import io.exoquery.terpal.InterpolatorWithWrapper
 @InterpolatorFunction<stmt>(stmt::class)
 operator fun String.unaryPlus(): Statement = error("THe unaryPlus interpolator was not inlined by the compiler plugin. Is Terpal on the plugin path?")
 
-val emptyStatement: Statement    = +""
+val emptyStatement: Statement = +""
 val externalStatement: Statement = +"?"
 
-object stmt: InterpolatorWithWrapper<Token, Statement> {
+object stmt : InterpolatorWithWrapper<Token, Statement> {
   public operator fun invoke(string: kotlin.String): Statement = error("The invoke function was not inlined by the compiler plugin. Is Terpal on the plugin path?")
 
-  @InterpolatorBackend fun interpolate(parts: () -> List<String>, params: () -> List<Token>): Statement {
+  @InterpolatorBackend
+  fun interpolate(parts: () -> List<String>, params: () -> List<Token>): Statement {
     //checkLengths(args, sc.parts)
     val partsIterator = parts().iterator()
-    val argsIterator  = params().iterator()
-    val bldr          = mutableListOf<Token>()
+    val argsIterator = params().iterator()
+    val bldr = mutableListOf<Token>()
     bldr += StringToken(partsIterator.next())
     while (argsIterator.hasNext()) {
       bldr += argsIterator.next()
@@ -40,7 +41,7 @@ object stmt: InterpolatorWithWrapper<Token, Statement> {
         when {
           none() -> acc
           head is Statement -> loop(acc, (head as Statement).tokens + tail)
-          else              -> loop(acc.withMore(head), tail)
+          else -> loop(acc.withMore(head), tail)
         }
       }
 
@@ -84,7 +85,7 @@ object stmt: InterpolatorWithWrapper<Token, Statement> {
   }
 
   override fun inlined(value: String?): Token = value?.token ?: "null".token
-  override fun wrap(value: String?): Token =  value?.token ?: "null".token
+  override fun wrap(value: String?): Token = value?.token ?: "null".token
   override fun wrap(value: Int?): Token = value?.toString()?.token ?: "null".token
   override fun wrap(value: Long?): Token = value?.toString()?.token ?: "null".token
   override fun wrap(value: Short?): Token = value?.toString()?.token ?: "null".token

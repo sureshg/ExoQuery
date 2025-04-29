@@ -22,7 +22,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 
-class BatchActionSpec: FreeSpec ({
+class BatchActionSpec : FreeSpec({
   val ctx = TestDatabases.sqlServer
 
   beforeEach {
@@ -105,7 +105,8 @@ class BatchActionSpec: FreeSpec ({
     allPeople.forEach {
       capture {
         free("SET IDENTITY_INSERT Person ON\n${insert<Person> { setParams(it) }}\nSET IDENTITY_INSERT Person OFF").asPure<SqlAction<Person, Long>>()
-      }.build<PostgresDialect>().runOn(this) }
+      }.build<PostgresDialect>().runOn(this)
+    }
 
   "update" - {
     val updatedPeople = listOf(Person(1, "Joe-A", "Bloggs", 112), Person(2, "Joe-A", "Doggs", 222), Person(3, "Jim-A", "Roogs", 333))

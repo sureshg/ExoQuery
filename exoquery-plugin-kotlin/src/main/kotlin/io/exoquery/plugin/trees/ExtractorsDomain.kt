@@ -2,15 +2,7 @@ package io.exoquery.plugin.trees
 
 import io.decomat.*
 import io.exoquery.*
-import io.exoquery.annotation.CapturedDynamic
-import io.exoquery.annotation.CapturedFunction
-import io.exoquery.annotation.DslFunctionCall
-import io.exoquery.annotation.ExoBuildDatabaseSpecific
-import io.exoquery.annotation.ExoCapture
-import io.exoquery.annotation.ExoCaptureBatch
-import io.exoquery.annotation.ExoCaptureExpression
-import io.exoquery.annotation.ExoCaptureSelect
-import io.exoquery.annotation.ExoUseExpression
+import io.exoquery.annotation.*
 import io.exoquery.plugin.*
 import io.exoquery.plugin.transform.BinaryOperators
 import io.exoquery.plugin.transform.CX
@@ -21,13 +13,13 @@ import io.exoquery.xr.OP
 import io.exoquery.xr.UnaryOperator
 import org.jetbrains.kotlin.ir.backend.js.utils.typeArguments
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.isString
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 object ExtractorsDomain {
 
@@ -81,14 +73,14 @@ object ExtractorsDomain {
 
   object DynamicQueryCall {
     context(CX.Scope, CX.Symbology)
-    operator fun <AP: Pattern<IrExpression>> get(x: AP) =
+    operator fun <AP : Pattern<IrExpression>> get(x: AP) =
       customPattern1("DynamicQueryCall", x) { expr: IrExpression ->
         val matches = expr.match(
           // Don't allow this for now too many possible edge-cases can happen. Adding a specific warning for it in the ParseQuery
           // (allow un-annotated calls with zero-args to go through because frequently things like case-class fields will show up as args)
           case(Ir.Call[Is()]).thenIf { call ->
             call.isExternal() && expr.isSqlQuery() &&
-              (call.simpleValueArgsCount == 0 && call.symbol.owner is IrSimpleFunction) || call.someOwnerHasAnnotation<CapturedFunction>()
+                (call.simpleValueArgsCount == 0 && call.symbol.owner is IrSimpleFunction) || call.someOwnerHasAnnotation<CapturedFunction>()
           }.then { _ -> true },
           case(Ir.GetField[Is()]).thenIfThis { this.isExternal() && expr.isSqlQuery() }.then { _ -> true },
           case(Ir.GetValue[Is()]).thenIfThis { this.isExternal() && expr.isSqlQuery() }.then { _ -> true }
@@ -102,7 +94,7 @@ object ExtractorsDomain {
 
   object DynamicExprCall {
     context(CX.Scope, CX.Symbology)
-    operator fun <AP: Pattern<IrExpression>> get(x: AP) =
+    operator fun <AP : Pattern<IrExpression>> get(x: AP) =
       customPattern1("DynamicExprCall", x) { expr: IrExpression ->
         val matches = expr.match(
           case(Ir.GetField[Is()]).thenIfThis { this.isExternal() && expr.isSqlExpression() }.then { _ -> true },
@@ -120,7 +112,7 @@ object ExtractorsDomain {
 
   object DynamicActionCall {
     context(CX.Scope, CX.Symbology)
-    operator fun <AP: Pattern<IrExpression>> get(x: AP) =
+    operator fun <AP : Pattern<IrExpression>> get(x: AP) =
       customPattern1("DynamicActionCall", x) { expr: IrExpression ->
         val matches = expr.match(
           case(Ir.GetField[Is()]).thenIfThis { this.isExternal() && expr.isSqlAction() }.then { _ -> true },
@@ -145,7 +137,7 @@ object ExtractorsDomain {
     data class Data(val className: String, val fields: List<Field>)
     data class Field(val name: String, val value: IrExpression?)
 
-    context(CX.Scope) operator fun <AP: Pattern<Data>> get(x: AP) =
+    context(CX.Scope) operator fun <AP : Pattern<Data>> get(x: AP) =
       customPattern1("CaseClassConstructorCall", x) { call: IrConstructorCall ->
         when {
           call.symbol.safeName == "<init>" -> {
@@ -157,7 +149,7 @@ object ExtractorsDomain {
             val args = call.valueArguments.toList()
             if (params.size != args.size)
               parseError("Cannot parse constructor of ${className} its params ${params} do not have the same cardinality as its arguments ${args.map { it?.dumpKotlinLike() }}")
-            val fields = (params zip args).map { (name, value) -> Field(name, value)}
+            val fields = (params zip args).map { (name, value) -> Field(name, value) }
             Components1(Data(className, fields))
           }
           else -> null
@@ -166,7 +158,7 @@ object ExtractorsDomain {
   }
 
   object CaseClassConstructorCall1 {
-    context(CX.Scope) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
+    context(CX.Scope) operator fun <AP : Pattern<String>, BP : Pattern<IrExpression>> get(x: AP, y: BP) =
       customPattern2("CaseClassConstructorCall1", x, y) { call: IrConstructorCall ->
         when {
           call.symbol.safeName == "<init>" && call.symbol.owner.simpleValueParams.size == 1 -> {
@@ -188,7 +180,7 @@ object ExtractorsDomain {
   // Match case classes that have at least one paramater. The match is on the case class name and the first parameter. This is useful
   // since in many cases the primary deconstructin logic is on on that data
   object CaseClassConstructorCall1Plus {
-    context(CX.Scope) operator fun <AP: Pattern<String>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
+    context(CX.Scope) operator fun <AP : Pattern<String>, BP : Pattern<IrExpression>> get(x: AP, y: BP) =
       customPattern2("CaseClassConstructorCall1Plus", x, y) { call: IrConstructorCall ->
         when {
           call.symbol.safeName == "<init>" && call.symbol.owner.simpleValueParams.size >= 1 -> {
@@ -212,7 +204,7 @@ object ExtractorsDomain {
     data class UnaryOperatorCall(val x: IrExpression, val op: UnaryOperator)
 
     data class LambdaFunctionMethod(val matchesMethod: (IrCall) -> Boolean) {
-      context(CX.Scope) operator fun <AP: Pattern<CallData.LambdaMember>> get(x: AP) =
+      context(CX.Scope) operator fun <AP : Pattern<CallData.LambdaMember>> get(x: AP) =
         customPattern1("Call.LambdaFunctionMethod", x) { it: IrCall ->
           if (matchesMethod(it)) {
             it.match(
@@ -232,7 +224,7 @@ object ExtractorsDomain {
 
     object CaptureQuery {
       object LambdaBody {
-        context(CX.Scope) operator fun <AP: Pattern<IrBlockBody>> get(call: AP) =
+        context(CX.Scope) operator fun <AP : Pattern<IrBlockBody>> get(call: AP) =
           customPattern1("Call.CaptureQuery.LambdaBody", call) { it: IrCall ->
             if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlQuery<*>>()) {
               val arg = it.simpleValueArgs.first() ?: parseError("CaptureQuery must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
@@ -248,7 +240,7 @@ object ExtractorsDomain {
           }
       }
 
-      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+      context(CX.Scope) operator fun <AP : Pattern<IrCall>> get(call: AP) =
         customPattern1("Call.CaptureQuery", call) { it: IrCall ->
           if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlQuery<*>>()) {
             Components1(it)
@@ -259,7 +251,7 @@ object ExtractorsDomain {
     }
 
     object CaptureSelect {
-      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+      context(CX.Scope) operator fun <AP : Pattern<IrCall>> get(call: AP) =
         customPattern1("Call.CaptureSelect", call) { it: IrCall ->
           if (it.ownerHasAnnotation<ExoCaptureSelect>() && it.type.isClass<SqlQuery<*>>()) {
             Components1(it)
@@ -271,7 +263,7 @@ object ExtractorsDomain {
 
     object CaptureAction {
       object LambdaOutput {
-        context(CX.Scope) operator fun <AP: Pattern<IrExpression>> get(call: AP) =
+        context(CX.Scope) operator fun <AP : Pattern<IrExpression>> get(call: AP) =
           customPattern1("Call.CaptureAction.LambdaBody", call) { it: IrCall ->
             if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlAction<*, *>>()) {
               val arg = it.simpleValueArgs.first() ?: parseError("CaptureAction must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
@@ -287,7 +279,7 @@ object ExtractorsDomain {
           }
       }
 
-      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+      context(CX.Scope) operator fun <AP : Pattern<IrCall>> get(call: AP) =
         customPattern1("Call.CaptureAction", call) { it: IrCall ->
           if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlAction<*, *>>()) {
             Components1(it)
@@ -299,9 +291,9 @@ object ExtractorsDomain {
 
     object CaptureBatchAction {
       object LambdaOutput {
-        data class Data(val batchAlias: IrValueParameter,  val batchCollection: IrExpression)
+        data class Data(val batchAlias: IrValueParameter, val batchCollection: IrExpression)
 
-        context(CX.Scope) operator fun <AP: Pattern<Data>, BP: Pattern<IrExpression>> get(variable: AP, call: BP) =
+        context(CX.Scope) operator fun <AP : Pattern<Data>, BP : Pattern<IrExpression>> get(variable: AP, call: BP) =
           customPattern2("Call.CaptureBatchAction.LambdaBody", variable, call) { it: IrCall ->
             if (it.ownerHasAnnotation<ExoCaptureBatch>() && it.type.isClass<SqlBatchAction<*, *, *>>()) {
               val batchCollection = it.simpleValueArgs[0] ?: parseError("First argument to CaptureBatchAction the batch-parameter: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
@@ -319,7 +311,7 @@ object ExtractorsDomain {
           }
       }
 
-      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+      context(CX.Scope) operator fun <AP : Pattern<IrCall>> get(call: AP) =
         customPattern1("Call.CaptureBatchAction", call) { it: IrCall ->
           if (it.ownerHasAnnotation<ExoCaptureBatch>() && it.type.isClass<SqlBatchAction<*, *, *>>()) {
             Components1(it)
@@ -330,7 +322,7 @@ object ExtractorsDomain {
     }
 
     object CaptureActionBatch {
-      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+      context(CX.Scope) operator fun <AP : Pattern<IrCall>> get(call: AP) =
         customPattern1("Call.CaptureBatchAction", call) { it: IrCall ->
           if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlBatchAction<*, *, *>>()) {
             Components1(it)
@@ -342,7 +334,7 @@ object ExtractorsDomain {
 
     object UseExpression {
       object Receiver {
-        context(CX.Scope) operator fun <AP: Pattern<IrExpression>> get(call: AP) =
+        context(CX.Scope) operator fun <AP : Pattern<IrExpression>> get(call: AP) =
           customPattern1("Call.UseExpression.Receiver", call) { it: IrCall ->
             if (it.ownerHasAnnotation<ExoUseExpression>()) {
               val receiver = it.extensionReceiver ?: parseError("UseExpression must have a receiver", it)
@@ -353,7 +345,7 @@ object ExtractorsDomain {
           }
       }
 
-      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+      context(CX.Scope) operator fun <AP : Pattern<IrCall>> get(call: AP) =
         customPattern1("Call.UseExpression", call) { it: IrCall ->
           // Note that the output type is not SqlExression<T>, it is T since this is the sqlExpression.use call
           if (it.ownerHasAnnotation<ExoUseExpression>()) {
@@ -366,7 +358,7 @@ object ExtractorsDomain {
 
     object CaptureExpression {
       object LambdaBody {
-        context(CX.Scope) operator fun <AP: Pattern<IrBlockBody>> get(call: AP) =
+        context(CX.Scope) operator fun <AP : Pattern<IrBlockBody>> get(call: AP) =
           customPattern1("Call.CaptureExpression.LambdaBody", call) { it: IrCall ->
             if (it.ownerHasAnnotation<ExoCaptureExpression>() && it.type.isClass<SqlExpression<*>>()) {
               val arg = it.simpleValueArgs.first() ?: parseError("CaptureExpression must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
@@ -382,7 +374,7 @@ object ExtractorsDomain {
           }
       }
 
-      context(CX.Scope) operator fun <AP: Pattern<IrCall>> get(call: AP) =
+      context(CX.Scope) operator fun <AP : Pattern<IrCall>> get(call: AP) =
         customPattern1("Call.CaptureSelect", call) { it: IrCall ->
           if (it.ownerHasAnnotation<ExoCaptureExpression>() && it.type.isClass<SqlExpression<*>>()) {
             Components1(it)
@@ -393,7 +385,7 @@ object ExtractorsDomain {
     }
 
     object InterpolateInvoke {
-      context(CX.Scope) operator fun <BP: Pattern<List<IrExpression>>> get(terpComps: BP) =
+      context(CX.Scope) operator fun <BP : Pattern<List<IrExpression>>> get(terpComps: BP) =
         customPattern1("InterpolateInvoke", terpComps) { call: IrCall ->
           call.match(
             // I.e. (CapturedBlock).free("foo, bar"):FreeBlock
@@ -415,10 +407,10 @@ object ExtractorsDomain {
             }
           )
         }
-      }
+    }
 
     object `x op y` {
-      context(CX.Scope) operator fun <AP: Pattern<OperatorCall>> get(x: AP) =
+      context(CX.Scope) operator fun <AP : Pattern<OperatorCall>> get(x: AP) =
         customPattern1("x op y", x) { it: IrCall ->
           it.match(
             case(Ir.Call.FunctionUntethered2[Is(), Is(), Is()])
@@ -443,7 +435,7 @@ object ExtractorsDomain {
       if (this) predicate() else null
 
     object `x to y` {
-      context(CX.Scope) operator fun <AP: Pattern<IrExpression>, BP: Pattern<IrExpression>> get(x: AP, y: BP) =
+      context(CX.Scope) operator fun <AP : Pattern<IrExpression>, BP : Pattern<IrExpression>> get(x: AP, y: BP) =
         customPattern2("x to y", x, y) { it: IrCall ->
           // TODO see what other descriptors it has to make sure it's only a system-level a to b
           (it.symbol.safeName == "to").thenLet {
@@ -458,7 +450,7 @@ object ExtractorsDomain {
 
 
     object `(op)x` {
-      context(CX.Scope) operator fun <AP: Pattern<UnaryOperatorCall>> get(x: AP) =
+      context(CX.Scope) operator fun <AP : Pattern<UnaryOperatorCall>> get(x: AP) =
         customPattern1("(op)x", x) { it: IrCall ->
           on(it).match(
             case(Ir.Call.FunctionUntethered1.Arg[Is()]).thenThis { arg1 -> Pair(this.symbol.safeName, arg1) },
@@ -476,17 +468,18 @@ object ExtractorsDomain {
 
 }
 
-sealed interface RecieverCallData: CallData
+sealed interface RecieverCallData : CallData
 sealed interface CallData {
   // i.e. Something.someMethod { someLambda }
-  data class LambdaMember(val reciver: ReceiverCaller, val functionExpression: IrFunctionExpression, val params:  List<IrValueParameter>, val body: IrBlockBody): RecieverCallData
-  // i.e. someMethod { someLambda }
-  data class LambdaTopLevel(val functionExpression: IrFunctionExpression, val params:  List<IrValueParameter>, val body: IrBlockBody): CallData
+  data class LambdaMember(val reciver: ReceiverCaller, val functionExpression: IrFunctionExpression, val params: List<IrValueParameter>, val body: IrBlockBody) : RecieverCallData
 
-  data class MultiArgMember(val reciver: ReceiverCaller, val argValues: List<Pair<ArgType, IrExpression>>): RecieverCallData {
+  // i.e. someMethod { someLambda }
+  data class LambdaTopLevel(val functionExpression: IrFunctionExpression, val params: List<IrValueParameter>, val body: IrBlockBody) : CallData
+
+  data class MultiArgMember(val reciver: ReceiverCaller, val argValues: List<Pair<ArgType, IrExpression>>) : RecieverCallData {
     sealed interface ArgType {
-      object ParsedXR: ArgType
-      object Passthrough: ArgType
+      object ParsedXR : ArgType
+      object Passthrough : ArgType
     }
   }
 }

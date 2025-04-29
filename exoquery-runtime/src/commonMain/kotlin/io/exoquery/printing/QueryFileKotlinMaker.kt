@@ -5,8 +5,14 @@ data class PrintableValue(val value: String, val type: Type, val label: String? 
 
   sealed interface Type {
     val interpolatorPrefix: String
-    object SqlQuery : Type { override val interpolatorPrefix = "cr" }
-    object KotlinCode : Type { override val interpolatorPrefix = "kt" }
+
+    object SqlQuery : Type {
+      override val interpolatorPrefix = "cr"
+    }
+
+    object KotlinCode : Type {
+      override val interpolatorPrefix = "kt"
+    }
   }
 }
 
@@ -19,7 +25,7 @@ object QueryFileKotlinMaker {
     else ",\n      " + params.map { "\"${it.id}\" to \"${it.value}\"" }.joinToString(", ")
 
   private fun singleLineQuery(label: String, query: String, printable: PrintableValue) = run {
-      // create every line of the GoldeQueryFile
+    // create every line of the GoldeQueryFile
     val type = printable.type
     val paramsLine = printable.renderParamsLine()
 
@@ -39,6 +45,7 @@ object QueryFileKotlinMaker {
 
     row
   }
+
   private fun multiLineQuery(label: String, query: String, printable: PrintableValue) = run {
     val type = printable.type
     val paramsLine = printable.renderParamsLine()
@@ -75,7 +82,7 @@ object QueryFileKotlinMaker {
 
     // Need to have 'mapOf<String, String>' not just mapOf because otherwise when it is empty the type won't be inferred leading to a compile error
     return (
-      """|package $filePackage
+        """|package $filePackage
          |
          |import io.exoquery.printing.GoldenResult
          |import io.exoquery.printing.cr
@@ -87,6 +94,6 @@ object QueryFileKotlinMaker {
          |  )
          |}
          |""".trimMargin()
-      )
+        )
   }
 }

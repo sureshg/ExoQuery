@@ -8,7 +8,7 @@ import io.exoquery.xr.*
 import io.exoquery.xr.XR.*
 import io.exoquery.xr.XR
 
-class Normalize(override val traceConf: TraceConfig, val disableApplyMap: Boolean): StatelessTransformer, HasPhasePrinting {
+class Normalize(override val traceConf: TraceConfig, val disableApplyMap: Boolean) : StatelessTransformer, HasPhasePrinting {
 
   override val traceType: TraceType = TraceType.Normalizations
   override val trace: Tracer = Tracer(traceType, traceConf, 1)
@@ -31,7 +31,7 @@ class Normalize(override val traceConf: TraceConfig, val disableApplyMap: Boolea
       norm(DealiasPhase(AvoidAliasConflictPhase(reduced, false)))
     }
 
-  val applyMapInterp   = Tracer(TraceType.ApplyMap, traceConf, 1)
+  val applyMapInterp = Tracer(TraceType.ApplyMap, traceConf, 1)
   val applyMapInstance = ApplyMap(traceConf)
   fun ApplyMapPhase(q: Query): Query? {
     // For logging that ApplyMap has been disabled

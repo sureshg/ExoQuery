@@ -63,28 +63,30 @@ class VerifySqlQuery {
 
     fun XR.Expression?.verifyOrSkip(): FreeVariables.Result =
       this?.let { verifyAst(it) } ?: FreeVariables.Result.None
+
     fun List<XR.Expression>.verifyOrSkip(): FreeVariables.Result =
       this.map { it.verifyOrSkip() }.reduce { a, b -> a + b }
 
     val freeVariableErrors =
       q.where.verifyOrSkip() +
-        q.orderBy.map { it.ast }.verifyOrSkip() +
-        q.limit.verifyOrSkip() +
-        q.select
-          .flatMap { expandSelect(it) }
-          .map { it.expr }
-          .filterNot { it is XR.Ident }
-          .verifyOrSkip() +
-        q.from.map {
-          when (it) {
-            is FlatJoinContext -> it.on.verifyOrSkip()
-            is QueryContext -> verify(it.query)
-            else -> FreeVariables.Result.None
-          }
-        }.reduce { a, b -> a + b }
+          q.orderBy.map { it.ast }.verifyOrSkip() +
+          q.limit.verifyOrSkip() +
+          q.select
+            .flatMap { expandSelect(it) }
+            .map { it.expr }
+            .filterNot { it is XR.Ident }
+            .verifyOrSkip() +
+          q.from.map {
+            when (it) {
+              is FlatJoinContext -> it.on.verifyOrSkip()
+              is QueryContext -> verify(it.query)
+              else -> FreeVariables.Result.None
+            }
+          }.reduce { a, b -> a + b }
 
     return freeVariableErrors
   }
+
   private fun aliases(s: FromContext): List<IdentName> =
     when (s) {
       is TableContext -> listOf(s.aliasIdent().asIdName())

@@ -10,28 +10,93 @@ sealed interface TraceType {
 
   // Specifically for situations where what needs to be printed is a type of warning to the user as opposed to an expansion
   // This kind of trace is always on by default and does not need to be enabled by the user.
-  object Warning: TraceType                { override val value = "warning"     }
-  object SqlNormalizations: TraceType      { override val value = "sql"         }
-  object ExpandDistinct: TraceType         { override val value = "distinct"    }
-  object Normalizations: TraceType         { override val value = "norm"        }
-  object Standard: TraceType               { override val value = "standard"    }
-  object NestedQueryExpansion: TraceType   { override val value = "nest"        }
-  object AvoidAliasConflict: TraceType     { override val value = "alias"       }
-  object ShealthLeaf: TraceType            { override val value = "sheath"      }
-  object ReifyLiftings: TraceType          { override val value = "reify"       }
-  object PatMatch: TraceType               { override val value = "patmatch"    }
-  object Quotation: TraceType              { override val value = "quote"       }
-  object RepropagateTypes: TraceType       { override val value = "reprop"      }
-  object RenameProperties: TraceType       { override val value = "rename"      }
-  object ApplyMap: TraceType               { override val value = "applymap"    }
-  object ExprModel: TraceType              { override val value = "exprmodel"   }
-  object Meta: TraceType                   { override val value = "meta"        }
-  object Execution: TraceType              { override val value = "exec"        }
-  object DynamicExecution: TraceType       { override val value = "dynamicexec" }
-  object Elaboration: TraceType            { override val value = "elab"        }
-  object SqlQueryConstruct: TraceType      { override val value = "sqlquery"    }
-  object FlattenOptionOperation: TraceType { override val value = "option"      }
-  object Particularization: TraceType      { override val value = "parti"       }
+  object Warning : TraceType {
+    override val value = "warning"
+  }
+
+  object SqlNormalizations : TraceType {
+    override val value = "sql"
+  }
+
+  object ExpandDistinct : TraceType {
+    override val value = "distinct"
+  }
+
+  object Normalizations : TraceType {
+    override val value = "norm"
+  }
+
+  object Standard : TraceType {
+    override val value = "standard"
+  }
+
+  object NestedQueryExpansion : TraceType {
+    override val value = "nest"
+  }
+
+  object AvoidAliasConflict : TraceType {
+    override val value = "alias"
+  }
+
+  object ShealthLeaf : TraceType {
+    override val value = "sheath"
+  }
+
+  object ReifyLiftings : TraceType {
+    override val value = "reify"
+  }
+
+  object PatMatch : TraceType {
+    override val value = "patmatch"
+  }
+
+  object Quotation : TraceType {
+    override val value = "quote"
+  }
+
+  object RepropagateTypes : TraceType {
+    override val value = "reprop"
+  }
+
+  object RenameProperties : TraceType {
+    override val value = "rename"
+  }
+
+  object ApplyMap : TraceType {
+    override val value = "applymap"
+  }
+
+  object ExprModel : TraceType {
+    override val value = "exprmodel"
+  }
+
+  object Meta : TraceType {
+    override val value = "meta"
+  }
+
+  object Execution : TraceType {
+    override val value = "exec"
+  }
+
+  object DynamicExecution : TraceType {
+    override val value = "dynamicexec"
+  }
+
+  object Elaboration : TraceType {
+    override val value = "elab"
+  }
+
+  object SqlQueryConstruct : TraceType {
+    override val value = "sqlquery"
+  }
+
+  object FlattenOptionOperation : TraceType {
+    override val value = "option"
+  }
+
+  object Particularization : TraceType {
+    override val value = "parti"
+  }
 
   companion object {
     fun fromClassStr(classStr: String) =

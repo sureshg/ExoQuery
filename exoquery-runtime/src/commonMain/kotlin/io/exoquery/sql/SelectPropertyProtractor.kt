@@ -40,12 +40,13 @@ data class InContext(val from: List<FromContext>) {
   fun isSubselect(ast: XR) =
     when (contextReferenceType(ast)) {
       is InQueryContext -> true
-      else              -> false
+      else -> false
     }
-//
+
+  //
   // Are we sure it is a table reference
   fun isEntityReference(ast: XR) =
-    when(contextReferenceType(ast)) {
+    when (contextReferenceType(ast)) {
       is InTableContext -> true
       is InInfixContext -> true
       else -> false // i.e. the null case and other cases
@@ -74,9 +75,9 @@ data class InContext(val from: List<FromContext>) {
 
 
   sealed interface InContextType
-  object InTableContext: InContextType
-  object InQueryContext: InContextType
-  object InInfixContext: InContextType
+  object InTableContext : InContextType
+  object InQueryContext : InContextType
+  object InInfixContext : InContextType
 
 }
 
@@ -104,27 +105,27 @@ data class SelectPropertyProtractor(val from: List<FromContext>) {
         // The quat is considered to be an entity if it is either:
         // a) Found in the table references (i.e. it's an actual table in the subselect) or...
         // b) We are selecting fields from an infix e.g. `sql"selectPerson()".as[Query[Person]]`
-        val isEntity      = inContext.isEntityReference(id)
+        val isEntity = inContext.isEntityReference(id)
         val effectiveQuat = nonAbstractQuat(id.type, alternateQuat)
 
-        when(effectiveQuat) {
+        when (effectiveQuat) {
           is XRType.Product -> ProtractQuat(isEntity)(effectiveQuat, id)
-          else              -> listOf(id to listOf())
+          else -> listOf(id to listOf())
         }
       },
       // Assuming a property contains only an Ident, Free or Constant at this point
       // and all situations where there is a case-class, tuple, etc... inside have already been beta-reduced
       case(PropertyMatryoshka[Core(), Is()]).thenThis { id, _ ->
         val prop = this
-        val isEntity      = inContext.isEntityReference(id)
+        val isEntity = inContext.isEntityReference(id)
         val effectiveQuat = nonAbstractQuat(prop.type, alternateQuat)
 
-        when(effectiveQuat) {
+        when (effectiveQuat) {
           is XRType.Product -> ProtractQuat(isEntity)(effectiveQuat, prop)
-          else              -> listOf(prop to listOf())
+          else -> listOf(prop to listOf())
         }
       }
-  ) ?: listOf(ast to emptyList())
+    ) ?: listOf(ast to emptyList())
 
 
 }

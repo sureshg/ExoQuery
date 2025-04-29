@@ -2,7 +2,6 @@ package io.exoquery.plugin
 
 import io.exoquery.config.ExoCompileOptions
 import io.exoquery.plugin.transform.FileQueryAccum
-import io.exoquery.plugin.transform.QueryAccumState
 import io.exoquery.plugin.transform.SymbolSet
 import io.exoquery.plugin.transform.VisitTransformExpressions
 import io.exoquery.plugin.transform.VisitorContext
@@ -13,15 +12,15 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 
 class GenerationExtension(
-    private val config: CompilerConfiguration,
-    private val messages: MessageCollector,
-    private val exoOptions: ExoCompileOptions
+  private val config: CompilerConfiguration,
+  private val messages: MessageCollector,
+  private val exoOptions: ExoCompileOptions
 ) : IrGenerationExtension {
-    override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
-        moduleFragment
-            .transform(
-                VisitTransformExpressions(pluginContext, config, exoOptions),
-                VisitorContext(SymbolSet(listOf(), listOf()), FileQueryAccum.empty())
-            )
-    }
+  override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
+    moduleFragment
+      .transform(
+        VisitTransformExpressions(pluginContext, config, exoOptions),
+        VisitorContext(SymbolSet(listOf(), listOf()), FileQueryAccum.empty())
+      )
+  }
 }

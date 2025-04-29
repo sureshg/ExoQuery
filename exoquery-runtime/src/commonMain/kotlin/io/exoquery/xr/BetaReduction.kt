@@ -8,20 +8,20 @@ import io.decomat.*
 import kotlin.collections.plus
 
 sealed interface TypeBehavior {
-  object SubstituteSubtypes: TypeBehavior
-  object ReplaceWithReduction: TypeBehavior
+  object SubstituteSubtypes : TypeBehavior
+  object ReplaceWithReduction : TypeBehavior
 }
 
 sealed interface EmptyProductTypeBehavior {
-  object Fail: EmptyProductTypeBehavior
-  object Ignore: EmptyProductTypeBehavior
+  object Fail : EmptyProductTypeBehavior
+  object Ignore : EmptyProductTypeBehavior
 }
 
 // I think beta reduction should be used for QueryOrExpression in all the cases, shuold
 // move forward and find out if this is actually the case. If it is not, can probably
 // just add `case ast if map.contains(ast) =>` to the apply for Query, Function, etc...
 // maybe should have separate maps for Query, Function, etc... for that reason if those cases even exist
-data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val typeBehavior: TypeBehavior, val emptyBehavior: EmptyProductTypeBehavior):
+data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val typeBehavior: TypeBehavior, val emptyBehavior: EmptyProductTypeBehavior) :
   StatelessTransformer {
 
   private fun replaceWithReduction() = typeBehavior == TypeBehavior.ReplaceWithReduction
@@ -45,7 +45,7 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
 
   override fun invoke(xr: XR.Expression): XR.Expression =
     replaceAtHead(xr)?.let {
-      when(it) {
+      when (it) {
         is XR.Expression -> it
         is XR.Query -> XR.QueryToExpr(it)
       }
@@ -132,7 +132,7 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
       case(XR.FunctionApply[Is<XR.ExprToQuery>(), Is()]).thenThis { exprToQuery, args ->
         replaceAtHead(XR.FunctionApply(exprToQuery.head, args))
       },
-      case(XR.FunctionApply[Is<XR.QueryToExpr>(), Is()]).thenThis { queryToExpr,  args ->
+      case(XR.FunctionApply[Is<XR.QueryToExpr>(), Is()]).thenThis { queryToExpr, args ->
         replaceAtHead(XR.FunctionApply(queryToExpr.head, args))
       },
       case(XR.FunctionN[Is(), Is<XR.ExprToQuery>()]).thenThis { params, exprToQuery ->
@@ -222,7 +222,7 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
         }
       }
     return with(xr) {
-      when(this) {
+      when (this) {
         is XR.FunctionN -> {
           val newParams = mapParams(params)
           FunctionN.cs(newParams, BetaReduce(map + params.zip(newParams))(body))
@@ -233,7 +233,7 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
   }
 
   // Reduce a block and all variables inside to a single statement
-  private fun simplifyBlock(xr: XR.Block): QueryOrExpression = with (xr) {
+  private fun simplifyBlock(xr: XR.Block): QueryOrExpression = with(xr) {
     // Walk through the statements, last to the first (in this case 'output' is the last statement in the block)
     val output =
       stmts.reversed()
@@ -299,7 +299,7 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
 
   override fun invoke(xr: XR.Query): XR.Query =
     replaceAtHead(xr)?.let {
-      when(it) {
+      when (it) {
         is XR.Query -> it
         is XR.Expression -> XR.ExprToQuery(it)
       }
@@ -352,7 +352,7 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
       invokeTyped(ast, t.toMap(), TypeBehavior.SubstituteSubtypes, EmptyProductTypeBehavior.Ignore, { be, ir -> be.invoke(ir) })
 
 
-    internal fun <X: XR> invokeTyped(
+    internal fun <X : XR> invokeTyped(
       ast: X,
       replacements: Map<QueryOrExpression, QueryOrExpression>,
       typeBehavior: TypeBehavior,
@@ -373,16 +373,16 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
 
     private fun checkTypes(body: XR, replacements: List<Pair<XR, XR>>, emptyBehavior: EmptyProductTypeBehavior) =
       replacements.forEach { (orig, rep) ->
-        val repType    = rep.type
-        val origType   = orig.type
+        val repType = rep.type
+        val origType = orig.type
         val leastUpper = repType.leastUpperType(origType)
         if (emptyBehavior == EmptyProductTypeBehavior.Fail) {
-          when(leastUpper) {
+          when (leastUpper) {
             is XRType.Product ->
               if (leastUpper.fields.isEmpty())
                 throw IllegalArgumentException(
                   "Reduction of $origType and $repType yielded an empty Quat product!\n" +
-                    "That means that they represent types that cannot be reduced!"
+                      "That means that they represent types that cannot be reduced!"
                 )
             // Otherwise no error, do nothing
             else -> {}

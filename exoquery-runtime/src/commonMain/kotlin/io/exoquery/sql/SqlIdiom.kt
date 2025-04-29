@@ -17,7 +17,7 @@ import io.exoquery.xr.XR.Const.Null
 import io.exoquery.xr.XR.ParamType
 import io.exoquery.xrError
 
-interface SqlIdiom: HasPhasePrinting {
+interface SqlIdiom : HasPhasePrinting {
 
   override val traceType: TraceType get() = TraceType.SqlNormalizations
   abstract val useActionTableAliasAs: ActionTableAliasBehavior
@@ -32,7 +32,7 @@ interface SqlIdiom: HasPhasePrinting {
     SqlNormalize(traceConf = traceConf, disableApplyMap = false)(xr)
 
   // If we want to inline this we would need move it outisde of SqlIdiom and make it a top-level function, then we would need to pass traceConf to every invocation
-  fun ((SqlQueryModel) -> SqlQueryModel).andThen(phaseTitle: String, f: (SqlQueryModel) -> SqlQueryModel): (SqlQueryModel) -> SqlQueryModel  =
+  fun ((SqlQueryModel) -> SqlQueryModel).andThen(phaseTitle: String, f: (SqlQueryModel) -> SqlQueryModel): (SqlQueryModel) -> SqlQueryModel =
     { qRaw ->
       val q = this(qRaw)
       val label = traceConf.phaseLabel?.let { " (${it})" } ?: ""
@@ -97,34 +97,35 @@ interface SqlIdiom: HasPhasePrinting {
   val productAggregationToken: ProductAggregationToken get() = ProductAggregationToken.Star
 
 
-
   sealed interface ActionTableAliasBehavior {
-    object UseAs: ActionTableAliasBehavior
-    object SkipAs: ActionTableAliasBehavior
-    object Hide: ActionTableAliasBehavior
+    object UseAs : ActionTableAliasBehavior
+    object SkipAs : ActionTableAliasBehavior
+    object Hide : ActionTableAliasBehavior
   }
 
   // Very few cases actually end-up going to this top level i.e.
   // the only case so far is the params of an infix. This is because typically
   // the only XR things remaining by this point are the expressions inside the SelectValues
-  val XR.token get(): Token =
-    when (this) {
-      is XR.Expression -> token
-      is XR.Query -> token
-      // is XR.Action -> this.lift()
-      is XR.Branch ->
-        xrError("All instances of XR.Branch should have been beta-reduced out by now.")
-      is XR.Variable ->
-        xrError("All instances of XR.Variable should have been beta-reduced out by now.")
-      is XR.Action -> token
-      is XR.Assignment -> token
-      is XR.Batching ->
-        xrError("XR.Batching should have been spliced out by now and replaced with regular XR.Action instances.")
-    }
+  val XR.token
+    get(): Token =
+      when (this) {
+        is XR.Expression -> token
+        is XR.Query -> token
+        // is XR.Action -> this.lift()
+        is XR.Branch ->
+          xrError("All instances of XR.Branch should have been beta-reduced out by now.")
+        is XR.Variable ->
+          xrError("All instances of XR.Variable should have been beta-reduced out by now.")
+        is XR.Action -> token
+        is XR.Assignment -> token
+        is XR.Batching ->
+          xrError("XR.Batching should have been spliced out by now and replaced with regular XR.Action instances.")
+      }
 
   val XR.Expression.token get(): Token = xrExpressionTokenImpl(this)
+
   // See KT-11488 When overriding a member extension function, cannot call superclass’ implementation
-  fun xrExpressionTokenImpl(exprImpl: XR.Expression) = with (exprImpl) {
+  fun xrExpressionTokenImpl(exprImpl: XR.Expression) = with(exprImpl) {
     when (this) {
       is BinaryOp -> token
       is XR.UnaryOp -> token
@@ -157,8 +158,9 @@ interface SqlIdiom: HasPhasePrinting {
     this.replace(dol, "")
   }
 
-  val XR.Ident.token get(): Token =
-    this.name.sane().token
+  val XR.Ident.token
+    get(): Token =
+      this.name.sane().token
 
   /**
    * For example something like `people.map(_.age).avg` would be something like `people.map(_.age).value.avg`
@@ -169,8 +171,8 @@ interface SqlIdiom: HasPhasePrinting {
   val XR.QueryToExpr.token get(): Token = +"(${head.token})"
 
   fun tokenizeMethodCallFqName(name: XR.FqName): Token =
-    // TODO this should be per dialect, maybe even configureable. I.e. every dialect should have it's supported MethodCall functions
-    //      this list of method-names should techinically be available to the parser when it is parsing so appropriate
+  // TODO this should be per dialect, maybe even configureable. I.e. every dialect should have it's supported MethodCall functions
+  //      this list of method-names should techinically be available to the parser when it is parsing so appropriate
     //      cannot-parse exceptions will be thrown if it is not. We could also introduce a "Promiscuous-Parser" mode where that is disabled.
     when {
       name.name == "split" -> "split".token
@@ -240,50 +242,51 @@ interface SqlIdiom: HasPhasePrinting {
   fun varcharType(): Token = "VARCHAR".token
 
   // TODO needs lots of refinement
-  val XR.MethodCall.token get(): Token = run {
-    val argsToken = (listOf(head) + args).map { it -> it.token }.mkStmt()
-    when {
-      // NOTE: Perhaps we should check that io.exoquery.Params is the host-type? Need to think about various implications of being more strict
-      name == "contains" -> +"${args.first().token} ${"IN".token} (${head.token})"
+  val XR.MethodCall.token
+    get(): Token = run {
+      val argsToken = (listOf(head) + args).map { it -> it.token }.mkStmt()
+      when {
+        // NOTE: Perhaps we should check that io.exoquery.Params is the host-type? Need to think about various implications of being more strict
+        name == "contains" -> +"${args.first().token} ${"IN".token} (${head.token})"
 
-      // rely on implicit-casts for numeric conversion
-      originalHostType.isWholeNumber() && name.isConverterFunction() ->
-        head.wholeNumberConversionMapping(name)
+        // rely on implicit-casts for numeric conversion
+        originalHostType.isWholeNumber() && name.isConverterFunction() ->
+          head.wholeNumberConversionMapping(name)
 
-      originalHostType.isFloatingPoint() && name.isConverterFunction() ->
-        head.floatConversionMapping(name)
+        originalHostType.isFloatingPoint() && name.isConverterFunction() ->
+          head.floatConversionMapping(name)
 
-      originalHostType == CID.kotlin_String -> {
-        when {
-          // Cast strings to numeric types if needed
-          name.isConverterFunction() -> head.stringConversionMapping(name)
-          name == "substring" -> +"SUBSTRING(${head.token}, ${args.first().token}, ${args.last().token})"
-          name == "startsWith" -> stringStartsWith(head, args.first())
-          name == "uppercase" -> +"UPPER(${head.token})"
-          name == "lowercase" -> +"LOWER(${head.token})"
-          name == "left" -> +"LEFT(${head.token}, ${args.first().token})"
-          name == "right" -> +"RIGHT(${head.token}, ${args.first().token})"
-          name == "replace" -> +"REPLACE(${head.token}, ${args.first().token}, ${args.last().token})"
-          else -> xrError("Unknown or invalid XR.MethodCall method: ${name} in the expression:\n${this.showRaw()}")
+        originalHostType == CID.kotlin_String -> {
+          when {
+            // Cast strings to numeric types if needed
+            name.isConverterFunction() -> head.stringConversionMapping(name)
+            name == "substring" -> +"SUBSTRING(${head.token}, ${args.first().token}, ${args.last().token})"
+            name == "startsWith" -> stringStartsWith(head, args.first())
+            name == "uppercase" -> +"UPPER(${head.token})"
+            name == "lowercase" -> +"LOWER(${head.token})"
+            name == "left" -> +"LEFT(${head.token}, ${args.first().token})"
+            name == "right" -> +"RIGHT(${head.token}, ${args.first().token})"
+            name == "replace" -> +"REPLACE(${head.token}, ${args.first().token}, ${args.last().token})"
+            else -> xrError("Unknown or invalid XR.MethodCall method: ${name} in the expression:\n${this.showRaw()}")
+          }
         }
-      }
-      head is XR.Query && name == "isNotEmpty" -> +"EXISTS (${head.token})"
-      head is XR.Query && name == "isEmpty" -> +"NOT EXISTS (${head.token})"
-      // in correlated-query situations where we have an Query-level aggregator inside of a filter e.g.
-      // `people.filter(p => addresses.map(a => a.ownerId).min == p.id)`. In that case we need ot go back
-      // to the top-level with the inner-query and run the SqlQuery expasion on the head XR.Query object
-      // This will go into XR.Query.token and which will call the Query expansion into SqlQuery.
-      // Doing all of this runs the potential risk of recursing forever if SqlQuery returns a SelectValue with the full
-      // query expression so need make sure that doesn't happen there in SqlQuery.
-      head is XR.Query && callType == XR.CallType.QueryAggregator -> {
-        scopedQueryTokenizer(this as XR.Query)
-      }
-      // Need to think about situations where it is a CallType.PureFunction/ImpureFunction and see how it needs to be expanded. Something with sub-expansion
-      // might be necessary e.g. sub-expading the XR.Query with SqlQuery if needed
+        head is XR.Query && name == "isNotEmpty" -> +"EXISTS (${head.token})"
+        head is XR.Query && name == "isEmpty" -> +"NOT EXISTS (${head.token})"
+        // in correlated-query situations where we have an Query-level aggregator inside of a filter e.g.
+        // `people.filter(p => addresses.map(a => a.ownerId).min == p.id)`. In that case we need ot go back
+        // to the top-level with the inner-query and run the SqlQuery expasion on the head XR.Query object
+        // This will go into XR.Query.token and which will call the Query expansion into SqlQuery.
+        // Doing all of this runs the potential risk of recursing forever if SqlQuery returns a SelectValue with the full
+        // query expression so need make sure that doesn't happen there in SqlQuery.
+        head is XR.Query && callType == XR.CallType.QueryAggregator -> {
+          scopedQueryTokenizer(this as XR.Query)
+        }
+        // Need to think about situations where it is a CallType.PureFunction/ImpureFunction and see how it needs to be expanded. Something with sub-expansion
+        // might be necessary e.g. sub-expading the XR.Query with SqlQuery if needed
 
-      else -> xrError("Unknown or invalid XR.MethodCall method: ${name} in the expression:\n${this.showRaw()}")
+        else -> xrError("Unknown or invalid XR.MethodCall method: ${name} in the expression:\n${this.showRaw()}")
+      }
     }
-  }
 
   fun tokenizeSelectAggregator(call: XR.MethodCall): Statement {
     val op = call.name
@@ -303,48 +306,49 @@ interface SqlIdiom: HasPhasePrinting {
   }
 
 
-  val XR.GlobalCall.token get(): Token = run {
-    val argsToken = args.map { it -> it.token }.mkStmt()
-    // The parser translate casting operators into a XR.GlobalCall named "kotlinCast" with one argument.
-    // In this case for now we want to just assume SQL will do an implicit cast. May want to change this in the future.
-    if (this.name == XR.FqName.Cast && args.size == 1)
-      argsToken
-    else
-      +"${name.name}(${argsToken})"
-  }
+  val XR.GlobalCall.token
+    get(): Token = run {
+      val argsToken = args.map { it -> it.token }.mkStmt()
+      // The parser translate casting operators into a XR.GlobalCall named "kotlinCast" with one argument.
+      // In this case for now we want to just assume SQL will do an implicit cast. May want to change this in the future.
+      if (this.name == XR.FqName.Cast && args.size == 1)
+        argsToken
+      else
+        +"${name.name}(${argsToken})"
+    }
 
 
-
-  val XR.When.token get(): Token = run {
-    val whenThens = branches.map { it -> +"WHEN ${it.cond.token} THEN ${it.then.token}" }
-    +"CASE ${whenThens.mkStmt(" ")} ELSE ${orElse.token} END"
-  }
+  val XR.When.token
+    get(): Token = run {
+      val whenThens = branches.map { it -> +"WHEN ${it.cond.token} THEN ${it.then.token}" }
+      +"CASE ${whenThens.mkStmt(" ")} ELSE ${orElse.token} END"
+    }
 
   val XR.Const.token get(): Token = xrConstTokenImpl(this)
-  fun xrConstTokenImpl(constImpl: XR.Const): Token = with (constImpl) {
-    when(this) {
+  fun xrConstTokenImpl(constImpl: XR.Const): Token = with(constImpl) {
+    when (this) {
       is XR.Const.Boolean -> +"${value.toString().token}"
-      is XR.Const.Byte    -> +"${value.toString().token}" // use kotlin 1.9.22 stlib to have this: +"${value.toHexString()}"
-      is XR.Const.Char    -> +"'${value.toString().token}'"
-      is XR.Const.Double  -> +"${value.toString().token}"
-      is XR.Const.Float   -> +"${value.toString().token}"
-      is XR.Const.Int     -> +"${value.toString().token}"
-      is XR.Const.Long    -> +"${value.toString().token}"
-      is XR.Const.Null       -> +"null"
-      is XR.Const.Short   -> +"${value.toString().token}"
-      is XR.Const.String  -> +"'${value.toString().token}'"
+      is XR.Const.Byte -> +"${value.toString().token}" // use kotlin 1.9.22 stlib to have this: +"${value.toHexString()}"
+      is XR.Const.Char -> +"'${value.toString().token}'"
+      is XR.Const.Double -> +"${value.toString().token}"
+      is XR.Const.Float -> +"${value.toString().token}"
+      is XR.Const.Int -> +"${value.toString().token}"
+      is XR.Const.Long -> +"${value.toString().token}"
+      is XR.Const.Null -> +"null"
+      is XR.Const.Short -> +"${value.toString().token}"
+      is XR.Const.String -> +"'${value.toString().token}'"
     }
   }
 
   // Typically this will be a tuple of some sort, just converts the elements into a list
   // For dialects of SQL like Spark that select structured data this needs special handling
   val XR.Product.token get(): Token = xrProductTokenImpl(this)
-  fun xrProductTokenImpl(productImpl: XR.Product) = with (productImpl) {
+  fun xrProductTokenImpl(productImpl: XR.Product) = with(productImpl) {
     fields.map { it -> it.second.token }.mkStmt()
   }
 
   val XR.Query.token get(): Token = xrQueryTokenImpl(this)
-  fun xrQueryTokenImpl(queryImpl: XR.Query): Token = with (queryImpl) {
+  fun xrQueryTokenImpl(queryImpl: XR.Query): Token = with(queryImpl) {
     when (this) {
       is XR.ExprToQuery -> head.token
       else -> {
@@ -366,15 +370,16 @@ interface SqlIdiom: HasPhasePrinting {
   }
 
 
-  private val ` AS` get() =
-    when(useActionTableAliasAs) {
-      ActionTableAliasBehavior.UseAs -> +" AS"
-      else -> emptyStatement
-    }
+  private val ` AS`
+    get() =
+      when (useActionTableAliasAs) {
+        ActionTableAliasBehavior.UseAs -> +" AS"
+        else -> emptyStatement
+      }
 
   val FlattenSqlQuery.token get(): Token = flattenSqlQueryTokenImpl(this)
   fun flattenSqlQueryTokenImpl(query: FlattenSqlQuery): Token =
-    with (query) {
+    with(query) {
       val selectTokenizer by lazy {
         when {
           select.isEmpty() -> +"*"
@@ -382,7 +387,7 @@ interface SqlIdiom: HasPhasePrinting {
         }
       }
       val distinctTokenizer by lazy {
-        when(distinct) {
+        when (distinct) {
           is DistinctKind.Distinct -> +"DISTINCT "
           is DistinctKind.DistinctOn -> +"DISTINCT ON (${distinct.props.token { it.token }}) "
           is DistinctKind.None -> +""
@@ -395,7 +400,7 @@ interface SqlIdiom: HasPhasePrinting {
           else -> {
             val t =
               from.drop(1).fold(+"${from.first().token}") { a, b ->
-                when(b) {
+                when (b) {
                   is FlatJoinContext -> +"$a ${(b as FromContext).token}"
                   else -> +"$a, ${b.token}"
                 }
@@ -442,7 +447,7 @@ interface SqlIdiom: HasPhasePrinting {
   fun tokenizeColumn(name: String): Token = escapeIfNeeded(name)
 
   val SelectValue.token get(): Token = selectValueTokenImpl(this)
-  fun selectValueTokenImpl(exprImpl: SelectValue): Token = with (exprImpl) {
+  fun selectValueTokenImpl(exprImpl: SelectValue): Token = with(exprImpl) {
     when {
       // SelectValue(Ident(? or name, _), _, _)
       expr is Ident -> expr.name.token
@@ -466,8 +471,8 @@ interface SqlIdiom: HasPhasePrinting {
   }
 
   fun makeProductAggregationToken(id: String) =
-    when(productAggregationToken) {
-      ProductAggregationToken.Star            -> +"*"
+    when (productAggregationToken) {
+      ProductAggregationToken.Star -> +"*"
       ProductAggregationToken.VariableDotStar -> +"${id.token}.*"
     }
 
@@ -476,12 +481,12 @@ interface SqlIdiom: HasPhasePrinting {
   // do not thing it will make a significant performance penalty.
   @Suppress("USELESS_IS_CHECK")
   val XR.BinaryOp.token get(): Token = xrBinaryOpTokenImpl(this)
-  fun xrBinaryOpTokenImpl(binaryOpImpl: XR.BinaryOp): Token = with (binaryOpImpl) {
+  fun xrBinaryOpTokenImpl(binaryOpImpl: XR.BinaryOp): Token = with(binaryOpImpl) {
     when {
-      a is Any  && op is `==` && b is Null -> +"${scopedTokenizer(a)} IS NULL"
-      a is Null && op is `==` && b is Any  -> +"${scopedTokenizer(b)} IS NULL"
-      a is Any  && op is `!=` && b is Null -> +"${scopedTokenizer(a)} IS NOT NULL"
-      a is Null && op is `!=` && b is Any  -> +"${scopedTokenizer(b)} IS NOT NULL"
+      a is Any && op is `==` && b is Null -> +"${scopedTokenizer(a)} IS NULL"
+      a is Null && op is `==` && b is Any -> +"${scopedTokenizer(b)} IS NULL"
+      a is Any && op is `!=` && b is Null -> +"${scopedTokenizer(a)} IS NOT NULL"
+      a is Null && op is `!=` && b is Any -> +"${scopedTokenizer(b)} IS NOT NULL"
 
       a is Any && op is `and` && b is Any ->
         when {
@@ -511,19 +516,20 @@ interface SqlIdiom: HasPhasePrinting {
         xrBinaryOpTokenImpl(XR.BinaryOp(a, OP.`!=`, b))
       }
     ) ?: run {
-      with (unaryOpImpl) {
+      with(unaryOpImpl) {
         +"${op.token} (${expr.token})"
       }
     }
 
-  val UnaryOperator.token get(): Token =
-    when(this) {
-      is OP.minus -> +"-"
-      is OP.not -> +"NOT"
-    }
+  val UnaryOperator.token
+    get(): Token =
+      when (this) {
+        is OP.minus -> +"-"
+        is OP.not -> +"NOT"
+      }
 
   val BinaryOperator.token get(): Token = opBinaryTokenImpl(this)
-  fun opBinaryTokenImpl(opImpl: BinaryOperator): Token = with (opImpl) {
+  fun opBinaryTokenImpl(opImpl: BinaryOperator): Token = with(opImpl) {
     when (this) {
       is OP.`==` -> +"="
       is OP.`!=` -> +"<>"
@@ -542,23 +548,24 @@ interface SqlIdiom: HasPhasePrinting {
     }
   }
 
-  val FromContext.token get(): Token =
-    when (this) {
-      is TableContext -> +"${entity.token} ${alias.sane().token}"
-      is QueryContext -> +"(${query.token})${` AS`} ${alias.sane().token}"
-      is ExpressionContext -> +"(${(infix as XR.Expression).token})${` AS`} ${alias.sane().token}"
-      is FlatJoinContext -> +"${joinType.token} ${from.token} ON ${on.token}"
-    }
+  val FromContext.token
+    get(): Token =
+      when (this) {
+        is TableContext -> +"${entity.token} ${alias.sane().token}"
+        is QueryContext -> +"(${query.token})${` AS`} ${alias.sane().token}"
+        is ExpressionContext -> +"(${(infix as XR.Expression).token})${` AS`} ${alias.sane().token}"
+        is FlatJoinContext -> +"${joinType.token} ${from.token} ON ${on.token}"
+      }
 
   val XR.Free.token get(): Token = xrFreeTokenImpl(this)
-  fun xrFreeTokenImpl(freeImpl: XR.Free): Token = with (freeImpl) {
+  fun xrFreeTokenImpl(freeImpl: XR.Free): Token = with(freeImpl) {
     val pt = parts.map { it.token }
     val pr = params.map { it.token }
     Statement(pt.intersperseWith(pr))
   }
 
   val XR.JoinType.token get(): Token = xrJoinTypeTokenImpl(this)
-  fun xrJoinTypeTokenImpl(joinTypeImpl: XR.JoinType): Token = with (joinTypeImpl) {
+  fun xrJoinTypeTokenImpl(joinTypeImpl: XR.JoinType): Token = with(joinTypeImpl) {
     when (this) {
       is Left -> +"LEFT JOIN"
       is Inner -> +"INNER JOIN"
@@ -566,13 +573,13 @@ interface SqlIdiom: HasPhasePrinting {
   }
 
   val XR.Entity.token get(): Token = xrEntityTokenImpl(this)
-  fun xrEntityTokenImpl(entityImpl: XR.Entity): Token = with (entityImpl) {
+  fun xrEntityTokenImpl(entityImpl: XR.Entity): Token = with(entityImpl) {
     tokenizeTable(name)
   }
 
   val OrderByCriteria.token get(): Token = xrOrderByCriteriaTokenImpl(this)
-  fun xrOrderByCriteriaTokenImpl(orderByCriteriaImpl: OrderByCriteria): Token = with (orderByCriteriaImpl) {
-    when(this.ordering) {
+  fun xrOrderByCriteriaTokenImpl(orderByCriteriaImpl: OrderByCriteria): Token = with(orderByCriteriaImpl) {
+    when (this.ordering) {
       is Asc -> +"${scopedTokenizer(this.ast)} ASC"
       is Desc -> +"${scopedTokenizer(this.ast)} DESC"
       is AscNullsFirst -> +"${scopedTokenizer(this.ast)} ASC NULLS FIRST"
@@ -586,7 +593,7 @@ interface SqlIdiom: HasPhasePrinting {
     +"(${ast.token})"
 
   fun scopedTokenizer(ast: XR.Expression) =
-    when(ast) {
+    when (ast) {
       is XR.BinaryOp -> +"(${ast.token})"
       is XR.Product -> +"(${ast.token})"
       else -> ast.token
@@ -602,7 +609,7 @@ interface SqlIdiom: HasPhasePrinting {
     }
 
   val SqlQueryModel.token get(): Token = xrSqlQueryModelTokenImpl(this)
-  fun xrSqlQueryModelTokenImpl(queryImpl: SqlQueryModel): Token = with (queryImpl) {
+  fun xrSqlQueryModelTokenImpl(queryImpl: SqlQueryModel): Token = with(queryImpl) {
     when (this) {
       is FlattenSqlQuery -> token
       is SetOperationSqlQuery -> +"(${a.token}) ${op.token} (${b.token})"
@@ -611,20 +618,21 @@ interface SqlIdiom: HasPhasePrinting {
     }
   }
 
-  val SetOperation.token get(): Token =
-    when (this) {
-      is UnionOperation -> +"UNION"
-      is UnionAllOperation -> +"UNION ALL"
-    }
+  val SetOperation.token
+    get(): Token =
+      when (this) {
+        is UnionOperation -> +"UNION"
+        is UnionAllOperation -> +"UNION ALL"
+      }
 
   val XR.Property.token get(): Token = xrPropertyTokenImpl(this)
-  fun xrPropertyTokenImpl(propertyImpl: XR.Property): Token = with (propertyImpl) {
+  fun xrPropertyTokenImpl(propertyImpl: XR.Property): Token = with(propertyImpl) {
     UnnestProperty(this).let { (ast, prefix) ->
       when {
         // This is the typical case. It happens on the outer (i.e. top-level) clause of a multi-level select e.g.
         // SELECT /*this ->*/ foobar... FROM (SELECT foo.bar AS foobar ...)
         // When it's just a top-level select the prefix will be empty
-        ast is Ident && (ast.visibility == Hidden || ast.isThisRef())  ->
+        ast is Ident && (ast.visibility == Hidden || ast.isThisRef()) ->
           joinAlias(prefix).token
         // This happens when the SQL dialect supports some notion of structured-data
         // and we are selecting something from a nested expression
@@ -636,7 +644,7 @@ interface SqlIdiom: HasPhasePrinting {
   }
 
   val XR.Action.token get(): Token = xrActionTokenImpl(this)
-  fun xrActionTokenImpl(actionImpl: XR.Action): Token = with (actionImpl) {
+  fun xrActionTokenImpl(actionImpl: XR.Action): Token = with(actionImpl) {
     when (this) {
       is XR.Insert -> this.token
       is XR.Update -> this.token
@@ -650,12 +658,12 @@ interface SqlIdiom: HasPhasePrinting {
   }
 
   val XR.Insert.token get(): Token = xrInsertTokenImpl(this)
-  fun xrInsertTokenImpl(insertImpl: XR.Insert): Token = with (insertImpl) {
+  fun xrInsertTokenImpl(insertImpl: XR.Insert): Token = with(insertImpl) {
     val query = this.query as? XR.Entity ?: xrError("Insert query must be an entity but found: ${this.query}")
     tokenizeInsertBase(this)
   }
 
-  fun tokenizeInsertBase(insert: XR.Insert): Token = with (insert) {
+  fun tokenizeInsertBase(insert: XR.Insert): Token = with(insert) {
     val (columns, values) = columnsAndValues(assignments, exclusions).unzip()
     +"INSERT INTO ${query.token}${` AS table`(alias)} (${columns.mkStmt(", ")}) VALUES ${tokenizeInsertAssignemnts(values)}"
   }
@@ -663,11 +671,12 @@ interface SqlIdiom: HasPhasePrinting {
   fun tokenizeInsertAssignemnts(values: List<Token>) =
     TokenContext(values.mkStmt(", ", "(", ")"), TokenContext.Kind.AssignmentBlock)
 
-  val List<XR.Assignment>.token get(): Token =
-    this.map { it.token }.mkStmt(", ")
+  val List<XR.Assignment>.token
+    get(): Token =
+      this.map { it.token }.mkStmt(", ")
 
   val XR.FilteredAction.token get(): Token = xrFilteredActionTokenImpl(this)
-  fun xrFilteredActionTokenImpl(filteredActionImpl: XR.FilteredAction): Token = with (filteredActionImpl) {
+  fun xrFilteredActionTokenImpl(filteredActionImpl: XR.FilteredAction): Token = with(filteredActionImpl) {
     when {
       action is XR.U.CoreAction -> {
         val reducedExpr = BetaReduction(filter, alias to action.alias).asExpr()
@@ -696,7 +705,7 @@ interface SqlIdiom: HasPhasePrinting {
   // TODO possible variable-shadowing issues might require beta-reducing out the alias of the inner query first.
   //      Do that instead of creating an ExternalIdent like was done in Quill #1509.
   val XR.Returning.token get(): Token = xrReturningTokenImpl(this)
-  fun xrReturningTokenImpl(returningImpl: XR.Returning): Token = with (returningImpl) {
+  fun xrReturningTokenImpl(returningImpl: XR.Returning): Token = with(returningImpl) {
     when {
       // In Postgres-style RETURNING clause the RETURNING is always the last thing to be used so we can
       // use the action renderes first. In SQL-server that uses an OUTPUT clause this is not the case
@@ -721,7 +730,7 @@ interface SqlIdiom: HasPhasePrinting {
   }
 
   val XR.Delete.token get(): Token = xrDeleteTokenImpl(this)
-  fun xrDeleteTokenImpl(deleteImpl: XR.Delete): Token = with (deleteImpl) {
+  fun xrDeleteTokenImpl(deleteImpl: XR.Delete): Token = with(deleteImpl) {
     fun deleteBase() = tokenizeDeleteBase(deleteImpl)
     when {
       query is XR.Filter && query.head is XR.Entity ->
@@ -733,13 +742,13 @@ interface SqlIdiom: HasPhasePrinting {
     }
   }
 
-  fun tokenizeDeleteBase(delete: XR.Delete): Token = with (delete) {
+  fun tokenizeDeleteBase(delete: XR.Delete): Token = with(delete) {
     +"DELETE FROM ${query.token}${` AS table`(alias)}"
   }
 
   // TODO specialized logic for Postgres UPDATE to allow setting token-context here
   val XR.Update.token get(): Token = xrUpdateTokenImpl(this)
-  fun xrUpdateTokenImpl(updateImpl: XR.Update): Token = with (updateImpl) {
+  fun xrUpdateTokenImpl(updateImpl: XR.Update): Token = with(updateImpl) {
     fun updateBase() = tokenizeUpdateBase(updateImpl)
     when {
       query is XR.Filter && query.head is XR.Entity ->
@@ -751,7 +760,7 @@ interface SqlIdiom: HasPhasePrinting {
     }
   }
 
-  fun tokenizeUpdateBase(update: XR.Update): Token = with (update) {
+  fun tokenizeUpdateBase(update: XR.Update): Token = with(update) {
     +"UPDATE ${query.token}${` AS table`(alias)} SET ${assignments.filterNot { exclusions.contains(it.property) }.token}"
   }
 
@@ -766,8 +775,9 @@ interface SqlIdiom: HasPhasePrinting {
       }
 
 
-  val XR.Assignment.token get(): Token =
-    columnAndValue(this).let { (column, value) -> +"${column.token} = ${value.token}" }
+  val XR.Assignment.token
+    get(): Token =
+      columnAndValue(this).let { (column, value) -> +"${column.token} = ${value.token}" }
 
 
   fun columnAndValue(assignment: XR.Assignment): Pair<Token, Token> {

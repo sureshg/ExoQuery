@@ -12,7 +12,6 @@ import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConst
-import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
@@ -21,21 +20,23 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 // which will obviously fail. It is non-obvious where the DeclarationIrBuilder actually does this.
 context(CX.Scope)
 fun IrElement.prepareForPrinting() =
-  TransformShowUnpacks(this@Scope).visitElement(this.deepCopyWithSymbols(
-    // Need to do this or in some cases will get: kotlin.UninitializedPropertyAccessException: lateinit property parent has not been initialized
-    (this as? IrCall)?.symbol?.owner?.parent), Unit
+  TransformShowUnpacks(this@Scope).visitElement(
+    this.deepCopyWithSymbols(
+      // Need to do this or in some cases will get: kotlin.UninitializedPropertyAccessException: lateinit property parent has not been initialized
+      (this as? IrCall)?.symbol?.owner?.parent
+    ), Unit
   )
 
 context(CX.Scope)
 fun IrElement.dumpKotlinLikePretty() = prepareForPrinting().dumpKotlinLike()
 
 
-private class TransformShowUnpacks(val scopeContext: CX.Scope): IrElementTransformer<Unit> {
+private class TransformShowUnpacks(val scopeContext: CX.Scope) : IrElementTransformer<Unit> {
   override fun visitCall(call: IrCall, data: Unit): IrElement =
     if (call.symbol.fullName == PT.io_exoquery_unpackQuery || call.symbol.fullName == PT.io_exoquery_unpackExpr || call.symbol.fullName == PT.io_exoquery_unpackAction) {
       // I don't think this declaration builder has a real scope so it cannot create lambdas (need a proper scope-stack for that) everything else should be fine.
       val builder = DeclarationIrBuilder(scopeContext.pluginCtx, call.symbol, scopeContext.currentExpr.startOffset, scopeContext.currentExpr.endOffset)
-      with (builder) {
+      with(builder) {
         val newCall = irCall(call.symbol)
         val newContent =
           try {
@@ -43,14 +44,14 @@ private class TransformShowUnpacks(val scopeContext: CX.Scope): IrElementTransfo
               ?.let { it as? IrConst }
               ?.value.toString()
               ?.let { encodedValue ->
-                 if (call.symbol.fullName == PT.io_exoquery_unpackQuery)
-                   unpackQuery(encodedValue).show()
-                 else if (call.symbol.fullName == PT.io_exoquery_unpackExpr)
-                   unpackExpr(encodedValue).show()
-                 else if (call.symbol.fullName == PT.io_exoquery_unpackAction)
-                   unpackAction(encodedValue).show()
-                 else
-                   "<ERROR_UNPACKING>"
+                if (call.symbol.fullName == PT.io_exoquery_unpackQuery)
+                  unpackQuery(encodedValue).show()
+                else if (call.symbol.fullName == PT.io_exoquery_unpackExpr)
+                  unpackExpr(encodedValue).show()
+                else if (call.symbol.fullName == PT.io_exoquery_unpackAction)
+                  unpackAction(encodedValue).show()
+                else
+                  "<ERROR_UNPACKING>"
               } ?: "<ERROR_EXTRACTING>"
           } catch (e: Throwable) {
             "<ERROR_UNPACKING>"

@@ -1,9 +1,9 @@
 package io.exoquery.plugin.transform
 
-import io.exoquery.xr.*
+import io.exoquery.xr.BinaryOperator
+import io.exoquery.xr.OP
+import io.exoquery.xr.UnaryOperator
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
-import org.jetbrains.kotlin.name.FqName
-import kotlin.reflect.KClass
 
 // Possible implementation for a dynamic method-whitelist
 //object Whitelist {
@@ -42,15 +42,16 @@ object UnaryOperators {
       OP.minus
     ).map { it -> it.symbolName to it }.toMap()
 
-  val UnaryOperator.symbolName: String get() =
-    when (this) {
+  val UnaryOperator.symbolName: String
+    get() =
+      when (this) {
 //      StringOperator.toInt -> "toInt"
 //      StringOperator.toLong -> "toLong"
 //      StringOperator.toLowerCase -> "toLowerCase"
 //      StringOperator.toUpperCase -> "toUpperCase"
-      OP.not -> "not"
-      OP.minus -> "unaryMinus"
-    }
+        OP.not -> "not"
+        OP.minus -> "unaryMinus"
+      }
 }
 
 object BinaryOperators {
@@ -74,21 +75,22 @@ object BinaryOperators {
 //      StringOperator.startsWith
     ).map { it -> it.symbolName to it }.toMap()
 
-  val BinaryOperator.symbolName: String get() =
-    when (this) {
-      OP.strPlus -> "plus"
-      OP.`==` -> IrStatementOrigin.EQEQ.debugName
-      OP.`!=` -> IrStatementOrigin.EXCLEQ.debugName // EXCEL == exclamation point
-      OP.and -> IrStatementOrigin.ANDAND.debugName
-      OP.or -> IrStatementOrigin.OROR.debugName
-      OP.div -> "div"
-      OP.gt -> "greater"
-      OP.gte -> "greaterOrEqual"
-      OP.lt -> "less"
-      OP.lte -> "lessOrEqual"
-      OP.minus -> "minus"
-      OP.mod -> "rem"
-      OP.mult -> "times"
-      OP.plus -> "plus"
-  }
+  val BinaryOperator.symbolName: String
+    get() =
+      when (this) {
+        OP.strPlus -> "plus"
+        OP.`==` -> IrStatementOrigin.EQEQ.debugName
+        OP.`!=` -> IrStatementOrigin.EXCLEQ.debugName // EXCEL == exclamation point
+        OP.and -> IrStatementOrigin.ANDAND.debugName
+        OP.or -> IrStatementOrigin.OROR.debugName
+        OP.div -> "div"
+        OP.gt -> "greater"
+        OP.gte -> "greaterOrEqual"
+        OP.lt -> "less"
+        OP.lte -> "lessOrEqual"
+        OP.minus -> "minus"
+        OP.mod -> "rem"
+        OP.mult -> "times"
+        OP.plus -> "plus"
+      }
 }

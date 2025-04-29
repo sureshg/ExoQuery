@@ -30,7 +30,7 @@ object NumbersToWords {
     else {
       // decapitalize the first letter
       generate(number).trim().replaceFirstChar { it.lowercase() }
-}
+    }
 
   fun generate(number: Int): String =
     if (number < 0 || number > 99)

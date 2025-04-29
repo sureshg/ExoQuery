@@ -7,6 +7,7 @@ data class IdentName(val name: String, val from: XR.Ident) {
   private val id = Id(name)
   override fun equals(other: Any?): Boolean =
     other is IdentName && other.id == id
+
   override fun hashCode(): Int =
     id.hashCode()
 
@@ -36,7 +37,7 @@ data class State(val seen: Set<IdentName>, val free: Set<IdentName>) {
 fun XR.Ident.asIdName(): IdentName = IdentName(this.name, this)
 
 // Not sure if this check is actually necessary because in the parse has detects with GetValue instances come from inside and outside the capture block
-data class FreeVariables(override val state: State): StatefulTransformer<State> {
+data class FreeVariables(override val state: State) : StatefulTransformer<State> {
   override fun invoke(xr: XR.Expression): Pair<XR.Expression, StatefulTransformer<State>> =
     when {
       // When a function is encountered, we need to add its parameters to the "seen" pile because these are idents defined in in the lambda params
@@ -46,7 +47,7 @@ data class FreeVariables(override val state: State): StatefulTransformer<State> 
         super.invoke(xr)
     }
 
-// Scala
+  // Scala
 //  override def apply(query: Query): (Query, StatefulTransformer[State]) =
 //    query match {
 //      case q @ Filter(a, b, c)           => (q, free(a, b, c))
@@ -140,8 +141,8 @@ data class FreeVariables(override val state: State): StatefulTransformer<State> 
 
 
   sealed interface Result {
-    data object None: Result
-    data class Detected(val free: Set<IdentName>): Result
+    data object None : Result
+    data class Detected(val free: Set<IdentName>) : Result
 
     operator fun plus(other: Result): Result =
       when {

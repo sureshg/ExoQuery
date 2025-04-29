@@ -6,6 +6,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
+// @formatter:off
 object DomainErrors {
   fun NoDispatchRecieverFoundForSqlVarCall(sqlVar: IrExpression): Nothing =
     parseError(Messages.NoDispatchRecieverFoundForSqlVarCall(sqlVar))
@@ -33,3 +34,4 @@ Instead we parsed the type: ${xrType}
 """.trimIndent()
 
 }
+// @formatter:on

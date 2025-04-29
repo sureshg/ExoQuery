@@ -165,14 +165,19 @@ object capture {
 interface StringSqlDsl {
   @DslFunctionCall(DslFunctionCallType.PureFunction::class)
   fun left(i: Int): String = errorCap("The `left` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.PureFunction::class)
   fun right(i: Int): String = errorCap("The `right` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.PureFunction::class)
   fun replace(old: String, new: String): String = errorCap("The `replace` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.PureFunction::class)
   fun substring(start: Int, end: Int): String = errorCap("The `substring` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.PureFunction::class)
   fun uppercase(): String = errorCap("The `upperCase` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.PureFunction::class)
   fun lowercase(): String = errorCap("The `upperCase` expression of the Query was not inlined")
 }
@@ -247,6 +252,7 @@ interface CapturedBlock {
    */
   @Dsl
   fun <T, R> SqlQuery<T>.map(f: (T) -> R): SqlQuery<R> = errorCap("The `map` expression of the Query was not inlined")
+
   @Dsl
   fun <T, R> SqlQuery<T>.flatMap(f: (T) -> SqlQuery<R>): SqlQuery<R> =
     errorCap("The `flatMap` expression of the Query was not inlined")
@@ -324,6 +330,7 @@ interface CapturedBlock {
 
   @Dsl
   fun <T> SqlQuery<T>.distinct(): SqlQuery<T> = errorCap("The `distinct` expression of the Query was not inlined")
+
   @Dsl
   fun <T, R> SqlQuery<T>.distinctOn(f: (T) -> R): SqlQuery<T> =
     errorCap("The `distinctBy` expression of the Query was not inlined")
@@ -341,6 +348,7 @@ interface CapturedBlock {
 
   @Dsl
   fun <T> SqlQuery<T>.nested(): SqlQuery<T> = errorCap("The `nested` expression of the Query was not inlined")
+
   @Dsl
   fun <T, R> SqlQuery<T>.sortedBy(f: (T) -> R): SqlQuery<T> =
     errorCap("The sort-by expression of the Query was not inlined")
@@ -351,8 +359,10 @@ interface CapturedBlock {
 
   @Dsl
   fun <T> SqlQuery<T>.take(f: Int): SqlQuery<T> = errorCap("The take expression of the Query was not inlined")
+
   @Dsl
   fun <T> SqlQuery<T>.drop(f: Int): SqlQuery<T> = errorCap("The drop expression of the Query was not inlined")
+
   @Dsl
   fun <T> SqlQuery<T>.size(): SqlQuery<Int> = errorCap("The size expression of the Query was not inlined")
 
@@ -373,8 +383,9 @@ interface CapturedBlock {
     errorCap("The `select` expression of the Query was not inlined")
 
   @Dsl
-  val <T> SqlExpression<T>.use: T @ExoUseExpression @Dsl get() =
-    throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context")
+  val <T> SqlExpression<T>.use: T
+    @ExoUseExpression @Dsl get() =
+      throw IllegalArgumentException("Cannot `use` an SqlExpression outside of a quoted context")
 
   /* ------------------------------------------------------------------------------------------------ */
   /* ------------------------------------ Aggregation Operators ------------------------------------ */
@@ -383,12 +394,16 @@ interface CapturedBlock {
   // Use this in the select or map clauses e.g. people.map(p -> min(p.age))
   @DslFunctionCall(DslFunctionCallType.Aggregator::class)
   fun <T : Comparable<T>> min(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.Aggregator::class)
   fun <T : Comparable<T>> max(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.Aggregator::class)
   fun <T : Comparable<T>> avg(value: T): Double = errorCap("The `min` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.Aggregator::class)
   fun <T : Comparable<T>> sum(value: T): T = errorCap("The `min` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.Aggregator::class)
   fun <T> count(value: T): Int = errorCap("The `min` expression of the Query was not inlined")
 
@@ -396,18 +411,23 @@ interface CapturedBlock {
   // this is useful for co-releated subqueries e.g. events.filter(ev -> people.map(p -> p.age).avg() > ev.minAllowedAge) i.e. events to which the average person can come to
   @DslFunctionCall(DslFunctionCallType.QueryAggregator::class)
   fun <T : Comparable<T>> SqlQuery<T>.min(): T = errorCap("The `min` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.QueryAggregator::class)
   fun <T : Comparable<T>> SqlQuery<T>.max(): T = errorCap("The `min` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.QueryAggregator::class)
   fun <T : Comparable<T>> SqlQuery<T>.avg(): T = errorCap("The `min` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.QueryAggregator::class)
   fun <T : Comparable<T>> SqlQuery<T>.sum(): T = errorCap("The `min` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.QueryAggregator::class)
   fun <T> SqlQuery<T>.count(): T = errorCap("The `min` expression of the Query was not inlined")
 
   @DslFunctionCall(DslFunctionCallType.QueryAggregator::class)
   @DslBooleanExpression
   fun <T> SqlQuery<T>.isNotEmpty(): Boolean = errorCap("The `isNotEmpty` expression of the Query was not inlined")
+
   @DslFunctionCall(DslFunctionCallType.QueryAggregator::class)
   @DslBooleanExpression
   fun <T> SqlQuery<T>.isEmpty(): Boolean = errorCap("The `isEmpty` expression of the Query was not inlined")
@@ -419,6 +439,7 @@ interface CapturedBlock {
 
   @Dsl
   fun <T> setParams(value: T): setParams<T> = errorCap("The `setParams` expression of the Query was not inlined")
+
   @Dsl
   fun <T> setParams<T>.excluding(vararg columns: Any): set<T> =
     errorCap("The `excluding` expression of the Query was not inlined")
@@ -434,27 +455,35 @@ interface CapturedBlock {
   @Dsl
   @ParamStatic(ParamSerializer.String::class)
   fun param(value: String): String = errorCap("Compile time plugin did not transform the tree")
+
   @Dsl
   @ParamStatic(ParamSerializer.Char::class)
   fun param(value: Char): Char = errorCap("Compile time plugin did not transform the tree")
+
   @Dsl
   @ParamStatic(ParamSerializer.Int::class)
   fun param(value: Int): Int = errorCap("Compile time plugin did not transform the tree")
+
   @Dsl
   @ParamStatic(ParamSerializer.Short::class)
   fun param(value: Short): Short = errorCap("Compile time plugin did not transform the tree")
+
   @Dsl
   @ParamStatic(ParamSerializer.Long::class)
   fun param(value: Long): Long = errorCap("Compile time plugin did not transform the tree")
+
   @Dsl
   @ParamStatic(ParamSerializer.Float::class)
   fun param(value: Float): Float = errorCap("Compile time plugin did not transform the tree")
+
   @Dsl
   @ParamStatic(ParamSerializer.Double::class)
   fun param(value: Double): Double = errorCap("Compile time plugin did not transform the tree")
+
   @Dsl
   @ParamStatic(ParamSerializer.Boolean::class)
   fun param(value: Boolean): Boolean = errorCap("Compile time plugin did not transform the tree")
+
   @Dsl
   @ParamStatic(ParamSerializer.LocalDate::class)
   fun param(value: kotlinx.datetime.LocalDate): kotlinx.datetime.LocalDate =
@@ -473,6 +502,7 @@ interface CapturedBlock {
   @Dsl
   @ParamCtx
   fun <T> paramCtx(value: T): @Contextual T = errorCap("Compile time plugin did not transform the tree")
+
   @Dsl
   @ParamCustom
   fun <T : Any> paramCustom(value: T, serializer: SerializationStrategy<T>): @ExoValue T =
@@ -520,7 +550,6 @@ interface CapturedBlock {
   /* ----------------------------------------------------------------------------------------------------------- */
   /* --------------------------------- Actions (Insert, Update, Delete) ---------------------------------------- */
   /* ----------------------------------------------------------------------------------------------------------- */
-
 
 
   @Dsl
@@ -577,14 +606,19 @@ interface Params<T> {
 sealed interface Ord {
   @Dsl
   object Asc : Ord
+
   @Dsl
   object Desc : Ord
+
   @Dsl
   object AscNullsFirst : Ord
+
   @Dsl
   object DescNullsFirst : Ord
+
   @Dsl
   object AscNullsLast : Ord
+
   @Dsl
   object DescNullsLast : Ord
 }
@@ -592,6 +626,7 @@ sealed interface Ord {
 interface SelectClauseCapturedBlock : CapturedBlock {
   @Dsl
   fun <T> from(query: SqlQuery<T>): T = errorCap("The `from` expression of the Query was not inlined")
+
   @Dsl
   fun <T> join(onTable: SqlQuery<T>, condition: (T) -> Boolean): T =
     errorCap("The `join` expression of the Query was not inlined")
@@ -607,8 +642,10 @@ interface SelectClauseCapturedBlock : CapturedBlock {
 
   @Dsl
   fun where(condition: () -> Boolean): Unit = errorCap("The `where` expression of the Query was not inlined")
+
   @Dsl
   fun groupBy(vararg groupings: Any?): Unit = errorCap("The `groupBy` expression of the Query was not inlined")
+
   @Dsl
   fun sortBy(vararg orderings: Pair<*, Ord>): Unit = errorCap("The `sortBy` expression of the Query was not inlined")
 }

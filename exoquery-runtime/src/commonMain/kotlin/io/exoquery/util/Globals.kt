@@ -14,26 +14,27 @@ object Globals {
   val traceColors get() = cache("exo.trace.color", variable("exo.trace.color", "exo_trace_color,", "true").toBoolean())
   val traceEnabled get() = cache("exo.trace.enabled", variable("exo.trace.enabled", "exo_trace_enabled", "false").toBoolean())
 
-  fun resetCache(): Unit                        = cacheMap.clear()
+  fun resetCache(): Unit = cacheMap.clear()
 
   @Suppress("UNCHECKED_CAST")
   private fun <T> cache(name: String, value: T): T =
     cacheMap.getOrPut(name, { value as Any }) as T
 
-  internal val traces: List<TraceType> get() = run {
-    val argValue = variable("exo.trace.types", "exo_trace_types", "standard")
-    cache(
-      "exo.trace.types",
-      if (argValue == "all")
-        TraceType.values
-      else
-        argValue
-          .split(",")
-          .toList()
-          .map { it.trim() }
-          .flatMap { trace -> TraceType.values.filter { traceType -> trace == traceType.value } }
-    )
-  }
+  internal val traces: List<TraceType>
+    get() = run {
+      val argValue = variable("exo.trace.types", "exo_trace_types", "standard")
+      cache(
+        "exo.trace.types",
+        if (argValue == "all")
+          TraceType.values
+        else
+          argValue
+            .split(",")
+            .toList()
+            .map { it.trim() }
+            .flatMap { trace -> TraceType.values.filter { traceType -> trace == traceType.value } }
+      )
+    }
 
   fun tracesEnabled(tt: TraceType): Boolean =
     (traceEnabled && traces.contains(tt)) || tt == TraceType.Warning

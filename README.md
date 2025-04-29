@@ -69,8 +69,10 @@ Let's take some data:
 ```kotlin
 @Ser
 data class Person(val name: String, val age: Int, val companyId: Int)
+
 @Ser
 data class Address(val city: String, val personId: Int)
+
 @Ser
 data class Company(val name: String, val id: Int)
 // Going to use @Ser as a concatenation of @Serializeable for now
@@ -1173,7 +1175,8 @@ Without this `q.buildFor.Postgres()` will work but `.runOn(myDatabase)` will not
 > Note that this section is largely taken
 > from [Custom Primitives](https://github.com/ExoQuery/terpal-sql?tab=readme-ov-file#custom-primitives)
 > in the Terpal-SQL Database Controller documentation which also points to a code-sample for
-> a [Contextual Column Clob](https://github.com/ExoQuery/terpal-sql/blob/main/terpal-sql-jdbc/src/test/kotlin/io/exoquery/sql/examples/ContextualColumnCustom.kt).
+>
+a [Contextual Column Clob](https://github.com/ExoQuery/terpal-sql/blob/main/terpal-sql-jdbc/src/test/kotlin/io/exoquery/sql/examples/ContextualColumnCustom.kt).
 > If you are having any difficulty getting the above example to work with the Database-Controller, have a look at the
 > link above.
 

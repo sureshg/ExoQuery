@@ -14,7 +14,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 
-class ActionSpec: FreeSpec({
+class ActionSpec : FreeSpec({
   val ctx = TestDatabases.sqlServer
 
   beforeEach {
@@ -100,12 +100,14 @@ class ActionSpec: FreeSpec({
   val jim = Person(2, "Jim", "Roogs", 222)
 
   suspend fun JdbcController.insertGeorgeAndJim() =
-    this.runActions("""
+    this.runActions(
+      """
         SET IDENTITY_INSERT Person ON
         INSERT INTO Person (id, firstName, lastName, age) VALUES (1, 'George', 'Googs', 555)
         INSERT INTO Person (id, firstName, lastName, age) VALUES (2, 'Jim', 'Roogs', 222)
         SET IDENTITY_INSERT Person OFF
-      """.trimIndent())
+      """.trimIndent()
+    )
 
   "update" - {
     "simple" {

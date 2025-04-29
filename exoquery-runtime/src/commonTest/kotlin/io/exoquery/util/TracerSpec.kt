@@ -5,12 +5,13 @@ import io.kotest.matchers.shouldBe
 
 // NOTE Don't want to move this to the `testing` project for now because this test is reliant on the Terpal plugin
 // and we don't want to be forced to add that as a dependency to the `testing` project
-class TracerSpec :  FreeSpec({
+class TracerSpec : FreeSpec({
   class ToStringOutputSink : Tracer.OutputSink {
     val info = mutableListOf<String>()
     override fun output(str: String) {
       info.add(str)
     }
+
     fun print() = info.joinToString("")
   }
 

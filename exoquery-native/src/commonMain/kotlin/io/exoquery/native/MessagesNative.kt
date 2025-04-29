@@ -1,5 +1,6 @@
 package io.exoquery.native
 
+// @formatter:off
 object MessagesNative {
 val SqliteNativeCantReturningKeysIfNotInsert =
     """
@@ -17,3 +18,4 @@ UPDATE Person SET firstName = ? WHERE lastName = ? RETURNING id
 See here for more details: https://sqlite.org/lang_returning.html
 """.trimIndent()
 }
+// @formatter:on

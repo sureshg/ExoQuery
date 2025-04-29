@@ -23,26 +23,26 @@ class CommonTransactionScope<ExecutionOpts>(private val scope: CoroutineScope, p
   suspend fun <T> SqlCompiledQuery<T>.runOnTransaction(serializer: KSerializer<T>, options: ExecutionOpts = ctx.DefaultOpts()) =
     ctx.run(this.toControllerQuery(serializer), options)
 
-  inline suspend fun <reified T: Any> SqlCompiledQuery<T>.runOnTransaction(options: ExecutionOpts = ctx.DefaultOpts()) =
+  inline suspend fun <reified T : Any> SqlCompiledQuery<T>.runOnTransaction(options: ExecutionOpts = ctx.DefaultOpts()) =
     this.runOnTransaction(serializer<T>(), options)
 
-  inline suspend fun <Input, reified Output: Any> SqlCompiledAction<Input, Output>.runOnTransaction(serializer: KSerializer<Output>, options: ExecutionOpts = ctx.DefaultOpts()) =
+  inline suspend fun <Input, reified Output : Any> SqlCompiledAction<Input, Output>.runOnTransaction(serializer: KSerializer<Output>, options: ExecutionOpts = ctx.DefaultOpts()) =
     when (val action = this.toControllerAction(serializer)) {
       is ControllerAction -> action.runOn(ctx) as Output
       is ControllerActionReturning.Id<Output> -> action.runOn(ctx)
       is ControllerActionReturning.Row<Output> -> action.runOn(ctx)
     }
 
-  inline suspend fun <Input, reified Output: Any> SqlCompiledAction<Input, Output>.runOnTransaction(options: ExecutionOpts = ctx.DefaultOpts()) =
+  inline suspend fun <Input, reified Output : Any> SqlCompiledAction<Input, Output>.runOnTransaction(options: ExecutionOpts = ctx.DefaultOpts()) =
     this.runOnTransaction(serializer<Output>(), options)
 
-  inline suspend fun <BatchInput, Input: Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOnTransaction(serializer: KSerializer<Output>, options: ExecutionOpts = ctx.DefaultOpts()) =
+  inline suspend fun <BatchInput, Input : Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOnTransaction(serializer: KSerializer<Output>, options: ExecutionOpts = ctx.DefaultOpts()) =
     when (val action = this.toControllerBatchVerb(serializer)) {
       is ControllerBatchAction -> action.runOn(ctx) as List<Output>
       is ControllerBatchActionReturning.Id<Output> -> action.runOn(ctx)
       is ControllerBatchActionReturning.Row<Output> -> action.runOn(ctx)
     }
 
-  inline suspend fun <BatchInput, Input: Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOnTransaction(options: ExecutionOpts = ctx.DefaultOpts()) =
+  inline suspend fun <BatchInput, Input : Any, reified Output> SqlCompiledBatchAction<BatchInput, Input, Output>.runOnTransaction(options: ExecutionOpts = ctx.DefaultOpts()) =
     this.runOnTransaction(serializer<Output>(), options)
 }

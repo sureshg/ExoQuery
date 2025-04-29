@@ -54,13 +54,13 @@ sealed interface XR {
     // Things that store their own XRType. Right now this is just an Ident but in the future
     // it will also be a lifted value.
     @Serializable
-    sealed interface Call: XR {
+    sealed interface Call : XR {
       fun isPure(): Boolean
       fun isAggregation(): Boolean
     }
 
     @Serializable
-    sealed interface CoreAction: Action, XR {
+    sealed interface CoreAction : Action, XR {
       val alias: Ident
       override fun coreAlias(): Ident
     }
@@ -92,18 +92,19 @@ sealed interface XR {
     }
 
     @Serializable
-    sealed interface Terminal: Expression, XR
+    sealed interface Terminal : Expression, XR
 
     @Serializable
-    sealed interface FlatUnit: XR.Query
+    sealed interface FlatUnit : XR.Query
 
     @Serializable
-    sealed interface QueryOrExpression: XR {
+    sealed interface QueryOrExpression : XR {
       fun asExpr(): XR.Expression =
         when (this) {
           is XR.Expression -> this
           is XR.Query -> XR.QueryToExpr(this)
         }
+
       fun asQuery(): XR.Query =
         when (this) {
           is XR.Expression -> XR.ExprToQuery(this)
@@ -117,7 +118,11 @@ sealed interface XR {
 
   fun show(pretty: Boolean = false, sanitzeIdents: Boolean = true, renderOptions: MirrorIdiom.RenderOptions = MirrorIdiom.RenderOptions()): String {
     val xr: XR =
-      TransformXR({ when (it) { is Ident -> it.copy(name = it.name.replace("$", "")); else -> null } }).invoke(this)
+      TransformXR({
+        when (it) {
+          is Ident -> it.copy(name = it.name.replace("$", "")); else -> null
+        }
+      }).invoke(this)
     return with(MirrorIdiom(renderOptions)) {
       xr.token.renderWith(Renderer())
     }
@@ -125,8 +130,10 @@ sealed interface XR {
 
   @Serializable
   sealed interface Location {
-    @Serializable data class File(val path: String, val row: Int, val col: Int): Location
-    @Serializable data object Synth: Location
+    @Serializable
+    data class File(val path: String, val row: Int, val col: Int) : Location
+    @Serializable
+    data object Synth : Location
   }
 
 
@@ -141,18 +148,28 @@ sealed interface XR {
   @Serializable
   sealed interface JoinType {
     val simpleName: String
-    @Serializable data object Inner: JoinType { override fun toString() = "Inner"; override val simpleName = "join" }
-    @Serializable data object Left: JoinType { override fun toString() = "Left"; override val simpleName = "leftJoin" }
+
+    @Serializable
+    data object Inner : JoinType {
+      override fun toString() = "Inner";
+      override val simpleName = "join"
+    }
+
+    @Serializable
+    data object Left : JoinType {
+      override fun toString() = "Left";
+      override val simpleName = "leftJoin"
+    }
   }
 
   @Serializable
-  sealed interface Expression: XR, U.QueryOrExpression {
+  sealed interface Expression : XR, U.QueryOrExpression {
     fun isBooleanValue() = type.isBooleanValue()
     fun isBooleanExpression() = type.isBooleanExpression()
   }
 
   @Serializable
-  sealed interface Query: XR, U.QueryOrExpression
+  sealed interface Query : XR, U.QueryOrExpression
 
   // *******************************************************************************************
   // ****************************************** Query ******************************************
@@ -160,48 +177,64 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class Entity(@Slot val name: String, override val type: XRType.Product, override val loc: Location = Location.Synth): Query, PC<Entity> {
-    @Transient override val productComponents = productOf(this, name)
+  data class Entity(@Slot val name: String, override val type: XRType.Product, override val loc: Location = Location.Synth) : Query, PC<Entity> {
+    @Transient
+    override val productComponents = productOf(this, name)
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is Entity && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class Filter(@Slot override val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression, override val loc: Location = Location.Synth): Query, U.HasHead, PC<Filter> {
-    @Transient override val productComponents = productOf(this, head, id, body)
+  data class Filter(@Slot override val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression, override val loc: Location = Location.Synth) : Query, U.HasHead, PC<Filter> {
+    @Transient
+    override val productComponents = productOf(this, head, id, body)
     override val type get() = head.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is Filter && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class Map(@Slot override val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression, override val loc: Location = Location.Synth): Query, U.HasHead, PC<Map> {
-    @Transient override val productComponents = productOf(this, head, id, body)
+  data class Map(@Slot override val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression, override val loc: Location = Location.Synth) : Query, U.HasHead, PC<Map> {
+    @Transient
+    override val productComponents = productOf(this, head, id, body)
     override val type get() = body.type
+
     companion object {
     }
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is Map && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class ConcatMap(@Slot override val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression, override val loc: Location = Location.Synth): Query, U.HasHead, PC<ConcatMap> {
-    @Transient override val productComponents = productOf(this, head, id, body)
+  data class ConcatMap(@Slot override val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Expression, override val loc: Location = Location.Synth) : Query, U.HasHead, PC<ConcatMap> {
+    @Transient
+    override val productComponents = productOf(this, head, id, body)
     override val type get() = body.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is ConcatMap && other.id() == cid
   }
@@ -259,36 +292,48 @@ sealed interface XR {
    */
   @Serializable
   @Mat
-  data class QueryToExpr(@Slot val head: XR.Query, override val loc: Location = Location.Synth): Expression, PC<QueryToExpr> {
-    @Transient override val productComponents = productOf(this, head)
+  data class QueryToExpr(@Slot val head: XR.Query, override val loc: Location = Location.Synth) : Expression, PC<QueryToExpr> {
+    @Transient
+    override val productComponents = productOf(this, head)
     override val type get() = head.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is QueryToExpr && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class ExprToQuery(@Slot val head: XR.Expression, override val loc: Location = Location.Synth): Query, PC<ExprToQuery> {
-    @Transient override val productComponents = productOf(this, head)
+  data class ExprToQuery(@Slot val head: XR.Expression, override val loc: Location = Location.Synth) : Query, PC<ExprToQuery> {
+    @Transient
+    override val productComponents = productOf(this, head)
     override val type get() = head.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is ExprToQuery && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class SortBy(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val criteria: XR.Expression, @CS val ordering: XR.Ordering, override val loc: Location = Location.Synth): Query, PC<SortBy> {
-    @Transient override val productComponents = productOf(this, head, id, criteria)
+  data class SortBy(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val criteria: XR.Expression, @CS val ordering: XR.Ordering, override val loc: Location = Location.Synth) : Query, PC<SortBy> {
+    @Transient
+    override val productComponents = productOf(this, head, id, criteria)
     override val type get() = head.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is SortBy && other.id() == cid
   }
@@ -297,20 +342,26 @@ sealed interface XR {
   @Serializable
   sealed interface Ordering {
     @Serializable
-    data class TupleOrdering(val elems: List<Ordering>): Ordering {
+    data class TupleOrdering(val elems: List<Ordering>) : Ordering {
       companion object {
         fun of(vararg elems: Ordering): TupleOrdering = TupleOrdering(elems.toList())
       }
     }
 
     @Serializable
-    sealed interface PropertyOrdering: Ordering
-    @Serializable data object Asc: PropertyOrdering
-    @Serializable data object Desc: PropertyOrdering
-    @Serializable data object AscNullsFirst: PropertyOrdering
-    @Serializable data object DescNullsFirst: PropertyOrdering
-    @Serializable data object AscNullsLast: PropertyOrdering
-    @Serializable data object DescNullsLast: PropertyOrdering
+    sealed interface PropertyOrdering : Ordering
+    @Serializable
+    data object Asc : PropertyOrdering
+    @Serializable
+    data object Desc : PropertyOrdering
+    @Serializable
+    data object AscNullsFirst : PropertyOrdering
+    @Serializable
+    data object DescNullsFirst : PropertyOrdering
+    @Serializable
+    data object AscNullsLast : PropertyOrdering
+    @Serializable
+    data object DescNullsLast : PropertyOrdering
 
     // TODO put this back once Dsl SortOrder is back
     //companion object {
@@ -333,24 +384,32 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class Take(@Slot val head: XR.Query, @Slot val num: XR.Expression, override val loc: Location = Location.Synth): Query, PC<Take> {
-    @Transient override val productComponents = productOf(this, head, num)
+  data class Take(@Slot val head: XR.Query, @Slot val num: XR.Expression, override val loc: Location = Location.Synth) : Query, PC<Take> {
+    @Transient
+    override val productComponents = productOf(this, head, num)
     override val type get() = head.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is Take && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class Drop(@Slot val head: XR.Query, @Slot val num: XR.Expression, override val loc: Location = Location.Synth): Query, PC<Drop> {
-    @Transient override val productComponents = productOf(this, head, num)
+  data class Drop(@Slot val head: XR.Query, @Slot val num: XR.Expression, override val loc: Location = Location.Synth) : Query, PC<Drop> {
+    @Transient
+    override val productComponents = productOf(this, head, num)
     override val type get() = head.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is Drop && other.id() == cid
   }
@@ -358,120 +417,160 @@ sealed interface XR {
   // TODO refactor into UnionKind which will have Union, UnionAll, and other things like Intersect and Except
   @Serializable
   @Mat
-  data class Union(@Slot val a: XR.Query, @Slot val b: XR.Query, override val loc: Location = Location.Synth): Query, PC<Union> {
-    @Transient override val productComponents = productOf(this, a, b)
+  data class Union(@Slot val a: XR.Query, @Slot val b: XR.Query, override val loc: Location = Location.Synth) : Query, PC<Union> {
+    @Transient
+    override val productComponents = productOf(this, a, b)
     override val type get() = a.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is Union && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class UnionAll(@Slot val a: XR.Query, @Slot val b: XR.Query, override val loc: Location = Location.Synth): Query, PC<UnionAll> {
-    @Transient override val productComponents = productOf(this, a, b)
+  data class UnionAll(@Slot val a: XR.Query, @Slot val b: XR.Query, override val loc: Location = Location.Synth) : Query, PC<UnionAll> {
+    @Transient
+    override val productComponents = productOf(this, a, b)
     override val type get() = a.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is UnionAll && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class FlatMap(@Slot override val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Query, override val loc: Location = Location.Synth): Query, U.HasHead, PC<FlatMap> {
-    @Transient override val productComponents = productOf(this, head, id, body)
+  data class FlatMap(@Slot override val head: XR.Query, @MSlot val id: XR.Ident, @Slot val body: XR.Query, override val loc: Location = Location.Synth) : Query, U.HasHead, PC<FlatMap> {
+    @Transient
+    override val productComponents = productOf(this, head, id, body)
     override val type get() = body.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is FlatMap && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class FlatJoin(val joinType: JoinType, @Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val on: XR.Expression, override val loc: Location = Location.Synth): Query, PC<FlatJoin> {
-    @Transient override val productComponents = productOf(this, head, id, on)
+  data class FlatJoin(val joinType: JoinType, @Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val on: XR.Expression, override val loc: Location = Location.Synth) : Query, PC<FlatJoin> {
+    @Transient
+    override val productComponents = productOf(this, head, id, on)
     override val type get() = head.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is FlatJoin && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class FlatGroupBy(@Slot val by: XR.Expression, override val loc: Location = Location.Synth): Query, U.FlatUnit, PC<FlatGroupBy> {
-    @Transient override val productComponents = productOf(this, by)
+  data class FlatGroupBy(@Slot val by: XR.Expression, override val loc: Location = Location.Synth) : Query, U.FlatUnit, PC<FlatGroupBy> {
+    @Transient
+    override val productComponents = productOf(this, by)
     override val type get() = by.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is FlatGroupBy && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class FlatSortBy(@Slot val by: XR.Expression, @CS val ordering: XR.Ordering, override val loc: Location = Location.Synth): Query, U.FlatUnit, PC<FlatSortBy> {
-    @Transient override val productComponents = productOf(this, by)
+  data class FlatSortBy(@Slot val by: XR.Expression, @CS val ordering: XR.Ordering, override val loc: Location = Location.Synth) : Query, U.FlatUnit, PC<FlatSortBy> {
+    @Transient
+    override val productComponents = productOf(this, by)
     override val type get() = by.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is FlatSortBy && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class FlatFilter(@Slot val by: XR.Expression, override val loc: Location = Location.Synth): Query, U.FlatUnit, PC<FlatFilter> {
-    @Transient override val productComponents = productOf(this, by)
+  data class FlatFilter(@Slot val by: XR.Expression, override val loc: Location = Location.Synth) : Query, U.FlatUnit, PC<FlatFilter> {
+    @Transient
+    override val productComponents = productOf(this, by)
     override val type get() = by.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is FlatFilter && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class Distinct(@Slot val head: XR.Query, override val loc: Location = Location.Synth): Query, PC<Distinct> {
-    @Transient override val productComponents = productOf(this, head)
+  data class Distinct(@Slot val head: XR.Query, override val loc: Location = Location.Synth) : Query, PC<Distinct> {
+    @Transient
+    override val productComponents = productOf(this, head)
     override val type get() = head.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is Distinct && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class DistinctOn(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val by: XR.Expression, override val loc: Location = Location.Synth): Query, PC<DistinctOn> {
-    @Transient override val productComponents = productOf(this, head, id, by)
+  data class DistinctOn(@Slot val head: XR.Query, @MSlot val id: XR.Ident, @Slot val by: XR.Expression, override val loc: Location = Location.Synth) : Query, PC<DistinctOn> {
+    @Transient
+    override val productComponents = productOf(this, head, id, by)
     override val type get() = head.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is DistinctOn && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class Nested(@Slot val head: XR.Query, override val loc: Location = Location.Synth): XR.Query, PC<Nested> {
-    @Transient override val productComponents = productOf(this, head)
+  data class Nested(@Slot val head: XR.Query, override val loc: Location = Location.Synth) : XR.Query, PC<Nested> {
+    @Transient
+    override val productComponents = productOf(this, head)
     override val type get() = head.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is Nested && other.id() == cid
   }
@@ -482,17 +581,22 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class Free(@Slot val parts: List<String>, @Slot val params: List<XR>, val pure: Boolean, val transparent: Boolean, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, Action, PC<Free> {
-    @Transient override val productComponents = productOf(this, parts, params)
+  data class Free(@Slot val parts: List<String>, @Slot val params: List<XR>, val pure: Boolean, val transparent: Boolean, override val type: XRType, override val loc: Location = Location.Synth) : Query, Expression,
+    Action, PC<Free> {
+    @Transient
+    override val productComponents = productOf(this, parts, params)
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is Free && other.id() == cid
 
     // Tokenization of actions requires being able to extract the alias from the XR.Action. If this is a free of an action we need to be able to do that.
     val foundCoreAlias: Ident =
-      params.flatMap { param -> CollectXR.byType<XR.U.CoreAction>(param)}.firstOrNull()?.coreAlias() ?: Ident.Unused
+      params.flatMap { param -> CollectXR.byType<XR.U.CoreAction>(param) }.firstOrNull()?.coreAlias() ?: Ident.Unused
 
     override fun coreAlias(): Ident = foundCoreAlias
 
@@ -505,12 +609,16 @@ sealed interface XR {
   // I.e. a lambda function. It can be used as an expression in some cases but not a query (although it's body maybe a query or expression)
   @Serializable
   @Mat
-  data class FunctionN(@Slot val params: List<Ident>, @Slot val body: XR.U.QueryOrExpression, override val loc: Location = Location.Synth): Expression, PC<FunctionN> {
-    @Transient override val productComponents = productOf(this, params, body)
+  data class FunctionN(@Slot val params: List<Ident>, @Slot val body: XR.U.QueryOrExpression, override val loc: Location = Location.Synth) : Expression, PC<FunctionN> {
+    @Transient
+    override val productComponents = productOf(this, params, body)
     override val type get() = body.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is FunctionN && other.id() == cid
   }
@@ -527,12 +635,16 @@ sealed interface XR {
    */
   @Serializable
   @Mat
-  data class FunctionApply(@Slot val function: QueryOrExpression, @Slot val args: List<XR.U.QueryOrExpression>, override val loc: Location = Location.Synth): Query, Expression, PC<FunctionApply> {
-    @Transient override val productComponents = productOf(this, function, args)
+  data class FunctionApply(@Slot val function: QueryOrExpression, @Slot val args: List<XR.U.QueryOrExpression>, override val loc: Location = Location.Synth) : Query, Expression, PC<FunctionApply> {
+    @Transient
+    override val productComponents = productOf(this, function, args)
     override val type get() = function.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is FunctionApply && other.id() == cid
   }
@@ -541,16 +653,20 @@ sealed interface XR {
   @Mat
   data class BinaryOp(@Slot val a: XR.Expression, @MSlot val op: BinaryOperator, @Slot val b: XR.Expression, override val loc: Location = Location.Synth) : Expression, PC<BinaryOp> {
     // TODO mark this @Transient in the PC class?
-    @Transient override val productComponents = productOf(this, a, op, b)
+    @Transient
+    override val productComponents = productOf(this, a, op, b)
     override val type: XRType by lazy {
       when (op) {
         is YieldsBool -> XRType.BooleanExpression
         else -> XRType.Value
       }
     }
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is BinaryOp && other.id() == cid
   }
@@ -558,16 +674,20 @@ sealed interface XR {
   @Serializable
   @Mat
   data class UnaryOp(@CS val op: UnaryOperator, @Slot val expr: XR.Expression, override val loc: Location = Location.Synth) : Expression, PC<UnaryOp> {
-    @Transient override val productComponents = productOf(this, expr)
+    @Transient
+    override val productComponents = productOf(this, expr)
     override val type: XRType by lazy {
       when (op) {
         is YieldsBool -> XRType.BooleanExpression
         else -> XRType.Value
       }
     }
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is UnaryOp && other.id() == cid
   }
@@ -575,10 +695,26 @@ sealed interface XR {
   @Serializable
   sealed interface CallType {
     val isPure: Boolean
-    @Serializable data object PureFunction: CallType { override val isPure = true }
-    @Serializable data object ImpureFunction: CallType { override val isPure = false }
-    @Serializable data object Aggregator: CallType { override val isPure = false }
-    @Serializable data object QueryAggregator: CallType { override val isPure = false }
+
+    @Serializable
+    data object PureFunction : CallType {
+      override val isPure = true
+    }
+
+    @Serializable
+    data object ImpureFunction : CallType {
+      override val isPure = false
+    }
+
+    @Serializable
+    data object Aggregator : CallType {
+      override val isPure = false
+    }
+
+    @Serializable
+    data object QueryAggregator : CallType {
+      override val isPure = false
+    }
 
     companion object {
       val values: List<XR.CallType> = listOf(PureFunction, ImpureFunction, Aggregator, QueryAggregator)
@@ -602,11 +738,23 @@ sealed interface XR {
    */
   @Serializable // TODO originalResultType
   @Mat
-  data class MethodCall(@Slot val head: XR.U.QueryOrExpression, @MSlot val name: String, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, val originalHostType: XR.ClassId, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, U.Call, PC<MethodCall> {
-    @Transient override val productComponents = productOf(this, head, name, args)
+  data class MethodCall(
+    @Slot val head: XR.U.QueryOrExpression,
+    @MSlot val name: String,
+    @Slot val args: List<XR.U.QueryOrExpression>,
+    val callType: CallType,
+    val originalHostType: XR.ClassId,
+    override val type: XRType,
+    override val loc: Location = Location.Synth
+  ) : Query, Expression, U.Call, PC<MethodCall> {
+    @Transient
+    override val productComponents = productOf(this, head, name, args)
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is MethodCall && other.id() == cid
 
@@ -617,14 +765,19 @@ sealed interface XR {
   // TODO originalResultType
   @Serializable
   @Mat
-  data class GlobalCall(@Slot val name: XR.FqName, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, override val type: XRType, override val loc: Location = Location.Synth): Query, Expression, U.Call, PC<GlobalCall> {
-    @Transient override val productComponents = productOf(this, name, args)
+  data class GlobalCall(@Slot val name: XR.FqName, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, override val type: XRType, override val loc: Location = Location.Synth) : Query, Expression,
+    U.Call, PC<GlobalCall> {
+    @Transient
+    override val productComponents = productOf(this, name, args)
+
     companion object {
       // using this when translating from Query-level aggs to Expression-level aggs in the SqlQuery
       fun Agg(name: String, vararg args: XR.U.QueryOrExpression) = GlobalCall(FqName(name), args.toList(), CallType.Aggregator, XRType.Value)
     }
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is GlobalCall && other.id() == cid
 
@@ -653,9 +806,12 @@ sealed interface XR {
   // A identifier. Can either represent an expression or query
   @Serializable
   @Mat
-  data class Ident(@Slot val name: String, override val type: XRType, override val loc: Location = Location.Synth, val visibility: Visibility = Visibility.Visible) : XR, XR.Expression, XR.Query, U.Terminal, PC<XR.Ident> {
+  data class Ident(@Slot val name: String, override val type: XRType, override val loc: Location = Location.Synth, val visibility: Visibility = Visibility.Visible) : XR, XR.Expression, XR.Query, U.Terminal,
+    PC<XR.Ident> {
 
-    @Transient override val productComponents = productOf(this, name)
+    @Transient
+    override val productComponents = productOf(this, name)
+
     companion object {
       val Unused = XR.Ident("unused", XRType.Unknown, XR.Location.Synth)
 
@@ -674,7 +830,8 @@ sealed interface XR {
     fun isThisRef() = name.startsWith("${dol}this")
 
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is Ident && other.id() == cid
   }
@@ -683,20 +840,24 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class TagForSqlExpression(@Slot val id: BID, override val type: XRType, override val loc: Location = Location.Synth): XR.Expression, PC<XR.TagForSqlExpression> {
-    @Transient override val productComponents = productOf(this, id)
+  data class TagForSqlExpression(@Slot val id: BID, override val type: XRType, override val loc: Location = Location.Synth) : XR.Expression, PC<XR.TagForSqlExpression> {
+    @Transient
+    override val productComponents = productOf(this, id)
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is TagForSqlExpression && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class TagForSqlAction(@Slot val id: BID, override val type: XRType, override val loc: Location = Location.Synth): XR.Action, PC<XR.TagForSqlAction> {
-    @Transient override val productComponents = productOf(this, id)
+  data class TagForSqlAction(@Slot val id: BID, override val type: XRType, override val loc: Location = Location.Synth) : XR.Action, PC<XR.TagForSqlAction> {
+    @Transient
+    override val productComponents = productOf(this, id)
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is TagForSqlAction && other.id() == cid
     override fun coreAlias(): Ident? = null
@@ -704,52 +865,64 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class TagForSqlQuery(@Slot val id: BID, override val type: XRType, override val loc: Location = Location.Synth): XR.Query, PC<XR.TagForSqlQuery> {
-    @Transient override val productComponents = productOf(this, id)
+  data class TagForSqlQuery(@Slot val id: BID, override val type: XRType, override val loc: Location = Location.Synth) : XR.Query, PC<XR.TagForSqlQuery> {
+    @Transient
+    override val productComponents = productOf(this, id)
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is TagForSqlQuery && other.id() == cid
   }
 
   @Serializable
   sealed interface ParamType {
-    @Serializable data object Single: ParamType
-    @Serializable data object Multi: ParamType
-    @Serializable data object Batch: ParamType
+    @Serializable
+    data object Single : ParamType
+    @Serializable
+    data object Multi : ParamType
+    @Serializable
+    data object Batch : ParamType
     // TODO Custom
     // TODO BatchMulti
   }
 
   @Serializable
   @Mat
-  data class TagForParam(@Slot val id: BID, val paramType: ParamType, override val type: XRType, override val loc: Location = Location.Synth): XR.Expression, PC<XR.TagForParam> {
-    @Transient override val productComponents = productOf(this, id)
+  data class TagForParam(@Slot val id: BID, val paramType: ParamType, override val type: XRType, override val loc: Location = Location.Synth) : XR.Expression, PC<XR.TagForParam> {
+    @Transient
+    override val productComponents = productOf(this, id)
+
     companion object {
       fun valueTag(id: String) = TagForParam(BID(id), ParamType.Single, XRType.Value)
       fun valueTagMulti(id: String) = TagForParam(BID(id), ParamType.Multi, XRType.Value)
     }
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode(): Int = cid.hashCode()
     override fun equals(other: Any?): Boolean = other is TagForParam && other.id() == cid
   }
 
   @Serializable
-  sealed class ConstType<T>: PC<ConstType<T>>, Const, XR.Expression {
+  sealed class ConstType<T> : PC<ConstType<T>>, Const, XR.Expression {
     abstract val value: T
     override val productComponents by lazy { productOf(this, value) }
-    @Transient override val type: XRType = XRType.Value
+    @Transient
+    override val type: XRType = XRType.Value
     override fun toString() = show()
+
     companion object {
       data class ConstTypeId<T>(val value: T)
     }
+
     val cid by lazy { ConstTypeId(value) }
     override fun hashCode() = cid.hashCode()
   }
 
   @Serializable
-  sealed interface Const: Expression {
+  sealed interface Const : Expression {
     companion object {
       val True = Const.Boolean(true)
       val False = Const.Boolean(false)
@@ -763,32 +936,72 @@ sealed interface XR {
       operator fun invoke(value: kotlin.Double, loc: Location = Location.Synth) = Double(value, loc)
     }
 
-    @Serializable data class Boolean(override val value: kotlin.Boolean, override val loc: Location = Location.Synth) : ConstType<kotlin.Boolean>(), Const {
+    @Serializable
+    data class Boolean(override val value: kotlin.Boolean, override val loc: Location = Location.Synth) : ConstType<kotlin.Boolean>(), Const {
       override fun equals(other: Any?) = other is Const.Boolean && other.value == value
       override val type: XRType.BooleanValue = XRType.BooleanValue
     }
-    @Serializable data class Char(override val value: kotlin.Char, override val loc: Location = Location.Synth) : ConstType<kotlin.Char>(), Const { override fun equals(other: Any?) = other is Const.Char && other.value == value }
-    @Serializable data class Byte(override val value: kotlin.Int, override val loc: Location = Location.Synth) : ConstType<kotlin.Int>(), Const { override fun equals(other: Any?) = other is Const.Byte && other.value == value }
-    @Serializable data class Short(override val value: kotlin.Short, override val loc: Location = Location.Synth) : ConstType<kotlin.Short>(), Const { override fun equals(other: Any?) = other is Const.Short && other.value == value }
-    @Serializable data class Int(override val value: kotlin.Int, override val loc: Location = Location.Synth) : ConstType<kotlin.Int>(), Const { override fun equals(other: Any?) = other is Const.Int && other.value == value }
-    @Serializable data class Long(override val value: kotlin.Long, override val loc: Location = Location.Synth) : ConstType<kotlin.Long>(), Const { override fun equals(other: Any?) = other is Const.Long && other.value == value }
-    @Serializable data class String(override val value: kotlin.String, override val loc: Location = Location.Synth) : ConstType<kotlin.String>(), Const { override fun equals(other: Any?) = other is Const.String && other.value == value }
-    @Serializable data class Float(override val value: kotlin.Float, override val loc: Location = Location.Synth) : ConstType<kotlin.Float>(), Const { override fun equals(other: Any?) = other is Const.Float && other.value == value }
-    @Serializable data class Double(override val value: kotlin.Double, override val loc: Location = Location.Synth) : ConstType<kotlin.Double>(), Const { override fun equals(other: Any?) = other is Const.Double && other.value == value }
-    @Serializable data class Null(override val loc: Location = Location.Synth): Const {
+
+    @Serializable
+    data class Char(override val value: kotlin.Char, override val loc: Location = Location.Synth) : ConstType<kotlin.Char>(), Const {
+      override fun equals(other: Any?) = other is Const.Char && other.value == value
+    }
+
+    @Serializable
+    data class Byte(override val value: kotlin.Int, override val loc: Location = Location.Synth) : ConstType<kotlin.Int>(), Const {
+      override fun equals(other: Any?) = other is Const.Byte && other.value == value
+    }
+
+    @Serializable
+    data class Short(override val value: kotlin.Short, override val loc: Location = Location.Synth) : ConstType<kotlin.Short>(), Const {
+      override fun equals(other: Any?) = other is Const.Short && other.value == value
+    }
+
+    @Serializable
+    data class Int(override val value: kotlin.Int, override val loc: Location = Location.Synth) : ConstType<kotlin.Int>(), Const {
+      override fun equals(other: Any?) = other is Const.Int && other.value == value
+    }
+
+    @Serializable
+    data class Long(override val value: kotlin.Long, override val loc: Location = Location.Synth) : ConstType<kotlin.Long>(), Const {
+      override fun equals(other: Any?) = other is Const.Long && other.value == value
+    }
+
+    @Serializable
+    data class String(override val value: kotlin.String, override val loc: Location = Location.Synth) : ConstType<kotlin.String>(), Const {
+      override fun equals(other: Any?) = other is Const.String && other.value == value
+    }
+
+    @Serializable
+    data class Float(override val value: kotlin.Float, override val loc: Location = Location.Synth) : ConstType<kotlin.Float>(), Const {
+      override fun equals(other: Any?) = other is Const.Float && other.value == value
+    }
+
+    @Serializable
+    data class Double(override val value: kotlin.Double, override val loc: Location = Location.Synth) : ConstType<kotlin.Double>(), Const {
+      override fun equals(other: Any?) = other is Const.Double && other.value == value
+    }
+
+    @Serializable
+    data class Null(override val loc: Location = Location.Synth) : Const {
       override fun toString(): kotlin.String = "Null"
+
       object Id
+
       override fun hashCode() = Id.hashCode()
       override fun equals(other: Any?) = other is Null
-      @Transient override val type = XRType.Value
+      @Transient
+      override val type = XRType.Value
     }
   }
 
   @Serializable
   @Mat
-  data class Product(val name: String, @Slot val fields: List<Pair<String, XR.Expression>>, override val loc: Location = Location.Synth): Expression, PC<Product> {
-    @Transient override val productComponents = productOf(this, fields)
+  data class Product(val name: String, @Slot val fields: List<Pair<String, XR.Expression>>, override val loc: Location = Location.Synth) : Expression, PC<Product> {
+    @Transient
+    override val productComponents = productOf(this, fields)
     override val type by lazy { XRType.Product(name, fields.map { it.first to it.second.type }) }
+
     companion object {
       // helper function for creation during testing
       operator fun invoke(name: String, vararg fields: Pair<String, Expression>) = Product(name, fields.toList(), Location.Synth)
@@ -803,6 +1016,7 @@ sealed interface XR {
 
       fun TupleSmartN(vararg values: XR.Expression, loc: Location = Location.Synth) =
         TupleSmartN(values.toList(), loc)
+
       fun TupleSmartN(values: List<XR.Expression>, loc: Location = Location.Synth) =
         if (values.size >= 20)
           TupleNumeric(values.toList(), loc)
@@ -817,8 +1031,9 @@ sealed interface XR {
       // actually have _X tuples.
       fun TupleNumeric(vararg values: XR.Expression, loc: Location = Location.Synth) =
         TupleNumeric(values.toList(), loc)
+
       fun TupleNumeric(values: List<XR.Expression>, loc: Location = Location.Synth) =
-        Product("Tuple${values.size}", values.withIndex().map { (idx, v) -> "_${idx+1}" to v }, loc)
+        Product("Tuple${values.size}", values.withIndex().map { (idx, v) -> "_${idx + 1}" to v }, loc)
 
       // Used by the SqlQuery clauses to wrap identifiers into a row-class
       fun fromProductIdent(id: XR.Ident): XR.Product {
@@ -837,15 +1052,23 @@ sealed interface XR {
     }
 
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Product && other.id() == cid
   }
 
   @Serializable
   sealed interface Visibility {
-    @Serializable object Hidden: Visibility { override fun toString() = "Hidden" }
-    @Serializable object Visible: Visibility { override fun toString() = "Visible" }
+    @Serializable
+    object Hidden : Visibility {
+      override fun toString() = "Hidden"
+    }
+
+    @Serializable
+    object Visible : Visibility {
+      override fun toString() = "Visible"
+    }
   }
 
   // Every single custom extension to the XR.Query needs to provide for the capability to either
@@ -862,19 +1085,20 @@ sealed interface XR {
   // is simple. For example if doing a beta-reduction of SelectClause, we would need to go through Variable-by-Variable line and remove
   // each successive definition from the beta-reduction map. For this reason, the Monadic encoding is clearly easier for this kind of transformation.
   // This is why for now, the preferable thing is to convert the CustomQuery to a regular XR.Query before the beta-reduction phase implementing CustomQuery.Convertable.
-  sealed interface CustomQuery: ShowTree {
+  sealed interface CustomQuery : ShowTree {
     val type: XRType
     val loc: XR.Location
 
     fun handleStatelessTransform(transformer: StatelessTransformer): CustomQuery
     fun <S> handleStatefulTransformer(transformer: StatefulTransformer<S>): Pair<CustomQuery, StatefulTransformer<S>>
 
-    interface Convertable: CustomQuery {
+    interface Convertable : CustomQuery {
       override fun handleStatelessTransform(transformer: StatelessTransformer): Convertable
       override fun <S> handleStatefulTransformer(transformer: StatefulTransformer<S>): Pair<Convertable, StatefulTransformer<S>>
       fun toQueryXR(): XR.Query
     }
-    interface Tokenizeable: CustomQuery {
+
+    interface Tokenizeable : CustomQuery {
       override fun handleStatelessTransform(transformer: StatelessTransformer): Tokenizeable
       override fun <S> handleStatefulTransformer(transformer: StatefulTransformer<S>): Pair<Tokenizeable, StatefulTransformer<S>>
       fun tokenize(): Token
@@ -883,9 +1107,12 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class CustomQueryRef(@Slot val customQuery: XR.CustomQuery): XR.Query, PC<CustomQueryRef> {
-    @Transient override val productComponents = productOf(this, customQuery)
+  data class CustomQueryRef(@Slot val customQuery: XR.CustomQuery) : XR.Query, PC<CustomQueryRef> {
+    @Transient
+    override val productComponents = productOf(this, customQuery)
+
     companion object {}
+
     override fun toString() = show()
     override val type get() = customQuery.type
     override val loc: Location = customQuery.loc
@@ -896,7 +1123,8 @@ sealed interface XR {
   @Serializable
   @Mat
   data class Property(@Slot val of: XR.Expression, @Slot val name: String, val visibility: Visibility = Visibility.Visible, override val loc: Location = Location.Synth) : XR.Expression, PC<Property> {
-    @Transient override val productComponents = productOf(this, of, name)
+    @Transient
+    override val productComponents = productOf(this, of, name)
     override val type: XRType by lazy {
       when (val tpe = of.type) {
         is XRType.Product -> tpe.getField(name) ?: XRType.Unknown
@@ -911,8 +1139,10 @@ sealed interface XR {
       fun fromCoreAndPaths(core: XR.Expression, paths: List<String>, loc: Location = Location.Synth): XR.Expression =
         paths.fold(core) { acc, path -> Property(acc, path, Visibility.Visible, loc) }
     }
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Property && other.id() == cid
   }
@@ -920,11 +1150,15 @@ sealed interface XR {
   @Serializable
   @Mat
   data class Block(@Slot val stmts: List<Variable>, @Slot val output: XR.Expression, override val loc: Location = Location.Synth) : XR.Expression, PC<Block> {
-    @Transient override val productComponents = productOf(this, stmts, output)
+    @Transient
+    override val productComponents = productOf(this, stmts, output)
     override val type: XRType by lazy { output.type }
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Block && other.id() == cid
   }
@@ -932,14 +1166,18 @@ sealed interface XR {
   @Serializable
   @Mat
   data class When(@Slot val branches: List<Branch>, @Slot val orElse: XR.Expression, override val loc: Location = Location.Synth) : Expression, PC<When> {
-    @Transient override val productComponents = productOf(this, branches, orElse)
+    @Transient
+    override val productComponents = productOf(this, branches, orElse)
     override val type: XRType by lazy { branches.lastOrNull()?.type ?: XRType.Unknown }
+
     companion object {
       fun makeIf(cond: XR.Expression, then: XR.Expression, orElse: XR.Expression, loc: Location = Location.Synth) =
         When(listOf(Branch(cond, then, loc)), orElse, loc)
     }
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is When && other.id() == cid
   }
@@ -947,23 +1185,31 @@ sealed interface XR {
   @Serializable
   @Mat
   data class Branch(@Slot val cond: XR.Expression, @Slot val then: XR.Expression, override val loc: Location = Location.Synth) : XR, PC<Branch> {
-    @Transient override val productComponents = productOf(this, cond, then)
+    @Transient
+    override val productComponents = productOf(this, cond, then)
     override val type: XRType by lazy { then.type }
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Branch && other.id() == cid
   }
 
   @Serializable
   @Mat
-  data class Variable(@Slot val name: XR.Ident, @Slot val rhs: XR.Expression, override val loc: Location = Location.Synth): XR, PC<Variable> {
-    @Transient override val productComponents = productOf(this, name, rhs)
+  data class Variable(@Slot val name: XR.Ident, @Slot val rhs: XR.Expression, override val loc: Location = Location.Synth) : XR, PC<Variable> {
+    @Transient
+    override val productComponents = productOf(this, name, rhs)
     override val type: XRType by lazy { rhs.type }
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Variable && other.id() == cid
   }
@@ -973,18 +1219,23 @@ sealed interface XR {
   // ***********************************************************************************************************
 
   @Serializable
-  sealed interface Action: XR {
+  sealed interface Action : XR {
     fun coreAlias(): XR.Ident?
   }
 
   @Serializable
   @Mat
-  data class Update(@Slot val query: XR.Entity, @CS override val alias: XR.Ident, @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, U.CoreAction, PC<Update> {
-    @Transient override val productComponents = productOf(this, query, assignments)
+  data class Update(@Slot val query: XR.Entity, @CS override val alias: XR.Ident, @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth) : Action,
+    U.CoreAction, PC<Update> {
+    @Transient
+    override val productComponents = productOf(this, query, assignments)
     override val type: XRType get() = query.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Update && other.id() == cid
     override fun coreAlias(): XR.Ident = alias
@@ -1002,12 +1253,17 @@ sealed interface XR {
   // Note that XR.Query will always be a XR.Entity here
   @Serializable
   @Mat
-  data class Insert(@Slot val query: XR.Entity, @CS override val alias: XR.Ident,  @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth): Action, U.CoreAction, PC<Insert> {
-    @Transient override val productComponents = productOf(this, query, assignments)
+  data class Insert(@Slot val query: XR.Entity, @CS override val alias: XR.Ident, @Slot val assignments: List<Assignment>, @CS val exclusions: List<Property>, override val loc: Location = Location.Synth) : Action,
+    U.CoreAction, PC<Insert> {
+    @Transient
+    override val productComponents = productOf(this, query, assignments)
     override val type: XRType get() = query.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Insert && other.id() == cid
     override fun coreAlias(): XR.Ident = alias
@@ -1020,12 +1276,16 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class FilteredAction(@Slot val action: XR.U.CoreAction, @MSlot val alias: Ident, @Slot val filter: XR.Expression, override val loc: Location = Location.Synth): XR.Action, PC<FilteredAction> {
-    @Transient override val productComponents = productOf(this, action, alias, filter)
+  data class FilteredAction(@Slot val action: XR.U.CoreAction, @MSlot val alias: Ident, @Slot val filter: XR.Expression, override val loc: Location = Location.Synth) : XR.Action, PC<FilteredAction> {
+    @Transient
+    override val productComponents = productOf(this, action, alias, filter)
     override val type: XRType = action.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is FilteredAction && other.id() == cid
     override fun coreAlias(): XR.Ident = action.coreAlias()
@@ -1033,12 +1293,16 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class Delete(@Slot val query: XR.Entity, @CS override val alias: XR.Ident, override val loc: Location = Location.Synth): Action, U.CoreAction, PC<Delete> {
-    @Transient override val productComponents = productOf(this, query)
+  data class Delete(@Slot val query: XR.Entity, @CS override val alias: XR.Ident, override val loc: Location = Location.Synth) : Action, U.CoreAction, PC<Delete> {
+    @Transient
+    override val productComponents = productOf(this, query)
     override val type: XRType get() = query.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Delete && other.id() == cid
     override fun coreAlias(): XR.Ident = alias
@@ -1056,28 +1320,38 @@ sealed interface XR {
    */
   @Serializable
   @Mat
-  data class Returning(@Slot val action: XR.Action, @Slot val kind: Kind, override val loc: Location = Location.Synth): Action, PC<Returning> {
-    @Transient override val productComponents = productOf(this, action, kind)
+  data class Returning(@Slot val action: XR.Action, @Slot val kind: Kind, override val loc: Location = Location.Synth) : Action, PC<Returning> {
+    @Transient
+    override val productComponents = productOf(this, action, kind)
     override val type: XRType get() = kind.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Returning && other.id() == cid
     override fun coreAlias(): XR.Ident? = action.coreAlias()
 
 
-    @Serializable sealed interface Kind {
+    @Serializable
+    sealed interface Kind {
       val type: XRType
 
       // the .returning { col -> stuff } clause
-      @Serializable data class Expression(val alias: XR.Ident, val expr: XR.Expression): Kind { override val type get() = expr.type }
+      @Serializable
+      data class Expression(val alias: XR.Ident, val expr: XR.Expression) : Kind {
+        override val type get() = expr.type
+      }
 
       // Specifically when APIs that IMPLICITLY return columns are used e.g. PreparedStatement.generatedKeys
-      @Serializable data class Keys(val alias: XR.Ident, val keys: List<XR.Property>): Kind { override val type by lazy { XR.Product.TupleSmartN(keys).type } }
+      @Serializable
+      data class Keys(val alias: XR.Ident, val keys: List<XR.Property>) : Kind {
+        override val type by lazy { XR.Product.TupleSmartN(keys).type }
+      }
     }
   }
-
 
 
 //final case class Foreach(query: Ast, alias: Ident, body: Ast) extends Action {
@@ -1105,12 +1379,16 @@ sealed interface XR {
   // The 'core' of every property should be <this> pointer coming from the insert<Person> { this:Person ... }/ update<Person> { this:Person  ... } clause
   @Serializable
   @Mat
-  data class Assignment(@Slot val property: XR.Property, @Slot val value: XR.Expression, override val loc: Location = Location.Synth): XR, PC<Assignment> {
-    @Transient override val productComponents = productOf(this, property, value)
+  data class Assignment(@Slot val property: XR.Property, @Slot val value: XR.Expression, override val loc: Location = Location.Synth) : XR, PC<Assignment> {
+    @Transient
+    override val productComponents = productOf(this, property, value)
     override val type: XRType get() = value.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Assignment && other.id() == cid
   }
@@ -1129,12 +1407,14 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class OnConflict(@Slot val insert: XR.Insert, @CS val target: XR.OnConflict.Target, @CS val resolution: XR.OnConflict.Resolution): XR.Action, PC<OnConflict> {
-    @Transient override val productComponents = productOf(this, insert)
+  data class OnConflict(@Slot val insert: XR.Insert, @CS val target: XR.OnConflict.Target, @CS val resolution: XR.OnConflict.Resolution) : XR.Action, PC<OnConflict> {
+    @Transient
+    override val productComponents = productOf(this, insert)
     override val type: XRType get() = insert.type
     override val loc: Location = Location.Synth
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is OnConflict && other.id() == cid
 
@@ -1146,27 +1426,37 @@ sealed interface XR {
     // These will be embedded directly in the Assignment/AssignmentDual value clause
     // e.g. `insert<Person> { set(...).onConflict(name) { excluded -> set(something to something + excluded.something) } }`
     // In this case it will be something like OnConflict(..., OnConflict.Update(excludedId = Id(excluded), assignments = [Assignment(Id(something), Id(something)])
-    @Serializable sealed interface Target {
-      @Serializable object NoTarget: Target
-      @Serializable data class Properties(val props: List<XR.Property>): Target
+    @Serializable
+    sealed interface Target {
+      @Serializable
+      object NoTarget : Target
+      @Serializable
+      data class Properties(val props: List<XR.Property>) : Target
     }
 
 
-    @Serializable sealed interface Resolution {
-      @Serializable object Ignore: Resolution
-      @Serializable data class Update(val excludedId: Ident, val assignments: List<XR.Assignment>): Resolution
+    @Serializable
+    sealed interface Resolution {
+      @Serializable
+      object Ignore : Resolution
+      @Serializable
+      data class Update(val excludedId: Ident, val assignments: List<XR.Assignment>) : Resolution
     }
   }
 
   // Similar to Quill's Foreach, the Batching parameter defines a batch-alias that can be used in actions defined inside
   @Serializable
   @Mat
-  data class Batching(@Slot val alias: XR.Ident, @Slot val action: XR.Action, override val loc: Location = Location.Synth): XR, PC<Batching> {
-    @Transient override val productComponents = productOf(this, alias, action)
+  data class Batching(@Slot val alias: XR.Ident, @Slot val action: XR.Action, override val loc: Location = Location.Synth) : XR, PC<Batching> {
+    @Transient
+    override val productComponents = productOf(this, alias, action)
     override val type: XRType get() = action.type
+
     companion object {}
+
     override fun toString() = show()
-    @Transient private val cid = id()
+    @Transient
+    private val cid = id()
     override fun hashCode() = cid.hashCode()
     override fun equals(other: Any?) = other is Batching && other.id() == cid
   }

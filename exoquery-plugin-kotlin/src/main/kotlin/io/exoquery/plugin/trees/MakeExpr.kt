@@ -14,7 +14,6 @@ import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.isClass
 import org.jetbrains.kotlin.ir.util.isObject
-import org.jetbrains.kotlin.js.parser.parse
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import kotlin.reflect.KClass
@@ -23,7 +22,7 @@ import kotlin.reflect.typeOf
 
 context(CX.Scope)
 fun KType.fullPathOfBasic(): ClassId =
-  when(val cls = this.classifier) {
+  when (val cls = this.classifier) {
     is KClass<*> -> cls.classId() ?: parseError("Could not find the class id for the class: $cls")
     else -> parseError("Invalid list class: $cls")
   }

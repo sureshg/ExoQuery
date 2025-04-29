@@ -7,7 +7,7 @@ import io.exoquery.sql.SqlIdiom
 import io.exoquery.xr.RuntimeBuilder
 import io.exoquery.xr.XR
 
-data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: RuntimeSet, override val params: ParamSet): ContainerOfFunXR {
+data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: RuntimeSet, override val params: ParamSet) : ContainerOfFunXR {
   fun determinizeDynamics(): SqlQuery<T> = DeterminizeDynamics().ofQuery(this)
 
   // Don't need to do anything special in order to convert runtime, just call a function that the TransformProjectCapture can't see through
@@ -29,17 +29,18 @@ data class SqlQuery<T>(override val xr: XR.Query, override val runtimes: Runtime
 
   fun buildRuntime(dialect: SqlIdiom, label: String?, pretty: Boolean = false): SqlCompiledQuery<T> = run {
     val containerBuild = RuntimeBuilder(dialect, pretty).forQuery(this)
-    SqlCompiledQuery(containerBuild.queryString, containerBuild.queryTokenized, true, label,
+    SqlCompiledQuery(
+      containerBuild.queryString, containerBuild.queryTokenized, true, label,
       SqlCompiledQuery.DebugData(Phase.Runtime, { this.xr }, { containerBuild.queryModel })
     )
   }
 
 
-  fun <Dialect: SqlIdiom> build(): SqlCompiledQuery<T> = errorCap("The build function body was not inlined")
-  fun <Dialect: SqlIdiom> build(@ExoBuildFunctionLabel label: String): SqlCompiledQuery<T> = errorCap("The build function body was not inlined")
+  fun <Dialect : SqlIdiom> build(): SqlCompiledQuery<T> = errorCap("The build function body was not inlined")
+  fun <Dialect : SqlIdiom> build(@ExoBuildFunctionLabel label: String): SqlCompiledQuery<T> = errorCap("The build function body was not inlined")
 
-  fun <Dialect: SqlIdiom> buildPretty(): SqlCompiledQuery<T> = errorCap("The buildPretty function body was not inlined")
-  fun <Dialect: SqlIdiom> buildPretty(@ExoBuildFunctionLabel label: String): SqlCompiledQuery<T> = errorCap("The buildPretty function body was not inlined")
+  fun <Dialect : SqlIdiom> buildPretty(): SqlCompiledQuery<T> = errorCap("The buildPretty function body was not inlined")
+  fun <Dialect : SqlIdiom> buildPretty(@ExoBuildFunctionLabel label: String): SqlCompiledQuery<T> = errorCap("The buildPretty function body was not inlined")
 
   val buildFor: BuildFor<SqlCompiledQuery<T>>
   val buildPrettyFor: BuildFor<SqlCompiledQuery<T>>

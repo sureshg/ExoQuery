@@ -1,20 +1,19 @@
 package io.exoquery.plugin.trees
 
-import io.exoquery.xr.SX
-import io.exoquery.xr.SelectClause
-import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.transform.CX
+import io.exoquery.xr.SX
 import io.exoquery.xr.SX.U
+import io.exoquery.xr.SelectClause
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 
 object ValidateAndOrganize {
   private interface Phase {
-    data object BEGIN: Phase
-    data object FROM: Phase
-    data object JOIN: Phase
-    data object MODIFIER: Phase // I.e. for group/sort/take/drop
+    data object BEGIN : Phase
+    data object FROM : Phase
+    data object JOIN : Phase
+    data object MODIFIER : Phase // I.e. for group/sort/take/drop
   }
 
   // The "pure functiona' way to do this would be to have a State object that is copied with new values but since
@@ -24,6 +23,7 @@ object ValidateAndOrganize {
     fun validPhases(vararg validPhases: Phase) = { errorMsg: String, expr: IrElement ->
       if (!validPhases.contains(phase)) logger.error(errorMsg, expr)
     }
+
     fun setPhaseTo(phase: Phase) {
       this.phase = phase
     }
@@ -34,12 +34,14 @@ object ValidateAndOrganize {
       setPhaseTo(Phase.FROM)
       clauses += from
     }
+
     context(CX.Scope, CX.Parsing, CX.Symbology)
     fun addJoin(join: SX.Join, expr: IrElement) {
       validPhases(Phase.JOIN, Phase.FROM)("At least one FROM-clause is needed and can only add JOIN clauses after FROM and before any WHERE/GROUP/SORT clauses.", expr)
       setPhaseTo(Phase.JOIN)
       clauses += join
     }
+
     context(CX.Scope, CX.Parsing, CX.Symbology)
     fun addWhere(where: SX.Where, expr: IrElement) {
       //if (phase != Phase.JOIN && phase != Phase.FROM) error("", expr)
@@ -48,18 +50,21 @@ object ValidateAndOrganize {
       setPhaseTo(Phase.MODIFIER) // Basically `WHERE` is like it's on phase but we don't need to create one since it can only occur once
       this.where = where
     }
+
     context(CX.Scope, CX.Parsing, CX.Symbology)
     fun addGroupBy(groupBy: SX.GroupBy, expr: IrElement) {
       validPhases(Phase.JOIN, Phase.FROM, Phase.MODIFIER)("Only one `GROUP BY` clause is allowed an it must be after from/join calls and before any sort clauses", expr)
       setPhaseTo(Phase.MODIFIER)
       this.groupBy = groupBy
     }
+
     context(CX.Scope, CX.Parsing, CX.Symbology)
     fun addSortBy(sortBy: SX.SortBy, expr: IrElement) {
       validPhases(Phase.JOIN, Phase.FROM, Phase.MODIFIER)("Only one `SORT BY` clause is allowed an it must be after from/join calls and before any group clauses", expr)
       setPhaseTo(Phase.MODIFIER)
       this.sortBy = sortBy
     }
+
     // Ignore other states for the arbitrary assignments. They can technically be between anything
     context(CX.Scope, CX.Parsing, CX.Symbology)
     fun addArbitraryAssignment(assignment: SX.ArbitraryAssignment, expr: IrElement) {

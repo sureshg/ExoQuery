@@ -6,11 +6,12 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
-import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
-import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
+import org.jetbrains.kotlin.ir.builders.irBlockBody
+import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -42,7 +43,7 @@ class CallMethod(private val callerRaw: Caller, private val replacementFun: Repl
     val invokeMethod =
       when (caller) {
         is Caller.Dispatch -> caller.reciver.type.findMethodOrFail(funName)
-        is Caller.Extension ->  caller.reciver.type.findExtensionMethodOrFail(funName)
+        is Caller.Extension -> caller.reciver.type.findExtensionMethodOrFail(funName)
         is Caller.TopLevelMethod ->
           pluginCtx.referenceFunctions(CallableId(FqName(caller.packageName), Name.identifier(funName))).firstOrNull()?.let { MethodType.Method(it) }
             ?: throw IllegalArgumentException("Cannot find method `${funName}` in the package `${caller.packageName}`")
@@ -137,7 +138,8 @@ fun callWithParamsAndOutput(fullPathMethod: String, typeParams: List<IrType>, tp
 fun IrExpression.callDispatch(method: String) = CallMethod(Caller.Dispatch(this), ReplacementMethodToCall(method), listOf(), null)
 fun IrExpression.callDispatchWithOutput(method: String, fullOutputType: IrType) = CallMethod(Caller.Dispatch(this), ReplacementMethodToCall(method), listOf(), fullOutputType)
 fun IrExpression.callDispatchWithParams(method: String, typeParams: List<IrType>): CallMethod = CallMethod(Caller.Dispatch(this), ReplacementMethodToCall(method), typeParams, null)
-fun IrExpression.callDispatchWithParamsAndOutput(method: String, typeParams: List<IrType>, fullOutputType: IrType): CallMethod = CallMethod(Caller.Dispatch(this), ReplacementMethodToCall(method), typeParams, fullOutputType)
+fun IrExpression.callDispatchWithParamsAndOutput(method: String, typeParams: List<IrType>, fullOutputType: IrType): CallMethod =
+  CallMethod(Caller.Dispatch(this), ReplacementMethodToCall(method), typeParams, fullOutputType)
 
 
 context (CX.Scope, CX.Builder) fun createLambda0(functionBody: IrExpression, functionParent: IrDeclarationParent, otherStatements: List<IrStatement> = listOf()): IrFunctionExpression =

@@ -1,17 +1,18 @@
 package io.exoquery.plugin.transform
 
-import io.decomat.*
+import io.decomat.Components1
+import io.decomat.Pattern
+import io.decomat.customPattern1
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
-
-import io.decomat.productComponentsOf as productOf
 import io.decomat.HasProductClass as PC
+import io.decomat.productComponentsOf as productOf
 
-sealed class ReceiverCaller(open val reciver: IrExpression): Caller, PC<ReceiverCaller> {
+sealed class ReceiverCaller(open val reciver: IrExpression) : Caller, PC<ReceiverCaller> {
   override val productComponents by lazy { productOf(this, reciver) }
 
   companion object {
-    operator fun <AP: Pattern<A>, A: IrExpression> get(value: AP) =
+    operator fun <AP : Pattern<A>, A : IrExpression> get(value: AP) =
       customPattern1("ReceiverCaller", value) { it: ReceiverCaller ->
         Components1(it.reciver)
       }
@@ -23,10 +24,11 @@ sealed class ReceiverCaller(open val reciver: IrExpression): Caller, PC<Receiver
       is Caller.Extension -> Caller.Extension(reciver.transform(transformer, data))
     }
 }
+
 sealed interface Caller {
-  data class Dispatch(override val reciver: IrExpression): ReceiverCaller(reciver)
-  data class Extension(override val reciver: IrExpression): ReceiverCaller(reciver)
-  data class TopLevelMethod(val packageName: String): Caller
+  data class Dispatch(override val reciver: IrExpression) : ReceiverCaller(reciver)
+  data class Extension(override val reciver: IrExpression) : ReceiverCaller(reciver)
+  data class TopLevelMethod(val packageName: String) : Caller
 
   fun toDispatch() =
     when (this) {

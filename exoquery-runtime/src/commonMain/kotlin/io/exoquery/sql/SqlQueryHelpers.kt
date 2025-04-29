@@ -30,6 +30,7 @@ fun combineWhereClauses(expr: XR.Expression?, combineWith: XR.Expression) =
 
 
 // Define decomat extensions for selectvalue manually since the codegen doesn't seem to work right with things like generics e.g. turns List<String> into List<*>
-class SelectValue_M<A: Pattern<AP>, B: Pattern<BP>, AP: XR.Expression, BP: List<String>>(a: A, b: B): Pattern2<A, B, AP, BP, SelectValue>(a, b, Typed<SelectValue>())
-operator fun <A: Pattern<AP>, B: Pattern<BP>, AP: XR.Expression, BP: List<String>> SelectValue.Companion.get(a: A, b: B) = SelectValue_M(a, b)
+class SelectValue_M<A : Pattern<AP>, B : Pattern<BP>, AP : XR.Expression, BP : List<String>>(a: A, b: B) : Pattern2<A, B, AP, BP, SelectValue>(a, b, Typed<SelectValue>())
+
+operator fun <A : Pattern<AP>, B : Pattern<BP>, AP : XR.Expression, BP : List<String>> SelectValue.Companion.get(a: A, b: B) = SelectValue_M(a, b)
 val SelectValue.Companion.Is get() = Is<SelectValue>()

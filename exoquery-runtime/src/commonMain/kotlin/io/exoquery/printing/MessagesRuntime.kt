@@ -1,5 +1,6 @@
 package io.exoquery.printing
 
+// @formatter:off
 object MessagesRuntime {
 
 val ReturningExplanation =
@@ -26,3 +27,4 @@ to try out one or two different approaches to get the desired result.
 """.trimIndent()
 
 }
+// @formatter:on

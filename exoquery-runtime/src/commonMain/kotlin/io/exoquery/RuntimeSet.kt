@@ -8,5 +8,6 @@ data class RuntimeSet(val runtimes: List<Pair<BID, ContainerOfXR>>) {
     val Empty = RuntimeSet(emptyList())
     fun of(vararg runtimes: Pair<BID, ContainerOfXR>) = RuntimeSet(runtimes.toList())
   }
+
   operator fun plus(other: RuntimeSet): RuntimeSet = RuntimeSet(runtimes + other.runtimes)
 }

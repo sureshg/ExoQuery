@@ -78,7 +78,7 @@ infix fun List<String>.or(alternate: String) =
  * https://github.com/zio/zio-quill/pull/2381 and here:
  * https://github.com/zio/zio-quill/pull/2420
  */
-class ExpandNestedQueries(val pathJoinFunction: (List<String>) -> String): StatelessQueryTransformer() {
+class ExpandNestedQueries(val pathJoinFunction: (List<String>) -> String) : StatelessQueryTransformer() {
 
   override fun invoke(q: SqlQueryModel, level: QueryLevel): SqlQueryModel =
     when (q) {

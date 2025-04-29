@@ -1,12 +1,12 @@
 package io.exoquery.plugin.transform
 
-import io.decomat.*
-import io.exoquery.ContainerOfXR
+import io.decomat.Is
+import io.decomat.case
+import io.decomat.on
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
 import io.exoquery.annotation.CapturedFunction
 import io.exoquery.parseError
-import io.exoquery.plugin.funName
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.location
@@ -14,22 +14,21 @@ import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.trees.DynamicsAccum
-import io.exoquery.plugin.trees.Ir
+import io.exoquery.plugin.trees.ExtractorsDomain.Call
 import io.exoquery.plugin.trees.Parser
+import io.exoquery.plugin.trees.SqlExpressionExpr
 import io.exoquery.plugin.trees.SqlQueryExpr
 import io.exoquery.xr.XR
-import io.exoquery.plugin.trees.ExtractorsDomain.Call
-import io.exoquery.plugin.trees.SqlExpressionExpr
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrReturn
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.statements
-import kotlin.with
 
 
 /**
@@ -75,7 +74,7 @@ import kotlin.with
  * of the function itself needs to be called in order to get params and runtimes. This is why we remove the arguments but still make the function
  * accessible.
  */
-class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions): ElementTransformer<IrFunction>() {
+class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions) : ElementTransformer<IrFunction>() {
 
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun matches(expr: IrFunction): Boolean =
@@ -89,7 +88,10 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
     val capFun = capFunRaw as? IrSimpleFunction ?: parseError("The function annotated with @CapturedFunction must be a simple function.", capFunRaw)
 
     if (capFun.valueParameters.isEmpty() && capFun.extensionReceiverParameter == null)
-      parseError("The function annotated with @CapturedFunction must have at least one parameter but none were found (and a extension-reciever parameter -that is treated as an argument- was not found either). In this case it is not necessary to mark the function with the @CapturedFunction annotation. Remove it and treat the function as a static query splice.", capFun.location())
+      parseError(
+        "The function annotated with @CapturedFunction must have at least one parameter but none were found (and a extension-reciever parameter -that is treated as an argument- was not found either). In this case it is not necessary to mark the function with the @CapturedFunction annotation. Remove it and treat the function as a static query splice.",
+        capFun.location()
+      )
 
     val errorText = "A function annotated with @CapturedFunction must return a single, single SqlQuery<T> or SqlExpression<T> instance"
 
@@ -104,11 +106,11 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
     val originalParams = capFun.valueParameters
 
     val capFunReturn =
-        capFun.getSingleReturnExpr() ?: parseError(Messages.CapturedFunctionFormWrong("Outer form of the captured-function was wrong."), capFun)
+      capFun.getSingleReturnExpr() ?: parseError(Messages.CapturedFunctionFormWrong("Outer form of the captured-function was wrong."), capFun)
 
     // Add the function value parameters to the parsing context so that the parser treats them as identifiers (instead of dynamics)
     val newSqlContainer =
-      with (CX.Symbology(symbolSet.withCapturedFunctionParameters(capFun))) {
+      with(CX.Symbology(symbolSet.withCapturedFunctionParameters(capFun))) {
         on(capFunReturn).match(
           // It can either be a `select { ... }` or a `capture { ... }`
           case(Call.CaptureQuery[Is()]).thenThis {

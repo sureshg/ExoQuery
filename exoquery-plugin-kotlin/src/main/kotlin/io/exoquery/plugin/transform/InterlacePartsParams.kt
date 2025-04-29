@@ -14,7 +14,7 @@ class InterlacePartsParams<T>(val isPart: (T) -> Boolean, val concatPart: (T, T)
     fun addParam(value: T) = paramsAccum.add(value)
     fun appendToLastPart(value: T): Unit {
       if (partsAccum.isNotEmpty())
-        partsAccum.set(partsAccum.size-1, concatPart(partsAccum.last(), value))
+        partsAccum.set(partsAccum.size - 1, concatPart(partsAccum.last(), value))
       else
         partsAccum.add(value)
     }
@@ -44,9 +44,8 @@ class InterlacePartsParams<T>(val isPart: (T) -> Boolean, val concatPart: (T, T)
           addParam(next)
           // If we actually got a param the next thing to insert is a part
           mustHavePart = true
-        }
-        else
-          // Otherwise just append it ot the last part. The thing expected next is STILL a param
+        } else
+        // Otherwise just append it ot the last part. The thing expected next is STILL a param
           appendToLastPart(next)
 
         // if we need a param but don't have one that usually means we're at the last component

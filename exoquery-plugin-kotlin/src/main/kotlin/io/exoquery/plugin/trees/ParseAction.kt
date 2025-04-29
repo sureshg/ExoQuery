@@ -12,13 +12,8 @@ import io.exoquery.annotation.ExoUpdate
 import io.exoquery.innerdsl.SqlActionFilterable
 import io.exoquery.innerdsl.setParams
 import io.exoquery.parseError
-import io.exoquery.plugin.funName
-import io.exoquery.plugin.loc
-import io.exoquery.plugin.location
+import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.Messages
-import io.exoquery.plugin.ownerHasAnnotation
-import io.exoquery.plugin.source
-import io.exoquery.plugin.symName
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.containsBatchParam
 import io.exoquery.xr.XR
@@ -34,7 +29,7 @@ object ParseAction {
   context(CX.Scope, CX.Parsing, CX.Symbology, CX.Builder)
   // Parse an action, normally dynamic splicing of actions is not allowed, the only exception to this is from a free(... action ...) call where `action` is dynamic (see the ParseFree in ParserOps)
   fun parse(expr: IrExpression, dynamicCallsAllowed: Boolean = false): XR.Action =
-    on(expr).match<XR.Action> (
+    on(expr).match<XR.Action>(
       // the `insert` part of capture { insert<Person> { set ... } }
       case(ParseFree.match()).thenThis { (components), _ ->
         ParseFree.parse(expr, components, funName)
@@ -48,18 +43,19 @@ object ParseAction {
         uprootable.unpackOrErrorXR().successOrParseError(sqlActionIr)
       },
 
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is.of("insert", "update"), Is.Companion()]).thenIfThis { _, _ -> ownerHasAnnotation<ExoInsert>() || ownerHasAnnotation<ExoUpdate>() }.thenThis { reciever, lambdaRaw ->
-        val insertType = this.typeArguments.first() ?: parseError("Could not find the type argument of the insert/update call", expr)
-        val compositeType = CompositeType.from(symName) ?: parseError("Unknown composite type: ${symName}", expr)
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is.of("insert", "update"), Is.Companion()]).thenIfThis { _, _ -> ownerHasAnnotation<ExoInsert>() || ownerHasAnnotation<ExoUpdate>() }
+        .thenThis { reciever, lambdaRaw ->
+          val insertType = this.typeArguments.first() ?: parseError("Could not find the type argument of the insert/update call", expr)
+          val compositeType = CompositeType.from(symName) ?: parseError("Unknown composite type: ${symName}", expr)
 
-        on(lambdaRaw).match(
-          case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { blockBody ->
-            val extensionParam = this.function.symbol.owner.extensionReceiverParameter
-            val actionAlias = extensionParam?.makeIdent() ?: parseError("Could not find the extension receiver parameter of the insert/update call", expr)
-            parseActionComposite(blockBody, insertType, actionAlias, compositeType)
-          }
-        ) ?: parseError("The statement inside of a insert/update block must be a single `set` or `setParams` expression followed by excluded, returning/Keys, or onConflict", lambdaRaw)
-      },
+          on(lambdaRaw).match(
+            case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { blockBody ->
+              val extensionParam = this.function.symbol.owner.extensionReceiverParameter
+              val actionAlias = extensionParam?.makeIdent() ?: parseError("Could not find the extension receiver parameter of the insert/update call", expr)
+              parseActionComposite(blockBody, insertType, actionAlias, compositeType)
+            }
+          ) ?: parseError("The statement inside of a insert/update block must be a single `set` or `setParams` expression followed by excluded, returning/Keys, or onConflict", lambdaRaw)
+        },
       case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<CapturedBlock>(), Is("delete")]).thenIfThis { _, _ -> ownerHasAnnotation<ExoDelete>() }.thenThis { reciever, _ ->
         val deleteType = this.typeArguments.first() ?: parseError("Could not find the type argument of the delete call", expr)
         val deleteTypeXR = TypeParser.ofTypeAt(deleteType, expr.location())
@@ -99,11 +95,14 @@ object ParseAction {
       },
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlAction<*, *>>(), Is("returningKeys"), Ir.FunctionExpression.withBlock[Is(), Is()]]).then { actionExpr, (_, lambdaBody) ->
         val explain = "\n${Messages.ReturningKeysExplanation}"
-        val alias = (compRight as IrFunctionExpression).function.symbol.owner.extensionReceiverParameter?.makeIdent() ?: parseError("Could not find the extension receiver parameter of the returningKeys call.${explain}", expr)
+        val alias =
+          (compRight as IrFunctionExpression).function.symbol.owner.extensionReceiverParameter?.makeIdent() ?: parseError("Could not find the extension receiver parameter of the returningKeys call.${explain}", expr)
+
         fun validateProperty(prop: XR.Property) {
           if (prop.core() != alias)
             parseError("The returningKeys used a value that was not a column of the entity: ${prop.show(sanitzeIdents = false)} (it's core should have been ${alias.show(sanitzeIdents = false)}).${explain}", lambdaBody)
         }
+
         val returningExpr = ParseExpression.parseFunctionBlockBody(lambdaBody)
         val props =
           when (val ret = returningExpr) {
@@ -113,12 +112,12 @@ object ParseAction {
                 validateProperty(prop)
                 prop
               }
-          is XR.Property -> {
-            validateProperty(ret)
-            listOf(ret)
+            is XR.Property -> {
+              validateProperty(ret)
+              listOf(ret)
+            }
+            else -> parseError("The returningKeys block must return a product type or a single property.${explain}", lambdaBody)
           }
-          else -> parseError("The returningKeys block must return a product type or a single property.${explain}", lambdaBody)
-        }
         val core =
           when (val parsed = parse(actionExpr)) {
             is XR.U.CoreAction -> parsed
@@ -207,7 +206,8 @@ object ParseAction {
     ) ?: parseError("Could not parse the assignment", expr)
 
   sealed interface CompositeType {
-    object Insert: CompositeType; object Update: CompositeType
+    object Insert : CompositeType;
+    object Update : CompositeType
 
     companion object {
       fun from(str: String) =

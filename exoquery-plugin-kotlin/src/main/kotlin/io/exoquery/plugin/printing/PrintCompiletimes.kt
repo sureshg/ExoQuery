@@ -9,13 +9,13 @@ import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
-class PrintCompiletimes(config: PPrinterConfig = defaultConfig): PPrinter(config) {
+class PrintCompiletimes(config: PPrinterConfig = defaultConfig) : PPrinter(config) {
   override fun treeify(x: Any?, elementName: String?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree =
     when (x) {
       is IrExpression ->
         Tree.Literal(x.dumpKotlinLike(), elementName)
       is XRType ->
-        when(x) {
+        when (x) {
           is XRType.Product -> Tree.Literal("${x.name}(...)", elementName)
           else -> Tree.Literal(x.shortString(), elementName)
         }
@@ -37,8 +37,9 @@ class PrintCompiletimes(config: PPrinterConfig = defaultConfig): PPrinter(config
     val BlackWhite =
       PrintCompiletimes(
         PPrinterConfig().copy(
-        colorLiteral = Attrs.Empty,
-        colorApplyPrefix = Attrs.Empty
-      ))
+          colorLiteral = Attrs.Empty,
+          colorApplyPrefix = Attrs.Empty
+        )
+      )
   }
 }
