@@ -2,9 +2,8 @@ package io.exoquery
 
 import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
-import io.exoquery.printing.kt
 
-object VariableReductionAdvancedReqGolden: GoldenQueryFile {
+object VariableReductionAdvancedReqGolden : GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "in simple case" to cr(
       """

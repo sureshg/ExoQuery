@@ -4,7 +4,7 @@ import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object QueryReqGoldenDynamic: GoldenQueryFile {
+object QueryReqGoldenDynamic : GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "basic query/XR" to kt(
       "Table(Person)"

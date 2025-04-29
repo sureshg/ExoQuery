@@ -2,9 +2,8 @@ package io.exoquery
 
 import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
-import io.exoquery.printing.kt
 
-object ExpressionFunctionReqGoldenDynamic: GoldenQueryFile {
+object ExpressionFunctionReqGoldenDynamic : GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "String/toInt" to cr(
       "SELECT CAST(p.name AS INTEGER) AS value FROM Person p"

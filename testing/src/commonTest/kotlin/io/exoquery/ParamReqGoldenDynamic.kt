@@ -2,9 +2,8 @@ package io.exoquery
 
 import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
-import io.exoquery.printing.kt
 
-object ParamReqGoldenDynamic: GoldenQueryFile {
+object ParamReqGoldenDynamic : GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "single single-param/compileTime/Original SQL" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ?"

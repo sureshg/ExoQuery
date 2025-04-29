@@ -22,7 +22,7 @@ class BetaReductionSpec : FreeSpec({
     "ident" {
       val ast: XR = Ident("a")
       BetaReduction.ofXR(ast, Ident("a") to Ident("a'")) shouldBe
-        Ident("a'")
+          Ident("a'")
     }
   }
   "with inline" - {
@@ -127,7 +127,12 @@ class BetaReductionSpec : FreeSpec({
     "outer join - replae" {
       val ast: XR =
         FlatJoin(JoinType.Inner, Entity("a"), Ident("x"), Ident("b"))
-      BetaReduction.ofXR(ast, Ident("b") to Ident("b'")) shouldBe FlatJoin(JoinType.Inner, Entity("a"), Ident("x"), Ident("b'"))
+      BetaReduction.ofXR(ast, Ident("b") to Ident("b'")) shouldBe FlatJoin(
+        JoinType.Inner,
+        Entity("a"),
+        Ident("x"),
+        Ident("b'")
+      )
     }
   }
 
@@ -137,7 +142,10 @@ class BetaReductionSpec : FreeSpec({
       val ast: XR =
         FunctionN(listOf(Ident("a"), Ident("b")), BinaryOp(Ident("a"), OP.plus, Ident("b")))
 
-      BetaReduction.ofXR(ast, Ident("a") to Ident("aa")) shouldBe FunctionN(listOf(Ident("aa"), Ident("b")), BinaryOp(Ident("aa"), OP.plus, Ident("b")))
+      BetaReduction.ofXR(ast, Ident("a") to Ident("aa")) shouldBe FunctionN(
+        listOf(Ident("aa"), Ident("b")),
+        BinaryOp(Ident("aa"), OP.plus, Ident("b"))
+      )
     }
   }
 
@@ -166,33 +174,33 @@ class BetaReductionSpec : FreeSpec({
   "treats duplicate aliases normally" {
     val property: XR = Property(Product.TupleN(listOf(Ident("a"), Ident("a"))), "first")
     BetaReduction.ofXR(property, Ident("a") to Ident("a'")) shouldBe
-      Ident("a'")
+        Ident("a'")
   }
 
   "treats duplicate aliases normally - (no property redunction)" {
     val property: XR = Product.TupleN(listOf(Ident("a"), Ident("a")))
     BetaReduction.ofXR(property, Ident("a") to Ident("a'")) shouldBe
-      Product.TupleN(listOf(Ident("a'"), Ident("a'")))
+        Product.TupleN(listOf(Ident("a'"), Ident("a'")))
   }
 
   "reapplies the beta reduction if the structure changes" {
     val quat = XRType.LeafTuple(1)
     val ast: XR = Property(Ident("a", quat), "first")
     BetaReduction.ofXR(ast, Ident("a", quat) to Product.TupleN(listOf(Ident("a'")))) shouldBe
-      Ident("a'")
+        Ident("a'")
   }
 
   "reapplies the beta reduction if the structure changes caseclass" {
     val quat = XRType.LeafProduct("foo")
     val ast: XR = Property(Ident("a", quat), "foo")
     BetaReduction.ofXR(ast, Ident("a", quat) to Product("CC", listOf(("foo" to Ident("a'"))))) shouldBe
-      Ident("a'")
+        Ident("a'")
   }
 
   "applies reduction only once" {
     val ast: XR = Ident("a")
     BetaReduction.ofXR(ast, Ident("a") to Ident("b"), Ident("b") to Ident("c")) shouldBe
-      Ident("b")
+        Ident("b")
   }
 
 })

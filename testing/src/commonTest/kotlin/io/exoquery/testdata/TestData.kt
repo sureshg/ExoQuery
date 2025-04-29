@@ -10,7 +10,8 @@ data class Robot(val ownerId: Int, val name: String, val model: String)
 
 val joes = capture { Table<Person>().filter { p -> p.name == "Joe" } }
 val personTpe = XRType.Product("Person", listOf("id" to XRType.Value, "name" to XRType.Value, "age" to XRType.Value))
-val addressTpe = XRType.Product("Address", listOf("ownerId" to XRType.Value, "street" to XRType.Value, "city" to XRType.Value))
+val addressTpe =
+  XRType.Product("Address", listOf("ownerId" to XRType.Value, "street" to XRType.Value, "city" to XRType.Value))
 val personEnt = XR.Entity("Person", personTpe)
 val addressEnt = XR.Entity("Address", addressTpe)
 val pIdent = XR.Ident("p", personTpe)

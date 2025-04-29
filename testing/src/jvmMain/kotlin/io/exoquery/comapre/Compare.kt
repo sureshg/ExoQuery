@@ -1,7 +1,7 @@
 package io.exoquery.comapre
 
-import io.exoquery.xr.SX
 import io.exoquery.util.toLinkedMap
+import io.exoquery.xr.SX
 import io.exoquery.xr.XR
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
@@ -110,7 +110,12 @@ class Compare(val showSuccess: Boolean = false, val skipFields: List<String> = l
       aValue.isData && bValue.isData -> productNullable(aValue, bValue)
       // NOTE: the aValue.isAnyRef will return `false` if the value is null so can do !! in the body
       else ->
-        Diff.Leaf2(aValue!!::class.simpleName ?: aValue::class.qualifiedName ?: "Value", bValue!!::class.simpleName ?: bValue::class.qualifiedName ?: "Value", aValue, bValue)
+        Diff.Leaf2(
+          aValue!!::class.simpleName ?: aValue::class.qualifiedName ?: "Value",
+          bValue!!::class.simpleName ?: bValue::class.qualifiedName ?: "Value",
+          aValue,
+          bValue
+        )
     }
     //println("------ Compare: $aValue, $bValue -> isNull: ${out == null}")
     out
@@ -138,14 +143,15 @@ class Compare(val showSuccess: Boolean = false, val skipFields: List<String> = l
   }
 
   // Super quick & dirty implementation of optional values for the list comparison (since the type could already be null so we don't want to compare by nullability)
-  private sealed interface Opt <out T> {
+  private sealed interface Opt<out T> {
     fun isSome(): Boolean = this is Some
     fun isNone(): Boolean = this is None
+
     companion object {
       operator fun <T> invoke(value: T?): Opt<T> = value?.let { Some(it) } ?: None
     }
 
-    data class Some<T: Any>(val value: T) : Opt<T>
+    data class Some<T : Any>(val value: T) : Opt<T>
     object None : Opt<Nothing>
   }
 
@@ -250,8 +256,10 @@ class Compare(val showSuccess: Boolean = false, val skipFields: List<String> = l
     else {
       val clsName = a::class.productClassName()
 
-      val aFields = a::class.dataClassProperties().mapNotNull { it.name to tryOrNull { it.getter.call(a) } }.filterNot { it.first in skipFields }
-      val bFields = b::class.dataClassProperties().mapNotNull { it.name to tryOrNull { it.getter.call(b) } }.filterNot { it.first in skipFields }
+      val aFields = a::class.dataClassProperties().mapNotNull { it.name to tryOrNull { it.getter.call(a) } }
+        .filterNot { it.first in skipFields }
+      val bFields = b::class.dataClassProperties().mapNotNull { it.name to tryOrNull { it.getter.call(b) } }
+        .filterNot { it.first in skipFields }
       if (aFields.sortedBy { it.first } == bFields.sortedBy { it.first })
         null
       else {

@@ -1,6 +1,5 @@
-import io.exoquery.sql.PostgresDialect
 import io.exoquery.capture
-import io.exoquery.printSource
+import io.exoquery.sql.PostgresDialect
 
 ////@file:TracesEnabled(TraceType.SqlNormalizations::class, TraceType.Normalizations::class)
 //

@@ -1,7 +1,6 @@
 package io.exoquery
 
 import io.exoquery.sql.PostgresDialect
-import io.exoquery.sql.Renderer
 
 fun main() {
   data class Person(val id: Int, val name: String, val age: Int)
@@ -13,7 +12,8 @@ fun main() {
       Table<Person>().flatMap { p ->
         internal.flatJoin(Table<Address>()) { a -> p.id == a.ownerId }.map { a -> p to a }
           .flatMap { pa ->
-            internal.flatJoin(Table<Robot>()) { r -> pa.first.id == r.ownerId }.map { r -> Triple(pa.first, pa.second, r) }
+            internal.flatJoin(Table<Robot>()) { r -> pa.first.id == r.ownerId }
+              .map { r -> Triple(pa.first, pa.second, r) }
           }
       }
     }

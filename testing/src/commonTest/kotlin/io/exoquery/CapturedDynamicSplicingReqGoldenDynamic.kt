@@ -4,7 +4,7 @@ import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object CapturedDynamicSplicingReqGoldenDynamic: GoldenQueryFile {
+object CapturedDynamicSplicingReqGoldenDynamic : GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "dynamic catpured function with join clauses/XR" to kt(
       """Table(Person).filter { p -> p.name == TagP("0") || p.name == TagP("1") || p.name == TagP("2") }"""

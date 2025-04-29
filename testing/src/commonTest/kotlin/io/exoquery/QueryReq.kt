@@ -1,9 +1,7 @@
 package io.exoquery
 
 import io.exoquery.annotation.CapturedFunction
-import io.exoquery.sql.MySqlDialect
 import io.exoquery.sql.PostgresDialect
-import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 
 // Note that the 1st time you overwrite the golden file it will still fail because the compile is using teh old version
 // Also note that it won't actually override the BasicQuerySanitySpecGolden file unless you change this one
@@ -46,7 +44,8 @@ class QueryReq : GoldenSpecDynamic(QueryReqGoldenDynamic, Mode.ExoGoldenTest(), 
   }
 
   "filter + correlated + value" {
-    val people = capture { Table<Person>().filter { p -> p.age > Table<Person>().map { p -> avg(p.age) - min(p.age) }.value() } }
+    val people =
+      capture { Table<Person>().filter { p -> p.age > Table<Person>().map { p -> avg(p.age) - min(p.age) }.value() } }
     shouldBeGolden(people.xr, "XR")
     shouldBeGolden(people.build<PostgresDialect>())
   }
@@ -57,12 +56,14 @@ class QueryReq : GoldenSpecDynamic(QueryReqGoldenDynamic, Mode.ExoGoldenTest(), 
     shouldBeGolden(people.build<PostgresDialect>())
   }
   "query with union" {
-    val people = capture { (Table<Person>().filter { p -> p.age > 18 } union Table<Person>().filter { p -> p.age < 18 }) }
+    val people =
+      capture { (Table<Person>().filter { p -> p.age > 18 } union Table<Person>().filter { p -> p.age < 18 }) }
     shouldBeGolden(people.xr, "XR")
     shouldBeGolden(people.build<PostgresDialect>())
   }
   "query with unionAll" {
-    val people = capture { (Table<Person>().filter { p -> p.age > 18 } unionAll Table<Person>().filter { p -> p.age < 18 }) }
+    val people =
+      capture { (Table<Person>().filter { p -> p.age > 18 } unionAll Table<Person>().filter { p -> p.age < 18 }) }
     shouldBeGolden(people.xr, "XR")
     shouldBeGolden(people.build<PostgresDialect>())
   }
@@ -83,6 +84,7 @@ class QueryReq : GoldenSpecDynamic(QueryReqGoldenDynamic, Mode.ExoGoldenTest(), 
     fun <T> forUpdate(v: SqlQuery<T>) = capture {
       free("${v} FOR UPDATE").asPure<SqlQuery<T>>()
     }
+
     val q = capture {
       forUpdate(Table<Person>().filter { p -> p.age > 21 })
     }

@@ -1,16 +1,8 @@
 package io.exoquery.sample
 
-import io.exoquery.sql.PostgresDialect
-import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
-import io.exoquery.annotation.CapturedDynamic
 import io.exoquery.annotation.CapturedFunction
 import io.exoquery.capture
-import io.exoquery.capture.invoke
-import io.exoquery.printSource
-import io.exoquery.printSourceBefore
-import io.exoquery.printing.pprintMisc
-import io.exoquery.xr.rekeyRuntimeBinds
 
 fun main() {
   data class Person(val id: Int, val name: String, val age: Int)
@@ -18,9 +10,8 @@ fun main() {
   data class Robot(val ownerId: Int, val model: String)
 
 
-
   @CapturedFunction
-  fun <T: Person> forUpdate(v: SqlQuery<T>) = capture {
+  fun <T : Person> forUpdate(v: SqlQuery<T>) = capture {
     free("${v} FOR UPDATE").asPure<SqlQuery<T>>()
   }
 

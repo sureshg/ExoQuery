@@ -4,7 +4,7 @@ import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object MonadicMachineryReqGoldenDynamic: GoldenQueryFile {
+object MonadicMachineryReqGoldenDynamic : GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "capture.expression.(Row)->Table/XR" to kt(
       "select { val p = from(Table(Person)); val a = from({ p -> Table(Address).join { a -> p.id == a.ownerId }.toExpr }.apply(p)); val r = from({ p -> Table(Robot).join { r -> p.id == r.ownerId }.toExpr }.apply(p)) }"

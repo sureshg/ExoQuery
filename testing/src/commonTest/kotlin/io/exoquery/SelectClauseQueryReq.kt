@@ -3,9 +3,6 @@ package io.exoquery
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Address
 import io.exoquery.testdata.Person
-import io.exoquery.util.TraceType
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.shouldBe
 
 
 class SelectClauseQueryReq : GoldenSpecDynamic(SelectClauseQueryReqGoldenDynamic, Mode.ExoGoldenTest(), {

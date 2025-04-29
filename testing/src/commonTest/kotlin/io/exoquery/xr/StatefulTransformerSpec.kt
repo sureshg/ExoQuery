@@ -1,18 +1,18 @@
 package io.exoquery.xr
 
+import io.exoquery.xr.XR.*
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
-import io.exoquery.xr.XR
-import io.exoquery.xr.XR.*
 
 class StatefulTransformerSpec : FreeSpec({
-  class Subject(override val state: List<XR>, vararg val replace: Pair<XR, XR>): StatefulTransformerSingleRoot<List<XR>> {
+  class Subject(override val state: List<XR>, vararg val replace: Pair<XR, XR>) :
+    StatefulTransformerSingleRoot<List<XR>> {
     override fun <X : XR> root(e: X): Pair<X, StatefulTransformerSingleRoot<List<XR>>> {
       @Suppress("UNCHECKED_CAST")
 
       fun assertIsTypeX(tree: XR) =
         // i.e. `tree` has to be an instance of the class of `e`
-        if(!e::class.isInstance(tree))
+        if (!e::class.isInstance(tree))
           throw IllegalArgumentException("Cannot replace ${e}:${e::class.simpleName} with ${tree}:${tree::class.simpleName} since they have different types")
         else
           tree as X
@@ -21,6 +21,7 @@ class StatefulTransformerSpec : FreeSpec({
       return when {
         rep != null ->
           Pair(assertIsTypeX(rep), Subject(state + e, *replace))
+
         else ->
           Pair(e, this)
       }
@@ -32,22 +33,32 @@ class StatefulTransformerSpec : FreeSpec({
       "entity" {
         val ast: XR = Entity("a")
         Subject(listOf())(ast).let { (at, att) ->
-            at shouldBe ast
-            att.state shouldBe listOf()
+          at shouldBe ast
+          att.state shouldBe listOf()
         }
       }
       "filter" {
         val ast: XR = Filter(Entity("a"), Ident("b"), Ident("c"))
-        Subject(listOf(), Entity("a") to Entity("a'"), Ident("b") to Ident("b'"), Ident("c") to Ident("c'"))(ast).let { (at, att) ->
-            at shouldBe Filter(Entity("a'"), Ident("b"), Ident("c'"))
-            att.state shouldBe listOf(Entity("a"), Ident("c"))
+        Subject(
+          listOf(),
+          Entity("a") to Entity("a'"),
+          Ident("b") to Ident("b'"),
+          Ident("c") to Ident("c'")
+        )(ast).let { (at, att) ->
+          at shouldBe Filter(Entity("a'"), Ident("b"), Ident("c'"))
+          att.state shouldBe listOf(Entity("a"), Ident("c"))
         }
       }
       "map" {
         val ast: XR = Map(Entity("a"), Ident("b"), Ident("c"))
-        Subject(listOf(), Entity("a") to Entity("a'"), Ident("b") to Ident("b'"), Ident("c") to Ident("c'"))(ast).let { (at, att) ->
-            at shouldBe Map(Entity("a'"), Ident("b"), Ident("c'"))
-            att.state shouldBe listOf(Entity("a"), Ident("c"))
+        Subject(
+          listOf(),
+          Entity("a") to Entity("a'"),
+          Ident("b") to Ident("b'"),
+          Ident("c") to Ident("c'")
+        )(ast).let { (at, att) ->
+          at shouldBe Map(Entity("a'"), Ident("b"), Ident("c'"))
+          att.state shouldBe listOf(Entity("a"), Ident("c"))
         }
       }
 //      "filter" in {
@@ -69,9 +80,14 @@ class StatefulTransformerSpec : FreeSpec({
 
       "flatMap" {
         val ast: XR = FlatMap(Entity("a"), Ident("b"), Entity("c"))
-        Subject(listOf(), Entity("a") to Entity("a'"), Ident("b") to Ident("b'"), Entity("c") to Entity("c'"))(ast).let { (at, att) ->
-            at shouldBe FlatMap(Entity("a'"), Ident("b"), Entity("c'"))
-            att.state shouldBe listOf(Entity("a"), Entity("c"))
+        Subject(
+          listOf(),
+          Entity("a") to Entity("a'"),
+          Ident("b") to Ident("b'"),
+          Entity("c") to Entity("c'")
+        )(ast).let { (at, att) ->
+          at shouldBe FlatMap(Entity("a'"), Ident("b"), Entity("c'"))
+          att.state shouldBe listOf(Entity("a"), Entity("c"))
         }
       }
 
@@ -86,9 +102,14 @@ class StatefulTransformerSpec : FreeSpec({
 
       "concatMap" {
         val ast: XR = ConcatMap(Entity("a"), Ident("b"), Ident("c"))
-        Subject(listOf(), Entity("a") to Entity("a'"), Ident("b") to Ident("b'"), Ident("c") to Ident("c'"))(ast).let { (at, att) ->
-            at shouldBe ConcatMap(Entity("a'"), Ident("b"), Ident("c'"))
-            att.state shouldBe listOf(Entity("a"), Ident("c"))
+        Subject(
+          listOf(),
+          Entity("a") to Entity("a'"),
+          Ident("b") to Ident("b'"),
+          Ident("c") to Ident("c'")
+        )(ast).let { (at, att) ->
+          at shouldBe ConcatMap(Entity("a'"), Ident("b"), Ident("c'"))
+          att.state shouldBe listOf(Entity("a"), Ident("c"))
         }
       }
 
@@ -103,9 +124,14 @@ class StatefulTransformerSpec : FreeSpec({
 
       "sortBy" {
         val ast: XR = SortBy(Entity("a"), Ident("b"), Ident("c"), Ordering.AscNullsFirst)
-        Subject(listOf(), Entity("a") to Entity("a'"), Ident("b") to Ident("b'"), Ident("c") to Ident("c'"))(ast).let { (at, att) ->
-            at shouldBe SortBy(Entity("a'"), Ident("b"), Ident("c'"), Ordering.AscNullsFirst)
-            att.state shouldBe listOf(Entity("a"), Ident("c"))
+        Subject(
+          listOf(),
+          Entity("a") to Entity("a'"),
+          Ident("b") to Ident("b'"),
+          Ident("c") to Ident("c'")
+        )(ast).let { (at, att) ->
+          at shouldBe SortBy(Entity("a'"), Ident("b"), Ident("c'"), Ordering.AscNullsFirst)
+          att.state shouldBe listOf(Entity("a"), Ident("c"))
         }
       }
 
@@ -129,16 +155,24 @@ class StatefulTransformerSpec : FreeSpec({
       "globalCall" {
         val ast: XR = GlobalCall(FqName.Empty, listOf(Ident("a"), Ident("b")), CallType.PureFunction, XRType.Value)
         Subject(listOf(), Ident("a") to Ident("a'"), Ident("b") to Ident("b'"))(ast).let { (at, att) ->
-            at shouldBe GlobalCall(FqName.Empty, listOf(Ident("a'"), Ident("b'")), CallType.PureFunction, XRType.Value)
-            att.state shouldBe listOf(Ident("a"), Ident("b"))
+          at shouldBe GlobalCall(FqName.Empty, listOf(Ident("a'"), Ident("b'")), CallType.PureFunction, XRType.Value)
+          att.state shouldBe listOf(Ident("a"), Ident("b"))
         }
       }
 
       "methodCall" {
-        val ast: XR = MethodCall(Ident("a"), "foo", listOf(Ident("b")), CallType.PureFunction, ClassId("a", "b"), XRType.Value)
+        val ast: XR =
+          MethodCall(Ident("a"), "foo", listOf(Ident("b")), CallType.PureFunction, ClassId("a", "b"), XRType.Value)
         Subject(listOf(), Ident("a") to Ident("a'"), Ident("b") to Ident("b'"))(ast).let { (at, att) ->
-            at shouldBe MethodCall(Ident("a'"), "foo", listOf(Ident("b'")), CallType.PureFunction, ClassId("a", "b"), XRType.Value)
-            att.state shouldBe listOf(Ident("a"), Ident("b"))
+          at shouldBe MethodCall(
+            Ident("a'"),
+            "foo",
+            listOf(Ident("b'")),
+            CallType.PureFunction,
+            ClassId("a", "b"),
+            XRType.Value
+          )
+          att.state shouldBe listOf(Ident("a"), Ident("b"))
         }
       }
 
@@ -154,8 +188,8 @@ class StatefulTransformerSpec : FreeSpec({
       "take" {
         val ast: XR = Take(Entity("a"), Ident("b"))
         Subject(listOf(), Entity("a") to Entity("a'"), Ident("b") to Ident("b'"))(ast).let { (at, att) ->
-            at shouldBe Take(Entity("a'"), Ident("b'"))
-            att.state shouldBe listOf(Entity("a"), Ident("b"))
+          at shouldBe Take(Entity("a'"), Ident("b'"))
+          att.state shouldBe listOf(Entity("a"), Ident("b"))
         }
       }
 
@@ -171,8 +205,8 @@ class StatefulTransformerSpec : FreeSpec({
       "drop" {
         val ast: XR = Drop(Entity("a"), Ident("b"))
         Subject(listOf(), Entity("a") to Entity("a'"), Ident("b") to Ident("b'"))(ast).let { (at, att) ->
-            at shouldBe Drop(Entity("a'"), Ident("b'"))
-            att.state shouldBe listOf(Entity("a"), Ident("b"))
+          at shouldBe Drop(Entity("a'"), Ident("b'"))
+          att.state shouldBe listOf(Entity("a"), Ident("b"))
         }
       }
 
@@ -188,8 +222,8 @@ class StatefulTransformerSpec : FreeSpec({
       "union" {
         val ast: XR = Union(Entity("a"), Entity("b"))
         Subject(listOf(), Entity("a") to Entity("a'"), Entity("b") to Entity("b'"))(ast).let { (at, att) ->
-            at shouldBe Union(Entity("a'"), Entity("b'"))
-            att.state shouldBe listOf(Entity("a"), Entity("b"))
+          at shouldBe Union(Entity("a'"), Entity("b'"))
+          att.state shouldBe listOf(Entity("a"), Entity("b"))
         }
       }
 
@@ -205,8 +239,8 @@ class StatefulTransformerSpec : FreeSpec({
       "unionAll" {
         val ast: XR = UnionAll(Entity("a"), Entity("b"))
         Subject(listOf(), Entity("a") to Entity("a'"), Entity("b") to Entity("b'"))(ast).let { (at, att) ->
-            at shouldBe UnionAll(Entity("a'"), Entity("b'"))
-            att.state shouldBe listOf(Entity("a"), Entity("b"))
+          at shouldBe UnionAll(Entity("a'"), Entity("b'"))
+          att.state shouldBe listOf(Entity("a"), Entity("b"))
         }
       }
 
@@ -222,16 +256,16 @@ class StatefulTransformerSpec : FreeSpec({
       "flat join" {
         val ast: XR = FlatJoin(JoinType.Inner, Entity("a"), Ident("b"), Ident("c"))
         Subject(listOf(), Entity("a") to Entity("a'"), Ident("c") to Ident("c'"))(ast).let { (at, att) ->
-            at shouldBe FlatJoin(JoinType.Inner, Entity("a'"), Ident("b"), Ident("c'"))
-            att.state shouldBe listOf(Entity("a"), Ident("c"))
+          at shouldBe FlatJoin(JoinType.Inner, Entity("a'"), Ident("b"), Ident("c'"))
+          att.state shouldBe listOf(Entity("a"), Ident("c"))
         }
       }
 
       "distinct" {
         val ast: XR = Distinct(Entity("a"))
         Subject(listOf(), Entity("a") to Entity("a'"))(ast).let { (at, att) ->
-            at shouldBe Distinct(Entity("a'"))
-            att.state shouldBe listOf(Entity("a"))
+          at shouldBe Distinct(Entity("a'"))
+          att.state shouldBe listOf(Entity("a"))
         }
 
       }

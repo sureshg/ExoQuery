@@ -4,7 +4,7 @@ import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object NamingAnnotationReqGoldenDynamic: GoldenQueryFile {
+object NamingAnnotationReqGoldenDynamic : GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "naming overrides should work in the correct order/in a query/XR" to kt(
       "Table(person_annotated).filter { it -> it.first_name == Joe && it.last_name == Bloggs }"

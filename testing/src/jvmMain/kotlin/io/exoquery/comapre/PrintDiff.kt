@@ -2,18 +2,14 @@ package io.exoquery.comapre
 
 import io.exoquery.fansi.Bold
 import io.exoquery.fansi.Str
-import io.exoquery.pprint.PPrinter
-import io.exoquery.pprint.PPrinterConfig
-import io.exoquery.pprint.Renderer
-import io.exoquery.pprint.Tree
+import io.exoquery.pprint.*
 import io.exoquery.pprint.Tree.Apply
 import io.exoquery.pprint.Tree.KeyValue
-import io.exoquery.pprint.Truncated
 import io.exoquery.printing.PrintXR
 import io.exoquery.xr.XR
 import io.exoquery.fansi.Color as FansiColor
 
-class PrintDiff(val defaultWidth: Int = 150): PPrinter(
+class PrintDiff(val defaultWidth: Int = 150) : PPrinter(
   PPrinterConfig(
     defaultWidth = defaultWidth,
     defaultIndent = 2
@@ -38,11 +34,11 @@ class PrintDiff(val defaultWidth: Int = 150): PPrinter(
   // Show field names e.g.
   // Property(ir = Ident(name = "inst"), name = "currentDate") vs
   // Property(Ident("inst"), "currentDate")
-  val showFieldNames                = false
-  val escapeUnicode                 = false
-  val defaultHeight: Int            = Integer.MAX_VALUE
-  val defaultIndent: Int            = 2
-  var verbose: Boolean              = false
+  val showFieldNames = false
+  val escapeUnicode = false
+  val defaultHeight: Int = Integer.MAX_VALUE
+  val defaultIndent: Int = 2
+  var verbose: Boolean = false
 
   fun apply(x: Any, verbose: Boolean = false): Str {
     this.verbose = verbose
@@ -51,9 +47,9 @@ class PrintDiff(val defaultWidth: Int = 150): PPrinter(
   }
 
   fun tokenize(x: Any): List<Str> {
-    val tree      = this.treeify(x, null, escapeUnicode, showFieldNames)
-    val renderer  = Renderer(defaultWidth, config.colorApplyPrefix, config.colorLiteral, defaultIndent)
-    val rendered  = renderer.rec(tree, 0, 0).iter
+    val tree = this.treeify(x, null, escapeUnicode, showFieldNames)
+    val renderer = Renderer(defaultWidth, config.colorApplyPrefix, config.colorLiteral, defaultIndent)
+    val rendered = renderer.rec(tree, 0, 0).iter
     val truncated = Truncated(rendered, defaultWidth, defaultHeight)
     return truncated.toResult().iter.asSequence().toList()
   }
@@ -140,8 +136,6 @@ class PrintDiff(val defaultWidth: Int = 150): PPrinter(
   }
 
 
-
-
   // Scala:
 //def duplicateTree(tree: Tree): (Tree, Tree) =
 //  tree match {
@@ -180,16 +174,19 @@ class PrintDiff(val defaultWidth: Int = 150): PPrinter(
         val (aBody, bBody) = tree.body.asSequence().map { duplicateTree(it) }.unzip()
         Pair(Apply(tree.prefix, aBody.iterator()), Apply(tree.prefix, bBody.iterator()))
       }
+
       is KeyValue -> {
         val (value1, value2) = duplicateTree(tree.value)
         Pair(KeyValue(tree.key, value1), KeyValue(tree.key, value2))
       }
+
       is Tree.Lazy -> Pair(tree, tree)
       is Tree.Infix -> {
         val (lhs1, lhs2) = duplicateTree(tree.lhs)
         val (rhs1, rhs2) = duplicateTree(tree.rhs)
         Pair(Tree.Infix(lhs1, tree.op, rhs1), Tree.Infix(lhs2, tree.op, rhs2))
       }
+
       is Tree.Literal -> Pair(tree, tree)
     }
   }
@@ -212,7 +209,12 @@ class PrintDiff(val defaultWidth: Int = 150): PPrinter(
         when (tree) {
           is Apply -> Apply(tree.prefix, tree.body.asSequence().map { truncateDepthRec(it, currDepth + 1) }.iterator())
           is Tree.Lazy -> tree // don't do anything ro lazy values
-          is Tree.Infix -> Tree.Infix(truncateDepthRec(tree.lhs, currDepth + 1), tree.op, truncateDepthRec(tree.rhs, currDepth + 1))
+          is Tree.Infix -> Tree.Infix(
+            truncateDepthRec(tree.lhs, currDepth + 1),
+            tree.op,
+            truncateDepthRec(tree.rhs, currDepth + 1)
+          )
+
           is Tree.Literal -> tree
           is KeyValue -> KeyValue(tree.key, truncateDepthRec(tree.value, currDepth + 1))
         }
@@ -256,40 +258,42 @@ class PrintDiff(val defaultWidth: Int = 150): PPrinter(
   private fun LeftKV(value: Tree): KeyValue = KeyValue(Bold.On(FansiColor.Blue("LEFT")).toString(), value)
   private fun RightKV(value: Tree): KeyValue = KeyValue(Bold.On(FansiColor.Red("RIGHT")).toString(), value)
 
-  override fun treeify(x: Any?, elementName: String?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree = when(x) {
-    is Compare.Diff.Match ->
-      Apply(
-        "Match",
-        listOf(
-          LeftKV(Tree.Literal(x.leftValue.toString() ?: "<Null>")),
-          RightKV(Tree.Literal(x.rightValue.toString() ?: "<Null>"))
-        ).iterator()
-      )
+  override fun treeify(x: Any?, elementName: String?, escapeUnicode: Boolean, showFieldNames: Boolean): Tree =
+    when (x) {
+      is Compare.Diff.Match ->
+        Apply(
+          "Match",
+          listOf(
+            LeftKV(Tree.Literal(x.leftValue.toString() ?: "<Null>")),
+            RightKV(Tree.Literal(x.rightValue.toString() ?: "<Null>"))
+          ).iterator()
+        )
 
-    is Compare.Diff.Leaf -> {
-      val leftRaw  = treeify(x.a, null, escapeUnicode, showFieldNames)
-      val rightRaw = treeify(x.b, null, escapeUnicode, showFieldNames)
-      val (a, b) = truncateSmallerTree(leftRaw, rightRaw)
-      Apply(
-        "Diff (Leaf)",
-        listOf(
-          LeftKV(a),
-          RightKV(b)
-        ).iterator()
-      )
-    }
-    is Compare.Diff.Leaf2 -> {
-      val leftRaw  = treeify(x.a, null, escapeUnicode, showFieldNames)
-      val rightRaw = treeify(x.b, null, escapeUnicode, showFieldNames)
-      val (a, b) = truncateSmallerTree(leftRaw, rightRaw)
-      Apply(
-        "Diff (Leaf-2cls)",
-        listOf(
-          LeftKV(a),
-          RightKV(b)
-        ).iterator()
-      )
-    }
+      is Compare.Diff.Leaf -> {
+        val leftRaw = treeify(x.a, null, escapeUnicode, showFieldNames)
+        val rightRaw = treeify(x.b, null, escapeUnicode, showFieldNames)
+        val (a, b) = truncateSmallerTree(leftRaw, rightRaw)
+        Apply(
+          "Diff (Leaf)",
+          listOf(
+            LeftKV(a),
+            RightKV(b)
+          ).iterator()
+        )
+      }
+
+      is Compare.Diff.Leaf2 -> {
+        val leftRaw = treeify(x.a, null, escapeUnicode, showFieldNames)
+        val rightRaw = treeify(x.b, null, escapeUnicode, showFieldNames)
+        val (a, b) = truncateSmallerTree(leftRaw, rightRaw)
+        Apply(
+          "Diff (Leaf-2cls)",
+          listOf(
+            LeftKV(a),
+            RightKV(b)
+          ).iterator()
+        )
+      }
 
 //    case s: Compare.Diff.Set =>
 //      Tree.Apply(
@@ -301,15 +305,21 @@ class PrintDiff(val defaultWidth: Int = 150): PPrinter(
 //      )
 //
 
-    is Compare.Diff.Set -> {
-      Apply(
-        x.typename,
-        listOf(
-          Apply(Blue("ONLY_LEFT"), x.onlyLeft.toList().map { treeify(it, null, escapeUnicode, showFieldNames) }.iterator()),
-          Apply(Red("ONLY_RIGHT"), x.onlyRight.toList().map { treeify(it, null, escapeUnicode, showFieldNames) }.iterator())
-        ).iterator()
-      )
-    }
+      is Compare.Diff.Set -> {
+        Apply(
+          x.typename,
+          listOf(
+            Apply(
+              Blue("ONLY_LEFT"),
+              x.onlyLeft.toList().map { treeify(it, null, escapeUnicode, showFieldNames) }.iterator()
+            ),
+            Apply(
+              Red("ONLY_RIGHT"),
+              x.onlyRight.toList().map { treeify(it, null, escapeUnicode, showFieldNames) }.iterator()
+            )
+          ).iterator()
+        )
+      }
 //    case m: Compare.Diff.MissingLeft =>
 //      Tree.Apply(
 //        "Diff",
@@ -328,24 +338,25 @@ class PrintDiff(val defaultWidth: Int = 150): PPrinter(
 //        ).iterator
 //      )
 //
-    is Compare.Diff.MissingLeft -> {
-      Apply(
-        "Diff",
-        listOf(
-          LeftKV(Tree.Literal("Missing")),
-          RightKV(treeify(x.rightValue, null, escapeUnicode, showFieldNames))
-        ).iterator()
-      )
-    }
-    is Compare.Diff.MissingRight -> {
-      Apply(
-        "Diff",
-        listOf(
-          LeftKV(treeify(x.leftValue, null, escapeUnicode, showFieldNames)),
-          RightKV(Tree.Literal("Missing"))
-        ).iterator()
-      )
-    }
+      is Compare.Diff.MissingLeft -> {
+        Apply(
+          "Diff",
+          listOf(
+            LeftKV(Tree.Literal("Missing")),
+            RightKV(treeify(x.rightValue, null, escapeUnicode, showFieldNames))
+          ).iterator()
+        )
+      }
+
+      is Compare.Diff.MissingRight -> {
+        Apply(
+          "Diff",
+          listOf(
+            LeftKV(treeify(x.leftValue, null, escapeUnicode, showFieldNames)),
+            RightKV(Tree.Literal("Missing"))
+          ).iterator()
+        )
+      }
 
 //    case s: Compare.Diff.Sequence =>
 //      Tree.Apply(
@@ -370,33 +381,34 @@ class PrintDiff(val defaultWidth: Int = 150): PPrinter(
 //  }
 //}
 
-    is Compare.Diff.Sequence -> {
-      Apply(
-        x.typename,
-        x.fields.toList()
-          .sortedBy { it.first }
-          .map { (key, diff) ->
-            KeyValue(key, treeify(diff, null, escapeUnicode, showFieldNames))
-          }
-          .iterator()
-      )
+      is Compare.Diff.Sequence -> {
+        Apply(
+          x.typename,
+          x.fields.toList()
+            .sortedBy { it.first }
+            .map { (key, diff) ->
+              KeyValue(key, treeify(diff, null, escapeUnicode, showFieldNames))
+            }
+            .iterator()
+        )
+      }
+
+      is Compare.Diff.Object -> {
+        Apply(
+          x.typename,
+          x.fields.map { (name, value) ->
+            KeyValue(name, treeify(value, null, escapeUnicode, showFieldNames))
+          }.iterator()
+        )
+      }
+
+      is XR -> PrintXR(XR.serializer(), config).treeify(x, elementName, escapeUnicode, showFieldNames)
+
+      // Getting lots of error from the field seen0 from the parent level printout in pprint ProductSupport so for now just use toString to avoid:
+      // io.exoquery.BasicSelectClauseQuotationSpec[jvm] > parsing features spec[jvm] > from + join[jvm] FAILED
+      //    java.lang.IllegalStateException: The parameter name 'seen0' of io.exoquery.xr.XR.Location.File could not be found within the list of members: [val io.exoquery.xr.XR.Location.File.col: kotlin.Int, val io.exoquery.xr.XR.Location.File.path: kotlin.String, val io.exoquery.xr.XR.Location.File.row: kotlin.Int]
+      //else -> super.treeify(x, elementName, escapeUnicode, showFieldNames)
+
+      else -> Tree.Literal(x.toString(), elementName)
     }
-    is Compare.Diff.Object -> {
-      Apply(
-        x.typename,
-        x.fields.map { (name, value) ->
-          KeyValue(name, treeify(value, null, escapeUnicode, showFieldNames))
-        }.iterator()
-      )
-    }
-
-    is XR -> PrintXR(XR.serializer(), config).treeify(x, elementName, escapeUnicode, showFieldNames)
-
-    // Getting lots of error from the field seen0 from the parent level printout in pprint ProductSupport so for now just use toString to avoid:
-    // io.exoquery.BasicSelectClauseQuotationSpec[jvm] > parsing features spec[jvm] > from + join[jvm] FAILED
-    //    java.lang.IllegalStateException: The parameter name 'seen0' of io.exoquery.xr.XR.Location.File could not be found within the list of members: [val io.exoquery.xr.XR.Location.File.col: kotlin.Int, val io.exoquery.xr.XR.Location.File.path: kotlin.String, val io.exoquery.xr.XR.Location.File.row: kotlin.Int]
-    //else -> super.treeify(x, elementName, escapeUnicode, showFieldNames)
-
-    else -> Tree.Literal(x.toString(), elementName)
-  }
 }

@@ -1,8 +1,6 @@
 package io.exoquery
 
-import io.exoquery.annotation.TracesEnabled
 import io.exoquery.sql.PostgresDialect
-import io.exoquery.util.TraceType
 
 class EmbeddedDistinctReq : GoldenSpecDynamic(EmbeddedDistinctReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "queries with embedded entities should" - {
@@ -29,6 +27,7 @@ class EmbeddedDistinctReq : GoldenSpecDynamic(EmbeddedDistinctReqGoldenDynamic, 
     "function property inside of nested distinct queries" {
       data class Emb(val a: Int, val b: Int)
       data class Parent(val id: Int, val emb1: Emb)
+
       val q = capture {
         Table<Emb>().map { e -> Parent(1, e) }.distinct()
       }
@@ -39,6 +38,7 @@ class EmbeddedDistinctReq : GoldenSpecDynamic(EmbeddedDistinctReqGoldenDynamic, 
     "function property inside of nested distinct queries - tuple" {
       data class Emb(val a: Int, val b: Int)
       data class Parent(val id: Int, val emb1: Emb)
+
       val q = capture {
         Table<Emb>().map { e -> Parent(1, e) }.distinct().map { p -> 2 to p }.distinct()
       }
@@ -58,6 +58,7 @@ class EmbeddedDistinctReq : GoldenSpecDynamic(EmbeddedDistinctReqGoldenDynamic, 
     "function property inside of nested distinct queries through tuples" {
       data class Emb(val a: Int, val b: Int)
       data class Parent(val id: Int, val emb1: Emb)
+
       val q = capture {
         Table<Emb>().map { e -> 1 to e }.distinct().map { t -> Parent(t.first, t.second) }.distinct()
       }
@@ -69,6 +70,7 @@ class EmbeddedDistinctReq : GoldenSpecDynamic(EmbeddedDistinctReqGoldenDynamic, 
       data class Emb(val a: Int, val b: Int)
       data class Parent(val idP: Int, val emb1: Emb)
       data class Grandparent(val idG: Int, val par: Parent)
+
       val q = capture {
         Table<Emb>().map { e -> Parent(1, e) }.distinct().map { p -> Grandparent(2, p) }.distinct()
       }
@@ -80,9 +82,11 @@ class EmbeddedDistinctReq : GoldenSpecDynamic(EmbeddedDistinctReqGoldenDynamic, 
       data class Emb(val a: Int, val b: Int)
       data class Parent(val idP: Int, val emb1: Emb)
       data class Grandparent(val idG: Int, val par: Parent)
+
       val q = capture {
         // Not right result. Need to debug this
-        Table<Emb>().map { e -> Parent(1, e) }.distinct().map { p -> Grandparent(2, p) }.distinct().map { g -> 3 to g }.distinct()
+        Table<Emb>().map { e -> Parent(1, e) }.distinct().map { p -> Grandparent(2, p) }.distinct().map { g -> 3 to g }
+          .distinct()
       }
       shouldBeGolden(q.xr, "XR")
       shouldBeGolden(q.build<PostgresDialect>(), "SQL")

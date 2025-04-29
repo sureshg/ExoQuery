@@ -2,9 +2,8 @@ package io.exoquery
 
 import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
-import io.exoquery.printing.kt
 
-object BasicSelectClauseQuotationSpecGolden: GoldenQueryFile {
+object BasicSelectClauseQuotationSpecGolden : GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "from + join -> (p, r)" to cr(
       "SELECT p.id, p.name, p.age, r.ownerId, r.model FROM Person p INNER JOIN Robot r ON p.id = r.ownerId"

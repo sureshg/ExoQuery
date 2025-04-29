@@ -1,7 +1,6 @@
 package io.exoquery
 
 import io.exoquery.sql.PostgresDialect
-import io.exoquery.sql.Renderer
 
 fun main() {
   data class Name(val first: String, val last: String)
@@ -48,8 +47,6 @@ fun main() {
       //insert<PersonSimple> { setParams(p) }.returningKeys { name to age }//.returningKeys()
       //insert<PersonSimple> { set(name to "Joe", age to 123) }
     }
-
-
 
 
   //println(s)

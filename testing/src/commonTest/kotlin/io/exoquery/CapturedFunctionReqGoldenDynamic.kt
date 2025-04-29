@@ -4,7 +4,7 @@ import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object CapturedFunctionReqGoldenDynamic: GoldenQueryFile {
+object CapturedFunctionReqGoldenDynamic : GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "static function capture - structural tests/cap { capFun(Table) }/XR" to kt(
       "{ people -> people.filter { p -> p.name == Joe } }.toQuery.apply(Table(Person))"

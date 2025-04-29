@@ -5,7 +5,8 @@ import io.exoquery.serial.contextualSerializer
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.sql.Renderer
 import io.exoquery.testdata.Person
-import io.exoquery.testdata.*
+import io.exoquery.testdata.pIdent
+import io.exoquery.testdata.personEnt
 import io.exoquery.xr.OP
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
@@ -33,20 +34,44 @@ class ParamSpec : FreeSpec({
       build.token.build() shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ?"
       val buildDet = build.determinizeDynamics()
       buildDet.token.renderWith(Renderer()) shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:name}"
-      buildDet.params.map { it.withNonStrictEquality() } shouldBe listOf(ParamSingle(BID("0"), "name", ParamSerializer.String))
+      buildDet.params.map { it.withNonStrictEquality() } shouldBe listOf(
+        ParamSingle(
+          BID("0"),
+          "name",
+          ParamSerializer.String
+        )
+      )
 
       val buildRuntime = cap.buildRuntime(PostgresDialect(), null)
       buildRuntime.token.build() shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ?"
       val buildRuntimeDet = buildRuntime.determinizeDynamics()
       buildRuntimeDet.token.renderWith(Renderer()) shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:name}"
-      buildRuntimeDet.params.map { it.withNonStrictEquality() } shouldBe listOf(ParamSingle(BID("0"), "name", ParamSerializer.String))
+      buildRuntimeDet.params.map { it.withNonStrictEquality() } shouldBe listOf(
+        ParamSingle(
+          BID("0"),
+          "name",
+          ParamSerializer.String
+        )
+      )
     }
     "params" {
       // TODO need to also test dynamic-path of this
-      val cap = capture { Table<Person>().filter { p -> p.name in params(listOf("name1", "name2")) } }.determinizeDynamics()
+      val cap =
+        capture { Table<Person>().filter { p -> p.name in params(listOf("name1", "name2")) } }.determinizeDynamics()
       cap shouldBe SqlQuery(
         // It should be a standard filter but the `in` should be rendered as a list.contains(value) XR.MethodCall instances
-        XR.Filter(personEnt, pIdent, XR.MethodCall(XR.TagForParam.valueTag("0"), "contains", listOf(XR.Property(pIdent, "name")), XR.CallType.PureFunction, XR.ClassId("io.exoquery", "Params"), XRType.Value)),
+        XR.Filter(
+          personEnt,
+          pIdent,
+          XR.MethodCall(
+            XR.TagForParam.valueTag("0"),
+            "contains",
+            listOf(XR.Property(pIdent, "name")),
+            XR.CallType.PureFunction,
+            XR.ClassId("io.exoquery", "Params"),
+            XRType.Value
+          )
+        ),
         RuntimeSet.Empty,
         ParamSet(listOf(ParamMulti(BID("0"), listOf("name1", "name2"), ParamSerializer.String)))
       )
@@ -54,13 +79,25 @@ class ParamSpec : FreeSpec({
       build.token.build() shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN (?, ?)"
       val buildDet = build.determinizeDynamics()
       buildDet.token.renderWith(Renderer()) shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN ({0:[name1, name2]})"
-      buildDet.params.map { it.withNonStrictEquality() } shouldBe listOf(ParamMulti(BID("0"), listOf("name1", "name2"), ParamSerializer.String))
+      buildDet.params.map { it.withNonStrictEquality() } shouldBe listOf(
+        ParamMulti(
+          BID("0"),
+          listOf("name1", "name2"),
+          ParamSerializer.String
+        )
+      )
 
       val buildRuntime = cap.buildRuntime(PostgresDialect(), null)
       buildRuntime.token.build() shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN (?, ?)"
       val buildRuntimeDet = buildRuntime.determinizeDynamics()
       buildRuntimeDet.token.renderWith(Renderer()) shouldBe "SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN ({0:[name1, name2]})"
-      buildRuntimeDet.params.map { it.withNonStrictEquality() } shouldBe listOf(ParamMulti(BID("0"), listOf("name1", "name2"), ParamSerializer.String))
+      buildRuntimeDet.params.map { it.withNonStrictEquality() } shouldBe listOf(
+        ParamMulti(
+          BID("0"),
+          listOf("name1", "name2"),
+          ParamSerializer.String
+        )
+      )
     }
   }
   "param" - {
@@ -84,6 +121,7 @@ class ParamSpec : FreeSpec({
 
   @Serializable
   data class MyCustomDate(val year: Int, val month: Int, val day: Int)
+
   val myDate = MyCustomDate(2021, 1, 1)
 
   "paramCtx" - {
@@ -150,7 +188,7 @@ class ParamSpec : FreeSpec({
   }
 
   "params" {
-    val myList = listOf(1,2,3)
+    val myList = listOf(1, 2, 3)
     val cap = capture.expression { params(myList) }
     cap.xr.type shouldBe XRType.Value
     cap.determinizeDynamics() shouldBe SqlExpression(

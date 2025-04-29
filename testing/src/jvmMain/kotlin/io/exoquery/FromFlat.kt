@@ -1,8 +1,5 @@
 package io.exoquery
 
-import io.exoquery.annotation.CapturedFunction
-
-
 
 //fun main() {
 //  data class Person(val id: Int, val name: String, val age: Int)

@@ -2,7 +2,6 @@
 
 package io.exoquery
 
-import io.exoquery.capture.select
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Address
 import io.exoquery.testdata.Person
@@ -19,7 +18,7 @@ class QueryAdvancedReq : GoldenSpec(QueryAdvancedReqGolden, {
     val people =
       capture.select {
         val p = from(Table<Person>().filter { p -> p.age > 18 })
-        val a = join(Table<Address>().filter { a -> a.street == "123 St." }){ a -> a.ownerId == p.id }
+        val a = join(Table<Address>().filter { a -> a.street == "123 St." }) { a -> a.ownerId == p.id }
         p to a
       }
     people.buildPretty<PostgresDialect>("select clause + join + nested filters").shouldBeGolden()
@@ -30,7 +29,7 @@ class QueryAdvancedReq : GoldenSpec(QueryAdvancedReqGolden, {
         val pa = from(
           capture.select {
             val p = from(Table<Person>())
-            val a = join(Table<Address>()){ a -> a.ownerId == p.id }
+            val a = join(Table<Address>()) { a -> a.ownerId == p.id }
             p to a
           }
         )

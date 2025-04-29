@@ -12,13 +12,15 @@ class QuerySpecCorrelated : GoldenSpecDynamic(QuerySpecCorrelatedGoldenDynamic, 
 
 
   "query with co-releated in filter - isNotEmpty" {
-    val people = capture { Table<Person>().filter { p -> Table<Address>().filter { a -> a.ownerId == p.id }.isNotEmpty() } }
+    val people =
+      capture { Table<Person>().filter { p -> Table<Address>().filter { a -> a.ownerId == p.id }.isNotEmpty() } }
     shouldBeGolden(people.xr, "XR")
     shouldBeGolden(people.build<PostgresDialect>())
   }
 
   "query with co-releated in filter - isEmpty" {
-    val people = capture { Table<Person>().filter { p -> Table<Address>().filter { a -> a.ownerId == p.id }.isEmpty() } }
+    val people =
+      capture { Table<Person>().filter { p -> Table<Address>().filter { a -> a.ownerId == p.id }.isEmpty() } }
     shouldBeGolden(people.xr, "XR")
     shouldBeGolden(people.build<PostgresDialect>())
   }

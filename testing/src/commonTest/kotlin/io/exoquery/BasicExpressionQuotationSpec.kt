@@ -23,7 +23,12 @@ class BasicExpressionQuotationSpec : FreeSpec({
 
       // Note that loc properties are different but those are not used in XR equals functions
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
-        XR.Const.Int(789) `+++` (XR.Const.Int(123) `+++` XR.TagForParam(BID("0"), XR.ParamType.Single, XRType.Value, XR.Location.Synth)),
+        XR.Const.Int(789) `+++` (XR.Const.Int(123) `+++` XR.TagForParam(
+          BID("0"),
+          XR.ParamType.Single,
+          XRType.Value,
+          XR.Location.Synth
+        )),
         RuntimeSet.Empty,
         ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
       )
@@ -32,7 +37,12 @@ class BasicExpressionQuotationSpec : FreeSpec({
       fun cap0() = capture.expression { 123 + param(456) }
       val cap = capture.expression { 789 + cap0().use }
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
-        XR.Const.Int(789) `+++` (XR.Const.Int(123) `+++` XR.TagForParam(BID("0"), XR.ParamType.Single, XRType.Value, XR.Location.Synth)),
+        XR.Const.Int(789) `+++` (XR.Const.Int(123) `+++` XR.TagForParam(
+          BID("0"),
+          XR.ParamType.Single,
+          XRType.Value,
+          XR.Location.Synth
+        )),
         RuntimeSet.Empty,
         ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
       )
@@ -41,7 +51,12 @@ class BasicExpressionQuotationSpec : FreeSpec({
       fun cap0(input: Int) = capture.expression { 123 + param(input) }
       val cap = capture.expression { 789 + cap0(456).use }
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
-        XR.Const.Int(789) `+++` (XR.Const.Int(123) `+++` XR.TagForParam(BID("0"), XR.ParamType.Single, XRType.Value, XR.Location.Synth)),
+        XR.Const.Int(789) `+++` (XR.Const.Int(123) `+++` XR.TagForParam(
+          BID("0"),
+          XR.ParamType.Single,
+          XRType.Value,
+          XR.Location.Synth
+        )),
         RuntimeSet.Empty,
         ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
       )
@@ -51,6 +66,7 @@ class BasicExpressionQuotationSpec : FreeSpec({
       class Foo {
         val cap0 = capture.expression { 456 + param(456) }
       }
+
       val f = Foo()
       val cap = capture.expression { 789 + f.cap0.use }
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
@@ -63,6 +79,7 @@ class BasicExpressionQuotationSpec : FreeSpec({
       class Foo {
         fun cap0() = capture.expression { 456 }
       }
+
       val f = Foo()
       val cap = capture.expression { 789 + f.cap0().use }
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
@@ -75,12 +92,14 @@ class BasicExpressionQuotationSpec : FreeSpec({
   "dynamic quotation mechanics" - {
     "c0D=dyn{nA}, c={nB+c0D} -> {nB+T(B0),R={B0,nA}}" {
       val x = true
+
       @CapturedDynamic
       fun cap0() =
         if (x)
           capture.expression { 123 }
         else
           capture.expression { 456 }
+
       val cap = capture.expression { 789 + cap0().use }
 
       cap.determinizeDynamics() shouldBeEqual SqlExpression(
@@ -91,11 +110,13 @@ class BasicExpressionQuotationSpec : FreeSpec({
     }
     "cls Foo{c0D=dyn{nA+lift}}, f=Foo, c={nB+f.c0D} -> {nB+T(B0),R={B0,nA+lift}}" {
       val v = true
+
       class Foo {
         @CapturedDynamic
         val cap0 =
           if (v) capture.expression { 456 + param(456) } else capture.expression { 456 + param(999) }
       }
+
       val f = Foo()
       val cap = capture.expression { 789 + f.cap0.use }
 
@@ -104,22 +125,24 @@ class BasicExpressionQuotationSpec : FreeSpec({
         XR.Const.Int(789) `+++` XR.TagForSqlExpression(BID("1"), XRType.Value),
         RuntimeSet.of(
           BID("1") to
-          SqlExpression<Any>(
-            XR.Const.Int(456) `+++` XR.TagForParam(BID("0"), XR.ParamType.Single, XRType.Value),
-            RuntimeSet.of(),
-            ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
-          )
+              SqlExpression<Any>(
+                XR.Const.Int(456) `+++` XR.TagForParam(BID("0"), XR.ParamType.Single, XRType.Value),
+                RuntimeSet.of(),
+                ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
+              )
         ),
         ParamSet.of()
       )
     }
     "cls Foo{c0D(i)=dyn{nA+lift(i)}}, f=Foo, c={nB+f.c0D(nn)} -> {nB+T(B0),R={B0,nA+lift(nn)}}" {
       val v = true
+
       class Foo {
         @CapturedDynamic
         fun cap0(input: Int) =
           if (v) capture.expression { 456 + param(input) } else capture.expression { 456 + param(999) }
       }
+
       val f = Foo()
       val cap = capture.expression { 789 + f.cap0(456).use }
 
@@ -127,11 +150,11 @@ class BasicExpressionQuotationSpec : FreeSpec({
         XR.Const.Int(789) `+++` XR.TagForSqlExpression(BID("1"), XRType.Value),
         RuntimeSet.of(
           BID("1") to
-          SqlExpression<Any>(
-            XR.Const.Int(456) `+++` XR.TagForParam(BID("0"), XR.ParamType.Single, XRType.Value),
-            RuntimeSet.of(),
-            ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
-          )
+              SqlExpression<Any>(
+                XR.Const.Int(456) `+++` XR.TagForParam(BID("0"), XR.ParamType.Single, XRType.Value),
+                RuntimeSet.of(),
+                ParamSet(listOf(ParamSingle(BID("0"), 456, ParamSerializer.Int)))
+              )
         ),
         ParamSet.of()
       )

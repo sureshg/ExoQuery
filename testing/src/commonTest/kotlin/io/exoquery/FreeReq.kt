@@ -73,7 +73,19 @@ class FreeReq : GoldenSpecDynamic(FreeReqGoldenDynamic, Mode.ExoGoldenTest(), {
     }
     "direct action in free" {
       val free = capture {
-        free("beforeStuff() ${insert<Person> { setParams(Person(1, "Joe", 123)) }} afterStuff()").asPure<SqlAction<Person, Long>>()
+        free(
+          "beforeStuff() ${
+            insert<Person> {
+              setParams(
+                Person(
+                  1,
+                  "Joe",
+                  123
+                )
+              )
+            }
+          } afterStuff()"
+        ).asPure<SqlAction<Person, Long>>()
       }
       shouldBeGolden(free.build<PostgresDialect>().determinizeDynamics())
     }

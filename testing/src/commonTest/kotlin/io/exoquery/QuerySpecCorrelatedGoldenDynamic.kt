@@ -4,7 +4,7 @@ import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object QuerySpecCorrelatedGoldenDynamic: GoldenQueryFile {
+object QuerySpecCorrelatedGoldenDynamic : GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "query with co-releated in filter - isNotEmpty/XR" to kt(
       "Table(Person).filter { p -> Table(Address).filter { a -> a.ownerId == p.id }.isNotEmpty_MC() }"

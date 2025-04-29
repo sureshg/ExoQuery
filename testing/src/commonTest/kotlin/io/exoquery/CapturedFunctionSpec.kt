@@ -1,7 +1,7 @@
 package io.exoquery
 
 import io.exoquery.annotation.CapturedFunction
-import io.exoquery.testdata.*
+import io.exoquery.testdata.Person
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 

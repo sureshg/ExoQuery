@@ -1,4 +1,5 @@
 # ExoQuery
+
 Language Integrated Query for Kotlin Multiplatform
 
 * SQL Queries at Compile Time
@@ -16,26 +17,33 @@ Language Integrated Query for Kotlin Multiplatform
 ---
 
 Let's say something like:
+
 ```kotlin
 people.map { p -> p.name }
 ```
 
 Naturally we're pretty sure it should look something like:
+
 ```sql
-SELECT name FROM Person
+SELECT name
+FROM Person
 ```
 
 That is why in C# when you write a statement like this:
+
 ```csharp
 var q = people.Select(p => p.name);   // Select is C#'s .map function
 ```
+
 In LINQ we understand that it's this:
+
 ```csharp
 var q = from p in people
         select p.name
 ```
 
 So in Kotlin, let's just do this:
+
 ```kotlin
 val q = capture.select {
   val p = from(people)
@@ -44,6 +52,7 @@ val q = capture.select {
 ```
 
 Then build it for a specific SQL dialect and run it on a database!
+
 ```kotlin
 val data: List<Person> = q.buildFor.Postgres().runOn(myDatabase)
 //> SELECT p.name FROM Person p
@@ -56,10 +65,14 @@ Welcome to ExoQuery!
 ---
 
 Let's take some data:
+
 ```kotlin
-@Ser data class Person(val name: String, val age: Int, val companyId: Int)
-@Ser data class Address(val city: String, val personId: Int)
-@Ser data class Company(val name: String, val id: Int)
+@Ser
+data class Person(val name: String, val age: Int, val companyId: Int)
+@Ser
+data class Address(val city: String, val personId: Int)
+@Ser
+data class Company(val name: String, val id: Int)
 // Going to use @Ser as a concatenation of @Serializeable for now
 val people: SqlQuery<Person> = capture { Table<Person>() }
 val addresses: SqlQuery<Address> = capture { Table<Address>() }
@@ -67,9 +80,10 @@ val companies: SqlQuery<Company> = capture { Table<Company>() }
 ```
 
 Here is a query with some Joins:
+
 ```kotlin
 capture.select {
-  val p: Person  = from(people)
+  val p: Person = from(people)
   val a: Address = join(addresses) { a -> a.personId == p.id }
   Data(p.name, a.city)
 }
@@ -77,6 +91,7 @@ capture.select {
 ```
 
 Compared to Microsoft LINQ where it would look like this:
+
 ```csharp
 var q = from p in people
         join a in addresses on a.personId == p.id
@@ -84,6 +99,7 @@ var q = from p in people
 ```
 
 Let's add some case-statements:
+
 ```kotlin
 capture.select {
   val p = from(people)
@@ -94,12 +110,13 @@ capture.select {
 ```
 
 Now let's try a subquery:
+
 ```kotlin
 capture.select {
   val (c, p) = from(
     select {
       val c: Company = from(companies)
-      val p: Person  = join(people) { p -> p.companyId == c.id }
+      val p: Person = join(people) { p -> p.companyId == c.id }
       c to p
     } // -> SqlQuery<Pair<Company, Person>>
   )
@@ -110,6 +127,7 @@ capture.select {
 //   SELECT p.name, p.age, p.companyId FROM Person p JOIN companies c ON c.id = p.companyId
 //  ) p JOIN Address a ON a.personId = p.id
 ```
+
 Notice how the types compose completely fluidly? The output of a subquery is the same datatype as a table.
 
 ---
@@ -213,31 +231,37 @@ different kinds of things that you can capture:
     { p: Person -> p.name == "Joe" }
   }
   ```
-  
+
   You can them use them with normal queries like this:
   ```kotlin
   // The .use function changes it from SqlExpression<(Person) -> Boolean> to just (Person) -> Boolean
   // you can only use it inside of a `capture` block. 
   capture { Table<Person>().filter { p -> nameIsJoe.use(p) } }
   ```
+
 ---
 ### *How do I use normal runtime data inside my SQL captures?*
 ---
 
 For most data types use `param(...)`. For example:
+
 ```Kotlin
 val runtimeName = "Joe"
 val q = capture { Table<Person>().filter { p -> p.name == param(runtimeName) } }
 q.buildFor.Postgres().runOn(myDatabase)
 //> SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ?
 ```
+
 The ExoQuery infrastructure will know to inject the value of `runtimeName` into the `?`
 placeholder in the prepared-statement of the database driver.
 
 This will work for primitives, and KMP and Java date-types (i.e. from `java.time.*`)
 ExoQuery uses kotlinx.serialization behind the scenes. In some cases you might
-want to use `paramCtx` to create a contextual parameter (Kotlin docs: [contextual-serialization](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#contextual-serialization)) or `paramCustom`
-to sepecify a custom serializer (Kotlin docs:  [custom-serializers](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#custom-serializers)).
+want to use `paramCtx` to create a contextual parameter (Kotlin
+docs: [contextual-serialization](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#contextual-serialization))
+or `paramCustom`
+to sepecify a custom serializer (Kotlin
+docs:  [custom-serializers](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#custom-serializers)).
 See the [Parameters and Serialization](#parameters-and-serialization) section for more details.
 
 # Getting Started
@@ -271,10 +295,11 @@ dependencies {
 ```
 
 You can get started writing queries like this:
+
 ```kotlin
 // Create a JVM DataSource the way you normally would
 val ds: DataSource = ...
-val controller = JdbcControllers.Postgres(ds) 
+val controller = JdbcControllers.Postgres(ds)
 
 // Create a query:
 val query = capture {
@@ -286,6 +311,7 @@ val output = query.buildFor.Postgres().runOn(controller)
 ```
 
 Have a look at code samples for starter projects here:
+
 - Basic Java project - https://github.com/ExoQuery/exoquery-sample-jdbc
 - Basic Linux Native project: TBD
 - Android and OSX project: TBD
@@ -293,7 +319,8 @@ Have a look at code samples for starter projects here:
 # ExoQuery Features
 
 ExoQuery has a plethora of features that allow you to write SQL queries, these are enumerated below. Instead
-of using reflection to encode and decode data, ExoQuery builds on top of the [Terpal-SQL](https://github.com/ExoQuery/terpal-sql)  database controller
+of using reflection to encode and decode data, ExoQuery builds on top of
+the [Terpal-SQL](https://github.com/ExoQuery/terpal-sql)  database controller
 in order to encode and decode Kotlin data classes in a fully cross-platform way. Although you do not need data classes
 to be `@Serializeable` in order to build the actual queries, you do need it in order to run them.
 
@@ -301,12 +328,13 @@ to be `@Serializeable` in order to build the actual queries, you do need it in o
 
 ExoQuery compose allow you to perform functions on SqlQuery instances. These functions are not available outside of a
 compose block becuase the compose block delimiates the boundary of the query. SqlQuery instances created by the
-`Table<MyRow>` function representing simple table elements. Following functional-programming principles, 
+`Table<MyRow>` function representing simple table elements. Following functional-programming principles,
 any transformation on any SqlQuery instance work, and work the same way.
 
 ### Map
 
 This is also known as an SQL projection. It allows you to select a subset of the columns in a table.
+
 ```Kotlin
 val q = capture {
   Table<Person>().map { p -> p.name }
@@ -316,6 +344,7 @@ q.buildFor.Postgres().runOn(myDatabase)
 ```
 
 You can also use the `.map` funtion to perform simple aggreations on tables. For example:
+
 ```kotlin
 val q = capture {
   Table<Person>().map { p -> Triple(min(p.age), max(p.age), avg(p.age)) }
@@ -335,9 +364,12 @@ val q = capture {
 q.buildFor.Postgres().runOn(myDatabase)
 //> SELECT p.id, p.name, p.age FROM Person p WHERE p.name = 'Joe'
 ```
-You can also do `.where { name == "Joe" }` for a slightly more SQL-diomatic experience but this function is not as powerful.
+
+You can also do `.where { name == "Joe" }` for a slightly more SQL-diomatic experience but this function is not as
+powerful.
 
 Also, if you are using a `capture.select` block, you can also use the `where` function to filter the rows:
+
 ```kotlin
 val q = capture.select {
   val p = from(Table<Person>())
@@ -347,8 +379,9 @@ val q = capture.select {
 
 ### Correlated Subqueries
 
-You can use a combine filter and map functions to create correlated subqueries. 
+You can use a combine filter and map functions to create correlated subqueries.
 For example, let's say we want to find all the people over the average age:
+
 ```kotlin
 val q = capture {
   Table<Person>().filter { p -> p.age > Table<Person>().map { it.age }.avg() }
@@ -359,11 +392,14 @@ val q = capture {
 Recall that you could table the `.map` function with table aggregations. Let's say you want to get
 not average but also use that together with another aggreagtor (e.g. the average minus the minimum).
 Normally you could use an expression `avg(p.age) + min(p.age)` with a the `.map` function.
+
 ```kotlin
 val customExpr: SqlQuery<Double> = capture.select { Table<Person>().map { p -> avg(p.age) + min(p.age) } }
 ```
+
 If you want to use a statement like this inside of a correlated subquery, we can use the `.value()`
 function inside of a capture block to convert a `SqlQuery<T>` into just `T`.
+
 ```kotlin
 val q = capture {
   Table<Person>().filter { p -> p.age > Table<Person>().map { p -> avg(p.age) + min(p.age) }.value() }
@@ -375,6 +411,7 @@ q.buildFor.Postgres().runOn(myDatabase)
 ### SortedBy
 
 The kotlin collections `sortedBy` and `sortedByDescending` functions are also available on SqlQuery instances.
+
 ```kotlin
 val q = capture {
   Table<Person>().sortedBy { p -> p.name }
@@ -387,8 +424,9 @@ val q = capture {
 //> SELECT p.id, p.name, p.age FROM Person p ORDER BY p.name DESC
 ```
 
-When you want to do advanced sorting (e.g. different sorting for different columns) use a `select` block 
+When you want to do advanced sorting (e.g. different sorting for different columns) use a `select` block
 and the sortBy function inside.
+
 ```kotlin
 val q = capture.select {
   val p = from(Table<Person>())
@@ -400,8 +438,9 @@ val q = capture.select {
 ### Joins
 
 Use the `capture.select` to do as many joins as you need.
+
 ```kotlin
-val q: SqlQuery<Pair<Person, Address>> = 
+val q: SqlQuery<Pair<Person, Address>> =
   capture.select {
     val p = from(Table<Person>())
     val a = join(Table<Address>()) { a -> a.ownerId == p.id }
@@ -412,8 +451,9 @@ q.buildFor.Postgres().runOn(myDatabase)
 ```
 
 Let's add a left-join:
+
 ```kotlin
-val q: SqlQuery<Pair<Person, Address?>> = 
+val q: SqlQuery<Pair<Person, Address?>> =
   capture.select {
     val p = from(Table<Person>())
     val a = join(Table<Address>()) { a -> a.ownerId == p.id }
@@ -424,10 +464,12 @@ val q: SqlQuery<Pair<Person, Address?>> =
 //  LEFT JOIN Address a ON a.personId = p.id 
 //  LEFT JOIN Furnitire f ON f.locatedAt = a.id
 ```
+
 Notice that the `Address` table is now nullable. This is because the left-join can return null values.
 
 What can go inside of the `capture.select` function is very carefully controlled by exoquery.
 It needs to be one of the following:
+
 - A `from` statement
 - A `join` or `leftJoin` statement
 - A `where` clause (see the [filter](#filter) section above for more details).
@@ -435,8 +477,9 @@ It needs to be one of the following:
 - A `groupBy` clause (see the [groupBy](#groupby) section below for more details).
 
 You can use all of these features all together. For example:
+
 ```kotlin
-val q: SqlQuery<Pair<Person, Address>> = 
+val q: SqlQuery<Pair<Person, Address>> =
   capture.select {
     val p = from(Table<Person>())
     val a = join(Table<Address>()) { a -> a.ownerId == p.id }
@@ -454,6 +497,7 @@ q.buildFor.Postgres().runOn(myDatabase)
 
 Also note that you can do implicit joins using the `capture.select` function if desired as well.
 For example, the following query is perfectly reasonable:
+
 ```kotlin
 val q = capture.select {
   val p = from(Table<Person>())
@@ -471,8 +515,9 @@ val q = capture.select {
 ### GroupBy
 
 Use a `capture.select` function to do groupBy. You can use the `groupBy` function to group by multiple columns.
+
 ```kotlin
-val q: SqlQuery<Pair<Person, Address>> = 
+val q: SqlQuery<Pair<Person, Address>> =
   capture.select {
     val p = from(Table<Person>())
     val a = join(Table<Address>()) { a -> a.ownerId == p.id }
@@ -483,6 +528,7 @@ val q: SqlQuery<Pair<Person, Address>> =
 ```
 
 ## SQL Actions
+
 ExoQuery has a simple DSL for performing SQL actions.
 
 ### Insert
@@ -495,7 +541,9 @@ val q =
 q.buildFor.Postgres().runOn(myDatabase)
 //> INSERT INTO Person (name, age, companyId) VALUES ('Joe', 44, 123)
 ```
+
 Typically you will use `param` to insert data from runtime values:
+
 ```kotlin
 val nameVal = "Joe"
 val ageVal = 44
@@ -512,6 +560,7 @@ When this gets to cumbersome (and it will!) see how to insert a whole row.
 #### Insert a Whole Row
 
 You can insert and entire `person` object using `setParams`.
+
 ```kotlin
 val person = Person("Joe", 44, 123)
 val q =
@@ -527,6 +576,7 @@ Wait a second, don't database-model objects like `Person` typically have one or 
 that need to be excluded during the insert because the database generates them?
 
 Here is how to do that:
+
 ```kotlin
 val person = Person(id = 0, "Joe", 44, 123)
 
@@ -541,6 +591,7 @@ val q =
 
 What do we do if we need to know the row id of the row we just inserted?
 The best way to do that is to use the `returning` function to add a `RETURNING` clause to the insert statement.
+
 ```kotlin
 data class Person(val id: Int, val name: String, val age: Int, val companyId: Int)
 
@@ -555,6 +606,7 @@ q.buildFor.Postgres().runOn(myDatabase) // Also works with SQLite
 q.buildFor.SqlServer().runOn(myDatabase)
 //> INSERT INTO Person (name, age, companyId) OUTPUT INSERTED.id VALUES (?, ?, ?)
 ```
+
 This will work for Postgres, SQLite, and SqlServer. For other databases use
 `.returningKeys { id }` which will instruct the database-driver to return the
 inserted row keys on a more low level. This function is more limited than what
@@ -564,6 +616,7 @@ so be sure to test it on your database appropriately.
 The `returning` function is more flexible that `returningKeys` because it allows you to
 return not only any column in the inserted row but also collect these columns into
 a composite object of your choice. For example:
+
 ```kotlin
 data class MyOutputData(val id: Int, val name: String)
 
@@ -581,9 +634,10 @@ val output: List<MyOutputData> = q.buildFor.Postgres().runOn(myDatabase)
 
 ### Update
 
-The update statement is similar to the insert statement. You can use the `set` function to set the values of the 
-columns you want to update, and typically you will use `param` to set SQL placeholders for runtime values. 
+The update statement is similar to the insert statement. You can use the `set` function to set the values of the
+columns you want to update, and typically you will use `param` to set SQL placeholders for runtime values.
 Use a `.where` clause to filter your update query.
+
 ```kotlin
 val joeName = "Joe"
 val joeAge = 44
@@ -591,8 +645,10 @@ val joeId = 123
 
 val q =
   capture {
-    update<Person> { set(name to param(joeName), age to param(joeAge))
-      .where { id == param(joeId) } }
+    update<Person> {
+      set(name to param(joeName), age to param(joeAge))
+        .where { id == param(joeId) }
+    }
   }
 q.buildFor.Postgres().runOn(myDatabase)
 // > UPDATE Person SET name = ?, age = ?, companyId = ? WHERE id = 1
@@ -601,6 +657,7 @@ q.buildFor.Postgres().runOn(myDatabase)
 Similar to INSERT, you can use `setParams` to set columns from the entire `person` object.
 Combine this with `excluding` to exclude the primary key column from the update statement and
 use the `where` clause to filter your update query.
+
 ```kotlin
 val person = Person(id = 1, "Joe", 44, 123)
 val q =
@@ -613,6 +670,7 @@ q.buildFor.Postgres().runOn(myDatabase)
 ```
 
 You can also use a `returning` clause to return the updated row if your database supports it.
+
 ```kotlin
 val person = Person(id = 1, "Joe", 44, 123)
 
@@ -634,7 +692,6 @@ q.buildFor.SqlServer().runOn(myDatabase)
 Delete works exactly the same as insert and updated but there is no `set` clause
 since no values are being set.
 
-
 ```kotlin
 val joeId = 123
 val q =
@@ -646,9 +703,10 @@ q.buildFor.Postgres().runOn(myDatabase)
 ```
 
 The Delete DSL also supports `returning` clauses:
+
 ```kotlin
 val joeId = 123
-val q = 
+val q =
   capture {
     delete<Person>
       .where { id == param(joeId) }
@@ -664,6 +722,7 @@ q.buildFor.SqlServer().runOn(myDatabase)
 
 Batch queries are supported (only JDBC for now) for insert, update, and delete actions as well as all of the
 features they support (e.g. returning, excluding, etc.).
+
 ```kotlin
 val people = listOf(
   Person(id = 0, name = "Joe", age = 33, companyId = 123),
@@ -672,12 +731,21 @@ val people = listOf(
 )
 val q =
   capture { p ->
-    capture.batch(people) { p -> insert<Person> { set(name to param(p.name), age to param(p.age), companyId to (p.companyId)) } }
+    capture.batch(people) { p ->
+      insert<Person> {
+        set(
+          name to param(p.name),
+          age to param(p.age),
+          companyId to (p.companyId)
+        )
+      }
+    }
   }
 
 q.buildFor.Postgres().runOn(myDatabase)
 //> INSERT INTO Person (name, age, companyId) VALUES (?, ?, ?)
 ```
+
 This will tell the JDBC driver to use a PreparedStatement with `.addBatch()` and `executeBatch()` between which every
 insert will be executed. Batch queries for update and delete work the same way.
 
@@ -685,19 +753,24 @@ insert will be executed. Batch queries for update and delete work the same way.
 
 If you need your table or columns to be named differently that than the data-class name or it's fields
 you can use the kotlinx.serialization `SerialName("...")` annotation:
+
 ```kotlin
 @SerialName("corp_customer")
 data class CorpCustomer {
   val name: String
+
   @SerialName("num_orders")
   val numOrders: Int
+
   @SerialName("created_at")
   val createdAt: Int
 }
+
 val q = capture { Table<CorpCustomer>() }
 q.buildFor.Postgres().runOn(myDatabase)
 //> 
 ```
+
 If you do not want to use this annotation for somemthing else (e.g. JSON field names) you can also
 use `@ExoEntity` and `@ExoField` to do the same thing.
 
@@ -705,11 +778,14 @@ use `@ExoEntity` and `@ExoField` to do the same thing.
 @ExoEntity("corp_customer")
 data class CorpCustomer {
   val name: String
+
   @ExoField("num_orders")
   val numOrders: Int
+
   @ExoField("created_at")
   val createdAt: Int
 }
+
 val q = capture { Table<CorpCustomer>() }
 q.buildFor.Postgres().runOn(myDatabase)
 //> SELECT x.name, x.num_orders, x.created_at FROM corp_customer x
@@ -717,39 +793,46 @@ q.buildFor.Postgres().runOn(myDatabase)
 
 ### Captured Functions
 
-Captured functions allow you to use kotlin functions inside of blocks. Writing a captured function is as simple as adding
+Captured functions allow you to use kotlin functions inside of blocks. Writing a captured function is as simple as
+adding
 the `@CapturedFunction` annotation to a function that returns a `SqlQuery<T>` or `SqlExpression<T>` instance.
 Recall that in the introduction we saw a captured function that calculated the P/E ratio of a stock:
+
 ```kotlin
   @CapturedFunction
-  fun peRatioWeighted(stock: Stock, weight: Double): Double = catpure.expression {
+fun peRatioWeighted(stock: Stock, weight: Double): Double = catpure.expression {
     (stock.price / stock.earnings) * weight
   }
 ```
+
 Once this function is defined you can use it inside a `capture` block like this:
+
 ```kotlin
 capture {
-  Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap/totalWeight) } 
+  Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap / totalWeight) }
 }
 ```
 
 Note that captured functions can call other captured functions, for example:
+
 ```kotlin
 @CapturedFunction
 fun peRationSimple(stock: Stock): Double = catpure.expression {
-  stock.price / stock.earnings
-}
+    stock.price / stock.earnings
+  }
+
 @CapturedFunction
 fun peRatioWeighted(stock: Stock, weight: Double): Double = catpure.expression {
   peRationSimple(stock) * weight
 }
 capture {
-  Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap/totalWeight) } 
+  Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap / totalWeight) }
 }
 ```
 
 Also note that captured functions can make use of the context-receiver position. For example, let's make the
 `marketCap` field into a function:
+
 ```kotlin
 @CapturedFunction
 fun Stock.marketCap() = capture.expression {
@@ -757,7 +840,7 @@ fun Stock.marketCap() = capture.expression {
   }
 val q = capture {
   val totalWeight = Table<Stock>().map { it.marketCap().use }.sum() // A local variable used in the query!
-  Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap().use/totalWeight) }
+  Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap().use / totalWeight) }
 }
 println(q.buildFor.Postgres().value)
 // SELECT (stock.price / stock.earnings) * ((this.price * this.sharesOutstanding) / (SELECT sum(this.price * this.sharesOutstanding) FROM Stock it)) AS value FROM Stock stock
@@ -770,24 +853,30 @@ a more flexible mechanism for writing queries see the [dynamic queries](#dynamic
 
 ### Polymorphic Query Abstraction
 
-Continuing from the section on [captured-functions](#captured-functions) above, captured functions can use generics and polymorphism in order to create highly abstractable query components.
+Continuing from the section on [captured-functions](#captured-functions) above, captured functions can use generics and
+polymorphism in order to create highly abstractable query components.
 For example:
+
 ```kotlin
-interface Locateable { val locationId: Int }
+interface Locateable {
+  val locationId: Int
+}
 data class Person(val name: String, val age: Int, locationId: Int)
 data class Robot(val model: String, val createdOn: LocalDate, val locationId: Int)
 data class Address(val id: Int, val street: String, val zip: String)
 
 // Now let's create a captured function that can be used with any Locateable object:
 @CapturedFunction
-fun <L: Locateable> joinLocation(locateable: SqlQuery<L>): SqlQuery<Pair<L, Address>> = 
+fun <L : Locateable> joinLocation(locateable: SqlQuery<L>): SqlQuery<Pair<L, Address>> =
   capture.select {
     val l = from(locateable)
     val a = join(addresses) { a -> a.id == l.locationId }
     l to a
   }
 ```
+
 Now I can use this function with the Person table
+
 ```kotlin
 val people: SqlQuery<Pair<Person, Address>> = capture {
   joinLocation(Table<Person>().filter { p -> p.name == "Joe" })
@@ -795,7 +884,9 @@ val people: SqlQuery<Pair<Person, Address>> = capture {
 people.buildFor.Postgres().runOn(myDatabase)
 //> SELECT p.name, p.age, p.locationId, a.id, a.street, a.zip FROM Person p JOIN Address a ON a.id = p.locationId WHERE p.name = 'Joe'
 ```
+
 As well as the Robot table:
+
 ```kotlin
 val robots: SqlQuery<Pair<Robot, Address>> = capture {
   joinLocation(Table<Robot>().filter { r -> r.model == "R2D2" })
@@ -806,19 +897,23 @@ val robots: SqlQuery<Pair<Robot, Address>> = capture {
 You can then continue to compose the output of this function to get more and more powerful queries!
 
 ### Local Variables
+
 Captured functions can also be used to define local variables inside of a `capture` block. In the introduction we saw
 a query that looked like this:
+
 ```kotlin
 capture {
-  Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap/totalWeight) } 
+  Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap / totalWeight) }
 }
 ```
+
 Note how I intentionally left the `totalWeight` variable undefined. Let's try to define it as a local varaible:
+
 ```kotlin
 val q =
   capture {
-    val totalWeight = Table<Stock>().map { it.marketCap().use }.sum() 
-    Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap/totalWeight) } 
+    val totalWeight = Table<Stock>().map { it.marketCap().use }.sum()
+    Table<Stock>().map { stock -> peRatioWeighted(stock, stock.marketCap / totalWeight) }
   }
 q.buildFor.Postgres().runOn(myDatabase)
 //> SELECT (stock.price / stock.earnings) * ((this.price * this.sharesOutstanding) / (SELECT sum(this.price * this.sharesOutstanding) FROM Stock it)) AS value FROM Stock stock
@@ -828,12 +923,14 @@ q.buildFor.Postgres().runOn(myDatabase)
 
 ExoQuery supports transactions! Once a query or action is built e.g. once you do `.buildFor.Postgres()` you will get
 one of three possbile things:
+
 1. A `SqlCompiledQuery` object. This is a query that can be executed on the database.
 2. A `SqlCompiledAction` object. This is an action that can be executed on the database.
 3. A `SqlCompiledBatchAction` object This is a SQL batch action, typically it is not supported for transactions.
 
 Once you have imported a ExoQuery runner project (e.g. exoquery-jdbc) and created a DatabaseController
 (e.g. `JdbcControllers.Postgres`), you can run the query or action:
+
 ```kotlin
 val ds: DataSource = ...
 val controller = JdbcControllers.Postgres(ds)
@@ -860,6 +957,7 @@ controller.transaction {
 
 In situations where you need to use a SQL UDF that is available directly on the database, or when you need
 to use custom SQL syntax that is not supported by ExoQuery, you can use a free block.
+
 ```kotlin
 val q = capture {
   Table<Person>().filter { p -> free("mySpecialDatabaseUDF(${p.name})") == "Joe" }
@@ -868,6 +966,7 @@ val q = capture {
 ```
 
 You can pass param-calls into the free-block as well.
+
 ```kotlin
 val myRuntimeVar = ...
 val q = capture {
@@ -878,8 +977,8 @@ val q = capture {
 
 ### Enriching Queries
 
-
 Free blocks are also useful for adding information before/after an entire query. For example:
+
 ```kotlin
 val q = capture {
   free("${Table<Person>().filter { p -> p.name == "Joe" }} FOR UPDATE").asPure<SqlQuery<Person>>()
@@ -888,11 +987,12 @@ val q = capture {
 ```
 
 This is technique is quite powerful when combined with captured-functions to abstract out logic:
+
 ```kotlin
 @CapturedFunction
-fun <T: Person> forUpdate(v: SqlQuery<T>) = capture {
-  free("${v} FOR UPDATE").asPure<SqlQuery<T>>()
-}
+fun <T : Person> forUpdate(v: SqlQuery<T>) = capture {
+    free("${v} FOR UPDATE").asPure<SqlQuery<T>>()
+  }
 
 val q = capture {
   forUpdate(Table<Person>().filter { p -> p.age > 21 })
@@ -900,10 +1000,10 @@ val q = capture {
 //> (SELECT p.id, p.name, p.age FROM Person p WHERE p.age > 21) FOR UPDATE
 ```
 
-
 ### Enriching Actions
 
 Free blocks can even be used with Action (i.e. insert, update, delete) statements:
+
 ```kotlin
 val q = capture {
   insert<Person> { setParams(Person(1, "Joe", "Bloggs", 111)) }
@@ -917,9 +1017,11 @@ qq.build<SqlServerDialect>().runOn(ctx)
 
 ## Parameters and Serialization
 
-ExoQuery builds on top of kotlinx.serialization in order to encode/decode information into SQL prepared-statements and result-sets.
+ExoQuery builds on top of kotlinx.serialization in order to encode/decode information into SQL prepared-statements and
+result-sets.
 The param function `param` is used to bring runtime data into `capture` functions which are processed at compile-time.
 It does this in an SQL-injection-proof fashion by using parameterized queries on the driver-level.
+
 ```kotlin
 val runtimeName = "Joe"
 val q = capture { Table<Person>().filter { p -> p.name == param(runtimeName) } }
@@ -930,35 +1032,44 @@ q.buildFor.Postgres().runOn(myDatabase)
 ### param
 
 The following data-types can be used with `param`
+
 - Primitives: String, Int, Long, Short, Byte, Float, Double, Boolean
 - Time Types: `java.util.Date`, LocalDate, LocalTime, LocalDateTime, ZonedDateTime, Instant, OffsetTime, OffsetDateTime
-- Kotlin Multiplatform Time Types: `kotlinx.datetime.LocalDate`, `kotlinx.datetime.LocalTime`, `kotlinx.datetime.LocalDateTime`, `kotlinx.datetime.Instant`
+- Kotlin Multiplatform Time Types: `kotlinx.datetime.LocalDate`, `kotlinx.datetime.LocalTime`,
+  `kotlinx.datetime.LocalDateTime`, `kotlinx.datetime.Instant`
 - SQL Time Types: `java.sql.Date`, `java.sql.Timestamp`, `java.sql.Time`
 - Other: BigDecimal, ByteArray
-- Note that in all the time-types Nano-second granularity is not supported. It will be rounded to the nearest millisecond.
+- Note that in all the time-types Nano-second granularity is not supported. It will be rounded to the nearest
+  millisecond.
 
-Note that for Kotlin native things like `java.sql.Date` and `java.sql.Time` do not exist. Kotlin Multiplatform uses `kotlinx.datetime` objects instead.
-> If you've used [Terpal-SQL](https://github.com/ExoQuery/terpal-sql) you'll notice these are the same as the Wrapped-Types that it supports.
+Note that for Kotlin native things like `java.sql.Date` and `java.sql.Time` do not exist. Kotlin Multiplatform uses
+`kotlinx.datetime` objects instead.
+> If you've used [Terpal-SQL](https://github.com/ExoQuery/terpal-sql) you'll notice these are the same as the
+> Wrapped-Types that it supports.
 > This is because Terpal-SQL and ExoQuery use the same underlying Database Controllers.
 
 ### params
 
 If you want to do in-set SQL checks with runtime collections, use the `params` function:
+
 ```kotlin
 val runtimeNames = listOf("Joe", "Jim", "Jack")
 val q = capture { Table<Person>().filter { p -> p.name in params(runtimeNames) } }
 q.buildFor.Postgres().runOn(myDatabase)
 //> SELECT p.id, p.name, p.age FROM Person p WHERE p.name IN (?, ?, ?)
 ```
+
 Internally this is handled almost the same way as `param`. It finds an appropriate kotlinx.serialization
 Serializer and uses it to encode the collection into a SQL prepared-statement.
 
-(Note are also `paramsCustom` and `paramsCtx` functions that are analogous to `paramCustom` and `paramCtx` described below.)
+(Note are also `paramsCustom` and `paramsCtx` functions that are analogous to `paramCustom` and `paramCtx` described
+below.)
 
 ### paramCustom
 
 If you want to use a custom serializer for a specific type, you can use the `paramCustom` function.
 This is frequently useful when you want to map structured-data to a primitive type:
+
 ```kotlin
 // Define a serializer for the custom type
 object EmailSerializer : KSerializer<Email> {
@@ -974,7 +1085,8 @@ val q = capture {
 ```
 
 If you're wondering what the User class looks like, remember that using Kotlin serialization,
-this kind of data most likely uses a [property-based-serialization](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-on-a-property) 
+this kind of data most likely uses
+a [property-based-serialization](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-on-a-property)
 annotation!
 
 ```kotlin
@@ -987,22 +1099,32 @@ data class User(
 )
 ```
 
-You can essentially think of `paramCustom` as way to bring custom-serialized entities into a capture block. The way they are set up
-on the data-class coming out of the Query can be a [property-based](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-on-a-property) serializer, 
-a [particular-type](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-for-a-particular-type) serializer,
-a [file-specified](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-for-a-particular-type) serializer,
-or even a [typealias-serializer](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-for-a-particular-type) serializer.
+You can essentially think of `paramCustom` as way to bring custom-serialized entities into a capture block. The way they
+are set up
+on the data-class coming out of the Query can be
+a [property-based](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-on-a-property)
+serializer,
+a [particular-type](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-for-a-particular-type)
+serializer,
+a [file-specified](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-for-a-particular-type)
+serializer,
+or even
+a [typealias-serializer](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#specifying-a-serializer-for-a-particular-type)
+serializer.
 When you want to any of thse kinds of things brought in as `param` into a `capture` block, use `paramCustom` to do that.
-
 
 ### paramCtx
 
-The `paramCtx` function allows you to use [contextual-serialization](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#contextual-serialization) 
-for a specific type. Essentially this is like telling ExoQuery, and kotlinx.serialization "don't worry about not having a serializer here... I got this."
-This means that you eventually need to provide a low-level Database-Driver encoder/decoder pair into Database-Controller that you are going to use.
+The `paramCtx` function allows you to
+use [contextual-serialization](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#contextual-serialization)
+for a specific type. Essentially this is like telling ExoQuery, and kotlinx.serialization "don't worry about not having
+a serializer here... I got this."
+This means that you eventually need to provide a low-level Database-Driver encoder/decoder pair into Database-Controller
+that you are going to use.
 
+Let's say for example that you have a highly customized encoded type that can only be processed correctly at a low
+level.
 
-Let's say for example that you have a highly customized encoded type that can only be processed correctly at a low level.
 ```kotlin
 data class ByteContent(val bytes: InputStream) {
   companion object {
@@ -1010,17 +1132,25 @@ data class ByteContent(val bytes: InputStream) {
   }
 }
 ```
+
 Then when creating the Database-Controller, provide a low-level encoder/decoder pair:
+
 ```kotlin
-val myDatabase = object: JdbcControllers.Postgres(postgres.postgresDatabase) {
+val myDatabase = object : JdbcControllers.Postgres(postgres.postgresDatabase) {
   override val additionalDecoders =
     super.additionalDecoders + JdbcDecoderAny.fromFunction { ctx, i -> ByteContent(ctx.row.getBinaryStream(i)) }
   override val additionalEncoders =
-    super.additionalEncoders + JdbcEncoderAny.fromFunction(Types.BLOB) { ctx, v: ByteContent, i -> ctx.stmt.setBinaryStream(i, v.bytes) }
+    super.additionalEncoders + JdbcEncoderAny.fromFunction(Types.BLOB) { ctx, v: ByteContent, i ->
+      ctx.stmt.setBinaryStream(
+        i,
+        v.bytes
+      )
+    }
 }
 ```
 
 Then you can execute queries using `ByteContent` instances like this:
+
 ```kotlin
 val bc: ByteContent = ByteContent.bytesFrom(File("myfile.txt").inputStream())
 val q = capture {
@@ -1032,6 +1162,7 @@ q.buildFor.Postgres().runOn(myDatabase)
 If you are wondering how what `MyBlobTable` looks like, it is a simple data-class with a `ByteContent` field
 that specifies a contextual-serializer. This is in fact *required* so that you can get instances of `MyBlobTable`
 out of the database.
+
 ```kotlin
 @Serializable
 data class Image(val id: Int, @Contextual val content: ByteContent)
@@ -1039,11 +1170,12 @@ data class Image(val id: Int, @Contextual val content: ByteContent)
 
 Without this `q.buildFor.Postgres()` will work but `.runOn(myDatabase)` will not.
 
-> Note that this section is largely taken from [Custom Primitives](https://github.com/ExoQuery/terpal-sql?tab=readme-ov-file#custom-primitives)
-> in the Terpal-SQL Database Controller documentation which also points to a code-sample for a [Contextual Column Clob](https://github.com/ExoQuery/terpal-sql/blob/main/terpal-sql-jdbc/src/test/kotlin/io/exoquery/sql/examples/ContextualColumnCustom.kt).
-> If you are having any difficulty getting the above example to work with the Database-Controller, have a look at the link above.
-
-
+> Note that this section is largely taken
+> from [Custom Primitives](https://github.com/ExoQuery/terpal-sql?tab=readme-ov-file#custom-primitives)
+> in the Terpal-SQL Database Controller documentation which also points to a code-sample for
+> a [Contextual Column Clob](https://github.com/ExoQuery/terpal-sql/blob/main/terpal-sql-jdbc/src/test/kotlin/io/exoquery/sql/examples/ContextualColumnCustom.kt).
+> If you are having any difficulty getting the above example to work with the Database-Controller, have a look at the
+> link above.
 
 ### Playing well with other Kotlinx Formats
 
@@ -1055,7 +1187,9 @@ the same `LocalDate` as a `String` in ISO-8601 format (i.e. using DateTimeFormat
 There are several ways to do this in Kotlinx-serialization, I will discuss two of them.
 
 #### Using a Contextual Serializer
+
 The simplest way to have a different encoding for the same data in different contexts is to use a contextual serializer.
+
 ```kotlin
 @Serializable
 data class Customer(val id: Int, val firstName: String, val lastName: String, @Contextual val createdAt: LocalDate)
@@ -1064,10 +1198,12 @@ data class Customer(val id: Int, val firstName: String, val lastName: String, @C
 // CREATE TABLE customers (id INT, first_name TEXT, last_name TEXT, created_at DATE)
 
 // This Serializer encodes the LocalDate as a String in ISO-8601 format and it will only be used for JSON encoding.
-object DateAsIsoSerializer: KSerializer<LocalDate> {
+object DateAsIsoSerializer : KSerializer<LocalDate> {
   override val descriptor = PrimitiveSerialDescriptor("LocalDate", PrimitiveKind.STRING)
-  override fun serialize(encoder: Encoder, value: LocalDate) = encoder.encodeString(value.format(DateTimeFormatter.ISO_LOCAL_DATE))
-  override fun deserialize(decoder: Decoder): LocalDate = LocalDate.parse(decoder.decodeString(), DateTimeFormatter.ISO_LOCAL_DATE)
+  override fun serialize(encoder: Encoder, value: LocalDate) =
+    encoder.encodeString(value.format(DateTimeFormatter.ISO_LOCAL_DATE))
+  override fun deserialize(decoder: Decoder): LocalDate =
+    LocalDate.parse(decoder.decodeString(), DateTimeFormatter.ISO_LOCAL_DATE)
 }
 
 // When working with the database, the LocalDate will be encoded as a SQL DATE type. The Terpal Driver knows
@@ -1075,7 +1211,13 @@ object DateAsIsoSerializer: KSerializer<LocalDate> {
 val ctx = JdbcController.Postgres.fromConfig("mydb")
 val c = Customer(1, "Alice", "Smith", LocalDate.of(2021, 1, 1))
 val q = capture {
-  insert<Customer> { set(firstName to param(c.firstName), lastName to param(c.lastName), createdAt to paramCtx(c.createdAt)) }
+  insert<Customer> {
+    set(
+      firstName to param(c.firstName),
+      lastName to param(c.lastName),
+      createdAt to paramCtx(c.createdAt)
+    )
+  }
 }
 q.buildFor.Postgres().runOn(ctx)
 //> INSERT INTO customers (first_name, last_name, created_at) VALUES (?, ?, ?)
@@ -1092,29 +1234,40 @@ println(jsonCustomer)
 ```
 
 The Terpal-SQL repository has a useful code sample relevant to this use-case.
-See the [Playing Well using Different Encoders](terpal-sql-jdbc/src/test/kotlin/io/exoquery/sql/examples/PlayingWell_DifferentEncoders.kt)
+See
+the [Playing Well using Different Encoders](terpal-sql-jdbc/src/test/kotlin/io/exoquery/sql/examples/PlayingWell_DifferentEncoders.kt)
 example for more details.
 
 #### Using Row-Surrogate Encoder
-When the changes in encoding between the Database and JSON are more complex, you may want to use a row-surrogate encoder.
 
-A row-surrogate encoder will take a data-class and copy it into another data-class (i.e. the surrogate data-class) whose schema is appropriate
-for the target format. The surrogate data-class needs to also be serializable and know how to create itself from the original data-class.
+When the changes in encoding between the Database and JSON are more complex, you may want to use a row-surrogate
+encoder.
+
+A row-surrogate encoder will take a data-class and copy it into another data-class (i.e. the surrogate data-class) whose
+schema is appropriate
+for the target format. The surrogate data-class needs to also be serializable and know how to create itself from the
+original data-class.
 
 ```kotlin
 // Create the "original" data class
 @Serializable
 data class Customer(
-  val id: Int, 
-  val firstName: String, 
-  val lastName: String, 
+  val id: Int,
+  val firstName: String,
+  val lastName: String,
   @Serializable(with = DateAsIsoSerializer::class) val createdAt: LocalDate
 )
 
 // Create the "surrogate" data class
 @Serializable
-data class CustomerSurrogate(val id: Int, val firstName: String, val lastName: String, @Contextual val createdAt: LocalDate) {
+data class CustomerSurrogate(
+  val id: Int,
+  val firstName: String,
+  val lastName: String,
+  @Contextual val createdAt: LocalDate
+) {
   fun toCustomer() = Customer(id, firstName, lastName, createdAt)
+
   companion object {
     fun fromCustomer(customer: Customer): CustomerSurrogate {
       return CustomerSurrogate(customer.id, customer.firstName, customer.lastName, customer.createdAt)
@@ -1124,17 +1277,19 @@ data class CustomerSurrogate(val id: Int, val firstName: String, val lastName: S
 ```
 
 Then create a surrogate serializer which uses the surrogate data-class to encode the original data-class.
+
 ```kotlin
-object CustomerSurrogateSerializer: KSerializer<Customer> {
+object CustomerSurrogateSerializer : KSerializer<Customer> {
   override val descriptor = CustomerSurrogate.serializer().descriptor
-  override fun serialize(encoder: Encoder, value: Customer) = 
+  override fun serialize(encoder: Encoder, value: Customer) =
     encoder.encodeSerializableValue(CustomerSurrogate.serializer(), CustomerSurrogate.fromCustomer(value))
-  override fun deserialize(decoder: Decoder): Customer = 
+  override fun deserialize(decoder: Decoder): Customer =
     decoder.decodeSerializableValue(CustomerSurrogate.serializer()).toCustomer()
 }
 ```
 
 Then use the surrogate serializer when reading data from the database.
+
 ```kotlin
 // You can then use the surrogate class when reading/writing information from the database:
 val customers = capture {
@@ -1148,9 +1303,9 @@ println(Json.encodeToString(ListSerializer(Customer.serializer()), customers))
 ```
 
 The Terpal-SQL repository has a useful code sample relevant to this use-case.
-See the [Playing Well using Row-Surrogate Encoder](terpal-sql-jdbc/src/test/kotlin/io/exoquery/sql/examples/PlayingWell_RowSurrogate.kt)
+See
+the [Playing Well using Row-Surrogate Encoder](terpal-sql-jdbc/src/test/kotlin/io/exoquery/sql/examples/PlayingWell_RowSurrogate.kt)
 section for more details.
-
 
 ## Dynamic Queries
 
@@ -1168,7 +1323,8 @@ val q = capture {
 }
 ```
 
-ExoQuery does not know the value of `someFlag` at compile-time and therefore cannot generate a query at that point. This means
+ExoQuery does not know the value of `someFlag` at compile-time and therefore cannot generate a query at that point. This
+means
 that ExoQuery needs to run the query at runtime as the `capture` block is executed. This is called a dynamic query.
 Dynamic queries are extremely flexible and ExoQuery is very good at handling them however there are a few caveats:
 
@@ -1177,20 +1333,22 @@ Dynamic queries are extremely flexible and ExoQuery is very good at handling the
 * It can be problematic to call this code from performance-critical areas
   because their cost can be in the order of milliseconds (whereas non-dynamic queries have zero runtime cost since
   they are created inside the compiler). Be sure to test out how much time your dynamic-queries are taking
-  if you have any concerns. Kotlin's [measureTime](https://kotlinlang.org/docs/time-measurement.html#measure-code-execution-time)
+  if you have any concerns.
+  Kotlin's [measureTime](https://kotlinlang.org/docs/time-measurement.html#measure-code-execution-time)
   function is useful for this so long as you run it 5-10 times to let JIT do its work.
 * You will not see dynamic-queries in the SQL log output because they are not
   generated until runtime, although you will see a message that the query is dynamic.
 
 Dynamic queries effectively allow you pass around `SqlQuery<T>` and `SqlExpression<T>` objects without any
 restrictions or limitations. For example:
+
 ```kotlin
 @CapturedDynamic
 fun filteredIds(robotsAllowed: Boolean, value: SqlExpression<String>) =
   if (robotsAllowed)
-    capture { 
-      Table<Person>().filter { p -> p.name == value }.map { p -> p.id } 
-      union 
+    capture {
+      Table<Person>().filter { p -> p.name == value }.map { p -> p.id }
+      union
       Table<Robot>().filter { r -> r.model == value }.map { r -> r.id }
     }
   else
@@ -1201,7 +1359,9 @@ val q = capture {
 }
 //> SELECT c.signatureName, c.rentalCode, c.moveInDate FROM Tenants c WHERE c.signatureName IN (SELECT p.id FROM Person p WHERE p.name = ? UNION SELECT r.id FROM Robot r WHERE r.model = ?)
 ```
+
 Note several things:
+
 * The `@CapturedFunction` annotation is used to mark the function as a dynamic function, otherwise
   a parsing error along the lines of:
   ```
@@ -1220,22 +1380,22 @@ Note several things:
   `SqlQuery<T>` or `SqlExpression<T>` objects like this, you probably do not need captured-dynamics at all
   and instead should use compile-time [captured functions](#captured-functions).
 * Notice how above I used `capture.expression { c.signatureName }` nested inside another `capture` block.
-  This is required because `c.signatureName` is merely a `String`, not a `SqlExpression<String>` type. 
-  More importantly, it is a compile-time *symbolic* value (i.e. literally the expression `"c.signatureName"`) 
+  This is required because `c.signatureName` is merely a `String`, not a `SqlExpression<String>` type.
+  More importantly, it is a compile-time *symbolic* value (i.e. literally the expression `"c.signatureName"`)
   that relies on the `c` variable, defined inside the parent capture block.
   It is essential to understand that this `c` variable is not actually a real variable that exists "out there"
   in the runtime scope of accessible variables. Unless we re-wrap it, it is forced to remain
   inside the outer `capture` block in which it was defined.**
 
-
-> ** NOTE: This kind of logic is not arbitrary or magical. It is deeply rooted in the principle 
+> ** NOTE: This kind of logic is not arbitrary or magical. It is deeply rooted in the principle
 > of [Phase Consistency](https://gist.github.com/odersky/f91362f6d9c58cc1db53f3f443311140#the-phase-consistency-law)
 > that is well understood in the academic literature of compiler metaprogramming theory. Don't bother learning
 > any of these things, you don't need to know them in order to use ExoQuery effectively. Only be aware of the fact
 > ExoQuery is fundamentally lawful behind the scenes.
 
 Another advantage of dynamic queries is that you can use them to create query-fragments inside of collections.
-For example, the following code takes a list of possible names and creates a `person.name == x || person.name == y || ...`
+For example, the following code takes a list of possible names and creates a
+`person.name == x || person.name == y || ...`
 set of clauses from the list.
 
 ```kotlin
@@ -1243,7 +1403,8 @@ val possibleNames = listOf("Joe", "Jack")
 
 @CapturedDynamic
 fun joinedClauses(p: SqlExpression<Person>) =
-  possibleNames.map { n -> capture.expression { p.use.name == param(n) } }.reduce { a, b -> capture.expression { a.use || b.use } }
+  possibleNames.map { n -> capture.expression { p.use.name == param(n) } }
+    .reduce { a, b -> capture.expression { a.use || b.use } }
 
 val filteredPeople = capture {
   Table<Person>().filter { p -> joinedClauses(capture.expression { p }).use }
@@ -1252,9 +1413,9 @@ val filteredPeople = capture {
 filteredPeople.buildFor.Postgres()
 //> SELECT p.id, p.name, p.age FROM Person p WHERE p.name = ? OR p.name = ?
 ```
+
 Again, notice how I wrapped `p` into `capture.expression { p }` to make it a `SqlExpression<Person>` type.
 What is being passed from `filteredPeople` to `joinedClauses` is literally the *symbolic* expression `p`.
-
 
 ## Nested Datatypes
 
@@ -1269,16 +1430,20 @@ ExoQuery is based on my learnings from the [Quill](https://github.com/zio/zio-qu
 that I have maintained for the better part of a decade. It incorporates fundamental ideas from Functional Programming,
 Metaprogramming, and Category Theory in a non-invasive way. It was inspired by a series of precedents.
 
-* Flavio Brasil's Seminal Library [Monadless](https://github.com/monadless/monadless) and my successor to it [ZIO Direct](https://github.com/zio/zio-direct)
-* Philip Wadler's talk ["A practical theory of language-integrated query"](http://www.infoq.com/presentations/theory-language-integrated-query)
-* Philip Wadler's paper [Everything old is new again: Quoted Domain Specific Languages](http://homepages.inf.ed.ac.uk/wadler/papers/qdsl/qdsl.pdf)
+* Flavio Brasil's Seminal Library [Monadless](https://github.com/monadless/monadless) and my successor to
+  it [ZIO Direct](https://github.com/zio/zio-direct)
+* Philip Wadler's
+  talk ["A practical theory of language-integrated query"](http://www.infoq.com/presentations/theory-language-integrated-query)
+* Philip Wadler's
+  paper [Everything old is new again: Quoted Domain Specific Languages](http://homepages.inf.ed.ac.uk/wadler/papers/qdsl/qdsl.pdf)
 * [The Flatter, the Better](http://db.inf.uni-tuebingen.de/staticfiles/publications/the-flatter-the-better.pdf)
 
 One important thing to understand about ExoQuery from a theoretical standpoint is that it is fundamentally monadic,
-just like Microsoft LINQ. The construct `capture.select` bundles the sequence of linear variable assignments until a 
+just like Microsoft LINQ. The construct `capture.select` bundles the sequence of linear variable assignments until a
 nesting of flatMaps is created. This is based on the novel approach of Monadless.
 
 Take for example this query:
+
 ```kotlin
 val q = capture.select {
   val p = from(Table<Person>())
@@ -1290,8 +1455,8 @@ println(q.normalizeSelects().xr.show())
 
 // Will yield:
 Table(Person).flatMap { p ->
-  Table(Address).join { a -> p.id == a.ownerId }.flatMap {
-    a -> Table(Robot).join { r -> p.id == r.ownerId }.map { r ->
+  Table(Address).join { a -> p.id == a.ownerId }.flatMap { a ->
+    Table(Robot).join { r -> p.id == r.ownerId }.map { r ->
       Triple(first = p, second = a, third = r)
     }
   }
@@ -1299,6 +1464,7 @@ Table(Person).flatMap { p ->
 ```
 
 ExoQuery supports a user-accessible flatMap function that can literally be used to create the same exact structure:
+
 ```kotlin
 val q2 = capture {
   Table<Person>().flatMap { p ->

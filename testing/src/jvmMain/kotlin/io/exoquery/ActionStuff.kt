@@ -34,7 +34,7 @@ fun main() {
       insert<Person> { setParams(p) }.returningKeys { name to age }//.returningKeys()
       //insert<PersonSimple> { set(name to "Joe", age to 123) }
     }
-      // This is fine .xr, .params, .runtimes
+  // This is fine .xr, .params, .runtimes
 
 
   //println(s)

@@ -50,7 +50,6 @@ class BasicQuerySanitySpec : GoldenSpecDynamic(BasicQuerySanitySpecGoldenDynamic
 //  }
 
 
-
   "basic query" {
     val people = capture { Table<Person>() }
     people.build<PostgresDialect>("basic query").shouldBeGolden()

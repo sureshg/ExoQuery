@@ -1,10 +1,6 @@
 package io.exoquery
 
-import io.exoquery.annotation.CapturedFunction
-
 //hello
-
-
 
 
 //interface HasId { val id: Int }

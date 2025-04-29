@@ -4,7 +4,7 @@ import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object VariableReductionReqGoldenDynamic: GoldenQueryFile {
+object VariableReductionReqGoldenDynamic : GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "using it-variable should reduce to the letter `a` on the other side of the clause/XR" to kt(
       "select { val p = from(Table(Person)); val a = join(Table(Address)) { p.id == a.ownerId } }"

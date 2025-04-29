@@ -6,7 +6,6 @@ import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Address
 import io.exoquery.testdata.Person
 import io.exoquery.testdata.Robot
-import io.exoquery.util.TraceType
 
 class VariableReductionAdvancedReq : GoldenSpec(VariableReductionAdvancedReqGolden, {
   "variable deconstruction should work" - {

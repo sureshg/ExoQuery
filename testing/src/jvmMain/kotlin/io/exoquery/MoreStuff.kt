@@ -84,6 +84,7 @@ object Variant3 {
   interface Setter {
     operator fun set(key: Any, value: Any): SetValue
   }
+
   interface SetValue
 
   interface CaptureBlock {

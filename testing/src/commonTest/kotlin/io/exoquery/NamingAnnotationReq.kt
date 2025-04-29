@@ -2,9 +2,6 @@ package io.exoquery
 
 import io.exoquery.annotation.ExoEntity
 import io.exoquery.annotation.ExoField
-import io.exoquery.sql.PostgresDialect
-import io.exoquery.testdata.Address
-import io.exoquery.testdata.Person
 import kotlinx.serialization.SerialName
 
 class NamingAnnotationReq : GoldenSpecDynamic(NamingAnnotationReqGoldenDynamic, Mode.ExoGoldenTest(), {

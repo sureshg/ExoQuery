@@ -5,7 +5,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.be
 import io.kotest.matchers.should
 
-infix fun <T: XR, U : T> T.shouldBeXR(expected: U): T {
+infix fun <T : XR, U : T> T.shouldBeXR(expected: U): T {
   this should be(expected)
   // Normally XR equality doesn't care about the type but for serialization tests
   // we want to explicitly check it
@@ -15,7 +15,7 @@ infix fun <T: XR, U : T> T.shouldBeXR(expected: U): T {
   return this
 }
 
-class EncodingSpecXR: FreeSpec({
+class EncodingSpecXR : FreeSpec({
   "XR.Expression" - {
     "Ident" {
       val xr = XR.Ident("foo", XRType.Value)
@@ -66,11 +66,23 @@ class EncodingSpecXR: FreeSpec({
       xr.encode().decodeXR() shouldBeXR xr
     }
     "MethodCall" {
-      val xr = XR.MethodCall(XR.Ident("one", XRType.Value), "foo", listOf(XR.Ident("two", XRType.Value)), XR.CallType.PureFunction, XR.ClassId("a", "b"), XRType.Value)
+      val xr = XR.MethodCall(
+        XR.Ident("one", XRType.Value),
+        "foo",
+        listOf(XR.Ident("two", XRType.Value)),
+        XR.CallType.PureFunction,
+        XR.ClassId("a", "b"),
+        XRType.Value
+      )
       xr.encode().decodeXR() shouldBeXR xr
     }
     "GlobalCall" {
-      val xr = XR.GlobalCall(XR.FqName("foo.bar"), listOf(XR.Ident("baz", XRType.Value)), XR.CallType.PureFunction, XRType.Value)
+      val xr = XR.GlobalCall(
+        XR.FqName("foo.bar"),
+        listOf(XR.Ident("baz", XRType.Value)),
+        XR.CallType.PureFunction,
+        XRType.Value
+      )
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Block" {
@@ -139,7 +151,10 @@ class EncodingSpecXR: FreeSpec({
     "CustomQueryRef" {
       val clause =
         SelectClause(
-          listOf(SX.From(peopleVar, people), SX.Join(XR.JoinType.Inner, addressesVar, addresses, addressesVar, addressesJoinCond)),
+          listOf(
+            SX.From(peopleVar, people),
+            SX.Join(XR.JoinType.Inner, addressesVar, addresses, addressesVar, addressesJoinCond)
+          ),
           SX.Where(peopleAreGreen),
           SX.GroupBy(peopleVar),
           SX.SortBy(peopleVar, XR.Ordering.Asc),
@@ -150,11 +165,21 @@ class EncodingSpecXR: FreeSpec({
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Insert" {
-      val xr = XR.Insert(people, XR.Ident("this"), listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))), listOf(XR.Property(XR.Ident("this"), "name")))
+      val xr = XR.Insert(
+        people,
+        XR.Ident("this"),
+        listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))),
+        listOf(XR.Property(XR.Ident("this"), "name"))
+      )
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Update" {
-      val xr = XR.Update(people, XR.Ident("this"), listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))), listOf())
+      val xr = XR.Update(
+        people,
+        XR.Ident("this"),
+        listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))),
+        listOf()
+      )
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Delete" {
@@ -162,12 +187,29 @@ class EncodingSpecXR: FreeSpec({
       xr.encode().decodeXR() shouldBeXR xr
     }
     "OnConflict - Update" {
-      val insert = XR.Insert(people, XR.Ident("this"), listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))), listOf(XR.Property(XR.Ident("this"), "name")))
-      val xr = XR.OnConflict(insert, XR.OnConflict.Target.Properties(listOf(XR.Property(XR.Ident("this"), "name"))), XR.OnConflict.Resolution.Update(XR.Ident("exclude"), listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe")))))
+      val insert = XR.Insert(
+        people,
+        XR.Ident("this"),
+        listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))),
+        listOf(XR.Property(XR.Ident("this"), "name"))
+      )
+      val xr = XR.OnConflict(
+        insert,
+        XR.OnConflict.Target.Properties(listOf(XR.Property(XR.Ident("this"), "name"))),
+        XR.OnConflict.Resolution.Update(
+          XR.Ident("exclude"),
+          listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe")))
+        )
+      )
       xr.encode().decodeXR() shouldBeXR xr
     }
     "Batching" {
-      val insert = XR.Insert(people, XR.Ident("this"), listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))), listOf(XR.Property(XR.Ident("this"), "name")))
+      val insert = XR.Insert(
+        people,
+        XR.Ident("this"),
+        listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe"))),
+        listOf(XR.Property(XR.Ident("this"), "name"))
+      )
       val xr = XR.Batching(XR.Ident("p"), insert)
       //xr.encode().decodeXR() shouldBeXR xr // doesn't work since .encode is specific to Batching
       // Maybe in kotlin protobuf serialization, you can't have real elements mixed with abstract elements in the root of the hiearchy (i.e. everything else that inherits from XR is abstract)

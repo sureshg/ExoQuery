@@ -4,7 +4,7 @@ import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object ActionReqGoldenDynamic: GoldenQueryFile {
+object ActionReqGoldenDynamic : GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "insert/simple/XR" to kt(
       "insert<Person> { set(thisinsert.name to Joe, thisinsert.age to 123) }"
@@ -24,7 +24,9 @@ object ActionReqGoldenDynamic: GoldenQueryFile {
     ),
     "insert/simple with setParams/SQL" to cr(
       "INSERT INTO Person (id, name, age) VALUES ({0:1}, {1:Joe}, {2:123})",
-      "f79791b4-8c58-4022-8815-10ebf7a77f73" to "1", "5272f227-e734-44b4-bcdb-ffc0b9109d91" to "Joe", "d4e1a3a1-532c-4cea-a535-9a7b347d116d" to "123"
+      "f79791b4-8c58-4022-8815-10ebf7a77f73" to "1",
+      "5272f227-e734-44b4-bcdb-ffc0b9109d91" to "Joe",
+      "d4e1a3a1-532c-4cea-a535-9a7b347d116d" to "123"
     ),
     "insert/simple with setParams and exclusion/XR" to kt(
       """insert<Person> { set(thisinsert.id to TagP("0"), thisinsert.name to TagP("1"), thisinsert.age to TagP("2")).excluding(listOf(thisinsert.id)) }"""
@@ -69,7 +71,9 @@ object ActionReqGoldenDynamic: GoldenQueryFile {
     ),
     "insert/with returning params/SQL" to cr(
       "INSERT INTO Person (name, age) VALUES ({0:Joe}, {1:123}) RETURNING name, {2:myParamValue}",
-      "8c4a93b2-29b6-47b3-873d-f26a1ee5d1e2" to "Joe", "67893fec-58ca-488d-a087-a42439868a16" to "123", "53c20df6-6963-4dff-8c90-2aa4b4786649" to "myParamValue"
+      "8c4a93b2-29b6-47b3-873d-f26a1ee5d1e2" to "Joe",
+      "67893fec-58ca-488d-a087-a42439868a16" to "123",
+      "53c20df6-6963-4dff-8c90-2aa4b4786649" to "myParamValue"
     ),
     "insert/with returning params/Params" to kt(
       "[ParamSingle(0, Joe, String), ParamSingle(1, 123, Int), ParamSingle(2, myParamValue, String)]"
@@ -112,7 +116,9 @@ object ActionReqGoldenDynamic: GoldenQueryFile {
     ),
     "update/with setParams/SQL" to cr(
       "UPDATE Person SET id = {0:1}, name = {1:Joe}, age = {2:123} WHERE id = 1",
-      "77365f11-3377-4b4b-9a5a-a7329f30e8eb" to "1", "82877d78-bf6b-46d1-b8d5-a377f9a55886" to "Joe", "ceae10c1-ce2e-4976-bb81-4693968383a2" to "123"
+      "77365f11-3377-4b4b-9a5a-a7329f30e8eb" to "1",
+      "82877d78-bf6b-46d1-b8d5-a377f9a55886" to "Joe",
+      "ceae10c1-ce2e-4976-bb81-4693968383a2" to "123"
     ),
     "update/with setParams and exclusion/XR" to kt(
       """update<Person> { set(thisupdate.id to TagP("0"), thisupdate.name to TagP("1"), thisupdate.age to TagP("2")).excluding(listOf(thisupdate.id)) }.filter { p -> p.id == 1 }"""

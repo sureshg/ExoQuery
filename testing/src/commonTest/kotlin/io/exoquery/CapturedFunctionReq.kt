@@ -2,8 +2,8 @@ package io.exoquery
 
 import io.exoquery.annotation.CapturedFunction
 import io.exoquery.sql.PostgresDialect
-import io.exoquery.sql.Renderer
-import io.exoquery.testdata.*
+import io.exoquery.testdata.Address
+import io.exoquery.testdata.Person
 
 
 class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, Mode.ExoGoldenTest(), {
@@ -53,6 +53,7 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
     "cap { capFunA(x) -> capFunB(x) -> capFunC }" {
       @CapturedFunction
       fun namedX(people: SqlQuery<Person>, name: String) = capture { joes(people.filter { p -> p.name == name }) }
+
       @CapturedFunction
       fun namedY(people: SqlQuery<Person>, name: String) = capture { namedX(people, name) }
       val capJoes = capture { namedY(Table<Person>(), "Jack") }
@@ -62,6 +63,7 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
     "cap { capFunA(capFunB(x)) -> capFunC }" {
       @CapturedFunction
       fun namedX(people: SqlQuery<Person>, name: String) = capture { people.filter { p -> p.name == name } }
+
       @CapturedFunction
       fun namedY(people: SqlQuery<Person>, name: String) = capture { people.filter { p -> p.name == name } }
       val capJoes = capture { namedY(namedX(Table<Person>(), "Joe"), "Jack") }
@@ -77,7 +79,8 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       fun <T> joinPeopleToAddress(people: SqlQuery<T>, otherValue: String, f: (T) -> Int) =
         capture.select {
           val p = from(people)
-          val a = join(Table<Address>()) { a -> a.ownerId == f(p) && a.street == otherValue } // should have a verification that param(otherValue) fails
+          val a =
+            join(Table<Address>()) { a -> a.ownerId == f(p) && a.street == otherValue } // should have a verification that param(otherValue) fails
           p to a
         }
 
@@ -92,7 +95,7 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       val joes = capture { Table<SubtypePoly.Person>().filter { p -> p.name == param("joe") } }
 
       @CapturedFunction
-      fun <T: SubtypePoly.HasId> joinPeopleToAddress(people: SqlQuery<T>): SqlQuery<Pair<T, Address>> =
+      fun <T : SubtypePoly.HasId> joinPeopleToAddress(people: SqlQuery<T>): SqlQuery<Pair<T, Address>> =
         capture.select {
           val p = from(people)
           val a = join(Table<Address>()) { a -> a.ownerId == p.id }
@@ -180,6 +183,9 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
 })
 
 object SubtypePoly {
-  interface HasId { val id: Int }
-  data class Person(override val id: Int, val name: String, val age: Int): HasId
+  interface HasId {
+    val id: Int
+  }
+
+  data class Person(override val id: Int, val name: String, val age: Int) : HasId
 }

@@ -1,7 +1,8 @@
 package io.exoquery.sample
 
-import io.exoquery.*
+import io.exoquery.SqlQuery
 import io.exoquery.annotation.CapturedFunction
+import io.exoquery.capture
 import io.exoquery.sql.PostgresDialect
 
 interface Nameable {
@@ -10,12 +11,12 @@ interface Nameable {
 
 fun main() {
 
-  data class Person(override val name: String, val age: Int): Nameable
-  data class Robot(override val name: String, val model: String, val factoryId: Int): Nameable
+  data class Person(override val name: String, val age: Int) : Nameable
+  data class Robot(override val name: String, val model: String, val factoryId: Int) : Nameable
   data class Factory(val id: Int, val name: String)
 
   @CapturedFunction
-  fun <N: Nameable> nameIsJoe(input: SqlQuery<N>) =
+  fun <N : Nameable> nameIsJoe(input: SqlQuery<N>) =
     capture {
       input.filter { p -> p.name == "Joe" }.map { p -> p.name }
     }

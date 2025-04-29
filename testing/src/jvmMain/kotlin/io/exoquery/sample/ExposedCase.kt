@@ -2,11 +2,11 @@ package io.exoquery.sample
 
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
 import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.sql.Connection
 
 // Define the Users table
 object Users : IntIdTable() {
@@ -15,7 +15,7 @@ object Users : IntIdTable() {
   val age = integer("age")
 }
 
-object Addresses: IntIdTable() {
+object Addresses : IntIdTable() {
   val ownerId = reference("owner_id", Users)
   val street = varchar("street", 100)
   val city = varchar("city", 50)

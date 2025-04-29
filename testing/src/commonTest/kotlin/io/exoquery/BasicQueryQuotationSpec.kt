@@ -1,16 +1,15 @@
 package io.exoquery
 
-import io.exoquery.serial.ParamSerializer
 import io.exoquery.xr.OP
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.equals.shouldBeEqual
-import io.kotest.matchers.shouldBe
 
 class BasicQueryQuotationSpec : FreeSpec({
   data class Person(val id: Int, val name: String, val age: Int)
   data class Robot(val ownerId: Int, val model: String)
+
   val personTpe = XRType.Product("Person", listOf("id" to XRType.Value, "name" to XRType.Value, "age" to XRType.Value))
   val robotTpe = XRType.Product("Robot", listOf("ownerId" to XRType.Value, "model" to XRType.Value))
   val personEnt = XR.Entity("Person", personTpe)

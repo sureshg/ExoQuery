@@ -2,26 +2,24 @@
 
 package io.exoquery
 
-import io.exoquery.Ord.*
-import io.exoquery.capture.select
+import io.exoquery.Ord.Asc
+import io.exoquery.Ord.Desc
 import io.exoquery.sql.PostgresDialect
-import io.exoquery.xr.OP
-import io.exoquery.xr.SX
-import io.exoquery.xr.SelectClause
-import io.exoquery.xr.XR
+import io.exoquery.xr.*
+import io.exoquery.xr.XR.Expression
 import io.exoquery.xr.XR.Ordering.TupleOrdering
 import io.exoquery.xr.XR.Product.Companion.TupleSmartN
-import io.exoquery.xr.XR.Expression
-import io.exoquery.xr.XRType
 import io.kotest.matchers.equals.shouldBeEqual
 
 class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpecGolden, {
   data class Person(val id: Int, val name: String, val age: Int)
   data class Robot(val ownerId: Int, val model: String)
   data class Address(val ownerId: Int, val street: String, val zip: Int)
+
   val personTpe = XRType.Product("Person", listOf("id" to XRType.Value, "name" to XRType.Value, "age" to XRType.Value))
   val robotTpe = XRType.Product("Robot", listOf("ownerId" to XRType.Value, "model" to XRType.Value))
-  val addressTpe = XRType.Product("Address", listOf("ownerId" to XRType.Value, "street" to XRType.Value, "zip" to XRType.Value))
+  val addressTpe =
+    XRType.Product("Address", listOf("ownerId" to XRType.Value, "street" to XRType.Value, "zip" to XRType.Value))
   val personEnt = XR.Entity("Person", personTpe)
   val robotEnt = XR.Entity("Robot", robotTpe)
   val addressEnt = XR.Entity("Address", addressTpe)
@@ -35,6 +33,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
 
   "parsing features spec" - {
     val people = capture { Table<Person>() }
+
     data class Custom(val person: Person, val robot: Robot?)
 
     "from + join -> (p, r)" {
@@ -64,7 +63,11 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
         }
 
       people.xr shouldBeEqual SelectClause.of(
-        listOf(SX.From(pIdent, personEnt), SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot), SX.Join(XR.JoinType.Left, aIdent, addressEnt, aIdent, joinAddress)),
+        listOf(
+          SX.From(pIdent, personEnt),
+          SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot),
+          SX.Join(XR.JoinType.Left, aIdent, addressEnt, aIdent, joinAddress)
+        ),
         select = XR.Product("Custom", "person" to XR.Ident("p", personTpe), "robot" to XR.Ident("r", robotTpe)),
         type = XRType.Value
       ).toXrRef()
@@ -111,13 +114,19 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
       val people =
         capture.select {
           val p = from(people)
-          sortBy(p.age to Asc, p.name to Desc) // TODO what if the return from here is UNIT, need to control for that in the parser
+          sortBy(
+            p.age to Asc,
+            p.name to Desc
+          ) // TODO what if the return from here is UNIT, need to control for that in the parser
           p.name
         }
 
       people.xr shouldBeEqual SelectClause.of(
         listOf(SX.From(pIdent, personEnt)),
-        sortBy = SX.SortBy(TupleSmartN(pIdent.prop("age"), pIdent.prop("name")), TupleOrdering.of(XR.Ordering.Asc, XR.Ordering.Desc)),
+        sortBy = SX.SortBy(
+          TupleSmartN(pIdent.prop("age"), pIdent.prop("name")),
+          TupleOrdering.of(XR.Ordering.Asc, XR.Ordering.Desc)
+        ),
         select = XR.Property(pIdent, "name"),
         type = XRType.Value
       ).toXrRef()

@@ -1,7 +1,7 @@
 package io.exoquery
 
 import io.exoquery.sql.PostgresDialect
-import io.exoquery.testdata.*
+import io.exoquery.testdata.Person
 
 class ExpressionFunctionReq : GoldenSpecDynamic(ExpressionFunctionReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "String" - {
