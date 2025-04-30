@@ -22,7 +22,6 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrDeclarationReference
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.*
-import org.jetbrains.kotlin.ir.util.isNullable
 import org.jetbrains.kotlin.name.ClassId
 
 
