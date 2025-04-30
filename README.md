@@ -273,25 +273,25 @@ dependency blocks.
 
 ```kotlin
 plugins {
-  id("io.exoquery.exoquery-plugin") version "2.1.0-1.0.0.PL"
+  id("io.exoquery.exoquery-plugin") version "2.1.0-1.1.0.PL"
   kotlin("plugin.serialization") version "2.1.0" // exoquery relies on this
 }
 
 // For Java:
 dependencies {
-  implementation("io.exoquery:exoquery-runner-jdbc:1.0.0.PL-1.0.0")
+  implementation("io.exoquery:exoquery-runner-jdbc:1.1.0.PL-1.0.0")
   implementation("org.postgresql:postgresql:42.7.0") // Remember to include the right JDBC Driver
 }
 
 // For: IOS, OSX, Native Linux, and Mingw using Kotlin Multiplatform
 dependencies {
-  implementation("io.exoquery:exoquery-runner-native:1.0.0.PL-1.0.0")
+  implementation("io.exoquery:exoquery-runner-native:1.1.0.PL-1.1.0")
   implementation("app.cash.sqldelight:native-driver:2.0.2")
 }
 
 // For Android:
 dependencies {
-  implementation("io.exoquery:exoquery-runner-android:1.0.0.PL-1.0.0")
+  implementation("io.exoquery:exoquery-runner-android:1.1.0.PL-1.1.0")
   implementation("androidx.sqlite:sqlite-framework:2.4.0")
 }
 ```
