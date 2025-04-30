@@ -59,37 +59,27 @@ class QueryFile(
     val collectedQueries = codeFileAccum.currentQueries()
     val dumpedQueryText = QueryFileTextMaker(collectedQueries, QueryAccumState.PathBehavior.IncludePaths, QueryAccumState.LabelBehavior.IncludeAll)
 
-    writeToFile(dumpedQueryText, srcFile)
+
+    fun write() = writeToFile(dumpedQueryText, srcFile)
+
+    val fileExists = Files.exists(srcFile)
+    when {
+      !fileExists -> write()
+      fileExists -> {
+        val currentContents = Files.readString(srcFile)
+        if (currentContents != dumpedQueryText) {
+          writeToFile(dumpedQueryText, srcFile)
+        }
+      }
+      else ->
+        logger.warn("File already exists, not overriding it: ${srcFile} (to override set the annotation to ExoGoldenOverride).")
+    }
   }
 
   fun buildForGoldenFile(overrwriteExisting: Boolean) {
     // e.g: /home/me/project/src/commonMain/com/someplace/Code.kt -> /home/me/project/src/commonMain/com/someplace/
     val codeFilePath = Path.of(codeFile.fileEntry.name)
     val codeFileParent = codeFilePath.parent
-    //// projectDir: /home/me/project/
-    //val projectDirPath = Path.of(config.projectDir)
-    //if (!codeFileParent.startsWith(projectDirPath)) {
-    //  logger.warn("In order to be able to generate queries in the resources directory, the file must be in the project source directory: ${projectDirPath} but it was in: ${codeFileParent}")
-    //  return
-    //}
-    //val trimmedPath =
-    //  projectDirPath.relativize(codeFileParent) // this should be: src/commonMain/kotlin/com/someplace/
-    //    // we expect it to start with src so remove that
-    //    .let { if (it.startsWith("src")) Path.of("src").relativize(it) else it } // now should be: commonMain/kotlin/com/someplace/
-    // TODO should probably stop here if src could not be found since we'll expect an exact directory structure for it when we loaded it via the resource path
-    //val segments = trimmedPath.iterator().asSequence().toList()
-    //// i.e. commonMain
-    //val platformSourceDir = segments[0]
-    //// i.e. kotlin
-    //val sourceDir = segments[1]
-    //// todo if it is not "kotlin" probably need to make an assertion-error at this point
-    // fileGenerationPath: /home/me/project/ + src/ + resources/ + commonMain/ + com/someplace/
-    //val fileGenerationPath =
-    //  Path.of(config.projectDir)
-    //    .resolve("src")
-    //    .resolve(platformSourceDir)
-    //    .resolve("resources")
-    //    .resolve(segments.drop(2).joinToString(fs.separator)) // com/ + someplace/ -> com/someplace/
 
     // dirOfFile: /home/me/project/src/commonMain/com/someplace/
     val dirOfFile = codeFileParent.toFile()
@@ -114,13 +104,16 @@ class QueryFile(
       currentQueries.map { it.toPrintableValue() }, codeFilePath.nameWithoutExtension + "Golden", codeFile.packageFqName.asString()
     )
     val fileExists = Files.exists(srcFile)
+    fun write() = writeToFile(dumpedQueries, srcFile)
 
     when {
-      !fileExists ->
-        writeToFile(dumpedQueries, srcFile)
+      !fileExists -> write()
       fileExists && overrwriteExisting -> {
-        logger.warn("Overriding the golden file: ${srcFile} (to disable override, set to ExoGoldenTest)")
-        writeToFile(dumpedQueries, srcFile)
+        val currentContents = Files.readString(srcFile)
+        if (currentContents != dumpedQueries) {
+          logger.warn("Overriding the golden file: ${srcFile} (to disable override, set to ExoGoldenTest)")
+          write()
+        }
       }
       else ->
         logger.warn("File already exists, not overriding it: ${srcFile} (to override set the annotation to ExoGoldenOverride).")
@@ -137,7 +130,6 @@ class QueryFile(
 
   private fun writeToFile(queries: String, srcFile: Path) {
     try {
-      //logger.warn("----------------- Writing Queries to file: ${srcFile.toAbsolutePath()}")
       Files.write(srcFile, queries.toByteArray(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
     } catch (e: Exception) {
 
