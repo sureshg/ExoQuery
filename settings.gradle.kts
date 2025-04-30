@@ -22,10 +22,10 @@ dependencyResolutionManagement {
   }
 }
 
-includeBuild("exoquery-runtime")
+includeBuild("exoquery-engine")
 includeBuild("exoquery-plugin-kotlin")
 
-include("exoquery-controller-common")
+include("exoquery-runner-core")
 
 val isCI: Boolean = settings.extra.has("isCI")
 val isLocal = !isCI
@@ -39,11 +39,11 @@ if (isLocal || isLinux) {
     else "Unknown"
 
   println("------------------- Building JDBC/Android Libraries for ${buildLabel} Build -------------------")
-  include("exoquery-jdbc")
-  include("exoquery-android")
+  include("exoquery-runner-jdbc")
+  include("exoquery-runner-android")
 }
 
-include("exoquery-native")
+include("exoquery-runner-native")
 include("testing")
 
 rootProject.name = "exoquery"
@@ -57,7 +57,7 @@ rootProject.name = "exoquery"
 //    }
 //}
 //
-//includeBuild("exoquery-runtime")
+//includeBuild("exoquery-engine")
 //includeBuild("exoquery-plugin-kotlin")
 //
 //include("testing")

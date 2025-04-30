@@ -21,7 +21,7 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
     // This adds dependency until it has been configured by kotlin plugin
     // with the below code (starting with isMultiplatform) I don't think this is needed
     //target.plugins.withId("org.jetbrains.kotlin.jvm") {
-    //    target.dependencies.add("implementation", "io.exoquery:exoquery-runtime:${BuildConfig.VERSION}")
+    //    target.dependencies.add("implementation", "io.exoquery:exoquery-engine:${BuildConfig.VERSION}")
     //}
 
     val isMultiplatform = target.plugins.hasPlugin("org.jetbrains.kotlin.multiplatform")
@@ -29,7 +29,7 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
     val sourceSetApiConfigName =
       target.extensions.getByType(KotlinSourceSetContainer::class.java).sourceSets.getByName(sourceSetName).apiConfigurationName
     val runtimeDependencies = buildList {
-      add(target.dependencies.create("io.exoquery:exoquery-runtime:${BuildConfig.VERSION}"))
+      add(target.dependencies.create("io.exoquery:exoquery-engine:${BuildConfig.VERSION}"))
     }
     target.configurations.getByName(sourceSetApiConfigName).dependencies.addAll(runtimeDependencies)
 
@@ -44,7 +44,7 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
       // Fansi and core pprint ADT come from here
       target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:pprint-kotlin:3.0.0")
       // in some places the compiler needs to print things, so the compiled plugin needs pprint
-      target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:exoquery-runtime:${BuildConfig.VERSION}")
+      target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:exoquery-engine:${BuildConfig.VERSION}")
       target.dependencies.add("kotlinNativeCompilerPluginClasspath", "org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
       target.dependencies.add("kotlinNativeCompilerPluginClasspath", "org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
       // Since this is compiler-plugin it works in the compiler which is written in Java so we use JVM dependencies
@@ -57,7 +57,7 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
 
     // ALSO needed for the plugin classpath
     kotlinCompilation.dependencies {
-      api("io.exoquery:exoquery-runtime:${BuildConfig.VERSION}")
+      api("io.exoquery:exoquery-engine:${BuildConfig.VERSION}")
     }
 
     val target = kotlinCompilation.target.name

@@ -70,7 +70,7 @@ kotlin {
 
       dependencies {
         api("io.exoquery:controller-jdbc:3.2.0")
-        implementation(project(":exoquery-controller-common"))
+        implementation(project(":exoquery-runner-core"))
 
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
         api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")

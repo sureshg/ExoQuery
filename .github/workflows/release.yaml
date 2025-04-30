@@ -50,8 +50,8 @@ jobs:
 
       - name: 'Run MacOS Tests'
         if: matrix.os == 'macOS-latest'
-        run: ./gradlew :exoquery-native:build publishMac -PisCI --no-daemon --stacktrace --warning-mode all
+        run: ./gradlew :exoquery-runner-native:build publishMac -PisCI --no-daemon --stacktrace --warning-mode all
 
       - name: 'Run windows tests'
         if: matrix.os == 'windows-latest'
-        run: ./gradlew :exoquery-native:mingwX64Test publishWindows -PisCI --no-daemon --stacktrace --warning-mode all
+        run: ./gradlew :exoquery-runner-native:mingwX64Test publishWindows -PisCI --no-daemon --stacktrace --warning-mode all

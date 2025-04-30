@@ -35,7 +35,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEa
 val thisVersion = version
 
 dependencies {
-  api("io.exoquery:exoquery-runtime:${runtimeVersion}")
+  api("io.exoquery:exoquery-engine:${runtimeVersion}")
 
   compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable")
 

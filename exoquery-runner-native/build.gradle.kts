@@ -32,7 +32,7 @@ kotlin {
   sourceSets {
     val commonMain by getting {
       dependencies {
-        implementation(project(":exoquery-controller-common"))
+        implementation(project(":exoquery-runner-core"))
         api("io.exoquery:controller-native:3.2.0")
 
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
@@ -45,7 +45,7 @@ kotlin {
 
     val commonTest by getting {
       dependencies {
-        api(project(":exoquery-controller-common"))
+        api(project(":exoquery-runner-core"))
 
         implementation(kotlin("test"))
         implementation(kotlin("test-common"))

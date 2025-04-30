@@ -22,40 +22,40 @@ allprojects {
 
 tasks.register("publishLinux") {
   dependsOn(
-    gradle.includedBuild(Release.Project.`exoquery-runtime`).task(":publishAllPublicationsToOssRepository"),
+    gradle.includedBuild(Release.Project.`exoquery-engine`).task(":publishAllPublicationsToOssRepository"),
     gradle.includedBuild(Release.Project.`exoquery-plugin-gradle`).task(":publish"),
     gradle.includedBuild(Release.Project.`exoquery-plugin-kotlin`).task(":publish"),
     // Even though targets like MacosX64 are not built or published on the linux CI, it needs to know
     // then in order to publish the right Maven-central metadata (i.e. the .module file) that details
     // which build-variants exist
-    ":${Release.Project.`exoquery-controller-common`}:publishAllPublicationsToOssRepository",
-    ":${Release.Project.`exoquery-android`}:publishAllPublicationsToOssRepository",
-    ":${Release.Project.`exoquery-native`}:publishAllPublicationsToOssRepository",
-    ":${Release.Project.`exoquery-jdbc`}:publishAllPublicationsToOssRepository",
+    ":${Release.Project.`exoquery-runner-core`}:publishAllPublicationsToOssRepository",
+    ":${Release.Project.`exoquery-runner-android`}:publishAllPublicationsToOssRepository",
+    ":${Release.Project.`exoquery-runner-native`}:publishAllPublicationsToOssRepository",
+    ":${Release.Project.`exoquery-runner-jdbc`}:publishAllPublicationsToOssRepository",
   )
 }
 
 tasks.register("publishLinuxLocal") {
-  ":${Release.Project.`exoquery-runtime`}:publishToMavenLocal"
+  ":${Release.Project.`exoquery-engine`}:publishToMavenLocal"
   dependsOn(
-    gradle.includedBuild(Release.Project.`exoquery-runtime`).task(":publishToMavenLocal"),
+    gradle.includedBuild(Release.Project.`exoquery-engine`).task(":publishToMavenLocal"),
     gradle.includedBuild(Release.Project.`exoquery-plugin-gradle`).task(":publishToMavenLocal"),
     gradle.includedBuild(Release.Project.`exoquery-plugin-kotlin`).task(":publishToMavenLocal"),
-    ":${Release.Project.`exoquery-controller-common`}:publishToMavenLocal",
-    ":${Release.Project.`exoquery-android`}:publishToMavenLocal",
-    ":${Release.Project.`exoquery-native`}:publishToMavenLocal",
-    ":${Release.Project.`exoquery-jdbc`}:publishToMavenLocal",
+    ":${Release.Project.`exoquery-runner-core`}:publishToMavenLocal",
+    ":${Release.Project.`exoquery-runner-android`}:publishToMavenLocal",
+    ":${Release.Project.`exoquery-runner-native`}:publishToMavenLocal",
+    ":${Release.Project.`exoquery-runner-jdbc`}:publishToMavenLocal",
   )
 }
 
 tasks.register("publishMac") {
   Release.macBuildCommands.forEach {
-    dependsOn(gradle.includedBuild(Release.Project.`exoquery-runtime`).task(":$it"))
+    dependsOn(gradle.includedBuild(Release.Project.`exoquery-engine`).task(":$it"))
   }
   val targets =
     listOf(
-      Release.Project.`exoquery-controller-common`,
-      Release.Project.`exoquery-native`,
+      Release.Project.`exoquery-runner-core`,
+      Release.Project.`exoquery-runner-native`,
     ).flatMap { project ->
       Release.macBuildCommands.map { ":$project:$it" }
     }
@@ -64,12 +64,12 @@ tasks.register("publishMac") {
 
 tasks.register("publishWindows") {
   Release.windowsBuildCommands.forEach {
-    dependsOn(gradle.includedBuild(Release.Project.`exoquery-runtime`).task(":$it"))
+    dependsOn(gradle.includedBuild(Release.Project.`exoquery-engine`).task(":$it"))
   }
   val targets =
     listOf(
-      Release.Project.`exoquery-controller-common`,
-      Release.Project.`exoquery-native`,
+      Release.Project.`exoquery-runner-core`,
+      Release.Project.`exoquery-runner-native`,
     ).flatMap { project ->
       Release.windowsBuildCommands.map { ":$project:$it" }
     }
@@ -79,14 +79,14 @@ tasks.register("publishWindows") {
 object Release {
 
   object Project {
-    val `exoquery-runtime` = "exoquery-runtime"
+    val `exoquery-engine` = "exoquery-engine"
     val `exoquery-plugin-gradle` = "exoquery-plugin-gradle"
     val `exoquery-plugin-kotlin` = "exoquery-plugin-kotlin"
 
-    val `exoquery-controller-common` = "exoquery-controller-common"
-    val `exoquery-jdbc` = "exoquery-jdbc"
-    val `exoquery-native` = "exoquery-native"
-    val `exoquery-android` = "exoquery-android"
+    val `exoquery-runner-core` = "exoquery-runner-core"
+    val `exoquery-runner-jdbc` = "exoquery-runner-jdbc"
+    val `exoquery-runner-native` = "exoquery-runner-native"
+    val `exoquery-runner-android` = "exoquery-runner-android"
   }
 
   val macBuildCommands =

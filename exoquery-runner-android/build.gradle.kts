@@ -58,7 +58,7 @@ kotlin {
 
     androidMain.dependencies {
       dependencies {
-        implementation(project(":exoquery-controller-common"))
+        implementation(project(":exoquery-runner-core"))
 
         api("io.exoquery:controller-android:3.2.0")
 
@@ -71,7 +71,7 @@ kotlin {
 
     val androidInstrumentedTest by getting {
       dependencies {
-        implementation(project(":exoquery-controller-common"))
+        implementation(project(":exoquery-runner-core"))
 
         //implementation(kotlin("test-junit"))
         //implementation("junit:junit:4.13.2")
@@ -89,7 +89,7 @@ kotlin {
 
     val androidUnitTest by getting {
       dependencies {
-        implementation(project(":exoquery-controller-common"))
+        implementation(project(":exoquery-runner-core"))
 
         //implementation(kotlin("test-junit"))
         //implementation("junit:junit:4.13.2")

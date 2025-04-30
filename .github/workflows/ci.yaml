@@ -27,8 +27,8 @@ jobs:
 
       - name: 'Run MacOS Tests'
         if: matrix.os == 'macOS-latest'
-        run: ./gradlew :exoquery-native:build --stacktrace -PisCI -Pnosign
+        run: ./gradlew :exoquery-runner-native:build --stacktrace -PisCI -Pnosign
 
       - name: 'Run windows tests'
         if: matrix.os == 'windows-latest'
-        run: ./gradlew :exoquery-native:mingwX64Test --stacktrace -PisCI -Pnosign
+        run: ./gradlew :exoquery-runner-native:mingwX64Test --stacktrace -PisCI -Pnosign

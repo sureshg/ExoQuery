@@ -1,6 +1,6 @@
 pluginManagement {
   includeBuild("../build-logic")
-  includeBuild("../exoquery-runtime")
+  includeBuild("../exoquery-engine")
   repositories {
     gradlePluginPortal()
     mavenCentral()

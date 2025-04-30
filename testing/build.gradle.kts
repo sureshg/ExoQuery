@@ -24,7 +24,7 @@ kotlin {
     val commonTest by getting {
       kotlin.srcDir("$buildDir/generated/ksp/metadata/commonMain/kotlin")
       dependencies {
-        // TODO probably the gradle plugin should add these? They don't seem to be just inherited from the exoquery-runtime project
+        // TODO probably the gradle plugin should add these? They don't seem to be just inherited from the exoquery-engine project
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
         api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
 

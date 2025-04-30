@@ -12,9 +12,9 @@ val kotlinVersion = "2.1.0"
 val pluginVersion = "1.0.1.PL"
 val extensionsVersion = "1.0.1"
 
-// For exoquery-runtime, exoquery-plugin-gradle, exoquery-plugin-kotlin
+// For exoquery-engine, exoquery-plugin-gradle, exoquery-plugin-kotlin
 extra["pluginProjectVersion"] = "${kotlinVersion}-${pluginVersion}"
-// For exoquery-controller-common, exoquery-jdbc, exoquery-android, exoquery-native
+// For exoquery-runner-core, exoquery-runner-jdbc, exoquery-runner-android, exoquery-runner-native
 extra["controllerProjectVersion"] = "${pluginVersion}-${extensionsVersion}"
 
 group = "io.exoquery"

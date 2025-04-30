@@ -24,7 +24,7 @@ sealed interface ActionKind {
 
 /**
  * This is a runnable ExoQuery SqlQuery instance. The `value` variable contains the SQL string.
- * In order to execute it import a exoquery runner project e.g. exoquery-jdbc, then create a controller and run it. For example:
+ * In order to execute it import a exoquery runner project e.g. exoquery-runner-jdbc, then create a controller and run it. For example:
  * ```
  * val ds: DataSource = ...
  * val controller = JdbcControllers.Postgres(ds)
