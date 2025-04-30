@@ -122,7 +122,7 @@ class QueryFile(
 
   private fun File.dirExistsOrCouldMake() =
     if (!this.exists() && !this.mkdirs()) {
-      logger.error("Failed to create the parent directory: ${this.absolutePath}")
+      logger.warn("Failed to create the parent directory: ${this.absolutePath}")
       false
     } else {
       true
