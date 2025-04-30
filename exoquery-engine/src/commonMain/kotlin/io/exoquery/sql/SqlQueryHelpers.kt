@@ -4,7 +4,7 @@ import io.decomat.Is
 import io.decomat.Pattern
 import io.decomat.Pattern2
 import io.decomat.Typed
-import io.exoquery.xr.`+and+`
+import io.exoquery.xr._And_
 import io.exoquery.xr.XR
 import io.exoquery.xrError
 
@@ -25,7 +25,7 @@ fun List<SqlQueryApply.Layer>.findComponentsOrNull(): LayerComponents {
 
 
 fun combineWhereClauses(expr: XR.Expression?, combineWith: XR.Expression) =
-  if (expr != null) expr `+and+` combineWith
+  if (expr != null) expr _And_ combineWith
   else combineWith
 
 

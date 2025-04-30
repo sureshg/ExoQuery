@@ -4,15 +4,14 @@ import io.decomat.*
 import io.exoquery.ActionKind
 import io.exoquery.BID
 import io.exoquery.xr.XR.BinaryOp
-import io.exoquery.xrError
 
 // Can't use || or && chars because they don't work with linuxX64
-infix fun XR.Expression.`+or+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.or, other, this.loc)
-infix fun XR.Expression.`+and+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.and, other, this.loc)
-infix fun XR.Expression.`+==+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.`==`, other, this.loc)
-infix fun XR.Expression.`+!=+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.`!=`, other, this.loc)
-infix fun XR.Expression.`+'+'+`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.strPlus, other, this.loc)
-infix fun XR.Expression.`+++`(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.plus, other, this.loc)
+infix fun XR.Expression._Or_(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.Or, other, this.loc)
+infix fun XR.Expression._And_(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.And, other, this.loc)
+infix fun XR.Expression._EqEq_(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.EqEq, other, this.loc)
+infix fun XR.Expression._NotEq_(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.NotEq, other, this.loc)
+infix fun XR.Expression._StrPlus_(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.StrPlus, other, this.loc)
+infix fun XR.Expression._Plus_(other: XR.Expression): XR.BinaryOp = XR.BinaryOp(this, OP.Plus, other, this.loc)
 
 inline fun <reified R> Is.Companion.of(vararg possibilities: R): Is<R> = Is.PredicateAs(io.decomat.Typed<R>(), { possibilities.contains(it) })
 
@@ -132,7 +131,7 @@ class ProductNullCheck {
   operator fun <AP : Pattern<XR.Expression>> get(x: AP) =
     customPattern1("When.ProductNullCheck", x) { it: XR.BinaryOp ->
       on(it).match(
-        case(XR.BinaryOp.OneSideIs[IsTypeProduct(), Is.of(OP.`==`, OP.`!=`), NullXR()]).thenThis { a, b ->
+        case(XR.BinaryOp.OneSideIs[IsTypeProduct(), Is.of(OP.EqEq, OP.NotEq), NullXR()]).thenThis { a, b ->
           Components1(a)
         }
       )
@@ -161,7 +160,7 @@ class IfNull {
   operator fun <AP : Pattern<XR.Expression>, BP : Pattern<Pair<XR.Expression, XR.Expression>>> get(notNullSide: AP, thenElse: BP) =
     customPattern2("When.IfNull", notNullSide, thenElse) { it: XR.When ->
       on(it).match(
-        case(XR.When.CondThen[XR.BinaryOp.OneSideIs[NullXR(), Is<OP.`==`>(), Is()], Is()]).thenThis { (nullSide, notNullSide), thenSide ->
+        case(XR.When.CondThen[XR.BinaryOp.OneSideIs[NullXR(), Is<OP.EqEq>(), Is()], Is()]).thenThis { (nullSide, notNullSide), thenSide ->
           Components2(notNullSide, thenSide to this.orElse)
         }
       )
@@ -209,7 +208,7 @@ class NullIfNullOrX {
     customPattern1("When.NullIfNullOrX", notNullSide) { it: XR.When ->
       // if (x == null) null else x
       on(it).match(
-        case(XR.When.CondThen[XR.BinaryOp.OneSideIs[NullXR(), Is<OP.`==`>(), Is()], NullXR()]).thenThis { (nullSide, notNullSide), _ ->
+        case(XR.When.CondThen[XR.BinaryOp.OneSideIs[NullXR(), Is<OP.EqEq>(), Is()], NullXR()]).thenThis { (nullSide, notNullSide), _ ->
           if (notNullSide == this.orElse)
             Components1(notNullSide)
           else
@@ -264,7 +263,7 @@ class XIsNotNullOrNull {
     customPattern1("When.XIsNotNullOrNull", x) { it: XR.When ->
       on(it).match(
         // if (x != null) x else null -> x
-        case(XR.When.CondThen[XR.BinaryOp.OneSideIs[NullXR(), Is<OP.`!=`>(), Is()], Is()]).thenIfThis { (isNull, otherSide), thenTerm -> NullXR().matchesAny(orElse) && thenTerm.contains(otherSide) }.thenThis { _, then ->
+        case(XR.When.CondThen[XR.BinaryOp.OneSideIs[NullXR(), Is<OP.NotEq>(), Is()], Is()]).thenIfThis { (isNull, otherSide), thenTerm -> NullXR().matchesAny(orElse) && thenTerm.contains(otherSide) }.thenThis { _, then ->
           Components1(then)
         }
       )
@@ -281,7 +280,7 @@ class BinaryOpNotEq {
     customPattern2("When.BinaryOpNotEq", x, y) { it: XR.BinaryOp ->
       on(it).match(
         case(XR.BinaryOp[Is(), Is()]).thenThis { a, op, b ->
-          if (op is OP.`!=`) Components2(a, b) else null
+          if (op is OP.NotEq) Components2(a, b) else null
         }
       )
     }
@@ -294,7 +293,7 @@ class BinaryOpEqEq {
     customPattern2("When.BinaryOpEqEq", x, y) { it: XR.BinaryOp ->
       on(it).match(
         case(XR.BinaryOp[Is(), Is()]).thenThis { a, op, b ->
-          if (op is OP.`==`) Components2(a, b) else null
+          if (op is OP.EqEq) Components2(a, b) else null
         }
       )
     }

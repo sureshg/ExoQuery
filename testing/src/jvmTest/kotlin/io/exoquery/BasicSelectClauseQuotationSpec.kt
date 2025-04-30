@@ -26,8 +26,8 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
   val pIdent = XR.Ident("p", personTpe)
   val rIdent = XR.Ident("r", robotTpe)
   val aIdent = XR.Ident("a", addressTpe)
-  val joinRobot = XR.BinaryOp(XR.Property(pIdent, "id"), OP.`==`, XR.Property(rIdent, "ownerId"))
-  val joinAddress = XR.BinaryOp(XR.Property(pIdent, "id"), OP.`==`, XR.Property(aIdent, "ownerId"))
+  val joinRobot = XR.BinaryOp(XR.Property(pIdent, "id"), OP.EqEq, XR.Property(rIdent, "ownerId"))
+  val joinAddress = XR.BinaryOp(XR.Property(pIdent, "id"), OP.EqEq, XR.Property(aIdent, "ownerId"))
 
   infix fun Expression.prop(propName: String): Expression = XR.Property(this, propName)
 
@@ -103,7 +103,7 @@ class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpec
 
       people.xr shouldBeEqual SelectClause.of(
         listOf(SX.From(pIdent, personEnt), SX.Join(XR.JoinType.Inner, rIdent, robotEnt, rIdent, joinRobot)),
-        where = SX.Where(XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const("Joe"))),
+        where = SX.Where(XR.BinaryOp(XR.Property(pIdent, "name"), OP.EqEq, XR.Const("Joe"))),
         select = XR.Property(pIdent, "name"),
         type = XRType.Value
       ).toXrRef()

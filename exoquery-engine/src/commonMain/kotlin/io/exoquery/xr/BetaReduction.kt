@@ -65,7 +65,7 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
       },
       case(XR.When.IfCondThenFalseOrTrue[Is()]).thenThis { expr ->
         // if (x == null) false else true -> x != null
-        invoke(XR.UnaryOp(OP.`not`, expr))
+        invoke(XR.UnaryOp(OP.Not, expr))
       },
       case(XR.When.IfCondThenTrueOrFalse[Is()]).thenThis { expr ->
         // if (x == null) true else false -> x == null
@@ -76,10 +76,10 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
         invoke(x)
       },
       // !(x == y) -> x != y
-      case(XR.UnaryOp[Is<OP.not>(), XR.BinaryOp[Is(), Is<OP.`==`>(), Is()]]).thenThis { (a, b) ->
-        invoke(XR.BinaryOp(a, OP.`!=`, b))
+      case(XR.UnaryOp[Is<OP.Not>(), XR.BinaryOp[Is(), Is<OP.EqEq>(), Is()]]).thenThis { (a, b) ->
+        invoke(XR.BinaryOp(a, OP.NotEq, b))
       },
-      case(XR.BinaryOp.OneSideIs[Is(XR.Const.True), Is<OP.`==`>(), Is()]).then { _, otherSide ->
+      case(XR.BinaryOp.OneSideIs[Is(XR.Const.True), Is<OP.EqEq>(), Is()]).then { _, otherSide ->
         otherSide
       },
       // if ((if (x == null) null else y) == null) zA else zB ->
@@ -92,19 +92,19 @@ data class BetaReduction(val map: Map<QueryOrExpression, QueryOrExpression>, val
       case(XR.When.XIsNotNullOrNull[Is()]).thenThis {
         invoke(this.branches.first().then)
       },
-      case(XR.BinaryOp[Is(XR.Const.True), Is(XR.Const.False)]).thenIf { _, op, _ -> op == OP.`==` }.then { _, _, _ ->
+      case(XR.BinaryOp[Is(XR.Const.True), Is(XR.Const.False)]).thenIf { _, op, _ -> op == OP.EqEq }.then { _, _, _ ->
         XR.Const.False
       },
-      case(XR.BinaryOp.OneSideIs[Is(XR.Const.True), Is<OP.or>(), Is()]).then { _, otherSide ->
+      case(XR.BinaryOp.OneSideIs[Is(XR.Const.True), Is<OP.Or>(), Is()]).then { _, otherSide ->
         XR.Const.True
       },
-      case(XR.BinaryOp.OneSideIs[Is(XR.Const.True), Is<OP.and>(), Is()]).then { _, otherSide ->
+      case(XR.BinaryOp.OneSideIs[Is(XR.Const.True), Is<OP.And>(), Is()]).then { _, otherSide ->
         invoke(otherSide)
       },
-      case(XR.BinaryOp.OneSideIs[Is(XR.Const.False), Is<OP.or>(), Is()]).then { _, otherSide ->
+      case(XR.BinaryOp.OneSideIs[Is(XR.Const.False), Is<OP.Or>(), Is()]).then { _, otherSide ->
         invoke(otherSide)
       },
-      case(XR.BinaryOp.OneSideIs[Is(XR.Const.False), Is<OP.and>(), Is()]).then { _, otherSide ->
+      case(XR.BinaryOp.OneSideIs[Is(XR.Const.False), Is<OP.And>(), Is()]).then { _, otherSide ->
         XR.Const.False
       },
       case(XR.Property[Is<XR.When>(), Is()]).then { of, name ->

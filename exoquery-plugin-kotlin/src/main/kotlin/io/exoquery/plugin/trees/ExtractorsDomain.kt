@@ -422,8 +422,8 @@ object ExtractorsDomain {
           )?.let { result ->
             val (opName, arg1, arg2) = result
             BinaryOperators.operators.get(opName)?.let { op ->
-              if (op == OP.plus && arg1.type.isString())
-                Components1(OperatorCall(arg1, OP.strPlus, arg2))
+              if (op == OP.Plus && arg1.type.isString())
+                Components1(OperatorCall(arg1, OP.StrPlus, arg2))
               else
                 Components1(OperatorCall(arg1, op, arg2))
             }

@@ -56,10 +56,10 @@ class MirrorIdiomReq : GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGo
       shouldBeGolden(XR.FunctionApply(XR.Ident("a") `+==+` XR.Ident("b"), listOf(XR.Ident("bar"), XR.Ident("baz"))))
     }
     "XR.UnaryOp" {
-      shouldBeGolden(XR.UnaryOp(OP.minus, XR.Ident("foo")))
+      shouldBeGolden(XR.UnaryOp(OP.Minus, XR.Ident("foo")))
     }
     "XR.BinaryOp" {
-      shouldBeGolden(XR.BinaryOp(XR.Ident("a"), OP.`==`, XR.Ident("b")))
+      shouldBeGolden(XR.BinaryOp(XR.Ident("a"), OP.EqEq, XR.Ident("b")))
     }
     "XR.Block" {
       val vars = listOf(XR.Variable("foo".toId, "bar".toId), XR.Variable("baz".toId, "qux".toId))

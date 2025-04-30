@@ -36,80 +36,80 @@ sealed interface OP {
   val symbol: String
 
   @Serializable
-  data object `==` : BinaryOperator, EqualityOperator, YieldsBool {
+  data object EqEq : BinaryOperator, EqualityOperator, YieldsBool {
     override val symbol = "==";
     override fun toString() = symbol
   }
 
   @Serializable
-  data object `!=` : BinaryOperator, EqualityOperator, YieldsBool {
+  data object NotEq : BinaryOperator, EqualityOperator, YieldsBool {
     override val symbol = "!=";
     override fun toString() = symbol
   }
 
   @Serializable
-  data object not : BooleanOperator, PrefixUnaryOperator, YieldsBool {
+  data object Not : BooleanOperator, PrefixUnaryOperator, YieldsBool {
     override val symbol = "!"
   }
 
   @Serializable
-  data object and : BooleanOperator, BinaryOperator, YieldsBool {
+  data object And : BooleanOperator, BinaryOperator, YieldsBool {
     override val symbol = "&&"
   }
 
   @Serializable
-  data object or : BooleanOperator, BinaryOperator, YieldsBool {
+  data object Or : BooleanOperator, BinaryOperator, YieldsBool {
     override val symbol = "||"
   }
 
 
   @Serializable
-  data object plus : NumericOperator, BinaryOperator {
+  data object Plus : NumericOperator, BinaryOperator {
     override val symbol = "+"
   }
 
   @Serializable
-  data object minus : NumericOperator, BinaryOperator, PrefixUnaryOperator {
+  data object Minus : NumericOperator, BinaryOperator, PrefixUnaryOperator {
     override val symbol = "-"
   }
 
   @Serializable
-  data object mult : NumericOperator, BinaryOperator {
+  data object Mult : NumericOperator, BinaryOperator {
     override val symbol = "*"
   }
 
   @Serializable
-  data object gt : NumericOperator, BinaryOperator, YieldsBool {
+  data object Gt : NumericOperator, BinaryOperator, YieldsBool {
     override val symbol = ">"
   }
 
   @Serializable
-  data object gte : NumericOperator, BinaryOperator, YieldsBool {
+  data object GtEq : NumericOperator, BinaryOperator, YieldsBool {
     override val symbol = ">="
   }
 
   @Serializable
-  data object lt : NumericOperator, BinaryOperator, YieldsBool {
+  data object Lt : NumericOperator, BinaryOperator, YieldsBool {
     override val symbol = "<"
   }
 
   @Serializable
-  data object lte : NumericOperator, BinaryOperator, YieldsBool {
+  data object LtEq : NumericOperator, BinaryOperator, YieldsBool {
     override val symbol = "<="
   }
 
   @Serializable
-  data object div : NumericOperator, BinaryOperator {
+  data object Div : NumericOperator, BinaryOperator {
     override val symbol = "/"
   }
 
   @Serializable
-  data object mod : NumericOperator, BinaryOperator {
+  data object Mod : NumericOperator, BinaryOperator {
     override val symbol = "%"
   }
 
   @Serializable
-  data object strPlus : StringOperator, BinaryOperator {
+  data object StrPlus : StringOperator, BinaryOperator {
     override val symbol = "+"
   }
 }

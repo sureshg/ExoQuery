@@ -3,7 +3,6 @@ package io.exoquery.sql
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.Tracer
 import io.exoquery.util.unaryPlus
-import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.OP
 import io.exoquery.xr.XR
 
@@ -14,7 +13,7 @@ class MySqlDialect(override val traceConf: TraceConfig = TraceConfig.empty) : Sq
 
   override fun xrBinaryOpTokenImpl(binaryOpImpl: XR.BinaryOp): Token = with(binaryOpImpl) {
     when {
-      op is OP.strPlus -> +"CONCAT(${a.token}, ${b.token})"
+      op is OP.StrPlus -> +"CONCAT(${a.token}, ${b.token})"
       else -> super.xrBinaryOpTokenImpl(binaryOpImpl)
     }
   }

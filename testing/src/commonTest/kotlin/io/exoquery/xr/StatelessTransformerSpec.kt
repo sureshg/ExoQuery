@@ -111,14 +111,14 @@ class StatelessTransformerSpec : FreeSpec({
 
     "expression" - {
       "unary" {
-        val ast: XR = UnaryOp(OP.not, Ident("a"))
+        val ast: XR = UnaryOp(OP.Not, Ident("a"))
         Subject(Ident("a") to Ident("a'"))(ast) shouldBe
-            UnaryOp(OP.not, Ident("a'"))
+            UnaryOp(OP.Not, Ident("a'"))
       }
       "binary" {
-        val ast: XR = BinaryOp(Ident("a"), OP.and, Ident("b"))
+        val ast: XR = BinaryOp(Ident("a"), OP.And, Ident("b"))
         Subject(Ident("a") to Ident("a'"), Ident("b") to Ident("b'"))(ast) shouldBe
-            BinaryOp(Ident("a'"), OP.and, Ident("b'"))
+            BinaryOp(Ident("a'"), OP.And, Ident("b'"))
       }
       //"function apply" {
       //  val fun1 = XR.Function1(Ident("a"), Ident("a"))

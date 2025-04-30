@@ -21,7 +21,7 @@ class AdHocReduction(val traceConfig: TraceConfig) {
       // Filter(Filter(a, b, c), d, e) =>
       case(Filter[Filter[Is(), Is()], Is()]).thenThis { (a, b, c), d, e ->
         val er = BetaReduction(e, d to b)
-        Filter.cs(a, b, XR.BinaryOp(c, OP.and, er.asExpr()))
+        Filter.cs(a, b, XR.BinaryOp(c, OP.And, er.asExpr()))
       },
       // ---------------------------
       // flatMap.*

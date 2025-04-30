@@ -53,7 +53,7 @@ class BasicQueryQuotationSpec : FreeSpec({
       val cap0 = capture { Table<Person>() }
       val cap = capture { cap0.filter { p -> p.age > 18 } }
       cap.determinizeDynamics() shouldBeEqual SqlQuery(
-        XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "age"), OP.gt, XR.Const.Int(18))),
+        XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "age"), OP.Gt, XR.Const.Int(18))),
         RuntimeSet.Empty,
         ParamSet.Empty
       )
@@ -77,8 +77,8 @@ class BasicQueryQuotationSpec : FreeSpec({
         val cap = capture { capA.union(capB) }
         cap.determinizeDynamics() shouldBeEqual SqlQuery(
           XR.Union(
-            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const.String("A"))),
-            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const.String("B")))
+            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.EqEq, XR.Const.String("A"))),
+            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.EqEq, XR.Const.String("B")))
           ),
           RuntimeSet.Empty,
           ParamSet.Empty
@@ -88,8 +88,8 @@ class BasicQueryQuotationSpec : FreeSpec({
         val cap = capture { capA.unionAll(capB) }
         cap.determinizeDynamics() shouldBeEqual SqlQuery(
           XR.UnionAll(
-            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const.String("A"))),
-            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.Const.String("B")))
+            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.EqEq, XR.Const.String("A"))),
+            XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.EqEq, XR.Const.String("B")))
           ),
           RuntimeSet.Empty,
           ParamSet.Empty
@@ -130,7 +130,7 @@ class BasicQueryQuotationSpec : FreeSpec({
     //     XR.Map(XR.TagForSqlQuery(BID("1"), personTpe), pIdent, XR.Property(pIdent, "name")),
     //     RuntimeSet.of(BID("1") to
     //       SqlQuery<Person>(
-    //         xr = XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "age"), OP.`==`, XR.TagForParam.valueTag("0"))),
+    //         xr = XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "age"), OP.EqEq, XR.TagForParam.valueTag("0"))),
     //         runtimes = RuntimeSet.Empty,
     //         params = ParamSet(listOf(ParamSingle(BID("0"), 123, ParamSerializer.Int)))
     //       )

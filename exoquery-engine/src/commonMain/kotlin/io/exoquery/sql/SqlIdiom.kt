@@ -2,12 +2,11 @@ package io.exoquery.sql
 
 import io.decomat.*
 import io.exoquery.printing.HasPhasePrinting
-import io.exoquery.sql.FlattenSqlQuery
 import io.exoquery.util.*
 import io.exoquery.xr.*
 import io.exoquery.xr.OP.*
-import io.exoquery.xr.OP.and
-import io.exoquery.xr.OP.or
+import io.exoquery.xr.OP.And
+import io.exoquery.xr.OP.Or
 import io.exoquery.xr.XR.BinaryOp
 import io.exoquery.xr.XR.Ordering.*
 import io.exoquery.xr.XR.Visibility.*
@@ -483,24 +482,24 @@ interface SqlIdiom : HasPhasePrinting {
   val XR.BinaryOp.token get(): Token = xrBinaryOpTokenImpl(this)
   fun xrBinaryOpTokenImpl(binaryOpImpl: XR.BinaryOp): Token = with(binaryOpImpl) {
     when {
-      a is Any && op is `==` && b is Null -> +"${scopedTokenizer(a)} IS NULL"
-      a is Null && op is `==` && b is Any -> +"${scopedTokenizer(b)} IS NULL"
-      a is Any && op is `!=` && b is Null -> +"${scopedTokenizer(a)} IS NOT NULL"
-      a is Null && op is `!=` && b is Any -> +"${scopedTokenizer(b)} IS NOT NULL"
+      a is Any && op is EqEq && b is Null -> +"${scopedTokenizer(a)} IS NULL"
+      a is Null && op is EqEq && b is Any -> +"${scopedTokenizer(b)} IS NULL"
+      a is Any && op is NotEq && b is Null -> +"${scopedTokenizer(a)} IS NOT NULL"
+      a is Null && op is NotEq && b is Any -> +"${scopedTokenizer(b)} IS NOT NULL"
 
-      a is Any && op is `and` && b is Any ->
+      a is Any && op is And && b is Any ->
         when {
           // (a1 || a2) && (b1 || b2) i.e. need parens around the a and b
-          a is BinaryOp && a.op is `or` && b is BinaryOp && b.op is `or` ->
+          a is BinaryOp && a.op is Or && b is BinaryOp && b.op is Or ->
             +"${scopedTokenizer(a)} ${op.token} ${scopedTokenizer(b)}"
           // (a1 || a2) && b i.e. need parens around the a
-          a is BinaryOp && a.op is `or` -> +"${scopedTokenizer(a)} ${op.token} ${b.token}"
+          a is BinaryOp && a.op is Or -> +"${scopedTokenizer(a)} ${op.token} ${b.token}"
           // a && (b1 || b2) i.e. need parens around the b
-          b is BinaryOp && b.op is `or` -> +"${a.token} ${op.token} ${scopedTokenizer(b)}"
+          b is BinaryOp && b.op is Or -> +"${a.token} ${op.token} ${scopedTokenizer(b)}"
           // i.e. don't need parens around a or b
           else -> +"${a.token} ${op.token} ${b.token}"
         }
-      a is Any && op is or && b is Any -> +"${a.token} ${op.token} ${b.token}"
+      a is Any && op is Or && b is Any -> +"${a.token} ${op.token} ${b.token}"
       else -> +"${scopedTokenizer(a)} ${op.token} ${scopedTokenizer(b)}"
     }
   }
@@ -512,8 +511,8 @@ interface SqlIdiom : HasPhasePrinting {
   fun xrUnaryOpTokenImpl(unaryOpImpl: XR.UnaryOp): Token =
     on(unaryOpImpl).match(
       // NOT (x IS NULL) => x IS NOT NULL
-      case(XR.UnaryOp[Is<OP.not>(), BinaryOp[Is(), Is<OP.`==`>(), Is()]]).thenThis { (a, b) ->
-        xrBinaryOpTokenImpl(XR.BinaryOp(a, OP.`!=`, b))
+      case(XR.UnaryOp[Is<OP.Not>(), BinaryOp[Is(), Is<OP.EqEq>(), Is()]]).thenThis { (a, b) ->
+        xrBinaryOpTokenImpl(XR.BinaryOp(a, OP.NotEq, b))
       }
     ) ?: run {
       with(unaryOpImpl) {
@@ -524,27 +523,27 @@ interface SqlIdiom : HasPhasePrinting {
   val UnaryOperator.token
     get(): Token =
       when (this) {
-        is OP.minus -> +"-"
-        is OP.not -> +"NOT"
+        is OP.Minus -> +"-"
+        is OP.Not -> +"NOT"
       }
 
   val BinaryOperator.token get(): Token = opBinaryTokenImpl(this)
   fun opBinaryTokenImpl(opImpl: BinaryOperator): Token = with(opImpl) {
     when (this) {
-      is OP.`==` -> +"="
-      is OP.`!=` -> +"<>"
-      is OP.and -> +"AND"
-      is OP.or -> +"OR"
-      is OP.strPlus -> +"||" // String concat is `||` is most dialects (SQL Server uses + and MySQL only has the `CONCAT` function)
-      is OP.minus -> +"-"
-      is OP.plus -> +"+"
-      is OP.mult -> +"*"
-      is OP.gt -> +">"
-      is OP.gte -> +">="
-      is OP.lt -> +"<"
-      is OP.lte -> +"<="
-      is OP.div -> +"/"
-      is OP.mod -> +"%"
+      is OP.EqEq -> +"="
+      is OP.NotEq -> +"<>"
+      is OP.And -> +"AND"
+      is OP.Or -> +"OR"
+      is OP.StrPlus -> +"||" // String concat is `||` is most dialects (SQL Server uses + and MySQL only has the `CONCAT` function)
+      is OP.Minus -> +"-"
+      is OP.Plus -> +"+"
+      is OP.Mult -> +"*"
+      is OP.Gt -> +">"
+      is OP.GtEq -> +">="
+      is OP.Lt -> +"<"
+      is OP.LtEq -> +"<="
+      is OP.Div -> +"/"
+      is OP.Mod -> +"%"
     }
   }
 
@@ -665,7 +664,7 @@ interface SqlIdiom : HasPhasePrinting {
 
   fun tokenizeInsertBase(insert: XR.Insert): Token = with(insert) {
     val (columns, values) = columnsAndValues(assignments, exclusions).unzip()
-    +"INSERT INTO ${query.token}${` AS table`(alias)} (${columns.mkStmt(", ")}) VALUES ${tokenizeInsertAssignemnts(values)}"
+    +"INSERT INTO ${query.token}${`AS_table`(alias)} (${columns.mkStmt(", ")}) VALUES ${tokenizeInsertAssignemnts(values)}"
   }
 
   fun tokenizeInsertAssignemnts(values: List<Token>) =
@@ -743,7 +742,7 @@ interface SqlIdiom : HasPhasePrinting {
   }
 
   fun tokenizeDeleteBase(delete: XR.Delete): Token = with(delete) {
-    +"DELETE FROM ${query.token}${` AS table`(alias)}"
+    +"DELETE FROM ${query.token}${`AS_table`(alias)}"
   }
 
   // TODO specialized logic for Postgres UPDATE to allow setting token-context here
@@ -761,11 +760,11 @@ interface SqlIdiom : HasPhasePrinting {
   }
 
   fun tokenizeUpdateBase(update: XR.Update): Token = with(update) {
-    +"UPDATE ${query.token}${` AS table`(alias)} SET ${assignments.filterNot { exclusions.contains(it.property) }.token}"
+    +"UPDATE ${query.token}${`AS_table`(alias)} SET ${assignments.filterNot { exclusions.contains(it.property) }.token}"
   }
 
   // AS [table] specifically for actions (where for some dialects it shouldn't even be there)
-  fun ` AS table`(alias: XR.Ident): Token =
+  fun `AS_table`(alias: XR.Ident): Token =
     if (alias.isThisRef()) emptyStatement
     else
       when (useActionTableAliasAs) {

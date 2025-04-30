@@ -48,14 +48,14 @@ class EncodingSpecXR : FreeSpec({
     "BinaryOp" {
       val one = XR.Const.Int(1)
       val two = XR.Const.Int(2)
-      XR.BinaryOp(one, OP.plus, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
-      XR.BinaryOp(one, OP.minus, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
-      XR.BinaryOp(one, OP.mult, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
-      XR.BinaryOp(one, OP.div, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
+      XR.BinaryOp(one, OP.Plus, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
+      XR.BinaryOp(one, OP.Minus, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
+      XR.BinaryOp(one, OP.Mult, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
+      XR.BinaryOp(one, OP.Div, two).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
     }
     "UnaryOp" {
       val one = XR.Const.Int(1)
-      XR.UnaryOp(OP.minus, one).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
+      XR.UnaryOp(OP.Minus, one).let { xr -> xr.encode().decodeXR() shouldBeXR xr }
     }
     "TagForParam" {
       val xr = XR.TagForParam(BID.Companion.new(), XR.ParamType.Single, XRType.Value)

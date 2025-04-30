@@ -402,7 +402,7 @@ object ParseExpression {
           && elseBranch.cond == XR.Const.Boolean(true) && elseBranch.then == XR.Const.Boolean(false)
         ) {
           val firstClause = casesAst.first()
-          firstClause.cond `+and+` firstClause.then
+          firstClause.cond _And_ firstClause.then
         }
         // Kotlin converts (A || B) to `if(A) true else B`. This undoes that
         else if (
@@ -413,7 +413,7 @@ object ParseExpression {
           && elseBranch.cond == XR.Const.Boolean(true)
         ) {
           val firstClause = casesAst.first()
-          firstClause.cond `+or+` elseBranch.then
+          firstClause.cond _Or_ elseBranch.then
         } else {
           val elseBranchOrLast = elseBranch ?: casesAst.lastOrNull() ?: parseError("Empty when expression not allowed:\n${this.dumpKotlinLike()}")
           XR.When(casesAst, elseBranchOrLast.then, expr.loc)

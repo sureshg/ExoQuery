@@ -38,8 +38,8 @@ object UnaryOperators {
 //      StringOperator.toLong,
 //      StringOperator.toLowerCase,
 //      StringOperator.toUpperCase,
-      OP.not,
-      OP.minus
+      OP.Not,
+      OP.Minus
     ).map { it -> it.symbolName to it }.toMap()
 
   val UnaryOperator.symbolName: String
@@ -49,28 +49,28 @@ object UnaryOperators {
 //      StringOperator.toLong -> "toLong"
 //      StringOperator.toLowerCase -> "toLowerCase"
 //      StringOperator.toUpperCase -> "toUpperCase"
-        OP.not -> "not"
-        OP.minus -> "unaryMinus"
+        OP.Not -> "not"
+        OP.Minus -> "unaryMinus"
       }
 }
 
 object BinaryOperators {
   val operators =
     listOf<BinaryOperator>(
-      OP.strPlus,
-      OP.`==`,
-      OP.`!=`,
-      OP.and,
-      OP.or,
-      OP.div,
-      OP.gt,
-      OP.gte,
-      OP.lt,
-      OP.lte,
-      OP.minus,
-      OP.mod,
-      OP.mult,
-      OP.plus,
+      OP.StrPlus,
+      OP.EqEq,
+      OP.NotEq,
+      OP.And,
+      OP.Or,
+      OP.Div,
+      OP.Gt,
+      OP.GtEq,
+      OP.Lt,
+      OP.LtEq,
+      OP.Minus,
+      OP.Mod,
+      OP.Mult,
+      OP.Plus,
 //      StringOperator.split,
 //      StringOperator.startsWith
     ).map { it -> it.symbolName to it }.toMap()
@@ -78,19 +78,19 @@ object BinaryOperators {
   val BinaryOperator.symbolName: String
     get() =
       when (this) {
-        OP.strPlus -> "plus"
-        OP.`==` -> IrStatementOrigin.EQEQ.debugName
-        OP.`!=` -> IrStatementOrigin.EXCLEQ.debugName // EXCEL == exclamation point
-        OP.and -> IrStatementOrigin.ANDAND.debugName
-        OP.or -> IrStatementOrigin.OROR.debugName
-        OP.div -> "div"
-        OP.gt -> "greater"
-        OP.gte -> "greaterOrEqual"
-        OP.lt -> "less"
-        OP.lte -> "lessOrEqual"
-        OP.minus -> "minus"
-        OP.mod -> "rem"
-        OP.mult -> "times"
-        OP.plus -> "plus"
+        OP.StrPlus -> "plus"
+        OP.EqEq -> IrStatementOrigin.EQEQ.debugName
+        OP.NotEq -> IrStatementOrigin.EXCLEQ.debugName // EXCEL == exclamation point
+        OP.And -> IrStatementOrigin.ANDAND.debugName
+        OP.Or -> IrStatementOrigin.OROR.debugName
+        OP.Div -> "div"
+        OP.Gt -> "greater"
+        OP.GtEq -> "greaterOrEqual"
+        OP.Lt -> "less"
+        OP.LtEq -> "lessOrEqual"
+        OP.Minus -> "minus"
+        OP.Mod -> "rem"
+        OP.Mult -> "times"
+        OP.Plus -> "plus"
       }
 }

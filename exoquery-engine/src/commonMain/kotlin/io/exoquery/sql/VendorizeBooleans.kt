@@ -1,8 +1,8 @@
 package io.exoquery.sql
 
-import io.exoquery.xr.`+==+`
-import io.exoquery.xr.`+and+`
-import io.exoquery.xr.`+or+`
+import io.exoquery.xr._EqEq_
+import io.exoquery.xr._And_
+import io.exoquery.xr._Or_
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.OP
 import io.exoquery.xr.StatelessTransformer
@@ -55,8 +55,8 @@ object VendorizeBooleans : StatelessTransformer {
           BinaryOp.cs(valuefyExpression(invoke(a)), op, valuefyExpression(invoke(b)))
         // Example: "q.filter(e => !e.isSomething)" which needs to be converted to
         // "q.filter(e => !(e.isSomething == 1))" so it can be tokenized to "... WHERE e.isSomething = 1
-        this is XR.UnaryOp && op == OP.not ->
-          UnaryOp.cs(OP.not, expressifyValue(invoke(expr)))
+        this is XR.UnaryOp && op == OP.Not ->
+          UnaryOp.cs(OP.Not, expressifyValue(invoke(expr)))
 
         this is XR.Product ->
           Product.cs(fields.map { (name, value) -> name to valuefyExpression(invoke(value)) })
@@ -101,7 +101,7 @@ object VendorizeBooleans : StatelessTransformer {
 
   fun isOperatorOnExpressions(op: BinaryOperator) =
     when (op) {
-      OP.or, OP.and -> true
+      OP.Or, OP.And -> true
       else -> false
     }
 
@@ -116,7 +116,7 @@ object VendorizeBooleans : StatelessTransformer {
 
   fun isOperatorOnValues(op: BinaryOperator) =
     when (op) {
-      OP.`==`, OP.`!=`, OP.gt, OP.gte, OP.lt, OP.lte -> true
+      OP.EqEq, OP.NotEq, OP.Gt, OP.GtEq, OP.Lt, OP.LtEq -> true
       else -> false
     }
 
@@ -148,10 +148,10 @@ object VendorizeBooleans : StatelessTransformer {
     branches.all { it.then.isBooleanValue() } && orElse.isBooleanValue()
 
   fun XR.When.reduceToExpression(): XR.Expression = run {
-    val conds = branches.map { expressifyValue(it.cond) }.reduce { a, b -> a `+and+` b }
-    val condThens = branches.map { expressifyValue(it.cond) `+and+` expressifyValue(it.then) }
+    val conds = branches.map { expressifyValue(it.cond) }.reduce { a, b -> a _And_ b }
+    val condThens = branches.map { expressifyValue(it.cond) _And_ expressifyValue(it.then) }
     val elseExpr = expressifyValue(orElse)
-    condThens.reduce { a, b -> a `+and+` b } `+or+` (XR.UnaryOp(OP.not, conds) `+and+` elseExpr)
+    condThens.reduce { a, b -> a _And_ b } _Or_ (XR.UnaryOp(OP.Not, conds) _And_ elseExpr)
   }
 
 
@@ -170,7 +170,7 @@ object VendorizeBooleans : StatelessTransformer {
         this is XR.When && this.allPartsBooleanValue() ->
           this.reduceToExpression()
         this.isBooleanValue() ->
-          XR.Const.Boolean(true) `+==+` xr
+          XR.Const.Boolean(true) _EqEq_ xr
         else ->
           xr
       }

@@ -2,11 +2,10 @@ package io.exoquery.norm
 
 import io.decomat.*
 import io.exoquery.sql.ProtractQuat
-import io.exoquery.xr.`+!=+`
-import io.exoquery.xr.`+and+`
+import io.exoquery.xr._NotEq_
+import io.exoquery.xr._And_
 import io.exoquery.xr.EqEq
 import io.exoquery.xr.IsTypeProduct
-import io.exoquery.xr.NullIfNullOrX
 import io.exoquery.xr.NullXR
 
 import io.exoquery.xr.StatelessTransformer
@@ -21,9 +20,9 @@ object ExpandProductNullChecks : StatelessTransformer {
         val newCore = invoke(core)
         val props =
           ProtractQuat(false)(core.type as XRType.Product, newCore).map { (prop, _) ->
-            prop `+!=+` XR.Const.Null(nullCheck.loc)
+            prop _NotEq_ XR.Const.Null(nullCheck.loc)
           }
-        props.reduce { a: XR.Expression, b: XR.Expression -> a `+and+` b }
+        props.reduce { a: XR.Expression, b: XR.Expression -> a _And_ b }
       }
     ) ?: super.invoke(xr)
 }

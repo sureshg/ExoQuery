@@ -26,7 +26,7 @@ class ParamSpec : FreeSpec({
       // TODO need to also test dynamic-path of this
       val cap = capture { Table<Person>().filter { p -> p.name == param("name") } }
       cap.determinizeDynamics() shouldBe SqlQuery(
-        XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.`==`, XR.TagForParam.valueTag("0"))),
+        XR.Filter(personEnt, pIdent, XR.BinaryOp(XR.Property(pIdent, "name"), OP.EqEq, XR.TagForParam.valueTag("0"))),
         RuntimeSet.Empty,
         ParamSet(listOf(ParamSingle(BID("0"), "name", ParamSerializer.String)))
       )

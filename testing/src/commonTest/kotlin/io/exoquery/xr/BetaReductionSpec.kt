@@ -140,11 +140,11 @@ class BetaReductionSpec : FreeSpec({
 
     "functionN" {
       val ast: XR =
-        FunctionN(listOf(Ident("a"), Ident("b")), BinaryOp(Ident("a"), OP.plus, Ident("b")))
+        FunctionN(listOf(Ident("a"), Ident("b")), BinaryOp(Ident("a"), OP.Plus, Ident("b")))
 
       BetaReduction.ofXR(ast, Ident("a") to Ident("aa")) shouldBe FunctionN(
         listOf(Ident("aa"), Ident("b")),
-        BinaryOp(Ident("aa"), OP.plus, Ident("b"))
+        BinaryOp(Ident("aa"), OP.Plus, Ident("b"))
       )
     }
   }
@@ -152,14 +152,14 @@ class BetaReductionSpec : FreeSpec({
   "doesn't shadow identifiers" - {
     "function apply" {
       val ast: XR = FunctionApply(
-        FunctionN(listOf(Ident("a"), Ident("b")), BinaryOp(Ident("a"), OP.div, Ident("b"))),
+        FunctionN(listOf(Ident("a"), Ident("b")), BinaryOp(Ident("a"), OP.Div, Ident("b"))),
         listOf(Ident("b"), Ident("a"))
       )
-      BetaReduction.ofXR(ast) shouldBe BinaryOp(Ident("b"), OP.div, Ident("a"))
+      BetaReduction.ofXR(ast) shouldBe BinaryOp(Ident("b"), OP.Div, Ident("a"))
     }
     "nested function apply" {
       // (b) => a/b
-      val f1 = FunctionN(listOf(Ident("b")), BinaryOp(Ident("a"), OP.div, Ident("b")))
+      val f1 = FunctionN(listOf(Ident("b")), BinaryOp(Ident("a"), OP.Div, Ident("b")))
       // (a) => (b) => a/b
       val f2 = FunctionN(listOf(Ident("a")), f1)
       // ((a) => (b) => a/b).apply(b).apply(a) ->
@@ -167,7 +167,7 @@ class BetaReductionSpec : FreeSpec({
       //       b/tmp_b ->
       //         b/a
       val ast: XR = FunctionApply(FunctionApply(f2, listOf(Ident("b"))), listOf(Ident("a")))
-      BetaReduction.ofXR(ast) shouldBe BinaryOp(Ident("b"), OP.div, Ident("a"))
+      BetaReduction.ofXR(ast) shouldBe BinaryOp(Ident("b"), OP.Div, Ident("a"))
     }
   }
 

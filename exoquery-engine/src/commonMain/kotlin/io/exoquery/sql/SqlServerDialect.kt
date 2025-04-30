@@ -6,7 +6,6 @@ import io.exoquery.util.Tracer
 import io.exoquery.xr.XR
 import io.exoquery.util.unaryPlus
 import io.exoquery.xr.BetaReduction
-import io.exoquery.xr.BetaReduction.Companion.invoke
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.OP
 import io.exoquery.xr.toActionKind
@@ -248,7 +247,7 @@ class SqlServerDialect(override val traceConf: TraceConfig = TraceConfig.empty) 
     val query = insert.query
     with(insert) {
       val (columns, values) = columnsAndValues(assignments, exclusions).unzip()
-      +"INSERT INTO ${query.token}${` AS table`(alias)} (${columns.mkStmt(", ")}) OUTPUT ${returningClauseToken} VALUES ${tokenizeInsertAssignemnts(values)}"
+      +"INSERT INTO ${query.token}${`AS_table`(alias)} (${columns.mkStmt(", ")}) OUTPUT ${returningClauseToken} VALUES ${tokenizeInsertAssignemnts(values)}"
     }
   }
 
@@ -282,7 +281,7 @@ class SqlServerDialect(override val traceConf: TraceConfig = TraceConfig.empty) 
 
   override fun opBinaryTokenImpl(opImpl: BinaryOperator): Token = with(opImpl) {
     when (this) {
-      is OP.strPlus -> +"+"
+      is OP.StrPlus -> +"+"
       else -> super<SqlIdiom>.opBinaryTokenImpl(opImpl)
     }
   }

@@ -3,7 +3,7 @@
 Language Integrated Query for Kotlin Multiplatform
 
 * SQL Queries at Compile Time
-* Forget `eq`, use regular `==`
+* Forget `eq`, use regular EqEq
 * Forget `Case().When`, use regular `if` and `when`.
 * Forget `Column<T>`, use regular primitives!
 * Cross-Platform: JVM, iOS, Android, Linux, Windows, MacOS, JS-coming soon!
@@ -133,7 +133,7 @@ capture.select {
 Notice how the types compose completely fluidly? The output of a subquery is the same datatype as a table.
 
 ---
-### *...but wait, how can you use `==`, or regular `if` or regular case classes in a DSL?*
+### *...but wait, how can you use EqEq, or regular `if` or regular case classes in a DSL?*
 ---
 
 By using the `capture` function to deliniate relevant code snippets and a compiler-plugin to
