@@ -16,11 +16,13 @@ import io.exoquery.xr.of
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
+import org.jetbrains.kotlin.builtins.PrimitiveType
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrDeclarationReference
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.*
+import org.jetbrains.kotlin.ir.util.isNullable
 import org.jetbrains.kotlin.name.ClassId
 
 
@@ -98,21 +100,40 @@ fun IrDeclarationReference.showLineage(): String {
   return collect.map { "[${it}]" }.joinToString("->")
 }
 
-fun getSerializerForType(type: IrType): ClassId? =
-  when {
+context(CX.Scope)
+fun getSerializerForType(type: IrType): ClassId? = run {
+  val isNullable = type.isNullable()
+  type.getPrimitiveType()?.let { primitiveType ->
+    when {
+      // Originally I believed that this was needed for nullable types but then I realized
+      // that the Terpal-Controller can handle null values by taking the nullable-version of
+      // a encoder ad-hoc. It does not necessarily need to handed a nullable serializer form the start.
+      // (This makes sense when you think about it because PreparedStatementElementEncoder can always
+      // check if the value is null upfront and if the value is null it can set it to null on the
+      // PreparedStatement without doing anything else!)
+      //   primitiveType == PrimitiveType.CHAR && isNullable -> classIdOf<ParamSerializer.CharNullable>()
+      //   primitiveType == PrimitiveType.INT && isNullable -> classIdOf<ParamSerializer.IntNullable>()
+      primitiveType == PrimitiveType.CHAR -> classIdOf<ParamSerializer.Char>()
+      primitiveType == PrimitiveType.INT -> classIdOf<ParamSerializer.Int>()
+      primitiveType == PrimitiveType.SHORT -> classIdOf<ParamSerializer.Short>()
+      primitiveType == PrimitiveType.LONG -> classIdOf<ParamSerializer.Long>()
+      primitiveType == PrimitiveType.FLOAT -> classIdOf<ParamSerializer.Float>()
+      primitiveType == PrimitiveType.DOUBLE -> classIdOf<ParamSerializer.Double>()
+      primitiveType == PrimitiveType.BOOLEAN -> classIdOf<ParamSerializer.Boolean>()
+      else -> null
+    }
+  } ?: when {
+    type.isClass<java.lang.Void>() -> classIdOf<ParamSerializer.NullType>()
+    type.isNothing() -> classIdOf<ParamSerializer.NullType>()
+    type.isNullableNothing() -> classIdOf<ParamSerializer.NullType>()
+    type.isNullableString() -> classIdOf<ParamSerializer.String>()
     type.isString() -> classIdOf<ParamSerializer.String>()
-    type.isChar() -> classIdOf<ParamSerializer.Char>()
-    type.isInt() -> classIdOf<ParamSerializer.Int>()
-    type.isShort() -> classIdOf<ParamSerializer.Short>()
-    type.isLong() -> classIdOf<ParamSerializer.Long>()
-    type.isFloat() -> classIdOf<ParamSerializer.Float>()
-    type.isDouble() -> classIdOf<ParamSerializer.Double>()
-    type.isBoolean() -> classIdOf<ParamSerializer.Boolean>()
     type.isClassStrict<LocalDate>() -> classIdOf<LocalDate>()
     type.isClassStrict<LocalTime>() -> classIdOf<LocalTime>()
     type.isClassStrict<LocalDateTime>() -> classIdOf<LocalDateTime>()
     else -> null
   }
+}
 
 object ParseFree {
   context(CX.Scope, CX.Parsing, CX.Symbology)

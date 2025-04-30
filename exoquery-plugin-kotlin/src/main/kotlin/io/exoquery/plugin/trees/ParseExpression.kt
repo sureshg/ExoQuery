@@ -145,23 +145,29 @@ object ParseExpression {
         val paramValue = args.first()
         val paramBindTypeRaw =
           when {
-            this.ownerHasAnnotation<ParamStatic>() -> {
-              val staticRef = this.symbol.owner.getAnnotationArgs<ParamStatic>().firstOrNull()?.let { param ->
+            this.ownerHasAnnotation<io.exoquery.annotation.ParamStatic>() -> {
+              val staticRef = this.symbol.owner.getAnnotationArgs<io.exoquery.annotation.ParamStatic>().firstOrNull()?.let { param ->
                 param as? IrClassReference
                   ?: parseError("ParamStatic annotation must have a single argument that is a class-reference (e.g. PureFunction::class)", this)
               } ?: parseError("Could not find ParamStatic annotation", this)
               val classId = staticRef.classType.classId() ?: parseError("Could not find classId for ParamStatic annotation", this)
               ParamBind.Type.ParamStatic(classId)
             }
-            this.ownerHasAnnotation<ParamCustom>() -> {
+            this.ownerHasAnnotation<io.exoquery.annotation.ParamCustom>() -> {
               // serializer should be the 2nd arg i.e. paramCustom(value, serializer)
               ParamBind.Type.ParamCustom(args.lastOrNull() ?: parseError("ParamCustom annotation must have a second argument that is a class-reference (e.g. PureFunction::class)", this), paramValue.type)
             }
-            this.ownerHasAnnotation<ParamCustomValue>() -> {
+            this.ownerHasAnnotation<io.exoquery.annotation.ParamCustomValue>() -> {
               ParamBind.Type.ParamCustomValue(paramValue)
             }
-            this.ownerHasAnnotation<ParamCtx>() -> {
+            this.ownerHasAnnotation<io.exoquery.annotation.ParamCtx>() -> {
               ParamBind.Type.ParamCtx(paramValue.type)
+            }
+            this.ownerHasAnnotation<io.exoquery.annotation.ParamPrimitive>() -> {
+              getSerializerForType(expr.type)?.let { ParamBind.Type.ParamStatic(it) } ?: parseError(
+                "Could not find primitive-serializer for type: ${expr.type.dumpKotlinLike()}. Primitive serializers are only defined for: Int, Long, Float, Double, String, Boolean, and the kotlinx LocalDate, LocalTime, LocalDateTime, and Instant",
+                expr
+              )
             }
             else -> parseError("Could not find Param annotation on the param function of the call", this)
           }
@@ -210,15 +216,15 @@ object ParseExpression {
         val paramBindType =
           when {
             // currently not used because the specific ones have been commented out. Waiting for @SignatureName in KMP
-            this.ownerHasAnnotation<ParamStatic>() -> {
-              val staticRef = this.symbol.owner.getAnnotationArgs<ParamStatic>().firstOrNull()?.let { param ->
+            this.ownerHasAnnotation<io.exoquery.annotation.ParamStatic>() -> {
+              val staticRef = this.symbol.owner.getAnnotationArgs<io.exoquery.annotation.ParamStatic>().firstOrNull()?.let { param ->
                 param as? IrClassReference
                   ?: parseError("ParamStatic annotation must have a single argument that is a class-reference (e.g. PureFunction::class)", this)
               } ?: parseError("Could not find ParamStatic annotation", this)
               val classId = staticRef.classType.classId() ?: parseError("Could not find classId for ParamStatic annotation", this)
               ParamBind.Type.ParamListStatic(classId)
             }
-            this.ownerHasAnnotation<ParamPrimitive>() -> {
+            this.ownerHasAnnotation<io.exoquery.annotation.ParamPrimitive>() -> {
               val irType = this.typeArguments.firstOrNull() ?: parseError("params-call must have a single type argument", this)
               val paramSerializerClassId = getSerializerForType(irType)
                 ?: parseError(
@@ -227,15 +233,15 @@ object ParseExpression {
                 )
               ParamBind.Type.ParamListStatic(paramSerializerClassId)
             }
-            this.ownerHasAnnotation<ParamCustom>() -> {
+            this.ownerHasAnnotation<io.exoquery.annotation.ParamCustom>() -> {
               // serializer should be the 2nd arg i.e. paramCustom(value, serializer)
               val irType = this.typeArguments.firstOrNull() ?: parseError("params-call must have a single type argument", this)
               ParamBind.Type.ParamListCustom(args.lastOrNull() ?: parseError("ParamCustom annotation must have a second argument that is a class-reference (e.g. PureFunction::class)", this), irType)
             }
-            this.ownerHasAnnotation<ParamCustomValue>() -> {
+            this.ownerHasAnnotation<io.exoquery.annotation.ParamCustomValue>() -> {
               ParamBind.Type.ParamListCustomValue(paramValue)
             }
-            this.ownerHasAnnotation<ParamCtx>() -> {
+            this.ownerHasAnnotation<io.exoquery.annotation.ParamCtx>() -> {
               val irType = this.typeArguments.firstOrNull() ?: parseError("params-call must have a single type argument", this)
               ParamBind.Type.ParamListCtx(irType)
             }

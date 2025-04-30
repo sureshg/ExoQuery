@@ -401,7 +401,7 @@ object ExtractorsDomain {
                 },
                 // it's a single string-const in this case
                 case(Ir.Const[Is()]).then { const ->
-                  Components1(listOf(const))
+                  Components1(listOf(arg))
                 }
               )
             }

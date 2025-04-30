@@ -2,12 +2,20 @@ package io.exoquery
 
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
+import io.exoquery.testdata.PersonNullable
 
 class ActionReq : GoldenSpecDynamic(ActionReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "insert" - {
     "simple" {
       val q = capture {
         insert<Person> { set(name to "Joe", age to 123) }
+      }
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.build<PostgresDialect>(), "SQL")
+    }
+    "simple - nullable" {
+      val q = capture {
+        insert<PersonNullable> { set(name to "Joe", age to 123) }
       }
       shouldBeGolden(q.xr, "XR")
       shouldBeGolden(q.build<PostgresDialect>(), "SQL")
@@ -19,9 +27,38 @@ class ActionReq : GoldenSpecDynamic(ActionReqGoldenDynamic, Mode.ExoGoldenTest()
       shouldBeGolden(q.xr, "XR")
       shouldBeGolden(q.build<PostgresDialect>(), "SQL")
     }
+    "simple with params - nullable" {
+      val q = capture {
+        insert<PersonNullable> { set(name to param("Joe"), age to param(123)) }
+      }.determinizeDynamics()
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.build<PostgresDialect>(), "SQL")
+    }
+    "simple with params - nullable - actual null" {
+      val v: String? = null
+      val q = capture {
+        insert<PersonNullable> { set(name to param(v), age to param(123)) }
+      }.determinizeDynamics()
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.build<PostgresDialect>(), "SQL")
+    }
     "simple with setParams" {
       val q = capture {
         insert<Person> { setParams(Person(1, "Joe", 123)) }
+      }.determinizeDynamics()
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.build<PostgresDialect>(), "SQL")
+    }
+    "simple with setParams - nullable" {
+      val q = capture {
+        insert<PersonNullable> { setParams(PersonNullable(1, "Joe", 123)) }
+      }.determinizeDynamics()
+      shouldBeGolden(q.xr, "XR")
+      shouldBeGolden(q.build<PostgresDialect>(), "SQL")
+    }
+    "simple with setParams - nullable - actual null" {
+      val q = capture {
+        insert<PersonNullable> { setParams(PersonNullable(1, null, 123)) }
       }.determinizeDynamics()
       shouldBeGolden(q.xr, "XR")
       shouldBeGolden(q.build<PostgresDialect>(), "SQL")

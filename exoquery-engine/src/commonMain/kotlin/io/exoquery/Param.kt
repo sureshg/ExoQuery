@@ -37,7 +37,7 @@ sealed interface Param<T : Any> {
 // TODO need to have multiple-version of Param
 // TODO also in the dsl get rid of params that takes a list of ValueWithSerializer instances.
 //      any params used in a collection need to have the same serializer
-data class ParamMulti<T : Any>(override val id: BID, val value: List<T>, override val serial: ParamSerializer<T>, override val description: String? = null) : Param<T> {
+data class ParamMulti<T : Any>(override val id: BID, val value: List<T?>, override val serial: ParamSerializer<T>, override val description: String? = null) : Param<T> {
   override fun withNonStrictEquality(): ParamMulti<T> =
     copy(serial = serial.withNonStrictEquality())
 
@@ -46,7 +46,7 @@ data class ParamMulti<T : Any>(override val id: BID, val value: List<T>, overrid
   override fun toString() = "ParamMulti(${id.value}, $value, $serial)" // don't want to show description here because it could add too much noise
 }
 
-data class ParamSingle<T : Any>(override val id: BID, val value: T, override val serial: ParamSerializer<T>, override val description: String? = null) : Param<T> {
+data class ParamSingle<T : Any>(override val id: BID, val value: T?, override val serial: ParamSerializer<T>, override val description: String? = null) : Param<T> {
   override fun withNonStrictEquality(): ParamSingle<T> =
     copy(serial = serial.withNonStrictEquality())
 
@@ -58,7 +58,7 @@ data class ParamSingle<T : Any>(override val id: BID, val value: T, override val
 /**
  * For capture.batch { param -> insert { set(name = param(p.name <- encoding the value here!)) }  }
  */
-data class ParamBatchRefiner<Input, Output : Any>(override val id: BID, val refiner: (Input) -> Output, override val serial: ParamSerializer<Output>, override val description: String? = null) : Param<Output> {
+data class ParamBatchRefiner<Input, Output : Any>(override val id: BID, val refiner: (Input?) -> Output?, override val serial: ParamSerializer<Output>, override val description: String? = null) : Param<Output> {
   fun refine(input: Input): ParamSingle<Output> = ParamSingle<Output>(id, refiner(input), serial, description)
   fun refineAny(input: Any?): ParamSingle<Output> = refine(input as Input)
 

@@ -1,6 +1,7 @@
 package io.exoquery.postgres
 
 import io.exoquery.Person
+import io.exoquery.PersonNullable
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.TestDatabases
 import io.exoquery.capture
@@ -9,9 +10,12 @@ import io.exoquery.controller.runActions
 import io.exoquery.joe
 import io.exoquery.people
 import io.exoquery.jdbc.runOn
+import io.exoquery.peopleNullable
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 
 class ActionSpec : FreeSpec({
   val ctx = TestDatabases.postgres
@@ -27,12 +31,13 @@ class ActionSpec : FreeSpec({
   }
 
   "insert" - {
-    "simple" {
+    "simple - nullable" {
+      val joeNullable = PersonNullable(1, null, "Bloggs", null)
       val q = capture {
-        insert<Person> { set(firstName to "Joe", lastName to "Bloggs", age to 111) }
+        insert<PersonNullable> { set(firstName to null, lastName to "Bloggs", age to null) }
       }
       q.build<PostgresDialect>().runOn(ctx) shouldBe 1
-      ctx.people() shouldBe listOf(joe)
+      ctx.peopleNullable() shouldBe listOf(joeNullable)
     }
     "simple with params" {
       val q = capture {
@@ -41,6 +46,29 @@ class ActionSpec : FreeSpec({
       q.build<PostgresDialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldBe listOf(joe)
     }
+    "simple with params - nullable" {
+      val joeNullable = PersonNullable(1, null, "Bloggs", null)
+      val nameVar: String? = null
+      val ageVar: Int? = null
+      val q = capture {
+        insert<PersonNullable> { set(firstName to param(nameVar), lastName to param("Bloggs"), age to param(ageVar)) }
+      }
+      q.build<PostgresDialect>().runOn(ctx) shouldBe 1
+      ctx.peopleNullable() shouldBe listOf(joeNullable)
+    }
+    // tests where you have param(null) which kotlin thinks is a java.lang.Void
+    // I can support this all the way down to the driver level (i.e. it compiles and everything!)
+    // but the Postgres PreparedStatement can't handle it.
+    "simple with params - nullable - voidEncoder" {
+      val e = shouldThrow<IllegalArgumentException> {
+        val q = capture {
+          insert<PersonNullable> { set(firstName to param(null), lastName to param("Bloggs"), age to param(null)) }
+        }
+        q.build<PostgresDialect>().runOn(ctx)
+      }
+      e.message shouldContain "Unsupported null primitive kind: OBJECT"
+    }
+
     "simple with setParams" {
       val q = capture {
         insert<Person> { setParams(Person(1, "Joe", "Bloggs", 111)) }
@@ -48,6 +76,15 @@ class ActionSpec : FreeSpec({
       q.build<PostgresDialect>().runOn(ctx) shouldBe 1
       ctx.people() shouldBe listOf(joe)
     }
+    "simple with setParams - nullable" {
+      val joeNullable = PersonNullable(1, null, "Bloggs", null)
+      val q = capture {
+        insert<PersonNullable> { setParams(PersonNullable(1, null, "Bloggs", null)) }
+      }
+      q.build<PostgresDialect>().runOn(ctx) shouldBe 1
+      ctx.peopleNullable() shouldBe listOf(joeNullable)
+    }
+
     "simple with setParams and exclusion" {
       val q = capture {
         insert<Person> { setParams(Person(1, "Joe", "Bloggs", 111)).excluding(id) }

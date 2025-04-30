@@ -9,6 +9,8 @@ import io.exoquery.jdbc.runOn
 
 suspend fun JdbcController.people() = capture { Table<Person>() }.build<PostgresDialect>().runOn(this)
 
+suspend fun JdbcController.peopleNullable() = capture { Table<PersonNullable>() }.build<PostgresDialect>().runOn(this)
+
 suspend fun JdbcController.insertPerson(person: Person) =
   capture { insert<Person> { setParams(person).excluding(id) } }.build<PostgresDialect>().runOn(this)
 

@@ -29,6 +29,7 @@ import io.exoquery.sql.SqlQueryModel
 import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
 import kotlinx.serialization.Contextual
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.decodeFromHexString
 import kotlin.reflect.KClass
@@ -500,6 +501,11 @@ interface CapturedBlock {
     errorCap("Compile time plugin did not transform the tree")
 
   @Dsl
+  @ParamPrimitive
+  fun <T> param(value: T): T =
+    errorCap("Compile time plugin did not transform the tree")
+
+  @Dsl
   @ParamCtx
   fun <T> paramCtx(value: T): @Contextual T = errorCap("Compile time plugin did not transform the tree")
 
@@ -595,8 +601,7 @@ interface CapturedBlock {
 
   /** Only for insert and update */
   @Dsl
-  fun <T> set(vararg values: Pair<Any, Any>): set<T> = errorCap("The `set` expression of the Query was not inlined")
-
+  fun <T> set(vararg values: Pair<Any?, Any?>): set<T> = errorCap("The `set` expression of the Query was not inlined")
 }
 
 interface Params<T> {
@@ -652,7 +657,7 @@ interface SelectClauseCapturedBlock : CapturedBlock {
 
 interface ValueWithSerializer<T : Any> {
   val value: T
-  val serializer: SerializationStrategy<T>
+  val serializer: KSerializer<T>
   val cls: KClass<T>
 
   fun asParam(): ParamSerializer<T> = ParamSerializer.Custom(serializer, cls)
@@ -660,7 +665,7 @@ interface ValueWithSerializer<T : Any> {
   companion object {
     operator inline fun <reified T : Any> invoke(
       value: T,
-      serializer: SerializationStrategy<T>
+      serializer: KSerializer<T>
     ): ValueWithSerializer<T> =
       ConcreteValueWithSerializer<T>(value, serializer, T::class)
   }
@@ -669,13 +674,13 @@ interface ValueWithSerializer<T : Any> {
 @PublishedApi
 internal data class ConcreteValueWithSerializer<T : Any>(
   override val value: T,
-  override val serializer: SerializationStrategy<T>,
+  override val serializer: KSerializer<T>,
   override val cls: KClass<T>
 ) : ValueWithSerializer<T>
 
 interface ValuesWithSerializer<T : Any> {
   val values: List<T>
-  val serializer: SerializationStrategy<T>
+  val serializer: KSerializer<T>
   val cls: KClass<T>
 
   fun asParam(): ParamSerializer<T> = ParamSerializer.Custom(serializer, cls)
@@ -683,7 +688,7 @@ interface ValuesWithSerializer<T : Any> {
   companion object {
     operator inline fun <reified T : Any> invoke(
       values: List<T>,
-      serializer: SerializationStrategy<T>
+      serializer: KSerializer<T>
     ): ValuesWithSerializer<T> =
       ConcreteValuesWithSerializer<T>(values, serializer, T::class)
   }
@@ -692,6 +697,6 @@ interface ValuesWithSerializer<T : Any> {
 @PublishedApi
 internal data class ConcreteValuesWithSerializer<T : Any>(
   override val values: List<T>,
-  override val serializer: SerializationStrategy<T>,
+  override val serializer: KSerializer<T>,
   override val cls: KClass<T>
 ) : ValuesWithSerializer<T>

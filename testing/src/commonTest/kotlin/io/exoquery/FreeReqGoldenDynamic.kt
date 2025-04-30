@@ -2,8 +2,9 @@ package io.exoquery
 
 import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
+import io.exoquery.printing.kt
 
-object FreeReqGoldenDynamic : GoldenQueryFile {
+object FreeReqGoldenDynamic: GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "static free/simple sql function" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE MyFunction(p.age)"
@@ -37,6 +38,22 @@ object FreeReqGoldenDynamic : GoldenQueryFile {
     "action with free/direct action in free" to cr(
       "beforeStuff() INSERT INTO Person (id, name, age) VALUES ({0:1}, {1:Joe}, {2:123}) afterStuff()",
       "0" to "1", "1" to "Joe", "2" to "123"
+    ),
+    "action with free/whole action in free" to cr(
+      """
+      
+                  CREATE TABLE Launch (
+                      flightNumber INTEGER NOT NULL,
+                      missionName TEXT NOT NULL,
+                      details TEXT,
+                      launchSuccess INTEGER DEFAULT NULL,
+                      launchDateUTC TEXT NOT NULL,
+                      patchUrlSmall TEXT,
+                      patchUrlLarge TEXT,
+                      articleUrl TEXT
+                  )
+                
+      """
     ),
   )
 }

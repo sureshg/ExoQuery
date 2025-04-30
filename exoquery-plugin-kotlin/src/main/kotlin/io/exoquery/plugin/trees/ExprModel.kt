@@ -21,11 +21,13 @@ import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.symbols.impl.IrValueParameterSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isNullablePrimitiveType
+import org.jetbrains.kotlin.ir.types.isNullableString
 import org.jetbrains.kotlin.ir.types.isPrimitiveType
 import org.jetbrains.kotlin.ir.types.isString
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.isNullable
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -70,8 +72,8 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
       context(CX.Scope)
       fun auto(expr: IrExpression) = run {
         // Both isNullablePrimitiveType() and isPrimitiveType() are not needed (the 1st one takes care of both) but doing this for clarity
-        if (expr.type.isNullablePrimitiveType() || expr.type.isPrimitiveType() || expr.type.isString() || expr.type.isNullablePrimitiveType())
-          ParamStatic(getSerializerForType(expr.type) ?: parseError("Could not create a primitive-type parser ofr the type ${expr.type.dumpKotlinLike()} whose class-id is ${expr.type.classId()}", expr))
+        if (expr.type.isNullablePrimitiveType() || expr.type.isPrimitiveType() || expr.type.isString() || expr.type.isNullableString())
+          ParamStatic(getSerializerForType(expr.type) ?: parseError("Could not create a primitive-type parser of the type ${expr.type.dumpKotlinLike()} whose class-id is ${expr.type.classId()}", expr))
         //ParamStatic(expr.type.classId()!!)
         else
           ParamCtx(expr.type)
@@ -177,7 +179,9 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
      * originalValue is the `value` arg
      */
     data class ParamCtx(val type: IrType) : Type, Single {
-      context (CX.Scope, CX.Builder) override fun makeSerializer() = callWithParams("io.exoquery.serial", "contextualSerializer", listOf(type)).invoke()
+      context (CX.Scope, CX.Builder) override fun makeSerializer() =
+        callWithParams("io.exoquery.serial", "contextualSerializer", listOf(type)).invoke()
+
       context (CX.Scope, CX.Builder) override fun build(bid: BID, originalValue: IrExpression, lifter: Lifter) =
         with(lifter) {
           val value = makeValue(originalValue)

@@ -4,7 +4,7 @@ import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object ActionReqGoldenDynamic : GoldenQueryFile {
+object ActionReqGoldenDynamic: GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "insert/simple/XR" to kt(
       "insert<Person> { set(thisinsert.name to Joe, thisinsert.age to 123) }"
@@ -12,35 +12,67 @@ object ActionReqGoldenDynamic : GoldenQueryFile {
     "insert/simple/SQL" to cr(
       "INSERT INTO Person (name, age) VALUES ('Joe', 123)"
     ),
+    "insert/simple - nullable/XR" to kt(
+      "insert<PersonNullable> { set(thisinsert.name to Joe, thisinsert.age to 123) }"
+    ),
+    "insert/simple - nullable/SQL" to cr(
+      "INSERT INTO PersonNullable (name, age) VALUES ('Joe', 123)"
+    ),
     "insert/simple with params/XR" to kt(
       """insert<Person> { set(thisinsert.name to TagP("0"), thisinsert.age to TagP("1")) }"""
     ),
     "insert/simple with params/SQL" to cr(
       "INSERT INTO Person (name, age) VALUES ({0:Joe}, {1:123})",
-      "e77e4a98-c634-48b1-8e9f-fb67113ac132" to "Joe", "107a1be7-64dc-4be7-9896-cb60e599468d" to "123"
+      "671837ae-24be-40ba-b540-37c83a492563" to "Joe", "d42b91ff-423a-41de-b99f-a238525bc66c" to "123"
+    ),
+    "insert/simple with params - nullable/XR" to kt(
+      """insert<PersonNullable> { set(thisinsert.name to TagP("0"), thisinsert.age to TagP("1")) }"""
+    ),
+    "insert/simple with params - nullable/SQL" to cr(
+      "INSERT INTO PersonNullable (name, age) VALUES ({0:Joe}, {1:123})",
+      "0c29d854-4696-44f8-a407-07b0c65584c6" to "Joe", "cea53a88-409e-4178-b0d7-854a5fab63cf" to "123"
+    ),
+    "insert/simple with params - nullable - actual null/XR" to kt(
+      """insert<PersonNullable> { set(thisinsert.name to TagP("0"), thisinsert.age to TagP("1")) }"""
+    ),
+    "insert/simple with params - nullable - actual null/SQL" to cr(
+      "INSERT INTO PersonNullable (name, age) VALUES ({0:null}, {1:123})",
+      "a946d9cd-da59-4559-98c1-d4152d72294f" to "null", "154a1121-724d-4e6b-9b59-d714063a384d" to "123"
     ),
     "insert/simple with setParams/XR" to kt(
       """insert<Person> { set(thisinsert.id to TagP("0"), thisinsert.name to TagP("1"), thisinsert.age to TagP("2")) }"""
     ),
     "insert/simple with setParams/SQL" to cr(
       "INSERT INTO Person (id, name, age) VALUES ({0:1}, {1:Joe}, {2:123})",
-      "f79791b4-8c58-4022-8815-10ebf7a77f73" to "1",
-      "5272f227-e734-44b4-bcdb-ffc0b9109d91" to "Joe",
-      "d4e1a3a1-532c-4cea-a535-9a7b347d116d" to "123"
+      "fba0b48f-6f05-4c96-a0c0-4b937fea43c1" to "1", "ca38f082-b6f9-4dd9-becd-e01accc3bd11" to "Joe", "4457f224-7fc3-47e9-9986-e8dc2ef37500" to "123"
+    ),
+    "insert/simple with setParams - nullable/XR" to kt(
+      """insert<PersonNullable> { set(thisinsert.id to TagP("0"), thisinsert.name to TagP("1"), thisinsert.age to TagP("2")) }"""
+    ),
+    "insert/simple with setParams - nullable/SQL" to cr(
+      "INSERT INTO PersonNullable (id, name, age) VALUES ({0:1}, {1:Joe}, {2:123})",
+      "0de205bd-4f5e-4773-bbbc-bb7e3f75053c" to "1", "d170badd-5052-4827-beab-a82a9390d166" to "Joe", "46c8c670-0ecf-4ae3-a8d7-3e4bc207d8bd" to "123"
+    ),
+    "insert/simple with setParams - nullable - actual null/XR" to kt(
+      """insert<PersonNullable> { set(thisinsert.id to TagP("0"), thisinsert.name to TagP("1"), thisinsert.age to TagP("2")) }"""
+    ),
+    "insert/simple with setParams - nullable - actual null/SQL" to cr(
+      "INSERT INTO PersonNullable (id, name, age) VALUES ({0:1}, {1:null}, {2:123})",
+      "b27215f1-703d-4af8-bede-f31b4e7138c1" to "1", "cdcda3a7-c98f-4174-a0ae-40d551a6f047" to "null", "3e3a2b67-5ab0-44f5-a9bd-298e460aef2f" to "123"
     ),
     "insert/simple with setParams and exclusion/XR" to kt(
       """insert<Person> { set(thisinsert.id to TagP("0"), thisinsert.name to TagP("1"), thisinsert.age to TagP("2")).excluding(listOf(thisinsert.id)) }"""
     ),
     "insert/simple with setParams and exclusion/SQL" to cr(
       "INSERT INTO Person (name, age) VALUES ({0:Joe}, {1:123})",
-      "497f47cb-9ec9-4f7f-819b-6084e7a7e8e5" to "Joe", "26d83e2d-635c-470f-9615-f57d2c908773" to "123"
+      "eae4a812-44f6-4763-b309-460f42083990" to "Joe", "49b8966a-7c55-4068-a2ce-4c8322b90c1f" to "123"
     ),
     "insert/simple with setParams and exclusion - multiple/XR" to kt(
       """insert<Person> { set(thisinsert.id to TagP("0"), thisinsert.name to TagP("1"), thisinsert.age to TagP("2")).excluding(listOf(thisinsert.id, thisinsert.name)) }"""
     ),
     "insert/simple with setParams and exclusion - multiple/SQL" to cr(
       "INSERT INTO Person (age) VALUES ({0:123})",
-      "2bb2776e-99b9-4981-9ac0-2f9e4413afc7" to "123"
+      "ce10e86b-fcda-46a1-b09b-0d7899dcc35c" to "123"
     ),
     "insert/with returning/XR" to kt(
       "insert<Person> { set(thisinsert.name to Joe, thisinsert.age to 123) }.returning { p -> p.id }"
@@ -71,9 +103,7 @@ object ActionReqGoldenDynamic : GoldenQueryFile {
     ),
     "insert/with returning params/SQL" to cr(
       "INSERT INTO Person (name, age) VALUES ({0:Joe}, {1:123}) RETURNING name, {2:myParamValue}",
-      "8c4a93b2-29b6-47b3-873d-f26a1ee5d1e2" to "Joe",
-      "67893fec-58ca-488d-a087-a42439868a16" to "123",
-      "53c20df6-6963-4dff-8c90-2aa4b4786649" to "myParamValue"
+      "c48769c0-d089-4bed-9497-bc671a67ac7d" to "Joe", "7acc8e06-fb17-4f7a-b8ab-479a2b7b2b29" to "123", "0e02712c-75d5-4083-9f9d-78051ef32451" to "myParamValue"
     ),
     "insert/with returning params/Params" to kt(
       "[ParamSingle(0, Joe, String), ParamSingle(1, 123, Int), ParamSingle(2, myParamValue, String)]"
@@ -116,16 +146,14 @@ object ActionReqGoldenDynamic : GoldenQueryFile {
     ),
     "update/with setParams/SQL" to cr(
       "UPDATE Person SET id = {0:1}, name = {1:Joe}, age = {2:123} WHERE id = 1",
-      "77365f11-3377-4b4b-9a5a-a7329f30e8eb" to "1",
-      "82877d78-bf6b-46d1-b8d5-a377f9a55886" to "Joe",
-      "ceae10c1-ce2e-4976-bb81-4693968383a2" to "123"
+      "e4be59ce-7c15-4b47-bd2f-18d3633a3472" to "1", "bbe6498d-509d-4cb3-b48e-ef296ab63afc" to "Joe", "4bf63e1b-7322-4d33-b6cb-e181e8a02add" to "123"
     ),
     "update/with setParams and exclusion/XR" to kt(
       """update<Person> { set(thisupdate.id to TagP("0"), thisupdate.name to TagP("1"), thisupdate.age to TagP("2")).excluding(listOf(thisupdate.id)) }.filter { p -> p.id == 1 }"""
     ),
     "update/with setParams and exclusion/SQL" to cr(
       "UPDATE Person SET name = {0:Joe}, age = {1:123} WHERE id = 1",
-      "283b5ff7-8cd7-44d2-8e74-bd0cc158fefd" to "Joe", "08d5728c-335a-434b-95b9-4650fe9993f2" to "123"
+      "128ae6a4-648b-4f3e-a881-8a4974a6bea9" to "Joe", "43eacf23-8f63-4ae8-8abf-ae2a625a93da" to "123"
     ),
     "update/with returning/XR" to kt(
       "update<Person> { set(thisupdate.name to Joe, thisupdate.age to 123) }.filter { p -> p.id == 1 }.returning { p -> p.id }"

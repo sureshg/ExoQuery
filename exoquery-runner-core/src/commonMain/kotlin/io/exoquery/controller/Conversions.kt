@@ -15,7 +15,7 @@ fun <T : Any> Param<T>.toStatementParam(): List<StatementParam<T>> =
     is ParamMulti<*> ->
       this.value.flatMap { v -> listOf(StatementParam<T>(this.serial.serializer, this.serial.cls, v as T)) }
     is ParamSingle<*> ->
-      listOf(StatementParam<T>(this.serial.serializer, this.serial.cls, value as T))
+      listOf(StatementParam<T>(this.serial.serializer, this.serial.cls, value as T?))
   }
 
 fun <T> SqlCompiledQuery<T>.toControllerQuery(serializer: KSerializer<T>): ControllerQuery<T> =
