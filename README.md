@@ -144,6 +144,7 @@ transform them, I can synthesize a SQL query the second your code is compiled in
 <br />
 You can even see it in the build output in a file. Have a look at the `build/generated/exoquery` directory.
 
+<br />
 <img src="https://github.com/user-attachments/assets/fe00c574-ef03-4657-898b-afd37ef16e99" width=50% height=50%>
 
 ---
@@ -273,25 +274,25 @@ dependency blocks.
 
 ```kotlin
 plugins {
-  id("io.exoquery.exoquery-plugin") version "2.1.0-1.1.0.PL"
+  id("io.exoquery.exoquery-plugin") version "2.1.0-1.1.2.PL"
   kotlin("plugin.serialization") version "2.1.0" // exoquery relies on this
 }
 
 // For Java:
 dependencies {
-  implementation("io.exoquery:exoquery-runner-jdbc:1.1.0.PL-1.0.0")
+  implementation("io.exoquery:exoquery-runner-jdbc:1.1.2.PL-1.1.2")
   implementation("org.postgresql:postgresql:42.7.0") // Remember to include the right JDBC Driver
 }
 
 // For: IOS, OSX, Native Linux, and Mingw using Kotlin Multiplatform
 dependencies {
-  implementation("io.exoquery:exoquery-runner-native:1.1.0.PL-1.1.0")
+  implementation("io.exoquery:exoquery-runner-native:1.1.2.PL-1.1.2")
   implementation("app.cash.sqldelight:native-driver:2.0.2")
 }
 
 // For Android:
 dependencies {
-  implementation("io.exoquery:exoquery-runner-android:1.1.0.PL-1.1.0")
+  implementation("io.exoquery:exoquery-runner-android:1.1.2.PL-1.1.2")
   implementation("androidx.sqlite:sqlite-framework:2.4.0")
 }
 ```
@@ -316,7 +317,7 @@ Have a look at code samples for starter projects here:
 
 - Basic Java project - https://github.com/ExoQuery/exoquery-sample-jdbc
 - Basic Linux Native project: TBD
-- Android and OSX project: TBD
+- Android and OSX project: https://github.com/ExoQuery/exoquery-sample-kmp
 
 # ExoQuery Features
 
