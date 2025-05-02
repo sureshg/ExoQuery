@@ -204,8 +204,8 @@ That's right! You can use regular Kotlin constructs that you know and love in or
 ### *What is this `capture` thing?*
 ---
 
-The `capture` function is how ExoQuery knows whot code to capture inside of the Kotlin
-compiler plugin in order to be transformed into SQL. This is how ExoQuery is able to
+The `capture` function is how ExoQuery knows what parts of your application code need to be captured 
+inside of the ExoQuery compiler plugin so they can be transformed into SQL. This is how ExoQuery is able to
 use regular Kotlin constructs like `if`, `when`, and `let` in the DSL. There are a few
 different kinds of things that you can capture:
 
@@ -273,11 +273,13 @@ Add the following to your `build.gradle.kts`. First add the plugin and then one 
 dependency blocks.
 
 ```kotlin
+// First add the plugin:
 plugins {
   id("io.exoquery.exoquery-plugin") version "2.1.0-1.1.2.PL"
   kotlin("plugin.serialization") version "2.1.0" // exoquery relies on this
 }
 
+// Then add a runner...
 // For Java:
 dependencies {
   implementation("io.exoquery:exoquery-runner-jdbc:1.1.2.PL-1.1.2")
@@ -296,6 +298,12 @@ dependencies {
   implementation("androidx.sqlite:sqlite-framework:2.4.0")
 }
 ```
+> *Why the funny verision numbers?* <br /> 
+> ExoQuery's Compiler Plugin component has versions that look like this: `<KotlinVersion-ExoQueryPluginVersion.PL>`
+> <br />
+> The runners have a version that looks like this: `<ExoQueryPluginVersion.PL-ExoQueryRunnerVersion>`.
+> <br />
+> That way the only the plugin-version needs to be bumped whever a new version of Kotlin is released, not all of the runners too.
 
 You can get started writing queries like this:
 
