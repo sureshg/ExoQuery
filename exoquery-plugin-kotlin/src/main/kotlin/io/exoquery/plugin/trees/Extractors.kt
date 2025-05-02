@@ -10,7 +10,9 @@ import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.ReceiverCaller
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
+import org.jetbrains.kotlin.backend.jvm.ir.isValueClassType
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.*
@@ -120,6 +122,17 @@ object Ir {
       }
     }
 
+    class IsTypeOf private constructor (val type: IrType, val typeSystem: IrTypeSystemContext) : Pattern0<IrExpression>(Typed<IrExpression>()) {
+      override fun matches(r: ProductClass<IrExpression>): Boolean =
+        Typed<IrExpression>().typecheck(r.productClassValueUntyped) &&
+            r.productClassValue.type.isSubtypeOf(type, typeSystem)
+
+      companion object {
+        context(CX.Scope)
+        operator fun invoke(type: IrType) = IsTypeOf(type, typeSystem)
+      }
+    }
+
     class HasAnnotation(val annotationNameRaw: FqName?) : Pattern0<IrExpression>(Typed<IrExpression>()) {
       override fun matches(r: ProductClass<IrExpression>): Boolean =
         annotationNameRaw?.let { annotationName ->
@@ -168,7 +181,9 @@ object Ir {
     }
 
     object DataClass {
-      context(CX.Scope) operator fun <AP : Pattern<String>, BP : Pattern<List<Pair<String, IrType>>>> get(name: AP, fields: BP) =
+      data class Prop(val name: String, val type: IrType, val isContextual: Boolean)
+
+      context(CX.Scope) operator fun <AP : Pattern<String>, BP : Pattern<List<DataClass.Prop>>> get(name: AP, fields: BP) =
         customPattern2("Type.DataClass", name, fields) { it: IrType ->
           val cls = it.classOrNull
           if (cls != null && cls.isDataClass()) {
@@ -189,7 +204,8 @@ object Ir {
                     ?: irProp.getAnnotationArgs<kotlinx.serialization.SerialName>().firstConstStringOrNull()
                     ?: propName
 
-                realPropName to propType
+                val isContextual = cls.owner.hasAnnotation<Contextual>()
+                DataClass.Prop(realPropName, propType, isContextual)
               }
 
             // Note that this was not matching without props.toList() because it was a Sequence object instead of a list
@@ -229,7 +245,8 @@ object Ir {
     object Value {
       context(CX.Scope)
       private fun isValueType(it: IrType) =
-        it.isString() ||
+          it.isValueClassType() ||
+            it.isString() ||
             it.isLong() ||
             it.isShort() ||
             it.isInt() ||
@@ -828,6 +845,16 @@ object Ir {
         }
     }
 
+    object withReturnOnlyBlockAndArgs {
+      operator fun <AP : Pattern<List<IrValueParameter>>, BP : Pattern<IrExpression>> get(params: AP, body: BP) =
+        customPattern2("FunctionExpression.withBlock", params, body) { it: IrFunctionExpression ->
+          on(it).match(
+            case(FunctionExpression[SimpleFunction.withReturnOnlyExpressionAndArgs[Is(), Is()]])
+              .then { (params, body) -> Components2(params, body) }
+          )
+        }
+    }
+
     object withBlock {
       operator fun <AP : Pattern<List<IrValueParameter>>, BP : Pattern<IrBlockBody>> get(params: AP, body: BP) =
         customPattern2("FunctionExpression.withBlock", params, body) { it: IrFunctionExpression ->
@@ -900,6 +927,17 @@ object Ir {
           on(it).match(
             case(SimpleFunction[Is(), BlockBody.ReturnOnly[Is()]]).then { _, (b) ->
               Components1(b)
+            }
+          )
+        }
+    }
+
+    object withReturnOnlyExpressionAndArgs {
+      operator fun <AP : Pattern<List<IrValueParameter>>, BP : Pattern<B>, B : IrExpression> get(args: AP, body: BP) =
+        customPattern2("Ir.SimpleFunction.withReturnOnlyExpressionAndArgs", args, body) { it: IrSimpleFunction ->
+          on(it).match(
+            case(SimpleFunction[Is(), BlockBody.ReturnOnly[Is()]]).then { args, (b) ->
+              Components2(args, b)
             }
           )
         }

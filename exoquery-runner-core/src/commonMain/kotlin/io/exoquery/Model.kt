@@ -1,10 +1,21 @@
 package io.exoquery
 
 import io.exoquery.annotation.ExoEntity
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmInline
 
 @Serializable
 data class Person(val id: Int, val firstName: String, val lastName: String, val age: Int)
+
+@JvmInline
+@Serializable
+value class PersonId(val value: Int)
+// TODO when I remove @Contextual terpal-sql says Bad value "Bloggs" for column of type int which means the cursor
+//      goes too far. Need to update terpal driver to handle value classes.
+@Serializable
+@ExoEntity("Person")
+data class PersonWithId(@Contextual val id: PersonId, val firstName: String, val lastName: String, val age: Int)
 
 @Serializable
 @ExoEntity("Person")

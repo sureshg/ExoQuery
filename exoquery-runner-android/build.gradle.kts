@@ -58,7 +58,7 @@ kotlin {
 
     androidMain.dependencies {
       dependencies {
-        implementation(project(":exoquery-runner-core"))
+        api(project(":exoquery-runner-core"))
 
         api("io.exoquery:controller-android:3.2.0")
 

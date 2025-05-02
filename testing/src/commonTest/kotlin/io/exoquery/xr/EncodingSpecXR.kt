@@ -198,6 +198,7 @@ class EncodingSpecXR : FreeSpec({
         XR.OnConflict.Target.Properties(listOf(XR.Property(XR.Ident("this"), "name"))),
         XR.OnConflict.Resolution.Update(
           XR.Ident("exclude"),
+          XR.Ident("include"),
           listOf(XR.Assignment(XR.Property(XR.Ident("this"), "name"), XR.Const.String("Joe")))
         )
       )

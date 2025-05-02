@@ -149,6 +149,6 @@ interface StatelessTransformer {
   operator fun invoke(xr: XR.OnConflict.Resolution): XR.OnConflict.Resolution =
     when (xr) {
       is XR.OnConflict.Resolution.Ignore -> xr
-      is XR.OnConflict.Resolution.Update -> XR.OnConflict.Resolution.Update(xr.excludedId, xr.assignments.map { invoke(it) })
+      is XR.OnConflict.Resolution.Update -> XR.OnConflict.Resolution.Update(xr.excludedId, xr.existingParamIdent, xr.assignments.map { invoke(it) })
     }
 }

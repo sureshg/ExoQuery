@@ -133,24 +133,23 @@ object TypeParser {
         XRType.Value
       },
 
-      //case(Ir.Type.Query[Is()]).then { realType ->
-      //  parse(realType)
-      //},
-
       // TODO need to check if there there is a @Serializeable annotation and if that has renamed type-name and/or field-values to use for the XRType
       case(Ir.Type.DataClass[Is(), Is()]).then { name, props ->
-        val fieldTypeXRs = props.map { (fieldName, fieldType) -> fieldName to parse(fieldType) }
-        //warn("------------- Parsed Class props of: ${name}: ${fieldTypeXRs.map { (a, b) -> "$a -> $b" }} -------------------")
+        val fieldTypeXRs = props.map { (fieldName, fieldType, isCtx) ->
+          // If it's a contextual parameter we immediately know it's a value
+          if (isCtx)
+            fieldName to XRType.Value
+          else
+            fieldName to parse(fieldType)
+        }
         XRType.Product(name, fieldTypeXRs)
       },
 
       case(Ir.Type.Generic[Is()]).then { type ->
-        //error("----------- Got here: ${type} ----------")
         XRType.Generic
       },
 
       case(Is<IrType> { it.isAny() }).then {
-        //error("----------- Got here: ${it} ----------")
         XRType.Generic
       }
     ) ?: run {

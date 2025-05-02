@@ -10,12 +10,14 @@ import io.exoquery.annotation.ExoDelete
 import io.exoquery.annotation.ExoInsert
 import io.exoquery.annotation.ExoUpdate
 import io.exoquery.innerdsl.SqlActionFilterable
+import io.exoquery.innerdsl.set
 import io.exoquery.innerdsl.setParams
 import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.containsBatchParam
+import io.exoquery.xr.BetaReduction
 import io.exoquery.xr.XR
 import io.exoquery.xr.of
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -88,6 +90,7 @@ object ParseAction {
           when (val parsed = parse(actionExpr)) {
             is XR.U.CoreAction -> parsed
             is XR.FilteredAction -> parsed
+            is XR.OnConflict -> parsed
             else -> parseError("The `.returning` function can only be called on a basic action i.e. insert, update, or delete or a basic-action with a filter but got:\n${parsed.showRaw()}", actionExpr)
           }
         XR.Returning(core, XR.Returning.Kind.Expression(returningAlias, returningExpr), expr.loc)
@@ -132,20 +135,31 @@ object ParseAction {
       }
     ) ?: parseError("Could not parse the action", expr)
 
+  context(CX.Scope, CX.Parsing, CX.Symbology, CX.Builder)
+  private fun parseAssignmentList(expr: IrExpression, inputType: IrType) =
+    on(expr).match(
+      case(Ir.Call.FunctionMem1[Ir.Expr.IsTypeOf(inputType), Is("set"), Ir.Vararg[Is()]]).then { _, (assignments) ->
+        val ent = ParseQuery.parseEntity(inputType, expr.location())
+        val parsedAssignments = assignments.map { parseAssignment(it) }
+        ent to parsedAssignments
+      }
+    )
+
+
   // TODO when going back to the Expression parser the 'this' pointer needs to be on the list of local symbols
   context(CX.Scope, CX.Parsing, CX.Symbology, CX.Builder)
   private fun parseActionComposite(expr: IrExpression, inputType: IrType, actionAlias: XR.Ident, compositeType: CompositeType): XR.Action =
     // the i.e. insert { set(...) } or update { set(...) }
     on(expr).match<XR.Action>(
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is("set"), Ir.Vararg[Is()]]).then { _, (assignments) ->
-        val ent = ParseQuery.parseEntity(inputType, expr.location())
-        val parsedAssignments = assignments.map { parseAssignment(it) }
+      case(ExtractorsDomain.Call.ActionSetClause(inputType)[Is()]).then { data ->
+        val ent = data.parseEntity()
+        val assignments = data.assignments.map { parseAssignment(it) }
         when (compositeType) {
-          CompositeType.Insert -> XR.Insert(ent, actionAlias, parsedAssignments, listOf(), expr.loc)
-          CompositeType.Update -> XR.Update(ent, actionAlias, parsedAssignments, listOf(), expr.loc)
+          CompositeType.Insert -> XR.Insert(ent, actionAlias, assignments, listOf(), expr.loc)
+          CompositeType.Update -> XR.Update(ent, actionAlias, assignments, listOf(), expr.loc)
         }
       },
-      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<CapturedBlock>(), Is("setParams"), Is()]).thenThis { _, param ->
+      case(Ir.Call.FunctionMem1[Ir.Expr.IsTypeOf(inputType), Is("setParams"), Is()]).thenThis { _, param ->
         val paths = Elaborate.invoke(param)
         val assignments =
           paths.map { epath ->
@@ -181,11 +195,79 @@ object ParseAction {
           is XR.Update -> headAction.copy(exclusions = columns)
           else -> parseError("The `excluding` is only allowed for Insert and Update actions", expr)
         }
-      }
+      },
+      case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<set<*>>(), Is("onConflictIgnore"), Ir.Vararg[Is()]]).then { headExpr, (fieldExprs) ->
+        val fieldsList = parseFieldListOrFail(fieldExprs)
+        val headInsert = run {
+          val head = parseActionComposite(headExpr, inputType, actionAlias, compositeType)
+          head as? XR.Insert ?: parseError("The `onConflictIgnore` is only allowed for Insert actions", headExpr)
+        }
+        val target = if (fieldsList.isNotEmpty()) XR.OnConflict.Target.Properties(fieldsList) else XR.OnConflict.Target.NoTarget
+        XR.OnConflict(headInsert, target, XR.OnConflict.Resolution.Ignore, expr.loc)
+      },
+      case(Ir.Call.FunctionMem2[Ir.Expr.ClassOf<set<*>>(), Is("onConflictUpdate"), Is()]).then { headExpr, argsPair ->
+        val (fields, exclusions) = argsPair
+        val fieldsList: List<XR.Property> =
+          on(fields).match(
+            case(Ir.Vararg[Is()]).then { fieldExprs ->
+              parseFieldListOrFail(fieldExprs).map { fieldExprRawXR ->
+                // TODO this logic should probably be moved into the SqlIdiom, it should is more rendering related
+                // Recall that database don't expect a alias the field-expressions block i.e. it's
+                // `ON CONFLICT (id)` not `ON CONFLICT (tableAlias.id)`
+                BetaReduction(fieldExprRawXR, actionAlias to actionAlias.copy(XR.Ident.HiddenRefName)) as XR.Property
+              }
+            }
+          ) ?: parseError("Invalid field-list for onConflictUpdate: ${fields.dumpKotlinLike()}. The onConflictUpdate fields need to be single-column values.", fields)
+
+        val (excludingParamIdent, exlusionsData) =
+          on(exclusions).match(
+            case(Ir.FunctionExpression.withReturnOnlyBlockAndArgs[Is(), Is()]).thenThis { excludingParamOne, stmt ->
+              val excludingParamIdent = Parser.parseValueParamter(excludingParamOne.first())
+              val exlusionsData =
+                on(stmt).match(
+                  case(ExtractorsDomain.Call.ActionSetClause(inputType)[Is()]).then { data -> data },
+                  // TODO more advanced docs, should have an example
+                ) ?: parseError("The statement inside of a onConflictUpdate block's exlcusion clause must be a single `set` expression reprsenting the updates to the desired columns", stmt)
+              excludingParamIdent to exlusionsData
+            }
+            // TODO more advanced docs, should have an example
+          ) ?: parseError("The statement inside of a onConflictUpdate block must be a single `set` or `setParams` expression followed by excluded, returning/Keys, or onConflict", exclusions)
+
+
+        val headInsert = run {
+          val head = parseActionComposite(headExpr, inputType, actionAlias, compositeType)
+          head as? XR.Insert ?: parseError("The `onConflictUpdate` is only allowed for Insert actions", headExpr)
+        }
+
+        // We can't use the table alias (i.e. something like $this$insert) because that won't be rendered in the tokenization,
+        // we actually have to replace it with a real ident that needs to be used for the table.
+        // so if we do something like set(name = name + "_" + excluding.name) which really is set($this$insert.name = $this$insert.name + "_" + EXCLUDED.name)
+        // postgres renders that as `SET name = name + "_" + EXCLUDED.name`
+        // and it gives a an "ambiguous column `name`" error (which is stupid btw since it should be able to resolve it based on that fact that it doesn't have an EXCLUDED identifier!)
+        // so intead we just look at what uses $this$insert on the right hand side and replace it with the an arbitrary alias, then the tokenizer figures out how to deal with it later
+        //
+        // Additionally, we need to hide the LHS since we're going to replace the whole action-alias with something visible the has
+        // $this$insert.name which we need to change to something like $this$hidden
+        val (assignments, newAlias) = run {
+          val assignmentsRaw = exlusionsData.parseAssignments()
+          val newAlias = headInsert.alias.copy("x")
+          val hiddenAlias = headInsert.alias.copy(XR.Ident.HiddenRefName)
+          // TODO some of this logic should probably be moved into the SqlIdiom, it should is more rendering related
+          //      need to think about which parts
+          val assignments = assignmentsRaw.map { asi ->
+            val newRhs = BetaReduction(asi.value, headInsert.alias to newAlias) as XR.Expression
+            val newLhs = BetaReduction(asi.property, headInsert.alias to hiddenAlias) as XR.Property
+            asi.copy(property = newLhs, value = newRhs)
+          }
+          (assignments to newAlias)
+        }
+        val target = if (fieldsList.isNotEmpty()) XR.OnConflict.Target.Properties(fieldsList) else XR.OnConflict.Target.NoTarget
+        XR.OnConflict(headInsert, target, XR.OnConflict.Resolution.Update(excludingParamIdent, newAlias, assignments), expr.loc)
+      },
     ) ?: parseError("Could not parse the expression inside of the action", expr)
 
   context(CX.Scope, CX.Parsing, CX.Symbology)
-  private fun parseAssignment(expr: IrExpression): XR.Assignment =
+  fun parseAssignment(expr: IrExpression): XR.Assignment =
     on(expr).match<XR.Assignment>(
       case(ExtractorsDomain.Call.`x to y`[Is.Companion(), Is.Companion()]).thenThis { left, right ->
         val property = ParseExpression.parse(left).let { it as? XR.Property ?: parseError("Could not parse the left side of the assignment: ${it.showRaw()}", left) }

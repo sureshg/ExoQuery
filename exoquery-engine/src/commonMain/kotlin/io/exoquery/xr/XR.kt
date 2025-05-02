@@ -814,6 +814,9 @@ sealed interface XR {
 
     companion object {
       val Unused = XR.Ident("unused", XRType.Unknown, XR.Location.Synth)
+      private val dol: Char = '$'
+      val HiddenRefName = "${dol}this${dol}hidden"
+      val HiddenRef = XR.Ident(HiddenRefName, XRType.Unknown, XR.Location.Synth)
 
       // Can't use context recievers in phases since query-compiler needs to be
       // implemented in all platforms, not only java
@@ -1407,11 +1410,10 @@ sealed interface XR {
 
   @Serializable
   @Mat
-  data class OnConflict(@Slot val insert: XR.Insert, @CS val target: XR.OnConflict.Target, @CS val resolution: XR.OnConflict.Resolution) : XR.Action, PC<OnConflict> {
+  data class OnConflict(@Slot val insert: XR.Insert, @CS val target: XR.OnConflict.Target, @CS val resolution: XR.OnConflict.Resolution, override val loc: Location = Location.Synth) : XR.Action, PC<OnConflict> {
     @Transient
     override val productComponents = productOf(this, insert)
     override val type: XRType get() = insert.type
-    override val loc: Location = Location.Synth
     override fun toString() = show()
     @Transient
     private val cid = id()
@@ -1440,7 +1442,7 @@ sealed interface XR {
       @Serializable
       object Ignore : Resolution
       @Serializable
-      data class Update(val excludedId: Ident, val assignments: List<XR.Assignment>) : Resolution
+      data class Update(val excludedId: Ident, val existingParamIdent: Ident, val assignments: List<XR.Assignment>) : Resolution
     }
   }
 

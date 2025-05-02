@@ -648,13 +648,71 @@ interface SqlIdiom : HasPhasePrinting {
       is XR.Insert -> this.token
       is XR.Update -> this.token
       is XR.Delete -> this.token
-      is XR.OnConflict -> TODO()
+      is XR.OnConflict -> this.token
       is XR.FilteredAction -> this.token
       is XR.Returning -> this.token
       is XR.Free -> this.token
       is XR.TagForSqlAction -> xrError("TagForSqlAction should have been expanded out before this point")
     }
   }
+
+  fun prepareForTokenization(onConflictRaw: XR.OnConflict): XR.OnConflict = run {
+    if (onConflictRaw.resolution is XR.OnConflict.Resolution.Update) {
+      // Postgres doesn't know what field-name to use even if there's an EXCLUDING, for example, in something like this:
+      // Error executing query: INSERT INTO Person (firstName, lastName, age) VALUES (?, ?, 1234) ON CONFLICT (id) DO UPDATE SET firstName = ((firstName || '_') || EXCLUDED.firstName)), age = EXCLUDED.age
+      // it won't know what (firstName || '_') to use. So we need to replace the whole whopping action alias with some arbitrary alias that we assing
+      // for the 'existing' column when we parse the set(...) clause ON CONFLICT target (in the parser).
+      val actionAlias = onConflictRaw.insert.alias
+      val newActionAlias = actionAlias.copy(name = onConflictRaw.resolution.existingParamIdent.name)
+      // also, we need to make sure that the real set-clause of the insert function doesn't use the action-alias but our new alias
+      // because fields of the set clause i.e. `INSERT INTO person as x SET firstName = ...` should not have an alias i.e. should not be
+      // `INSERT INTO person as x SET x.firstName = ...`
+      val onConflict =
+        onConflictRaw.copy(
+          insert = onConflictRaw.insert.copy(
+            // NOTE that beta reduction won't replace aliases on declarations, only inside of properties. This is by design.
+            alias = newActionAlias,
+            assignments = onConflictRaw.insert.assignments.map { asi ->
+              asi.copy(
+                property = BetaReduction(asi.property, actionAlias to actionAlias.copy(XR.Ident.HiddenRefName)) as XR.Property
+              )
+            }
+          )
+        )
+      val newOnConflict = BetaReduction.ofXR(onConflict, actionAlias to newActionAlias) as XR.OnConflict
+      newOnConflict
+    } else {
+      onConflictRaw
+    }
+  }
+
+  val XR.OnConflict.token get(): Token = xrOnConflictTokenImpl(this)
+  fun xrOnConflictTokenImpl(onConflictImpl: XR.OnConflict): Token = with(prepareForTokenization(onConflictImpl)) {
+    when {
+      target == XR.OnConflict.Target.NoTarget && resolution == XR.OnConflict.Resolution.Update -> xrError("'DO UPDATE' statement requires explicit conflict target")
+      target == XR.OnConflict.Target.NoTarget && resolution == XR.OnConflict.Resolution.Ignore ->
+        +"${insert.token} ON CONFLICT DO NOTHING"
+
+      target is XR.OnConflict.Target.Properties && resolution is XR.OnConflict.Resolution.Update -> {
+        val conflictFields = target.props
+        val updateAssignments = resolution.assignments.map { BetaReduction.ofXR(it, resolution.excludedId to resolution.excludedId.copy("EXCLUDED")) as XR.Assignment }
+        doUpdateStmt(insert, conflictFields, updateAssignments)
+      }
+
+      target is XR.OnConflict.Target.Properties && resolution is XR.OnConflict.Resolution.Ignore -> {
+        val conflictFields = target.props
+        +"${insert.token} ON CONFLICT (${conflictFields.map { it.token }.mkStmt()}) DO NOTHING"
+      }
+
+      else -> TODO()
+    }
+  }
+
+  fun doUpdateStmt(insert: XR.Insert, conflictFields: List<XR.Property>, updateAssignments: List<XR.Assignment>): Token = with(insert) {
+    val assignments = updateAssignments.map { it.token }.mkStmt()
+    +"${insert.token} ON CONFLICT (${conflictFields.map { it.token }.mkStmt()}) DO UPDATE SET ${assignments}"
+  }
+
 
   val XR.Insert.token get(): Token = xrInsertTokenImpl(this)
   fun xrInsertTokenImpl(insertImpl: XR.Insert): Token = with(insertImpl) {
@@ -717,14 +775,18 @@ interface SqlIdiom : HasPhasePrinting {
         val returningClauseToken = protractReturning(kind, action.coreAlias())
         +"${action.token} RETURNING ${returningClauseToken}"
       }
+      kind is XR.Returning.Kind.Expression && action is XR.OnConflict -> {
+        val returningClauseToken = protractReturning(kind, action.coreAlias())
+        +"${action.token} RETURNING ${returningClauseToken}"
+      }
 
       // This is when an API like insert(...).returningColumns(...) is used.
       // In this case the PrepareStatement.getGeneratedKeys() should be used but there should
       // be no specific RETURNING clause in the SQL.
-      kind is XR.Returning.Kind.Keys && (action is XR.U.CoreAction || action is XR.FilteredAction) ->
+      kind is XR.Returning.Kind.Keys && (action is XR.U.CoreAction || action is XR.FilteredAction || action is XR.OnConflict) ->
         action.token
       else ->
-        xrError("Returning clauses are only allowed on core-actions i.e. insert, update, delete but found:\n${action.showRaw()}")
+        xrError("Returning clauses are only allowed on core-actions i.e. insert, update, delete (and insert/onConflict) but found:\n${action.showRaw()}")
     }
   }
 

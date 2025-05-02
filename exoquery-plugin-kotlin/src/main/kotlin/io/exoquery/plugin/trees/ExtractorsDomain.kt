@@ -8,9 +8,11 @@ import io.exoquery.plugin.transform.BinaryOperators
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.plugin.transform.UnaryOperators
+import io.exoquery.plugin.trees.ParseAction.parseAssignment
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.OP
 import io.exoquery.xr.UnaryOperator
+import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -219,6 +221,41 @@ object ExtractorsDomain {
             )
           } else null
         }
+    }
+
+    /**
+     * In general I do not want to do actual XR parsing int he ExtractorsDomain area because this is supposed to be
+     * specifically for just extracting parts of the Kotlin IR (perhaps this should be moved to ParseOps actually),
+     * however since there are multiple places where parsing of `set(...)` clauses happens it is worth extracting
+     * it into a single deconstructor. Now we don't actually want this deconstructor to invoke XR parsers
+     * because the deconstructor `ActionSetClause` could be invoked in the parser without actually being used
+     * (e.g. if we have something like case(ActionSetClause[Is()].thenIf { ... -> false }) and
+     * if ActionSetClause has params-parsing inside (e.g. `set(name to param(someName))`)
+     * and it has parameters it will write values to the to the assignemnts list but then not even get matched!! -gotta love mutability!)
+     * That is why I have delegated actual parsing into these lazy functions parseEntity, and parseAssignments
+     * that can be invoked by the parser in order to actually convert the extracted pieces of the `set` constructor
+     * into XR. Note that they have a CX.Parsing context on them when extractor `get` functions should not!!
+     * In the Scala paradigm.. think about what would happen if your MyObject.unapply functions wrote to some
+     * mutable store and then you used them in a match statement where they didn't actually match! So if you were
+     * passing around a context that allowed mutable operations, you certainly wouldn't give a copy of it to MyObject.unapply!
+     */
+    class ActionSetClause(val inputType: IrType) {
+      data class Data(val inputType: IrType, val originalExpr: IrExpression, val assignments: List<IrExpression>) {
+        context(CX.Scope, CX.Parsing, CX.Symbology)
+        fun parseEntity() = ParseQuery.parseEntity(inputType, originalExpr.location())
+        context(CX.Scope, CX.Parsing, CX.Symbology)
+        fun parseAssignments() = assignments.map { ParseAction.parseAssignment(it) }
+      }
+
+
+    context(CX.Scope) operator fun <AP: Pattern<Data>> get(x: AP) =
+      customPattern1("ActionSetClause", x) { expr: IrCall ->
+        on(expr).match(
+          case(Ir.Call.FunctionMem1[Ir.Expr.IsTypeOf(inputType), Is("set"), Ir.Vararg[Is()]]).then { _, (assignmentIrs) ->
+            Components1(Data(inputType, expr, assignmentIrs))
+          }
+        )
+      }
     }
 
     object CaptureQuery {

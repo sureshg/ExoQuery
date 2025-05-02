@@ -438,13 +438,6 @@ interface CapturedBlock {
   /* ----------------------------------------------- Params ----------------------------------------- */
   /* ------------------------------------------------------------------------------------------------ */
 
-  @Dsl
-  fun <T> setParams(value: T): setParams<T> = errorCap("The `setParams` expression of the Query was not inlined")
-
-  @Dsl
-  fun <T> setParams<T>.excluding(vararg columns: Any): set<T> =
-    errorCap("The `excluding` expression of the Query was not inlined")
-
   // TODO add asAction<Input, Output> and asQuery<Output> to avoid asPure overuse
   operator fun <T> FreeBlock.invoke(): T = errorCap("The `invoke` expression of the Query was not inlined")
   fun <T> FreeBlock.asPure(): T = errorCap("The `invoke` expression of the Query was not inlined")
@@ -599,9 +592,23 @@ interface CapturedBlock {
   fun <Input, Output> SqlActionFilterable<Input, Output>.all(): SqlAction<Input, Output> =
     errorCap("The `where` expression of the Query was not inlined")
 
+
+  fun <T> set<T>.onConflictUpdate(vararg fields: Any, exclusions: (T) -> set<T>): set<T> =
+    errorCap("The `onConflictUpdate` expression of the Query was not inlined")
+
+  fun <T> set<T>.onConflictIgnore(vararg fields: Any): set<T> =
+    errorCap("The `onConflictUpdate` expression of the Query was not inlined")
+
   /** Only for insert and update */
   @Dsl
-  fun <T> set(vararg values: Pair<Any?, Any?>): set<T> = errorCap("The `set` expression of the Query was not inlined")
+  fun <T> T.set(vararg values: Pair<Any?, Any?>): set<T> = errorCap("The `set` expression of the Query was not inlined")
+
+  @Dsl
+  fun <T> T.setParams(value: T): setParams<T> = errorCap("The `setParams` expression of the Query was not inlined")
+
+  @Dsl
+  fun <T> setParams<T>.excluding(vararg columns: Any): set<T> =
+    errorCap("The `excluding` expression of the Query was not inlined")
 }
 
 interface Params<T> {

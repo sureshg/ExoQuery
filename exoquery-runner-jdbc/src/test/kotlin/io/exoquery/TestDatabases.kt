@@ -2,6 +2,8 @@ package io.exoquery
 
 import io.exoquery.controller.jdbc.JdbcControllers
 import io.exoquery.controller.jdbc.HikariHelper
+import io.exoquery.controller.jdbc.JdbcBasicEncoding
+import io.exoquery.controller.jdbc.JdbcEncodingConfig
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
 import javax.sql.DataSource
 import kotlin.io.readText
@@ -18,7 +20,21 @@ object TestDatabases {
     started.getPostgresDatabase().run(postgresScript)
     started
   }
-  val postgres by lazy { JdbcControllers.Postgres(embeddedPostgres.getPostgresDatabase()) }
+
+  val postgres by lazy {
+    JdbcControllers.Postgres(
+      embeddedPostgres.getPostgresDatabase(),
+      encodingConfig =
+        JdbcEncodingConfig(
+          additionalEncoders =
+            JdbcEncodingConfig.Default.additionalEncoders +
+              JdbcBasicEncoding.IntEncoder.contramap { id: PersonId -> id.value },
+          additionalDecoders =
+            JdbcEncodingConfig.Default.additionalDecoders +
+              JdbcBasicEncoding.IntDecoder.map { PersonId(it) }
+        )
+    )
+  }
 
   val mysql by lazy {
     JdbcControllers.Mysql(HikariHelper.makeDataSource("testMysqlDB"))

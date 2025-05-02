@@ -321,7 +321,7 @@ interface StatefulTransformer<T> {
         is XR.OnConflict.Resolution.Ignore -> this to this@StatefulTransformer
         is XR.OnConflict.Resolution.Update -> {
           val (a, stateA) = applyList(assignments) { t, v -> t.invoke(v) }
-          XR.OnConflict.Resolution.Update(excludedId, a) to stateA
+          XR.OnConflict.Resolution.Update(excludedId, existingParamIdent, a) to stateA
         }
       }
     }

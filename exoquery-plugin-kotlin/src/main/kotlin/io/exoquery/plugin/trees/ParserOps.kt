@@ -54,6 +54,15 @@ fun IrDeclarationReference.isExternal(): Boolean =
 context(CX.Scope, CX.Symbology)
 fun IrDeclarationReference.isInternal(): Boolean = !isExternal()
 
+context(CX.Scope, CX.Symbology, CX.Parsing)
+fun parseFieldListOrFail(fieldExprs: List<IrExpression>): List<XR.Property> = run {
+  // Keep around the field Ir's for another minute, if one of them isn't parsed right we want the right code position for it in the parseError
+  val fieldsListRaw = fieldExprs.map { it to ParseExpression.parse(it) }
+  fieldsListRaw.map { (ir, parsedField) ->
+    parsedField as? XR.Property ?: parseError("Invalid field for onConflictIgnore: ${parsedField.showRaw()}. The onConflictIgnore fields need to be single-column values.", ir)
+  }
+}
+
 context(CX.Scope)
 fun IrDeclarationReference.showLineage(): String {
   val collect = mutableListOf<String>()
