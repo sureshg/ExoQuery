@@ -15,6 +15,12 @@ class VariableReductionReq : GoldenSpecDynamic(VariableReductionReqGoldenDynamic
     shouldBeGolden(people.build<PostgresDialect>(), "SQL")
   }
 
+  "node-level deconstruction shuold work" - {
+    val q = capture { Table<Pair<Person, Address>>().map { (p, a) -> p.name to a.street } }
+    shouldBeGolden(q.xr, "XR")
+    shouldBeGolden(q.build<PostgresDialect>(), "SQL")
+  }
+
   "leaf-level deconstruction should work" - {
     "in map - single" {
       val names = capture { Table<Person>().map { (id, name, age) -> name } }
