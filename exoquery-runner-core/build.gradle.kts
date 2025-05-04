@@ -30,21 +30,6 @@ kotlin {
         api("io.exoquery:controller-core:3.2.0")
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
         api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
-
-        // Used to ad-hoc some examples but not needed.
-        //api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
-        //implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
-        //implementation(kotlin("test"))
-        //implementation(kotlin("test-common"))
-        //implementation(kotlin("test-annotations-common"))
-
-        implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
-        implementation("app.cash.sqldelight:runtime:2.0.2")
-
-        implementation("io.kotest:kotest-framework-engine:6.0.0.M1")
-        implementation("io.kotest:kotest-assertions-core:6.0.0.M1")
-        implementation(kotlin("test-common"))
-        implementation(kotlin("test-annotations-common"))
       }
     }
 
