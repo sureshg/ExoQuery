@@ -1,11 +1,13 @@
 package io.exoquery
 
-import io.exoquery.Person
+import io.exoquery.testdata.Person
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.capture
 import io.exoquery.controller.jdbc.JdbcController
 import io.exoquery.controller.runActions
 import io.exoquery.jdbc.runOn
+import io.exoquery.testdata.PersonNullable
+import io.exoquery.testdata.PersonWithId
 
 suspend fun JdbcController.people() = capture { Table<Person>() }.build<PostgresDialect>().runOn(this)
 

@@ -1,6 +1,6 @@
 package io.exoquery.h2
 
-import io.exoquery.Person
+import io.exoquery.testdata.Person
 import io.exoquery.H2Dialect
 import io.exoquery.TestDatabases
 import io.exoquery.capture

@@ -4,6 +4,7 @@ import io.exoquery.*
 import io.exoquery.controller.runActions
 import io.exoquery.jdbc.runOn
 import io.exoquery.sql.PostgresDialect
+import io.exoquery.testdata.Person
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 

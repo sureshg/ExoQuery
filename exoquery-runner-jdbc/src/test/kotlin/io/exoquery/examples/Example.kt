@@ -3,6 +3,7 @@ package io.exoquery
 import io.exoquery.controller.jdbc.JdbcControllers
 import io.exoquery.controller.runActions
 import io.exoquery.jdbc.runOn
+import io.exoquery.testdata.Person
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
 import kotlinx.coroutines.runBlocking
 

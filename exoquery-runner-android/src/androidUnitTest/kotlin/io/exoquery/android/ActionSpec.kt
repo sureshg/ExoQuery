@@ -1,6 +1,6 @@
 package io.exoquery.android
 
-import io.exoquery.Person
+import io.exoquery.testdata.Person
 import io.exoquery.SqliteDialect
 import io.exoquery.capture
 import io.exoquery.controller.android.AndroidDatabaseController

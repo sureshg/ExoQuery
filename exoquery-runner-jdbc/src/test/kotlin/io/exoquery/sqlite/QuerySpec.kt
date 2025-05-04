@@ -1,10 +1,10 @@
 package io.exoquery.sqlite
 
-import io.exoquery.Address
+import io.exoquery.testdata.Address
 import io.exoquery.Ord
-import io.exoquery.Person
+import io.exoquery.testdata.Person
 import io.exoquery.SqliteDialect
-import io.exoquery.Robot
+import io.exoquery.testdata.Robot
 import io.exoquery.TestDatabases
 import io.exoquery.capture
 import io.exoquery.controller.runActions

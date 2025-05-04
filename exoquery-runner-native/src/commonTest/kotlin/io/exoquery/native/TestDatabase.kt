@@ -1,8 +1,8 @@
 package io.exoquery.native
 
 import co.touchlab.sqliter.DatabaseFileContext.deleteDatabase
-import io.exoquery.BasicSchemaTerpal
-import io.exoquery.SqliteSchemaString
+import io.exoquery.testdata.BasicSchemaTerpal
+import io.exoquery.testdata.SqliteSchemaString
 import io.exoquery.controller.native.NativeDatabaseController
 import kotlinx.coroutines.runBlocking
 

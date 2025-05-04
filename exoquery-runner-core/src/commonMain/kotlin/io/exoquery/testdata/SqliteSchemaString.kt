@@ -1,4 +1,4 @@
-package io.exoquery
+package io.exoquery.testdata
 
 val SqliteSchemaString =
   """

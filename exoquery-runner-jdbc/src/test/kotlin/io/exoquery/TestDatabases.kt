@@ -4,6 +4,7 @@ import io.exoquery.controller.jdbc.JdbcControllers
 import io.exoquery.controller.jdbc.HikariHelper
 import io.exoquery.controller.jdbc.JdbcBasicEncoding
 import io.exoquery.controller.jdbc.JdbcEncodingConfig
+import io.exoquery.testdata.PersonId
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
 import javax.sql.DataSource
 import kotlin.io.readText

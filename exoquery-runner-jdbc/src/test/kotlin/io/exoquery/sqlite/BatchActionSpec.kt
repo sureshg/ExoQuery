@@ -1,6 +1,6 @@
 package io.exoquery.sqlite
 
-import io.exoquery.Person
+import io.exoquery.testdata.Person
 import io.exoquery.SqliteDialect
 import io.exoquery.TestDatabases
 import io.exoquery.allPeople

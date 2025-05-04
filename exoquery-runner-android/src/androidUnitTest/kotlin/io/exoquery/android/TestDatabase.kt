@@ -1,6 +1,6 @@
 package io.exoquery.android
 
-import io.exoquery.BasicSchemaTerpal
+import io.exoquery.testdata.BasicSchemaTerpal
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.test.core.app.ApplicationProvider

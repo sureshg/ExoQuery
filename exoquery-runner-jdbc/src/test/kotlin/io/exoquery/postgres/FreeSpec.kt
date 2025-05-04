@@ -1,6 +1,6 @@
 package io.exoquery.postgres
 
-import io.exoquery.Person
+import io.exoquery.testdata.Person
 import io.exoquery.SqlAction
 import io.exoquery.SqlQuery
 import io.exoquery.sql.PostgresDialect

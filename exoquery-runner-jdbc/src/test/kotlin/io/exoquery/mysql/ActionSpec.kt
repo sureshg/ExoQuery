@@ -1,6 +1,6 @@
 package io.exoquery.mysql
 
-import io.exoquery.Person
+import io.exoquery.testdata.Person
 import io.exoquery.sql.MySqlDialect
 import io.exoquery.TestDatabases
 import io.exoquery.capture

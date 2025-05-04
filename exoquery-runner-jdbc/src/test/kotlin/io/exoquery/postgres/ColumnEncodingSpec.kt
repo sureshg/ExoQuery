@@ -1,11 +1,11 @@
 package io.exoquery.postgres
 
-import io.exoquery.PersonId
+import io.exoquery.testdata.PersonId
 import io.exoquery.annotation.ExoEntity
 import kotlinx.serialization.Serializable
-import io.exoquery.Person
-import io.exoquery.PersonNullable
-import io.exoquery.PersonWithId
+import io.exoquery.testdata.Person
+import io.exoquery.testdata.PersonNullable
+import io.exoquery.testdata.PersonWithId
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.TestDatabases
 import io.exoquery.capture

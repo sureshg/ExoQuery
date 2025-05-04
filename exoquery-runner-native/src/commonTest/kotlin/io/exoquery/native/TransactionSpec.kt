@@ -1,6 +1,6 @@
 package io.exoquery.native
 
-import io.exoquery.Person
+import io.exoquery.testdata.Person
 import io.exoquery.capture
 import io.exoquery.capture.invoke
 import io.exoquery.controller.runActions
