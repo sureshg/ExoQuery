@@ -33,13 +33,13 @@ object TypeParser {
 
   context(CX.Scope, CX.Parsing, CX.Symbology) fun ofTypeArgOf(expr: IrCall) =
     ofElementWithType(expr, expr.typeArguments.firstOrNull() ?: run {
-      parseErrorFromType("ERROR Could not parse type-argument", expr)
+      parseErrorFromType("ERROR Could not parse type from the expression. There were no type-arguments.", expr)
     })
 
   // E.g. for a function-call that returns `Param<String>` get `String`
   context(CX.Scope, CX.Parsing, CX.Symbology) fun ofFirstArgOfReturnTypeOf(expr: IrCall) =
     ofElementWithType(expr, expr.type.simpleTypeArgs.firstOrNull() ?: run {
-      parseErrorFromType("ERROR Could get the first type-argument of: ${expr.type}", expr)
+      parseErrorFromType("ERROR Could not parse type from the expression. Could get the first type-argument of: ${expr.type}", expr)
     })
 
   context(CX.Scope, CX.Parsing, CX.Symbology) fun of(expr: IrVariable) =
@@ -55,7 +55,7 @@ object TypeParser {
     try {
       parse(type)
     } catch (e: Exception) {
-      parseErrorFromType("ERROR Could not parse type: ${type.dumpKotlinLike()}", loc)
+      parseErrorFromType("ERROR Could not parse type: ${type.dumpKotlinLike()}", e, loc)
     }
 
   context(CX.Scope, CX.Parsing, CX.Symbology) private fun ofElementWithType(expr: IrElement, type: IrType) =

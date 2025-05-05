@@ -247,6 +247,7 @@ object Ir {
       private fun isValueType(it: IrType) =
           it.isValueClassType() ||
             it.isString() ||
+            it.isChar() ||
             it.isLong() ||
             it.isShort() ||
             it.isInt() ||

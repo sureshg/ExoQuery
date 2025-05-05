@@ -70,7 +70,11 @@ private fun tryDump(dump: () -> String): String = try {
 
 fun parseError(msg: String, location: CompilerMessageSourceLocation? = null): Nothing = throw ParseError(msg, location)
 
-fun parseErrorFromType(msg: String, location: CompilerMessageSourceLocation): Nothing = throw ParseError(io.exoquery.plugin.logging.Messages.TypeParseErrorMsg(msg), location)
+fun parseErrorFromType(msg: String, location: CompilerMessageSourceLocation): Nothing =
+  throw ParseError(io.exoquery.plugin.logging.Messages.TypeParseErrorMsg(msg), location)
+
+fun parseErrorFromType(msg: String, e: Throwable, location: CompilerMessageSourceLocation): Nothing =
+  throw ParseError(io.exoquery.plugin.logging.Messages.TypeParseErrorMsg(msg + "\n----------------- Cause: -----------------\n" + e.stackTraceToString()), location)
 
 context(CX.Scope)
 fun parseErrorFromType(msg: String, expr: IrElement): Nothing = throw throw ParseError.withFullMsg(io.exoquery.plugin.logging.Messages.TypeParseErrorMsg(msg), expr, currentFile, expr.location())
