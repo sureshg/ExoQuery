@@ -10,10 +10,8 @@ plugins {
   kotlin("multiplatform")
   kotlin("plugin.serialization") version "2.1.20"
   id("io.kotest.multiplatform") version "6.0.0.M1"
-  id("io.exoquery.exoquery-plugin") version "2.1.20-2.0.0.PL"
+  id("io.exoquery.exoquery-plugin")
 }
-
-version = "1.2.0"
 
 // Need to disable native targets here as opposed to in `nativebuild` because gradle seems to override
 // what is there with defaults coming from `kotlin("multiplatform")` i.e. re-enabling all of the linking phases.
@@ -33,7 +31,7 @@ kotlin {
     val commonMain by getting {
       dependencies {
         api(project(":exoquery-runner-core"))
-        api("io.exoquery:controller-native:3.2.0")
+        api("io.exoquery:controller-native:3.2.1")
 
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
         api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")

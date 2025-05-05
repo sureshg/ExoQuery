@@ -1,9 +1,8 @@
 plugins {
-  //id("io.exoquery.terpal-plugin") version "2.1.20-2.0.0.PL"
   id("conventions-multiplatform-nativeonly")
   kotlin("multiplatform") version "2.1.20"
   id("io.kotest.multiplatform") version "6.0.0.M1"
-  id("io.exoquery.exoquery-plugin") version "2.1.20-2.0.0.PL"
+  id("io.exoquery.exoquery-plugin")
 
   // NEED serialization to be able to read the encoded XR, in the future the GradlePlugin should probably add this to the classpath
   kotlin("plugin.serialization") version "2.1.20"
@@ -27,7 +26,7 @@ kotlin {
   sourceSets {
     val commonMain by getting {
       dependencies {
-        api("io.exoquery:controller-core:3.2.0")
+        api("io.exoquery:controller-core:3.2.1")
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
         api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
       }
@@ -35,13 +34,13 @@ kotlin {
 
     val jvmMain by getting {
       dependencies {
-        api("io.exoquery:controller-jdbc:3.2.0")
+        api("io.exoquery:controller-jdbc:3.2.1")
       }
     }
 
     nativeMain.dependencies {
       dependencies {
-        api("io.exoquery:controller-native:3.2.0")
+        api("io.exoquery:controller-native:3.2.1")
       }
     }
 

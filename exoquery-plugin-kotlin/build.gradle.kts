@@ -47,6 +47,7 @@ dependencies {
   api("io.exoquery:decomat-core:0.4.0")
   api("io.exoquery:pprint-kotlin:3.0.0")
   api("com.github.vertical-blank:sql-formatter:2.0.4")
+  // For the plugin to use Reflect it should be fine because the plugin dependencies do not get packed into the runtime jar
   api(kotlin("reflect"))
 }
 

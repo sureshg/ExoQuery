@@ -5,7 +5,7 @@ plugins {
   id("conventions")
   kotlin("multiplatform") version "2.1.20"
   id("io.kotest.multiplatform") version "6.0.0.M1"
-  id("io.exoquery.exoquery-plugin") version "2.1.20-2.0.0.PL"
+  id("io.exoquery.exoquery-plugin")
 
   // NEED serialization to be able to read the encoded XR, in the future the GradlePlugin should probably add this to the classpath
   kotlin("plugin.serialization") version "2.1.20"
@@ -69,7 +69,7 @@ kotlin {
       resources.srcDir("src/main/resources")
 
       dependencies {
-        api("io.exoquery:controller-jdbc:3.2.0")
+        api("io.exoquery:controller-jdbc:3.2.1")
         api(project(":exoquery-runner-core")) // .transaction and other syntaxes come from here
 
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
@@ -88,6 +88,7 @@ kotlin {
       resources.srcDir("src/test/resources")
 
       dependencies {
+        // This brings in reflection so make sure it is only there in test
         implementation("io.exoquery:pprint-kotlin:3.0.0")
         implementation("io.zonky.test:embedded-postgres:2.0.7")
         implementation("mysql:mysql-connector-java:8.0.29")

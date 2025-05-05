@@ -37,9 +37,8 @@ kotlin {
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
         api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
 
-        api(kotlin("reflect"))
         // Actually this is going to be 0.0.5 - using an unpublished one now
-        //ksp("io.exoquery:decomat-ksp:0.5.0")
+        // No reflection in pprint-kmp
         api("io.exoquery:pprint-kotlin-kmp:3.0.0")
         // Actually this is going to be 0.0.5 - using an unpublished one now
         api("io.exoquery:decomat-core:0.5.0")

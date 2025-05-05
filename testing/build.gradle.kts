@@ -2,7 +2,7 @@ plugins {
   id("conventions-multiplatform")
   kotlin("multiplatform") version "2.1.20"
   id("io.kotest.multiplatform") version "6.0.0.M1"
-  id("io.exoquery.exoquery-plugin") version "2.1.20-2.0.0.PL"
+  id("io.exoquery.exoquery-plugin")
 
   // NEED serialization to be able to read the encoded XR, in the future the GradlePlugin should probably add this to the classpath
   kotlin("plugin.serialization") version "2.1.20"

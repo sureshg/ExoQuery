@@ -48,18 +48,3 @@ include("exoquery-runner-native")
 include("testing")
 
 rootProject.name = "exoquery"
-
-
-//pluginManagement {
-//    includeBuild("exoquery-plugin-gradle")
-//    repositories {
-//        gradlePluginPortal()
-//        mavenCentral()
-//    }
-//}
-//
-//includeBuild("exoquery-engine")
-//includeBuild("exoquery-plugin-kotlin")
-//
-//include("testing")
-////include("readme")

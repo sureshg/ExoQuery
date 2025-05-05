@@ -10,7 +10,7 @@ plugins {
   id("com.android.library")
   kotlin("plugin.serialization") version "2.1.20"
   id("io.kotest.multiplatform") version "6.0.0.M1"
-  id("io.exoquery.exoquery-plugin") version "2.1.20-2.0.0.PL"
+  id("io.exoquery.exoquery-plugin")
   // Already on the classpath
   //id("org.jetbrains.kotlin.android") version "1.9.23"
 }
@@ -60,7 +60,7 @@ kotlin {
       dependencies {
         api(project(":exoquery-runner-core"))
 
-        api("io.exoquery:controller-android:3.2.0")
+        api("io.exoquery:controller-android:3.2.1")
 
         api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
         api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
