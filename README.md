@@ -643,6 +643,56 @@ val output: List<MyOutputData> = q.buildFor.Postgres().runOn(myDatabase)
 //> INSERT INTO Person (name, age, companyId) VALUES (?, ?, ?) RETURNING id, name || '-suffix' AS name
 ```
 
+#### Insert with OnConflict
+
+You can use the `onConflict` function to specify what to do in case of a conflict. This is supported in Postgres, Sqlite, and MySQL.
+
+Use `onConflictUpdate` to update rows when a conflict occurs. Use the `excluded` argument to refer to the row
+that is being inserted. This will become `EXCLUDED` term in the generated SQL.
+```kotlin
+val person = Person(id = 0, "Joe", 44, 123)
+val q =
+  capture {
+    insert<Person> { setParams(person) }
+      onConflictUpdate(id) { excluded -> set(name to excluded.name) }
+  }
+// Postgres and SQLite:
+// INSERT INTO Person (name, age, companyId) VALUES (?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
+// MySQL
+// INSERT INTO Person (name, age, companyId) VALUES (?, ?, ?) AS x ON DUPLICATE KEY UPDATE name = x.name
+```
+
+The `onConflictUpdate` supports complex expressions as well. For example:
+
+```kotlin
+val person = Person(id = 0, "Joe", 44, 123)
+val q =
+  capture {
+    insert<Person> { setParams(person) }
+    onConflictUpdate(id) { excluded -> set(name to name + "-" + excluded.name) }
+  }
+// Postgres and SQLite:
+// INSERT INTO Person AS x (name, age, companyId) VALUES (?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = x.name || '-' || EXCLUDED.name
+// MySQL
+// INSERT INTO Person (name, age, companyId) VALUES (?, ?, ?) AS x ON DUPLICATE KEY UPDATE name = Person.name || '-' || x.name
+```
+(Note that quite ironically, the table alias `x` is understood by Postgres and Sqlite to be the *previous value*, it understood by MySQL as the *incoming value*.)
+
+Use `onConflictIgnore` to ignore the insert if a conflict occurs. This is also supported in Postgres, Sqlite, and MySQL.
+
+```kotlin
+val person = Person(id = 0, "Joe", 44, 123)
+val q =
+  capture {
+    insert<Person> { setParams(person) }
+    onConflictIgnore(id)
+  }
+// Postgres and SQLite:
+// INSERT INTO Person (name, age, companyId) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING
+// MySQL:
+// INSERT IGNORE INTO Person (name, age, companyId) VALUES (?, ?, ?)
+```
+
 ### Update
 
 The update statement is similar to the insert statement. You can use the `set` function to set the values of the
