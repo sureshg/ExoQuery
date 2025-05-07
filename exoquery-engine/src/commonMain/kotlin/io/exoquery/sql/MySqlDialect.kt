@@ -3,8 +3,10 @@ package io.exoquery.sql
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.Tracer
 import io.exoquery.util.unaryPlus
+import io.exoquery.xr.BetaReduction
 import io.exoquery.xr.OP
 import io.exoquery.xr.XR
+import io.exoquery.xrError
 
 class MySqlDialect(override val traceConf: TraceConfig = TraceConfig.empty) : SqlIdiom {
   override val useActionTableAliasAs = SqlIdiom.ActionTableAliasBehavior.UseAs
@@ -34,6 +36,72 @@ class MySqlDialect(override val traceConf: TraceConfig = TraceConfig.empty) : Sq
       limit == null && offset != null -> +"$query LIMIT 18446744073709551610 OFFSET ${offset.token}"
       else -> super.limitOffsetToken(query, limit, offset)
     }
+
+  override fun prepareForTokenization(onConflictRaw: XR.OnConflict): XR.OnConflict = run {
+    // In MySQL the non-excluded part needs to be the entity name, for example:
+    //  INSERT INTO Person ... ON DUPLICATE KEY UPDATE firstName = (CONCAT(CONCAT(Person.firstName, '_'), x.firstName))
+    // That means that: excludedIdent -> "x"
+    // and: existingIdent -> "Person" (i.e. EntityName)
+
+    if (onConflictRaw.resolution is XR.OnConflict.Resolution.Update) {
+      val actionAlias = onConflictRaw.insert.alias
+      val x = actionAlias.copy(name = "x")
+      val onConflict =
+        onConflictRaw.copy(
+          insert = onConflictRaw.insert.copy(
+            // NOTE that beta reduction won't replace aliases on declarations, only inside of properties. This is by design.
+            alias = x,
+            assignments = onConflictRaw.insert.assignments.map { asi ->
+              asi.copy(
+                // `UPDATE actionAlias.firstName = ... actionAlias.lastName = ...` need to turn into:
+                // `UPDATE hiddenref.firstName = ... hiddenref.lastName = ...`
+                property = BetaReduction(asi.property, actionAlias to actionAlias.copy(XR.Ident.HiddenRefName)) as XR.Property
+              )
+            }
+          ),
+          resolution = onConflictRaw.resolution.copy(
+            existingParamIdent = x
+          )
+        )
+      val entityName = onConflictRaw.resolution.existingParamIdent.copy(name = onConflictRaw.insert.query.name)
+      val newOnConflict = BetaReduction.ofXR(onConflict, actionAlias to x, onConflictRaw.resolution.existingParamIdent to entityName) as XR.OnConflict
+      newOnConflict
+    } else {
+      onConflictRaw
+    }
+  }
+
+  override fun xrOnConflictTokenImpl(onConflictImpl: XR.OnConflict): Token = with(prepareForTokenization(onConflictImpl)) {
+    when {
+      target == XR.OnConflict.Target.NoTarget && resolution == XR.OnConflict.Resolution.Update -> xrError("'DO UPDATE' statement requires explicit conflict target")
+      target == XR.OnConflict.Target.NoTarget && resolution == XR.OnConflict.Resolution.Ignore -> {
+        with(insert) {
+          val (columns, values) = columnsAndValues(assignments, exclusions).unzip()
+          +"INSERT IGNORE INTO ${query.token} (${columns.mkStmt(", ")}) VALUES ${tokenizeInsertAssignemnts(values)}"
+        }
+      }
+
+      resolution is XR.OnConflict.Resolution.Update -> {
+        // TODO warn if onConflict target is Properties, they are not rendered in MySQL
+        val insertAlias = insert.alias
+        val updateAssignments = resolution.assignments.map { BetaReduction.ofXR(it, resolution.excludedId to resolution.excludedId.copy(insertAlias.name)) as XR.Assignment }
+        doUpdateStmt(insert, updateAssignments)
+      }
+
+      target is XR.OnConflict.Target.Properties && resolution is XR.OnConflict.Resolution.Ignore -> {
+        xrError("OnConflict with specified properties and IGNORE resolution is not supported for MySQL")
+      }
+
+      else -> xrError("Unsupported OnConflict form: ${onConflictImpl.showRaw()}")
+    }
+  }
+
+  fun doUpdateStmt(insert: XR.Insert, updateAssignments: List<XR.Assignment>): Token = with(insert) {
+    val updateAssignmentsToken = updateAssignments.map { it.token }.mkStmt()
+    val query = this.query as? XR.Entity ?: xrError("Insert query must be an entity but found: ${this.query}")
+    val (columns, values) = columnsAndValues(assignments, exclusions).unzip()
+    +"INSERT INTO ${query.token} (${columns.mkStmt(", ")}) VALUES ${tokenizeInsertAssignemnts(values)} AS ${alias.token} ON DUPLICATE KEY UPDATE ${updateAssignmentsToken}"
+  }
 }
 
 //

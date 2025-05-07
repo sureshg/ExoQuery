@@ -206,6 +206,14 @@ object ParseAction {
         val target = if (fieldsList.isNotEmpty()) XR.OnConflict.Target.Properties(fieldsList) else XR.OnConflict.Target.NoTarget
         XR.OnConflict(headInsert, target, XR.OnConflict.Resolution.Ignore, expr.loc)
       },
+      // Empty var-args parameter can actually be null, so we need to check for that
+      case(Ir.Call.FunctionMemN.NullableArgs[Ir.Expr.ClassOf<set<*>>(), Is("onConflictIgnore"), Is { it == listOf(null) }]).then { headExpr, _ ->
+        val headInsert = run {
+          val head = parseActionComposite(headExpr, inputType, actionAlias, compositeType)
+          head as? XR.Insert ?: parseError("The `onConflictIgnore` is only allowed for Insert actions", headExpr)
+        }
+        XR.OnConflict(headInsert, XR.OnConflict.Target.NoTarget, XR.OnConflict.Resolution.Ignore, expr.loc)
+      },
       case(Ir.Call.FunctionMem2[Ir.Expr.ClassOf<set<*>>(), Is("onConflictUpdate"), Is()]).then { headExpr, argsPair ->
         val (fields, exclusions) = argsPair
         val fieldsList: List<XR.Property> =

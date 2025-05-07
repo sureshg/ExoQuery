@@ -498,6 +498,19 @@ object Ir {
           }
       }
 
+      object NullableArgs {
+        context (CX.Scope) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<List<IrExpression>>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, List<IrExpression>, IrCall> =
+          customPattern2("Ir.Call.FunctionMemN", x, y) { it: IrCall ->
+            val reciever = it.extensionReceiver ?: it.dispatchReceiver
+            if (reciever != null && m.matchesAny(it.symbol.safeName)) {
+              Components2(reciever, it.simpleValueArgs)
+            } else {
+              null
+            }
+          }
+      }
+
+
       context (CX.Scope) operator fun <AP : Pattern<IrExpression>, MP : Pattern<String>, BP : Pattern<List<IrExpression>>> get(x: AP, m: MP, y: BP): Pattern2<AP, BP, IrExpression, List<IrExpression>, IrCall> =
         customPattern2("Ir.Call.FunctionMemN", x, y) { it: IrCall ->
           val reciever = it.extensionReceiver ?: it.dispatchReceiver

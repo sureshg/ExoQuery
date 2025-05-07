@@ -663,7 +663,7 @@ interface SqlIdiom : HasPhasePrinting {
       // it won't know what (firstName || '_') to use. So we need to replace the whole whopping action alias with some arbitrary alias that we assing
       // for the 'existing' column when we parse the set(...) clause ON CONFLICT target (in the parser).
       val actionAlias = onConflictRaw.insert.alias
-      val newActionAlias = actionAlias.copy(name = "x")
+      val x = actionAlias.copy(name = "x")
       // also, we need to make sure that the real set-clause of the insert function doesn't use the action-alias but our new alias
       // because fields of the set clause i.e. `INSERT INTO person as x SET firstName = ...` should not have an alias i.e. should not be
       // `INSERT INTO person as x SET x.firstName = ...`
@@ -671,7 +671,7 @@ interface SqlIdiom : HasPhasePrinting {
         onConflictRaw.copy(
           insert = onConflictRaw.insert.copy(
             // NOTE that beta reduction won't replace aliases on declarations, only inside of properties. This is by design.
-            alias = newActionAlias,
+            alias = x,
             assignments = onConflictRaw.insert.assignments.map { asi ->
               asi.copy(
                 property = BetaReduction(asi.property, actionAlias to actionAlias.copy(XR.Ident.HiddenRefName)) as XR.Property
@@ -679,10 +679,10 @@ interface SqlIdiom : HasPhasePrinting {
             }
           ),
           resolution = onConflictRaw.resolution.copy(
-            existingParamIdent = newActionAlias
+            existingParamIdent = x
           )
         )
-      val newOnConflict = BetaReduction.ofXR(onConflict, actionAlias to newActionAlias, onConflictRaw.resolution.existingParamIdent to newActionAlias) as XR.OnConflict
+      val newOnConflict = BetaReduction.ofXR(onConflict, actionAlias to x, onConflictRaw.resolution.existingParamIdent to x) as XR.OnConflict
       newOnConflict
     } else {
       onConflictRaw
@@ -707,7 +707,7 @@ interface SqlIdiom : HasPhasePrinting {
         +"${insert.token} ON CONFLICT (${conflictFields.map { it.token }.mkStmt()}) DO NOTHING"
       }
 
-      else -> TODO()
+      else -> xrError("Unsupported OnConflict form: ${onConflictImpl.showRaw()}")
     }
   }
 
