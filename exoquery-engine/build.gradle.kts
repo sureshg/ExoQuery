@@ -46,6 +46,8 @@ kotlin {
         // This is a java-only library, I have no idea who it can even be here.
         // maybe if I actually attempt to use it in KMP mode in a non-java target it will actually fail
         api("com.github.vertical-blank:sql-formatter:2.0.4")
+        // Use in 'free'
+        implementation("com.sschr15.annotations:jb-annotations-kmp:24.1.0+apple")
       }
     }
 

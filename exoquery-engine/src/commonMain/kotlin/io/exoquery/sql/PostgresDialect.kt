@@ -2,6 +2,9 @@ package io.exoquery.sql
 
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.Tracer
+import io.exoquery.xr.BetaReduction
+import io.exoquery.xr.BetaReduction.Companion.invoke
+import io.exoquery.xr.XR
 
 class PostgresDialect(override val traceConf: TraceConfig = TraceConfig.Companion.empty) : SqlIdiom {
   override val useActionTableAliasAs = SqlIdiom.ActionTableAliasBehavior.UseAs

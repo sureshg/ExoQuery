@@ -19,6 +19,7 @@ import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.containsBatchParam
 import io.exoquery.xr.BetaReduction
 import io.exoquery.xr.XR
+import io.exoquery.xr.XR.Ident.Companion.HiddenOnConflictRefName
 import io.exoquery.xr.of
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
@@ -250,7 +251,7 @@ object ParseAction {
         // $this$insert.name which we need to change to something like $this$hidden
         val (assignments, newAlias) = run {
           val assignmentsRaw = exlusionsData.parseAssignments()
-          val newAlias = headInsert.alias.copy("x")
+          val newAlias = headInsert.alias.copy(HiddenOnConflictRefName)
           val hiddenAlias = headInsert.alias.copy(XR.Ident.HiddenRefName)
           // TODO some of this logic should probably be moved into the SqlIdiom, it should is more rendering related
           //      need to think about which parts

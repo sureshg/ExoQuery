@@ -4,7 +4,7 @@ import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
 import io.exoquery.testdata.PersonNullable
 
-class ActionOnConflictReq : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGoldenOverride(), {
+class ActionOnConflictReq : GoldenSpecDynamic(ActionOnConflictReqGoldenDynamic, Mode.ExoGoldenOverride(), {
   "onConflictUpdate" {
     val q = capture {
       insert<Person> {
@@ -52,10 +52,11 @@ class ActionOnConflictReq : GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGol
       insert<Person> {
         setParams(joe).onConflictUpdate(id) { excluding -> set(name to excluding.name, age to excluding.age) }
       }
-    }.determinizeDynamics()
+    }.determinizeDynamics() // determinizeDynamics needed here so the xr will have deterministic parameters
     shouldBeGolden(q.xr, "XR")
     shouldBeGolden(q.build<PostgresDialect>(), "SQL")
   }
+
   "onConflictUpdate - setParams + exclusion" {
     val joe = Person(1, "Joe", 123)
     val q = capture {

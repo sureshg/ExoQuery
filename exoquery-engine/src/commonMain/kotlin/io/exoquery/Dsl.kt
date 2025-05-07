@@ -32,6 +32,7 @@ import kotlinx.serialization.Contextual
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.decodeFromHexString
+import org.intellij.lang.annotations.Language
 import kotlin.reflect.KClass
 
 fun unpackExpr(expr: String): XR.Expression =
@@ -377,7 +378,7 @@ interface CapturedBlock {
   /* ------------------------------------------------------------------------------------------------ */
 
   @Dsl
-  fun free(block: String): FreeBlock = errorCap("Compile time plugin did not transform the tree")
+  fun free(@Language("SQL") block: String): FreeBlock = errorCap("Compile time plugin did not transform the tree")
 
   @Dsl
   fun <T> select(block: SelectClauseCapturedBlock.() -> T): SqlQuery<T> =

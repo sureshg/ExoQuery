@@ -818,6 +818,8 @@ sealed interface XR {
       val HiddenRefName = "${dol}this${dol}hidden"
       val HiddenRef = XR.Ident(HiddenRefName, XRType.Unknown, XR.Location.Synth)
 
+      val HiddenOnConflictRefName = "${dol}this${dol}onconflict"
+
       // Can't use context recievers in phases since query-compiler needs to be
       // implemented in all platforms, not only java
       //context(Ident) fun fromThis(name: String) = copy(name = name)
