@@ -364,7 +364,7 @@ fun XR.ClassId.isNumeric(): Boolean =
 
 fun String.isConverterFunction(): Boolean =
   when (this) {
-    "toLong", "toInt", "toShort", "toDouble", "toFloat", "toBoolean" -> true
+    "toLong", "toInt", "toShort", "toDouble", "toFloat", "toBoolean", "toString" -> true
     else -> false
   }
 

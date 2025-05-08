@@ -42,7 +42,7 @@ tasks.register("publishLinuxLocal") {
     gradle.includedBuild(Release.Project.`exoquery-plugin-gradle`).task(":publishToMavenLocal"),
     gradle.includedBuild(Release.Project.`exoquery-plugin-kotlin`).task(":publishToMavenLocal"),
     ":${Release.Project.`exoquery-runner-core`}:publishToMavenLocal",
-    ":${Release.Project.`exoquery-runner-android`}:publishToMavenLocal",
+    //":${Release.Project.`exoquery-runner-android`}:publishToMavenLocal",
     ":${Release.Project.`exoquery-runner-native`}:publishToMavenLocal",
     ":${Release.Project.`exoquery-runner-jdbc`}:publishToMavenLocal",
   )

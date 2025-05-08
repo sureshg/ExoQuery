@@ -42,6 +42,24 @@ sealed interface XRType {
   data class Product(val name: String, val fields: List<Pair<String, XRType>>) : XRType {
     private val fieldsHash by lazy { fields.toMap() }
 
+    sealed interface Resolution {
+      data class Found(val type: XRType) : Resolution
+      data class NotFound(val error: String) : Resolution
+    }
+    fun resolveFieldPath(path: List<String>): Resolution = run {
+      if (path.isEmpty())
+        Resolution.Found(this)
+      else {
+        val field = fields.find { it.first == path.first() } ?: return Resolution.NotFound("Field ${path.first()} not found in $name")
+        // if there is only one path and we found the field for the type we need just return it
+        if (path.size == 1)
+          Resolution.Found(field.second)
+        // if there is more than one path we need to further into the type
+        else
+          (field.second as? XRType.Product)?.resolveFieldPath(path.drop(1)) ?: return Resolution.NotFound("Field ${path.first()} in $name was not a product!")
+      }
+    }
+
     /**
      * The underlying impelmentation in kotlin o List<Pair<String, XRType>>.toMap() is a LinkedHashMap
      * if that changes in the future than we will need to change the result of this to explicitly be a LinkedHashMap.

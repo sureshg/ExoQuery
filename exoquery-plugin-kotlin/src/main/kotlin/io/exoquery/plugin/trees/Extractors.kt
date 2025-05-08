@@ -6,6 +6,7 @@ import io.decomat.*
 import io.exoquery.ValueWithSerializer
 import io.exoquery.annotation.ExoEntity
 import io.exoquery.annotation.ExoField
+import io.exoquery.annotation.ExoValue
 import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.transform.CX
@@ -181,7 +182,7 @@ object Ir {
     }
 
     object DataClass {
-      data class Prop(val name: String, val type: IrType, val isContextual: Boolean)
+      data class Prop(val name: String, val type: IrType, val isMarkedValue: Boolean)
 
       context(CX.Scope) operator fun <AP : Pattern<String>, BP : Pattern<List<DataClass.Prop>>> get(name: AP, fields: BP) =
         customPattern2("Type.DataClass", name, fields) { it: IrType ->
@@ -199,13 +200,13 @@ object Ir {
                 val irProp =
                   props.firstOrNull { it.name.asString() == propName } ?: error("Property $propName not found")
 
-                val realPropName =
-                  irProp.getAnnotationArgs<ExoField>().firstConstStringOrNull()
-                    ?: irProp.getAnnotationArgs<kotlinx.serialization.SerialName>().firstConstStringOrNull()
-                    ?: propName
+                val (realPropName, hasFieldAnnotation) =
+                  irProp.getAnnotationArgs<ExoField>().firstConstStringOrNull()?.let { it to true }
+                    ?: irProp.getAnnotationArgs<kotlinx.serialization.SerialName>().firstConstStringOrNull()?.let { it to true }
+                    ?: (propName to false)
 
-                val isContextual = cls.owner.hasAnnotation<Contextual>()
-                DataClass.Prop(realPropName, propType, isContextual)
+                val isValue = hasFieldAnnotation || irProp.hasAnnotation<ExoValue>() || cls.owner.hasAnnotation<Contextual>() || cls.owner.hasAnnotation<ExoValue>()
+                DataClass.Prop(realPropName, propType, isValue)
               }
 
             // Note that this was not matching without props.toList() because it was a Sequence object instead of a list

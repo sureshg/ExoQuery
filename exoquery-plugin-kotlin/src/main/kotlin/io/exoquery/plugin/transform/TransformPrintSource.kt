@@ -6,10 +6,14 @@ import io.decomat.on
 import io.exoquery.annotation.ExoExtras
 import io.exoquery.parseError
 import io.exoquery.plugin.hasAnnotation
+import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.trees.Elaborate
 import io.exoquery.plugin.trees.Ir
+import io.exoquery.plugin.trees.Parser
+import io.exoquery.plugin.trees.TypeParser
+import io.exoquery.xr.XRType
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.path
@@ -56,9 +60,13 @@ class TransformPrintSource(val superTransformer: VisitTransformExpressions) : Tr
           case(Ir.Call.FunctionUntethered0[Is("currentSourceFile")]).then {
             currentFileRaw.path.lift()
           },
-          case(Ir.Call.FunctionUntethered1[Is("io.exoquery.elaborateDataClass"), Is()]).then { _, rec ->
+          case(Ir.Call.FunctionUntethered1[Is("io.exoquery.elaborateDataClass"), Is()]).thenThis { _, rec ->
+            val rootType =
+              Parser.scoped {
+                TypeParser.ofTypeAt(this.typeArguments.first()!!, this.location())
+              } as XRType.Product
             val pairs =
-              Elaborate.invoke(rec).map { path ->
+              Elaborate.invoke(rec, rootType).map { path ->
                 val dotPathExpr = path.path.joinToString(".").lift()
                 Pair(dotPathExpr, path.invocation).lift({ a -> a }, { b -> b })
               }

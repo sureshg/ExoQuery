@@ -20,9 +20,12 @@ import io.exoquery.plugin.transform.containsBatchParam
 import io.exoquery.xr.BetaReduction
 import io.exoquery.xr.XR
 import io.exoquery.xr.XR.Ident.Companion.HiddenOnConflictRefName
+import io.exoquery.xr.XRType
 import io.exoquery.xr.of
+import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -161,14 +164,26 @@ object ParseAction {
         }
       },
       case(Ir.Call.FunctionMem1[Ir.Expr.IsTypeOf(inputType), Is("setParams"), Is()]).thenThis { _, param ->
-        val paths = Elaborate.invoke(param)
+        val rootTpe = TypeParser.of(param) as? XRType.Product ?: parseError("The setParams function must be called on a data-class type", param)
+        val paths = Elaborate.invoke(param, rootTpe)
+        // First of all it is more efficient to resolve types based on the root type
+        // second of all, we NEED to do this in case @ExoField, or @ExoValue is used on the data-class fields and we just analyze the field
+        // alone we won't know that.
         val assignments =
           paths.map { epath ->
             val prop = XR.Property.fromCoreAndPaths(actionAlias, epath.path) as? XR.Property ?: parseError("Could not parse empty property path of the entity", epath.invocation)
             val id = BID.new()
-            val tpe = TypeParser.of(epath.invocation)
+            val tpe = epath.xrType
             val (bind, paramType) = run {
-              val rawParam = ParamBind.Type.auto(epath.invocation)
+              val rawParam =
+                if (epath.knownSerializer != null) {
+                  // Don't know if it's always safe to make the assumption that an IrClassReference.symbol is an IrClassSymbol so return a specific error
+                  val symbol: IrClassSymbol = epath.knownSerializer.symbol as? IrClassSymbol ?: parseError("Error getting the class symbol of the class reference ${epath.knownSerializer.dumpKotlinLike()}. The reference was not an IrClassSymbol", epath.invocation)
+                  ParamBind.Type.ParamCustom(builder.irGetObject(symbol), epath.type)
+                }
+                else
+                  ParamBind.Type.auto(epath.invocation)
+
               // If it's a batch param need an additional layer of wrapping so that the expr-model knows to create a io.exoquery.ParamBatchRefiner instead of a regular io.exoquery.ParamSingle
               if (batchAlias != null && param.containsBatchParam())
                 ParamBind.Type.ParamUsingBatchAlias(batchAlias, rawParam, "_" + epath.path.joinToString("_")) to XR.ParamType.Batch

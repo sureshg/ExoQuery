@@ -71,7 +71,7 @@ object TypeParser {
           parse(type)
       }
     } catch (e: Exception) {
-      parseErrorFromType("ERROR Could not parse the type: ${type.dumpKotlinLike()} (in the expression: `${expr.source()}`", expr)
+      parseErrorFromType("ERROR Could not parse the type: ${type.dumpKotlinLike()} (in the expression: `${expr.source()}`", e, expr.location())
     }
 
   // Parsing large data-classes can get cumbersome, so we cache the results

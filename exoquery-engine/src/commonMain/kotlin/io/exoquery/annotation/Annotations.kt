@@ -102,8 +102,10 @@ annotation class ParamCustomValue
  * since ExoValue does not imply the value in encoding is contextual). In order to both mark the property as a ExoQuery value
  * and mark it as Contextual (telling the system to expect a direct decoder for MyValue) annotate the type as @Contextual instead
  * i.e. `data class Customer(name: String, lastOrder: @Contextual MyDate)`
+ *
+ * Alternatively, it can be specified on the property itself e.g. `data class Customer(name: String, @ExoValue lastOrder: MyDate)`
  */
-@Target(AnnotationTarget.TYPE)
+@Target(AnnotationTarget.TYPE, AnnotationTarget.CLASS, AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoValue
 

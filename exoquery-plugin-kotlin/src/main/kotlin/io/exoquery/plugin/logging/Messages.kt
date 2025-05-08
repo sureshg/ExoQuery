@@ -165,12 +165,16 @@ fun TypeParseErrorMsg(msg: String) =
 $msg
 If this is a custom type defined on a data-class e.g. `data class Customer(lastTransacted: MyCustomDate)` make sure to either:
 
-1) Annotate the type (or field) with @kotlinx.serialization.Contextual e.g. `data class Customer(lastTransacted: @Contextual MyCustomDate)`.
+1) Annotate the field with @ExoField and provide a name to use for the field e.g. `data class Customer(@ExoField("lastTransacted") lastTransacted: MyCustomDate)`.
+2) Annotate the field (or type) with @ExoValue to treat the field as a value without affecting anything else e.g. `data class Customer(@ExoValue lastTransacted: MyCustomDate)`.
+
+Options 1 and 2 will treat the type as a value type in ExoQuery independently of how it is serialized 
+i.e. there could be other Serialization-related annotations on the field for example:
+`@Serializable(with=Something::class) class MyCustomDate(...); data class Customer(lastTransacted: @ExoValue MyCustomDate)`.
+Alternatively, you can:
+
+3) Annotate the field (or type) with @kotlinx.serialization.Contextual e.g. `data class Customer(@Contextual lastTransacted: MyCustomDate)`.
    When decoding the `Customer` instance you will need to give it a custom encoder for MyCustomDate.
-   
-2) Annotate the type with @ExoValue e.g. `data class Customer(lastTransacted: @ExoValue MyCustomDate)`. This will treat the type as a value type
-   in ExoQuery independently of how it is serialized i.e. there could be other Serialization-related annotations on the field for example:
-   `@Serializable(with=Something::class) class MyCustomDate(...); data class Customer(lastTransacted: @ExoValue MyCustomDate)`.
 """.trimIndent()
 
 context(CX.Scope)
