@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isTypeParameter
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.superTypes
@@ -278,7 +279,11 @@ object Ir {
             it.isClassStrict<java.sql.Date>() ||
             it.isClassStrict<java.sql.Time>() ||
             it.isClassStrict<java.sql.Timestamp>() ||
-            it.isClass<ValueWithSerializer<*>>()
+            it.isClass<ValueWithSerializer<*>>() ||
+            it.hasAnnotation<Contextual>() ||
+            (it.classOrNull?.owner?.hasAnnotation<Contextual>() ?: false) ||
+            it.hasAnnotation<ExoValue>() ||
+            (it.classOrNull?.owner?.hasAnnotation<ExoValue>() ?: false)
 
       context(CX.Scope) operator fun get(type: Pattern0<IrType>) =
         customPattern1("Ir.Call.Value", type) { it: IrType ->
