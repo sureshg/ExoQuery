@@ -51,9 +51,9 @@ class StatelessTransformerSpec : FreeSpec({
       //    Aggregation(OP.`max`, Ident("a'"))
       //}
       "globalCall" {
-        val ast: XR = GlobalCall(FqName.Empty, listOf(Ident("a"), Ident("b")), CallType.PureFunction, XRType.Value)
+        val ast: XR = GlobalCall(FqName.Empty, listOf(Ident("a"), Ident("b")), CallType.PureFunction, false, XRType.Value)
         Subject(Ident("a") to Ident("a'"), Ident("b") to Ident("b'"))(ast) shouldBe
-            GlobalCall(FqName.Empty, listOf(Ident("a'"), Ident("b'")), CallType.PureFunction, XRType.Value)
+            GlobalCall(FqName.Empty, listOf(Ident("a'"), Ident("b'")), CallType.PureFunction, false, XRType.Value)
       }
       "methodCall" {
         val ast: XR = MethodCall(
@@ -62,6 +62,7 @@ class StatelessTransformerSpec : FreeSpec({
           listOf(Ident("c"), Ident("d")),
           CallType.PureFunction,
           ClassId("a", "b"),
+          false,
           XRType.Value
         )
         Subject(
@@ -75,6 +76,7 @@ class StatelessTransformerSpec : FreeSpec({
               listOf(Ident("c'", XRType.Value), Ident("d'", XRType.Value)),
               CallType.PureFunction,
               ClassId("a", "b"),
+              false,
               XRType.Value
             )
       }

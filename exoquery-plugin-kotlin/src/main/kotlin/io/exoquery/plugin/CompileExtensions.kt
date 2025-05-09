@@ -468,3 +468,6 @@ fun makeRunFunction(statements: List<IrStatement>, returnExpr: IrExpression): Ir
     putValueArgument(0, lambda)
   }
 }
+
+fun IrElement.hasSameOffsetsAs(other: IrElement): Boolean =
+  this.startOffset == other.startOffset && this.endOffset == other.endOffset

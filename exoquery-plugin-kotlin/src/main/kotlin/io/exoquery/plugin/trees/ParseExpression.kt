@@ -98,16 +98,20 @@ object ParseExpression {
       //},
 
       // Converter functions for string e.g. toInt, toLong, etc.
-      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<String>(), Is { it.isConverterFunction() }]).then { head, method ->
-        XR.MethodCall(parse(head), method, emptyList(), XR.CallType.PureFunction, CID.kotlin_String, XRType.Value, expr.loc)
+      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<String>(), Is { it.isConverterFunction() }]).thenThis { head, method ->
+        val isKotlinSynthetic = this.hasSameOffsetsAs(head)
+        XR.MethodCall(parse(head), method, emptyList(), XR.CallType.PureFunction, CID.kotlin_String, isKotlinSynthetic, XRType.Value, expr.loc)
       },
 
       // Numeric conversion functions toInt, toString, etc... on numeric types Int, Long, etc...
       case(Ir.Call.FunctionMem0[Is(), Is { it.isConverterFunction() }])
         .thenIf { head, _ -> head.type.classId()?.toXR()?.isNumeric() ?: false }
         .thenThis { head, method ->
+          // Typically a kotlin synthetic e.g. `.toDouble in `(x:Int) >= (x:Double)` which becomes `(x:Int).toDouble() >= (x:Double)`
+          // will have the same offset as the caller, at least for things like numeric-conversion. Use that as a guide for whether it is synthetic or not
+          val isKotlinSynthetic = this.hasSameOffsetsAs(head)
           val classId = head.type.classId() ?: parseError("Cannot determine the classId of the type ${this.type.dumpKotlinLike()} of this expression.", this)
-          XR.MethodCall(parse(head), method, emptyList(), XR.CallType.PureFunction, classId.toXR(), XRType.Value, expr.loc)
+          XR.MethodCall(parse(head), method, emptyList(), XR.CallType.PureFunction, classId.toXR(), isKotlinSynthetic, XRType.Value, expr.loc)
         },
 
       case(Ir.Call.FunctionMemN[Is { it.type.classId()?.let { MethodWhitelist.allowedHost(it) } ?: false }, Is(), Is()])
@@ -115,7 +119,8 @@ object ParseExpression {
         .thenThis { head, args ->
           val classId = this.type.classId() ?: parseError("Cannot determine the classId of the type ${this.type.dumpKotlinLike()} of this expression.", this)
           val argsXR = args.map { parse(it) }
-          XR.MethodCall(parse(head), funName, argsXR, XR.CallType.PureFunction, classId.toXR(), XRType.Value, expr.loc)
+          val isKotlinSynthetic = this.hasSameOffsetsAs(head)
+          XR.MethodCall(parse(head), funName, argsXR, XR.CallType.PureFunction, classId.toXR(), isKotlinSynthetic, XRType.Value, expr.loc)
         },
 
       case(Ir.Expr.ClassOf<SqlQuery<*>>()).then { expr ->
@@ -205,7 +210,7 @@ object ParseExpression {
 
       case(Ir.CastingTypeOperator[Is(), Is()]).thenThis { target, newType ->
         val callType: XR.CallType = XR.CallType.PureFunction
-        XR.GlobalCall(XR.FqName.Cast, listOf(parse(target)), callType, TypeParser.of(this), this.loc) //, TypeParser.of(this), loc)
+        XR.GlobalCall(XR.FqName.Cast, listOf(parse(target)), callType, false, TypeParser.of(this), this.loc) //, TypeParser.of(this), loc)
       },
 
       // I.e. the nullableColumn!! or nullableRow!! operator, just ignore the !! part since all SQL expressions are trinary-value
@@ -276,7 +281,7 @@ object ParseExpression {
 
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<Params<*>>(), Is("contains"), Is()]).thenThis { head, params ->
         val cid = head.type.classId()?.toXR() ?: parseError("Could not find classId for the head of the contains call", head)
-        XR.MethodCall(parse(head), "contains", listOf(parse(params)), XR.CallType.PureFunction, cid, XRType.Value, expr.loc)
+        XR.MethodCall(parse(head), "contains", listOf(parse(params)), XR.CallType.PureFunction, cid, false, XRType.Value, expr.loc)
       },
 
       case(ParseFree.match()).thenThis { (components), _ ->

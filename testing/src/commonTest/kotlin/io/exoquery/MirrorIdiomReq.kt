@@ -87,6 +87,7 @@ class MirrorIdiomReq : GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGo
           listOf(XR.Ident("bar"), XR.Ident("baz")),
           XR.CallType.PureFunction,
           XR.ClassId("com.Stuff"),
+          false,
           XRType.Value
         )
       )
@@ -97,6 +98,7 @@ class MirrorIdiomReq : GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGo
           XR.FqName("method"),
           listOf(XR.Ident("bar"), XR.Ident("baz")),
           XR.CallType.PureFunction,
+          false,
           XRType.Value
         )
       )

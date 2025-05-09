@@ -4,7 +4,7 @@ import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object QueryReqGoldenDynamic : GoldenQueryFile {
+object QueryReqGoldenDynamic: GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "basic query/XR" to kt(
       "Table(Person)"
@@ -43,7 +43,7 @@ object QueryReqGoldenDynamic : GoldenQueryFile {
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.age > (SELECT avg(p1.age) FROM Person p1)"
     ),
     "filter + correlated + value/XR" to kt(
-      "Table(Person).filter { p -> p.age.toDouble_MC() > Table(Person).map { p -> avg_GC(p.age) - min_GC(p.age) }.toExpr }"
+      "Table(Person).filter { p -> p.age.toDouble_MCS() > Table(Person).map { p -> avg_GC(p.age) - min_GC(p.age) }.toExpr }"
     ),
     "filter + correlated + value" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.age > (SELECT avg(p1.age) - min(p1.age) FROM Person p1)"

@@ -744,6 +744,7 @@ sealed interface XR {
     @Slot val args: List<XR.U.QueryOrExpression>,
     val callType: CallType,
     val originalHostType: XR.ClassId,
+    val isKotlinSynthetic: Boolean, // e.g. inserted .toDouble in places like (x:Int).toDouble() >= (x:Double)
     override val type: XRType,
     override val loc: Location = Location.Synth
   ) : Query, Expression, U.Call, PC<MethodCall> {
@@ -765,14 +766,14 @@ sealed interface XR {
   // TODO originalResultType
   @Serializable
   @Mat
-  data class GlobalCall(@Slot val name: XR.FqName, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, override val type: XRType, override val loc: Location = Location.Synth) : Query, Expression,
+  data class GlobalCall(@Slot val name: XR.FqName, @Slot val args: List<XR.U.QueryOrExpression>, val callType: CallType, val isKotlinSynthetic: Boolean, override val type: XRType, override val loc: Location = Location.Synth) : Query, Expression,
     U.Call, PC<GlobalCall> {
     @Transient
     override val productComponents = productOf(this, name, args)
 
     companion object {
       // using this when translating from Query-level aggs to Expression-level aggs in the SqlQuery
-      fun Agg(name: String, vararg args: XR.U.QueryOrExpression) = GlobalCall(FqName(name), args.toList(), CallType.Aggregator, XRType.Value)
+      fun Agg(name: String, vararg args: XR.U.QueryOrExpression) = GlobalCall(FqName(name), args.toList(), CallType.Aggregator, false, XRType.Value)
     }
 
     override fun toString() = show()

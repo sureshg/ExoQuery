@@ -69,6 +69,7 @@ class ParamSpec : FreeSpec({
             listOf(XR.Property(pIdent, "name")),
             XR.CallType.PureFunction,
             XR.ClassId("io.exoquery", "Params"),
+            false,
             XRType.Value
           )
         ),

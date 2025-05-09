@@ -212,26 +212,29 @@ interface SqlIdiom : HasPhasePrinting {
     }
   }
 
-  fun XR.U.QueryOrExpression.wholeNumberConversionMapping(name: String): Token = run {
+  fun XR.U.QueryOrExpression.wholeNumberConversionMapping(name: String, isKotlinSynthetic: Boolean): Token = run {
     val head = this
-    when (name) {
-      "toDouble" -> +"CAST(${head.token} AS DOUBLE PRECISION)"
-      "toFloat" -> +"CAST(${head.token} AS REAL)"
-      "toBoolean" -> +"CAST(${head.token} AS BOOLEAN)"
-      "toString" -> +"CAST(${head.token} AS ${varcharType()})"
+    when {
+      // Do numeric casts to decimal types, but only if the user explicitly does it
+      // we do not want to do it implicitly because Kotlin frequently does this and most DBs
+      // do implicit float<->int conversions just as well
+      name == "toDouble" && !isKotlinSynthetic -> +"CAST(${head.token} AS DOUBLE PRECISION)"
+      name == "toFloat" && !isKotlinSynthetic -> +"CAST(${head.token} AS REAL)"
+      name == "toBoolean" -> +"CAST(${head.token} AS BOOLEAN)"
+      name == "toString" -> +"CAST(${head.token} AS ${varcharType()})"
       // toInt, toLong, toShort reply in implicit casting
       else -> +"${head.token}"
     }
   }
 
-  fun XR.U.QueryOrExpression.floatConversionMapping(name: String): Token = run {
+  fun XR.U.QueryOrExpression.floatConversionMapping(name: String, isKotlinSynthetic: Boolean): Token = run {
     val head = this
-    when (name) {
-      "toLong" -> +"CAST(${head.token} AS BIGINT)"
-      "toInt" -> +"CAST(${head.token} AS INTEGER)"
-      "toShort" -> +"CAST(${head.token} AS SMALLINT)"
-      "toBoolean" -> +"CAST(${head.token} AS BOOLEAN)"
-      "toString" -> +"CAST(${head.token} AS ${varcharType()})"
+    when {
+      name == "toLong" && !isKotlinSynthetic -> +"CAST(${head.token} AS BIGINT)"
+      name == "toInt" && !isKotlinSynthetic -> +"CAST(${head.token} AS INTEGER)"
+      name == "toShort" && !isKotlinSynthetic -> +"CAST(${head.token} AS SMALLINT)"
+      name == "toBoolean" -> +"CAST(${head.token} AS BOOLEAN)"
+      name == "toString" -> +"CAST(${head.token} AS ${varcharType()})"
       // toFloat, toDouble reply in implicit casting
       else -> +"${head.token}"
     }
@@ -250,10 +253,10 @@ interface SqlIdiom : HasPhasePrinting {
 
         // rely on implicit-casts for numeric conversion
         originalHostType.isWholeNumber() && name.isConverterFunction() ->
-          head.wholeNumberConversionMapping(name)
+          head.wholeNumberConversionMapping(name, isKotlinSynthetic)
 
         originalHostType.isFloatingPoint() && name.isConverterFunction() ->
-          head.floatConversionMapping(name)
+          head.floatConversionMapping(name, isKotlinSynthetic)
 
         originalHostType == CID.kotlin_String -> {
           when {

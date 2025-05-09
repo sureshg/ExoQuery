@@ -109,16 +109,18 @@ object CallParser {
           args = expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() },
           callType = expr.extractCallType(),
           type = tpe,
+          isKotlinSynthetic = false,
           loc = expr.loc
         )
       else ->
         XR.MethodCall(
-          head = Parser.parseArg(reciever!!),
+          head = Parser.parseArg(reciever),
           name = expr.symbol.safeName,
           args = expr.simpleValueArgs.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null() },
           originalHostType = expr.type.classId()?.toXR() ?: XR.ClassId.Empty,
           type = tpe,
           loc = expr.loc,
+          isKotlinSynthetic = reciever.hasSameOffsetsAs(expr),
           callType = expr.extractCallType()
         )
     }

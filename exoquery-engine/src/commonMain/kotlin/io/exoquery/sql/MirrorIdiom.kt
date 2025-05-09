@@ -168,13 +168,17 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
       stmt("${v.token}")
 
   fun XR.MethodCall.suffix() =
-    if (renderOpts.showMethodCallSuffixes)
+    if (renderOpts.showMethodCallSuffixes && this.isKotlinSynthetic)
+      stmt("_MCS")
+    else if (renderOpts.showMethodCallSuffixes)
       stmt("_MC")
     else
       stmt("")
 
   fun XR.GlobalCall.suffix() =
-    if (renderOpts.showMethodCallSuffixes)
+    if (renderOpts.showMethodCallSuffixes && this.isKotlinSynthetic)
+      stmt("_GCS")
+    else if (renderOpts.showMethodCallSuffixes)
       stmt("_GC")
     else
       stmt("")

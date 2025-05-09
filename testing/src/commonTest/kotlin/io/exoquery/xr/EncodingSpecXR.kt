@@ -72,6 +72,7 @@ class EncodingSpecXR : FreeSpec({
         listOf(XR.Ident("two", XRType.Value)),
         XR.CallType.PureFunction,
         XR.ClassId("a", "b"),
+        false,
         XRType.Value
       )
       xr.encode().decodeXR() shouldBeXR xr
@@ -81,6 +82,7 @@ class EncodingSpecXR : FreeSpec({
         XR.FqName("foo.bar"),
         listOf(XR.Ident("baz", XRType.Value)),
         XR.CallType.PureFunction,
+        false,
         XRType.Value
       )
       xr.encode().decodeXR() shouldBeXR xr
