@@ -106,7 +106,7 @@ object ParseExpression {
       case(Ir.Call.FunctionMem0[Is(), Is { it.isConverterFunction() }])
         .thenIf { head, _ -> head.type.classId()?.toXR()?.isNumeric() ?: false }
         .thenThis { head, method ->
-          val classId = this.type.classId() ?: parseError("Cannot determine the classId of the type ${this.type.dumpKotlinLike()} of this expression.", this)
+          val classId = head.type.classId() ?: parseError("Cannot determine the classId of the type ${this.type.dumpKotlinLike()} of this expression.", this)
           XR.MethodCall(parse(head), method, emptyList(), XR.CallType.PureFunction, classId.toXR(), XRType.Value, expr.loc)
         },
 
@@ -206,6 +206,11 @@ object ParseExpression {
       case(Ir.CastingTypeOperator[Is(), Is()]).thenThis { target, newType ->
         val callType: XR.CallType = XR.CallType.PureFunction
         XR.GlobalCall(XR.FqName.Cast, listOf(parse(target)), callType, TypeParser.of(this), this.loc) //, TypeParser.of(this), loc)
+      },
+
+      // I.e. the nullableColumn!! or nullableRow!! operator, just ignore the !! part since all SQL expressions are trinary-value
+      case(Ir.DenullingTypeOperator[Is()]).thenThis { target ->
+        parse(target)
       },
 
       case(Ir.Call.FunctionMemN[Is(), Is.of("params", "paramsCtx", "paramsCustom"), Is()]).thenThis { _, args ->

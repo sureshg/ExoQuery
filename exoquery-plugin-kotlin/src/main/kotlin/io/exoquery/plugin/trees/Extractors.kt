@@ -14,6 +14,7 @@ import io.exoquery.plugin.transform.ReceiverCaller
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import org.jetbrains.kotlin.backend.jvm.ir.isValueClassType
+import org.jetbrains.kotlin.ir.BuiltInOperatorNames
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.*
@@ -84,6 +85,17 @@ object Ir {
       customPattern2("Ir.TypeOperatorCall", op, type) { it: IrTypeOperatorCall ->
         if (it.operator == IrTypeOperator.CAST) {
           Components2(it.argument, it.typeOperand)
+        } else {
+          null
+        }
+      }
+  }
+
+  object DenullingTypeOperator {
+    context(CX.Scope) operator fun <AP : Pattern<IrExpression>> get(op: AP) =
+      customPattern1("Ir.TypeOperatorCall", op) { it: IrCall ->
+        if (it.symbol.safeName == BuiltInOperatorNames.CHECK_NOT_NULL) {
+          Components1(it.arguments.first())
         } else {
           null
         }
