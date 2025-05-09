@@ -9,13 +9,13 @@ import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.transactions.transaction
 
 // Define the Users table
-object Users : IntIdTable() {
+object Users: IntIdTable() {
   val name = varchar("name", 50)
   val email = varchar("email", 100).uniqueIndex()
   val age = integer("age")
 }
 
-object Addresses : IntIdTable() {
+object Addresses: IntIdTable() {
   val ownerId = reference("owner_id", Users)
   val street = varchar("street", 100)
   val city = varchar("city", 50)

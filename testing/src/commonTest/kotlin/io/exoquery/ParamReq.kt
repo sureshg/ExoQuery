@@ -4,7 +4,7 @@ import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
 
 
-class ParamReq : GoldenSpecDynamic(ParamReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class ParamReq: GoldenSpecDynamic(ParamReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "single single-param" - {
     val n = "Leah"
     val cap = capture { Table<Person>().filter { p -> p.name == param(n) } }

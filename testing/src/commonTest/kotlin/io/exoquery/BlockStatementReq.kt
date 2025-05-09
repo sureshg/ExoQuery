@@ -4,7 +4,7 @@ import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Address
 import io.exoquery.testdata.Person
 
-class BlockStatementReq : GoldenSpecDynamic(BlockStatementReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class BlockStatementReq: GoldenSpecDynamic(BlockStatementReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "blocks with map" {
     val p = capture {
       Table<Person>().map {

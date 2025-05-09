@@ -3,7 +3,7 @@ package io.exoquery
 import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 
-object AtomicValueSelectSpecGolden : GoldenQueryFile {
+object AtomicValueSelectSpecGolden: GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "from(atom.nested) + join -> (p, r)" to cr(
       """

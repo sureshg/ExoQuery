@@ -5,7 +5,7 @@ import io.exoquery.xr.XR.*
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 
-class BetaReductionSpec : FreeSpec({
+class BetaReductionSpec: FreeSpec({
   // TODO do properties need visible/fixed
   "simplifies the ast by applying functions" - {
     "caseclass field" {

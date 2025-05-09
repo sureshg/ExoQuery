@@ -2,7 +2,7 @@ package io.exoquery
 
 import io.exoquery.sql.PostgresDialect
 
-class EmbeddedDistinctReq : GoldenSpecDynamic(EmbeddedDistinctReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class EmbeddedDistinctReq: GoldenSpecDynamic(EmbeddedDistinctReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "queries with embedded entities should" - {
 
 //    "function property inside of nested distinct queries" in {

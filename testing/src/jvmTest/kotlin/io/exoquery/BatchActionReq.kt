@@ -3,7 +3,7 @@ package io.exoquery
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
 
-class BatchActionReq : GoldenSpecDynamic(BatchActionReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class BatchActionReq: GoldenSpecDynamic(BatchActionReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "insert" - {
     val people = listOf(Person(1, "John", 42), Person(2, "Jane", 43), Person(3, "Jack", 44)).asSequence()
 

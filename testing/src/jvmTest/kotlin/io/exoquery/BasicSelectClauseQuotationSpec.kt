@@ -11,7 +11,7 @@ import io.exoquery.xr.XR.Ordering.TupleOrdering
 import io.exoquery.xr.XR.Product.Companion.TupleSmartN
 import io.kotest.matchers.equals.shouldBeEqual
 
-class BasicSelectClauseQuotationSpec : GoldenSpec(BasicSelectClauseQuotationSpecGolden, {
+class BasicSelectClauseQuotationSpec: GoldenSpec(BasicSelectClauseQuotationSpecGolden, {
   data class Person(val id: Int, val name: String, val age: Int)
   data class Robot(val ownerId: Int, val model: String)
   data class Address(val ownerId: Int, val street: String, val zip: Int)

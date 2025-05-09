@@ -42,18 +42,18 @@ class Compare(val showSuccess: Boolean = false, val skipFields: List<String> = l
     // TODO maybe in some situations where an actual key is missing from a product
     //      we might want to have a special case for that i.e. MissingKey should look into it
 
-    data class Match(val leftValue: Any?, val rightValue: Any?) : Diff
+    data class Match(val leftValue: Any?, val rightValue: Any?): Diff
 
-    data class MissingRight(val leftValue: Any) : Diff
-    data class MissingLeft(val rightValue: Any) : Diff
+    data class MissingRight(val leftValue: Any): Diff
+    data class MissingLeft(val rightValue: Any): Diff
 
-    data class Object(val typename: String, val fields: LinkedHashMap<String, Diff>) : Diff
-    data class Sequence(val typename: String, val fields: LinkedHashMap<String, Diff>) : Diff
+    data class Object(val typename: String, val fields: LinkedHashMap<String, Diff>): Diff
+    data class Sequence(val typename: String, val fields: LinkedHashMap<String, Diff>): Diff
 
-    data class Leaf(val typename: String, val a: Any, val b: Any) : Diff
-    data class Leaf2(val typenameA: String, val typenameB: String, val a: Any, val b: Any) : Diff
+    data class Leaf(val typename: String, val a: Any, val b: Any): Diff
+    data class Leaf2(val typenameA: String, val typenameB: String, val a: Any, val b: Any): Diff
 
-    data class Set(val typename: String, val onlyLeft: KSet<Any?>, val onlyRight: KSet<Any?>) : Diff
+    data class Set(val typename: String, val onlyLeft: KSet<Any?>, val onlyRight: KSet<Any?>): Diff
   }
 
   fun Diff?.withField(field: String): Pair<String, Diff>? =
@@ -151,8 +151,8 @@ class Compare(val showSuccess: Boolean = false, val skipFields: List<String> = l
       operator fun <T> invoke(value: T?): Opt<T> = value?.let { Some(it) } ?: None
     }
 
-    data class Some<T : Any>(val value: T) : Opt<T>
-    object None : Opt<Nothing>
+    data class Some<T: Any>(val value: T): Opt<T>
+    object None: Opt<Nothing>
   }
 
 //  private def iterable(ai: Iterable[_], bi: Iterable[_]): Option[Diff] = {

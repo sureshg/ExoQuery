@@ -11,7 +11,7 @@ import io.exoquery.testdata.Robot
 // Also note that it won't actually override the BasicQuerySanitySpecGolden file unless you change this one
 
 // build the file BasicQuerySanitySpecGolden.kt, is that as the constructor arg
-class QueryAdvancedReq : GoldenSpec(QueryAdvancedReqGolden, {
+class QueryAdvancedReq: GoldenSpec(QueryAdvancedReqGolden, {
 
   // TODO implement and test deconstruction e.g. val (p, a) = from(Table<PersonToAddress>())
   "select clause + join + nested filters" {

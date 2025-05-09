@@ -5,7 +5,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.be
 import io.kotest.matchers.should
 
-infix fun <T : XR, U : T> T.shouldBeXR(expected: U): T {
+infix fun <T: XR, U: T> T.shouldBeXR(expected: U): T {
   this should be(expected)
   // Normally XR equality doesn't care about the type but for serialization tests
   // we want to explicitly check it
@@ -15,7 +15,7 @@ infix fun <T : XR, U : T> T.shouldBeXR(expected: U): T {
   return this
 }
 
-class EncodingSpecXR : FreeSpec({
+class EncodingSpecXR: FreeSpec({
   "XR.Expression" - {
     "Ident" {
       val xr = XR.Ident("foo", XRType.Value)

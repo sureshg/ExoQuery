@@ -4,9 +4,9 @@ import io.exoquery.xr.XR.*
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 
-class StatelessTransformerSpec : FreeSpec({
-  class Subject(vararg val replace: Pair<XR, XR>) : StatelessTransformerSingleRoot {
-    override fun <X : XR> root(xr: X): X {
+class StatelessTransformerSpec: FreeSpec({
+  class Subject(vararg val replace: Pair<XR, XR>): StatelessTransformerSingleRoot {
+    override fun <X: XR> root(xr: X): X {
       val rep = replace.toMap().getOrElse(xr, { xr })
       return when {
         // Is the thing we're replacing the element with the same type as the thing we were trying to replace

@@ -3,7 +3,7 @@ package io.exoquery
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
 
-class FreeReq : GoldenSpecDynamic(FreeReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class FreeReq: GoldenSpecDynamic(FreeReqGoldenDynamic, Mode.ExoGoldenTest(), {
 
   // TODO if 'free' not follorwed by anything there should be some kidn of compile error
   "static free" - {

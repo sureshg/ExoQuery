@@ -9,7 +9,7 @@ import io.exoquery.printing.PrintXR
 import io.exoquery.xr.XR
 import io.exoquery.fansi.Color as FansiColor
 
-class PrintDiff(val defaultWidth: Int = 150) : PPrinter(
+class PrintDiff(val defaultWidth: Int = 150): PPrinter(
   PPrinterConfig(
     defaultWidth = defaultWidth,
     defaultIndent = 2

@@ -11,7 +11,7 @@ fun main() {
 
 
   @CapturedFunction
-  fun <T : Person> forUpdate(v: SqlQuery<T>) = capture {
+  fun <T: Person> forUpdate(v: SqlQuery<T>) = capture {
     free("${v} FOR UPDATE").asPure<SqlQuery<T>>()
   }
 

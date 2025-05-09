@@ -4,7 +4,7 @@ import io.exoquery.annotation.ExoEntity
 import io.exoquery.annotation.ExoField
 import kotlinx.serialization.SerialName
 
-class NamingAnnotationReq : GoldenSpecDynamic(NamingAnnotationReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class NamingAnnotationReq: GoldenSpecDynamic(NamingAnnotationReqGoldenDynamic, Mode.ExoGoldenTest(), {
 
   @SerialName("person_annotated")
   data class PersonAnnotated(

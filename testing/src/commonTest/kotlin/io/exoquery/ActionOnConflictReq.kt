@@ -2,9 +2,8 @@ package io.exoquery
 
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
-import io.exoquery.testdata.PersonNullable
 
-class ActionOnConflictReq : GoldenSpecDynamic(ActionOnConflictReqGoldenDynamic, Mode.ExoGoldenOverride(), {
+class ActionOnConflictReq: GoldenSpecDynamic(ActionOnConflictReqGoldenDynamic, Mode.ExoGoldenOverride(), {
   "onConflictUpdate" {
     val q = capture {
       insert<Person> {

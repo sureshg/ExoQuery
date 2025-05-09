@@ -14,8 +14,8 @@ import kotlin.test.assertEquals
 sealed interface Mode {
   val fileName: String
 
-  data class ExoGoldenTest(override val fileName: String) : Mode
-  data class ExoGoldenOverride(override val fileName: String) : Mode
+  data class ExoGoldenTest(override val fileName: String): Mode
+  data class ExoGoldenOverride(override val fileName: String): Mode
   companion object {
     // TODO add a parameter for package so tests can be in other packages then io.exoquery
     @ExoExtras
@@ -36,7 +36,7 @@ abstract class GoldenSpecDynamic(
   val goldenQueries: GoldenQueryFile,
   val mode: Mode,
   body: io.exoquery.GoldenSpecDynamic.() -> Unit
-) : DslDrivenSpec(), FreeSpecRootScope {
+): DslDrivenSpec(), FreeSpecRootScope {
 
   val outputQueries = mutableListOf<PrintableValue>()
 
@@ -163,7 +163,7 @@ abstract class GoldenSpecDynamic(
 // This mimics FreeSpec but adds a shouldBeGolden function that compares the compiled query to a golden query
 // whenever I try to extend FreeSpec I get the following error:
 // kotlin.native.internal.IrLinkageError: Constructor 'GoldenSpec.<init>' can not be called: Can not instantiate abstract class 'GoldenSpec'
-abstract class GoldenSpec(val goldenQueries: GoldenQueryFile, body: GoldenSpec.() -> Unit) : DslDrivenSpec(),
+abstract class GoldenSpec(val goldenQueries: GoldenQueryFile, body: GoldenSpec.() -> Unit): DslDrivenSpec(),
   FreeSpecRootScope {
 
   fun TestScope.testPath() = run {

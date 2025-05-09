@@ -2,7 +2,7 @@ package io.exoquery
 
 import io.exoquery.xr.*
 
-class MirrorIdiomReq : GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class MirrorIdiomReq: GoldenSpecDynamic(MirrorIdiomReqGoldenDynamic, Mode.ExoGoldenTest(), {
   val personEnt = XR.Entity("Person", XRType.Product.leaf("Person", "name", "age"))
   val addressEnt = XR.Entity("Address", XRType.Product.leaf("Address", "street", "city"))
   infix fun String.dot(other: String): XR.Property = XR.Property(this.toId, other)

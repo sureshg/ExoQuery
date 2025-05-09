@@ -4,10 +4,10 @@ import io.exoquery.xr.XR.*
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 
-class StatefulTransformerSpec : FreeSpec({
-  class Subject(override val state: List<XR>, vararg val replace: Pair<XR, XR>) :
+class StatefulTransformerSpec: FreeSpec({
+  class Subject(override val state: List<XR>, vararg val replace: Pair<XR, XR>):
     StatefulTransformerSingleRoot<List<XR>> {
-    override fun <X : XR> root(e: X): Pair<X, StatefulTransformerSingleRoot<List<XR>>> {
+    override fun <X: XR> root(e: X): Pair<X, StatefulTransformerSingleRoot<List<XR>>> {
       @Suppress("UNCHECKED_CAST")
 
       fun assertIsTypeX(tree: XR) =

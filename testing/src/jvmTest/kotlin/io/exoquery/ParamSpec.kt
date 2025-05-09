@@ -19,7 +19,7 @@ import kotlinx.serialization.Serializable
 // TODO need to test all the kinds of params on the IR level
 // TODO then need to implement `params` calls that have custom tokenization
 // TODO to think about, DSL needs to at least support let-functions, maybe also run
-class ParamSpec : FreeSpec({
+class ParamSpec: FreeSpec({
 
   "fullQuery" - {
     "param" {

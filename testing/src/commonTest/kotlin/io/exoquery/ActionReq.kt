@@ -4,7 +4,7 @@ import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
 import io.exoquery.testdata.PersonNullable
 
-class ActionReq : GoldenSpecDynamic(ActionReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class ActionReq: GoldenSpecDynamic(ActionReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "insert" - {
     "simple" {
       val q = capture {

@@ -4,7 +4,7 @@ import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Address
 import io.exoquery.testdata.Person
 
-class QueryDistinctReq : GoldenSpecDynamic(QueryDistinctReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class QueryDistinctReq: GoldenSpecDynamic(QueryDistinctReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "distinct simple" - {
     "table.map.distinct" {
       val q = capture {

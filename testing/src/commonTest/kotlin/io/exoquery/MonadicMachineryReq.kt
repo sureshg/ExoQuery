@@ -6,7 +6,7 @@ import io.exoquery.testdata.Address
 import io.exoquery.testdata.Person
 import io.exoquery.testdata.Robot
 
-class MonadicMachineryReq : GoldenSpecDynamic(MonadicMachineryReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class MonadicMachineryReq: GoldenSpecDynamic(MonadicMachineryReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "capture.expression.(Row)->Table" {
     val joinAddress = capture.expression {
       { p: Person -> internal.flatJoin(Table<Address>()) { a -> p.id == a.ownerId } }

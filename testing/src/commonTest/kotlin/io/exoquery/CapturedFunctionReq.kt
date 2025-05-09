@@ -6,7 +6,7 @@ import io.exoquery.testdata.Address
 import io.exoquery.testdata.Person
 
 
-class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, Mode.ExoGoldenTest(), {
+class CapturedFunctionReq: GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, Mode.ExoGoldenTest(), {
   @CapturedFunction
   fun joes(people: SqlQuery<Person>) = capture { people.filter { p -> p.name == "Joe" } }
   val foo: Boolean = true
@@ -95,7 +95,7 @@ class CapturedFunctionReq : GoldenSpecDynamic(CapturedFunctionReqGoldenDynamic, 
       val joes = capture { Table<SubtypePoly.Person>().filter { p -> p.name == param("joe") } }
 
       @CapturedFunction
-      fun <T : SubtypePoly.HasId> joinPeopleToAddress(people: SqlQuery<T>): SqlQuery<Pair<T, Address>> =
+      fun <T: SubtypePoly.HasId> joinPeopleToAddress(people: SqlQuery<T>): SqlQuery<Pair<T, Address>> =
         capture.select {
           val p = from(people)
           val a = join(Table<Address>()) { a -> a.ownerId == p.id }
@@ -187,5 +187,5 @@ object SubtypePoly {
     val id: Int
   }
 
-  data class Person(override val id: Int, val name: String, val age: Int) : HasId
+  data class Person(override val id: Int, val name: String, val age: Int): HasId
 }
