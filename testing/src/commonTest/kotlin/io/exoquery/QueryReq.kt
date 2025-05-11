@@ -91,16 +91,15 @@ class QueryReq: GoldenSpecDynamic(QueryReqGoldenDynamic, Mode.ExoGoldenTest(), {
     shouldBeGolden(q.xr, "XR")
     shouldBeGolden(q.build<PostgresDialect>())
   }
-  // BUG! This does not work correctly
-  //"query with free in captured function - receiver position" {
-  //  @CapturedFunction
-  //  fun <T> SqlQuery<T>.forUpdate() = capture {
-  //    free("${this@forUpdate} FOR UPDATE").asPure<SqlQuery<T>>()
-  //  }
-  //  val q = capture {
-  //    Table<Person>().filter { p -> p.age > 21 }.forUpdate()
-  //  }
-  //  shouldBeGolden(q.xr, "XR")
-  //  shouldBeGolden(q.build<PostgresDialect>())
-  //}
+  "query with free in captured function - receiver position" {
+    @CapturedFunction
+    fun <T> SqlQuery<T>.forUpdate() = capture {
+      free("${this@forUpdate} FOR UPDATE").asPure<SqlQuery<T>>()
+    }
+    val q = capture {
+      Table<Person>().filter { p -> p.age > 21 }.forUpdate()
+    }
+    shouldBeGolden(q.xr, "XR")
+    shouldBeGolden(q.build<PostgresDialect>())
+  }
 })

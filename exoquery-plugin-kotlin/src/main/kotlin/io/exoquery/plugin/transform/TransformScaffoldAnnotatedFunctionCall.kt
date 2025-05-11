@@ -1,6 +1,7 @@
 package io.exoquery.plugin.transform
 
 import io.exoquery.annotation.CapturedFunction
+import io.exoquery.fansi.nullableAsList
 import io.exoquery.parseError
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
@@ -21,7 +22,7 @@ fun IrCall.zeroisedArgs(): IrCall {
   return with(builder) {
     val newCall = irCall(call.symbol)
 
-    // The dispatch-reciever to a annotated function remains, the extension reciever gets dropped and used like a variable
+    // The dispatch-receiver to a annotated function remains, the extension receiver gets dropped and used like a variable
     call.dispatchReceiver?.let { newCall.dispatchReceiver = it }
 
     newCall.typeArguments.withIndex().forEach { (i, tpe) -> putTypeArgument(i, tpe) }
@@ -44,9 +45,11 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
     call.symbol.owner.hasAnnotation<CapturedFunction>()
 
 
+
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun transform(call: IrCall): IrExpression {
     val originalArgs = call.simpleValueArgs
+    val extensionReceiverArg = call.extensionReceiver
     val zeroizedCallRaw = call.zeroisedArgs()
 
     // Need to project the call to make it uprootable in the paresr in later stages.
@@ -81,6 +84,11 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
     // And the parser will know that `joes` is a pluckable function and create the following:
     //   val drivingJoes = SqlQuery(Apply(Tag(123), listOf(People.filterAge)), runtimes={Tag(123)->joes})
 
+    // Also note that if there is a receiver e.g. @CapturedFunction Person.joinAddress(street: String) = capture { flatJoin(Table<Address>().filter { street == ... }) { ... } }
+    // and the it used as capture { val p = from(people); val a = from(a.joinAddresses("123 someplace"))
+    // we need the scaffold to have the receiver-position element i.e. `a` to be the 1st argument
+    // p.e. scaffoldCapFunctionQuery((Person, String) -> SqlQuery<Address> i.e. joinAddresses, args=[a, "123 someplace"])
+
     val zeroizedCall =
       TransformProjectCapture(superTransformer).transform(zeroizedCallRaw) ?: parseError("Could not capture-project the call", zeroizedCallRaw)
 
@@ -97,7 +105,7 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
     //   val drivingJoes = scaffoldCapFunctionQuery(SqlQuery((people)=>people.filterJoe <- i.e. `joes`), args=[SqlQuery(xr=People.filterAge)])
     //   (and if there are any parameters it it the argument becomes:
     //    args=[SqlQuery(xr=People.filterAge), params=drivingPeople.params])
-    val projectedArgs = originalArgs.map { arg -> arg?.let { superTransformer.recurse(it) ?: it } }
+    val projectedArgs = (extensionReceiverArg.nullableAsList() + originalArgs).map { arg -> arg?.let { superTransformer.recurse(it) ?: it } }
 
     //val zeroizedCall = zeroizedCallRaw as IrCall
 

@@ -84,5 +84,11 @@ object QueryReqGoldenDynamic: GoldenQueryFile {
     "query with free in captured function" to cr(
       "(SELECT p.id AS id, p.name AS name, p.age AS age FROM Person p WHERE p.age > 21) FOR UPDATE"
     ),
+    "query with free in captured function - receiver position/XR" to kt(
+      """{ this -> free(", ${'$'}this,  FOR UPDATE").asPure() }.toQuery.apply(Table(Person).filter { p -> p.age > 21 })"""
+    ),
+    "query with free in captured function - receiver position" to cr(
+      "(SELECT p.id AS id, p.name AS name, p.age AS age FROM Person p WHERE p.age > 21) FOR UPDATE"
+    ),
   )
 }
