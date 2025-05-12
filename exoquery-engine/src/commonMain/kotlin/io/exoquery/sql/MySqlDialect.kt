@@ -13,6 +13,8 @@ class MySqlDialect(override val traceConf: TraceConfig = TraceConfig.empty) : Sq
 
   override val trace: Tracer by lazy { Tracer(traceType, traceConf, 1) }
 
+  override fun varcharType(): Token = "CHAR".token
+
   override fun xrBinaryOpTokenImpl(binaryOpImpl: XR.BinaryOp): Token = with(binaryOpImpl) {
     when {
       op is OP.StrPlus -> +"CONCAT(${a.token}, ${b.token})"
@@ -101,6 +103,20 @@ class MySqlDialect(override val traceConf: TraceConfig = TraceConfig.empty) : Sq
     val query = this.query as? XR.Entity ?: xrError("Insert query must be an entity but found: ${this.query}")
     val (columns, values) = columnsAndValues(assignments, exclusions).unzip()
     +"INSERT INTO ${query.token} (${columns.mkStmt(", ")}) VALUES ${tokenizeInsertAssignemnts(values)} AS ${alias.token} ON DUPLICATE KEY UPDATE ${updateAssignmentsToken}"
+  }
+
+  override fun XR.U.QueryOrExpression.stringConversionMapping(name: String): Token = run {
+    val head = this
+    when (name) {
+      "toLong" -> +"CAST(${head.token} AS SIGNED)"
+      "toInt" -> +"CAST(${head.token} AS SIGNED)"
+      "toShort" -> +"CAST(${head.token} AS SIGNED)"
+      "toDouble" -> +"CAST(${head.token} AS DOUBLE PRECISION)"
+      "toFloat" -> +"CAST(${head.token} AS REAL)"
+      "toBoolean" -> +"CASE WHEN ${head.token} = 'true' THEN 1 ELSE 0 END"
+      "toString" -> +"${head.token}"
+      else -> throw IllegalArgumentException("Unknown conversion function: ${name}")
+    }
   }
 }
 

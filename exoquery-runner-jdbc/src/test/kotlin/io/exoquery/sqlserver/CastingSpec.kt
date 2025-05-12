@@ -10,6 +10,11 @@ import io.kotest.matchers.shouldBe
 class CastingSpec : FreeSpec({
   val ctx = TestDatabases.sqlServer
 
+  "Int to String" {
+    val q = capture { free("SELECT 1 AS value").asPure<SqlQuery<Int>>().map { it.toString() } }
+    q.buildFor.SqlServer().runOn(ctx).first() shouldBe "1"
+  }
+
   "String to Long" {
     val q = capture { free("SELECT '1' AS value").asPure<SqlQuery<String>>().map { it.toLong() } }
     q.buildFor.SqlServer().runOn(ctx).first() shouldBe 1

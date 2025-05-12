@@ -170,6 +170,20 @@ class SqliteDialect(override val traceConf: TraceConfig = TraceConfig.Companion.
       limit == null && offset != null -> +"$query LIMIT -1 OFFSET ${offset.token}"
       else -> throw IllegalStateException("Invalid limit/offset combination")
     }
+
+  override fun XR.U.QueryOrExpression.stringConversionMapping(name: String): Token = run {
+    val head = this
+    when (name) {
+      "toLong" -> +"CAST(${head.token} AS BIGINT)"
+      "toInt" -> +"CAST(${head.token} AS INTEGER)"
+      "toShort" -> +"CAST(${head.token} AS SMALLINT)"
+      "toDouble" -> +"CAST(${head.token} AS DOUBLE PRECISION)"
+      "toFloat" -> +"CAST(${head.token} AS REAL)"
+      "toBoolean" -> +"CASE WHEN ${head.token} = 'true' THEN 1 ELSE 0 END"
+      "toString" -> +"${head.token}"
+      else -> throw IllegalArgumentException("Unknown conversion function: ${name}")
+    }
+  }
 }
 
 
