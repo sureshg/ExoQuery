@@ -137,10 +137,14 @@ class Lifter(val builderCtx: CX.Builder) {
       TraceType.Standard -> makeObject<TraceType.Standard>()
     }
 
-  fun TraceConfig.lift(fileSinkOutputPath: String): IrExpression {
+  fun TraceConfig.lift(fileSinkOutputPath: String?): IrExpression {
     val liftOutputSink =
       runScoped {
-        call("io.exoquery.util.defaultTraceOutputSink")(fileSinkOutputPath.lift())
+        if (fileSinkOutputPath != null) {
+          call("io.exoquery.util.defaultTraceOutputSink")(fileSinkOutputPath.lift())
+        } else {
+          call("io.exoquery.util.emptyTraceOutputSink")()
+        }
       }
     return make<TraceConfig>(this.enabledTraces.lift { it.lift() }, liftOutputSink, if (this.phaseLabel != null) this.phaseLabel!!.lift() else irBuilder.irNull())
   }

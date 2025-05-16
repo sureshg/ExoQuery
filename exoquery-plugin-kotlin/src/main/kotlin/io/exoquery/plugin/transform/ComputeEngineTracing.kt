@@ -46,7 +46,8 @@ object ComputeEngineTracing {
   }
 
   context(CX.Scope, CX.Builder)
-  operator fun invoke(queryLabel: String?, dialectType: IrType) = run {
+  operator fun invoke(queryLabel: String?, dialectType: IrType) =
+    if (options != null) {
     val traceTypesNames = getTraceAnnotations(dialectType)
     val writeSource =
       if (traceTypesNames.isNotEmpty())
@@ -55,5 +56,6 @@ object ComputeEngineTracing {
         null
     val traceConfig = TraceConfig.empty.copy(traceTypesNames, writeSource ?: Tracer.OutputSink.None, queryLabel)
     traceConfig to writeSource
-  }
+  } else
+    TraceConfig.empty to Tracer.OutputSink.None
 }

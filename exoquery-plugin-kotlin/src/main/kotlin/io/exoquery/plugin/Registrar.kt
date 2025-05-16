@@ -19,13 +19,13 @@ class Registrar : CompilerPluginRegistrar() {
   override val supportsK2: Boolean get() = true
 
   override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
-    val exoOptions = configuration[EXO_OPTIONS] ?: error("Exo options not found")
+    val exoOptions = configuration[EXO_OPTIONS]
 
     IrGenerationExtension.registerExtension(
       GenerationExtension(
         configuration,
         configuration.getNotNull(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY),
-        exoOptions.build()
+        exoOptions?.build()
       )
     )
   }

@@ -35,7 +35,7 @@ object CX {
     val currentFile: IrFile,
     val pluginCtx: IrPluginContext,
     val compilerConfig: CompilerConfiguration,
-    val options: ExoCompileOptions,
+    val options: ExoCompileOptions?,
     val scopeOwner: IrSymbol,
     val currentDeclarationParent: IrDeclarationParent?,
     val debugDataConfig: DebugDataConfig = DebugDataConfig()

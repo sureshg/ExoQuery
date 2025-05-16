@@ -28,7 +28,7 @@ data class VisitorContext(val symbolSet: SymbolSet, val queriesAccum: FileQueryA
 class VisitTransformExpressions(
   private val context: IrPluginContext,
   private val config: CompilerConfiguration,
-  private val exoOptions: ExoCompileOptions
+  private val exoOptions: ExoCompileOptions?
 ) : IrElementTransformerWithContext<VisitorContext>() {
 
   fun makeCompileLogger(currentExpr: IrElement) =
@@ -112,7 +112,7 @@ class VisitTransformExpressions(
     val queryAccum = FileQueryAccum(QueryAccumState.RealFile(file))
     val ret = super.visitFileNew(file, data.withNewFileAccum(queryAccum))
 
-    if (sanityCheck && queryAccum.hasQueries()) {
+    if (sanityCheck && queryAccum.hasQueries() && exoOptions != null) {
       //BuildQueryFile(file, fileScope, config, exoOptions, currentFile).buildRegular()
       val queryFile = QueryFile(file, queryAccum, config, exoOptions)
       with(scope) { QueryFileBuilder.invoke(queryFile) }

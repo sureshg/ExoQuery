@@ -16,7 +16,7 @@ class FilePrintOutputSink private constructor(val writer: BufferedWriter) : Trac
     writer.write(str)
   }
 
-  fun close() {
+  override fun close() {
     writer.flush()
     writer.close()
   }

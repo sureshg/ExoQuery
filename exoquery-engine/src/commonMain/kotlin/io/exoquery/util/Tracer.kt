@@ -37,6 +37,7 @@ class Tracer(
 
   interface OutputSink {
     fun output(str: String): Unit
+    fun close(): Unit = Unit
 
     companion object {
       val None = object : OutputSink {

@@ -14,7 +14,7 @@ import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 class GenerationExtension(
   private val config: CompilerConfiguration,
   private val messages: MessageCollector,
-  private val exoOptions: ExoCompileOptions
+  private val exoOptions: ExoCompileOptions?
 ) : IrGenerationExtension {
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
     moduleFragment
