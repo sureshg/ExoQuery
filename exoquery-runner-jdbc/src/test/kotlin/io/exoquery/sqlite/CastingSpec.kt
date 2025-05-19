@@ -11,32 +11,32 @@ class CastingSpec : FreeSpec({
   val ctx = TestDatabases.sqlite
 
   "Int to String" {
-    val q = capture { free("SELECT 1 AS value").asPure<SqlQuery<Int>>().map { it.toString() } }
+    val q = capture.select { 1.toString() }
     q.buildFor.Sqlite().runOn(ctx).first() shouldBe "1"
   }
 
   "String to Long" {
-    val q = capture { free("SELECT '1' AS value").asPure<SqlQuery<String>>().map { it.toLong() } }
+    val q = capture.select { "1".toLong() }
     q.buildFor.Sqlite().runOn(ctx).first() shouldBe 1
   }
   "String to Int" {
-    val q = capture { free("SELECT '1' AS value").asPure<SqlQuery<String>>().map { it.toInt() } }
+    val q = capture.select { "1".toInt() }
     q.buildFor.Sqlite().runOn(ctx).first() shouldBe 1
   }
   "String to Short" {
-    val q = capture { free("SELECT '1' AS value").asPure<SqlQuery<String>>().map { it.toShort() } }
+    val q = capture.select { "1".toShort() }
     q.buildFor.Sqlite().runOn(ctx).first() shouldBe 1
   }
   "String to Double" {
-    val q = capture { free("SELECT '1.2' AS value").asPure<SqlQuery<String>>().map { it.toDouble() } }
+    val q = capture.select { "1.2".toDouble() }
     q.buildFor.Sqlite().runOn(ctx).first() shouldBe (1.2).toDouble()
   }
   "String to Float" {
-    val q = capture { free("SELECT '1.2' AS value").asPure<SqlQuery<String>>().map { it.toFloat() } }
+    val q = capture.select { "1.2".toFloat() }
     q.buildFor.Sqlite().runOn(ctx).first() shouldBe (1.2).toFloat()
   }
   "String to Boolean" {
-    val q = capture { free("SELECT 'true' AS value").asPure<SqlQuery<String>>().map { it.toBoolean() } }
+    val q = capture.select { "true".toBoolean() }
     q.buildFor.Sqlite().runOn(ctx).first() shouldBe true
   }
 })
