@@ -1,9 +1,10 @@
 package io.exoquery
 
 import io.exoquery.printing.GoldenResult
+import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object MirrorIdiomReqGoldenDynamic : GoldenQueryFile {
+object MirrorIdiomReqGoldenDynamic: GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "XR.Expression/XR.Ident" to kt(
       "foo"
@@ -150,7 +151,7 @@ object MirrorIdiomReqGoldenDynamic : GoldenQueryFile {
       """TagQ("foo")"""
     ),
     "XR.Query/XR.CustomQueryRef - SelectValue" to kt(
-      "select { val p = from(Table(Person)); val p = join(Table(Address)) { p.name == a.street }; where(p.age == 42); groupBy(p.name); sortBy(Asc)(p.name) }"
+      "select { val p = from(Table(Person)); val p = join(Table(Address)) { p.name == a.street }; where(p.age == 42); groupBy(p.name); sortBy(Asc)(p.name); p.name }"
     ),
   )
 }

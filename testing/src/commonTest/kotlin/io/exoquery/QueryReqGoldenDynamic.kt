@@ -24,6 +24,12 @@ object QueryReqGoldenDynamic: GoldenQueryFile {
     "map with aggregation" to cr(
       "SELECT avg(p.age) AS value FROM Person p"
     ),
+    "map with stddev/XR" to kt(
+      "Table(Person).map { p -> stddev_GC(p.age) }"
+    ),
+    "map with stddev" to cr(
+      "SELECT stddev(p.age) AS value FROM Person p"
+    ),
     "query with filter/XR" to kt(
       "Table(Person).filter { p -> p.age > 18 }"
     ),

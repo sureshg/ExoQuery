@@ -40,9 +40,16 @@ interface SqlIdiom : HasPhasePrinting {
       output
     }
 
+  fun <T> tryOrFail(msg: String, f: () -> T) =
+    try {
+      f()
+    } catch (e: Throwable) {
+      throw RuntimeException(msg, e)
+    }
+
   fun prepareQuery(xr: XR.Query): SqlQueryModel {
-    val q = normalizeQuery(xr)
-    val sqlQuery = SqlQueryApply(traceConf).of(q)
+    val q = tryOrFail("Error Normalizing Query") { normalizeQuery(xr) }
+    val sqlQuery = tryOrFail("Error in SqlQueryApply") { SqlQueryApply(traceConf).of(q) }
     val root = { q: SqlQueryModel -> q }
     val output =
       root
@@ -57,10 +64,10 @@ interface SqlIdiom : HasPhasePrinting {
     return output
   }
 
-  // TODO also return the params from there
   fun processQuery(xr: XR.Query): Pair<Token, SqlQueryModel> {
     val q = prepareQuery(xr)
-    return q.token to q
+    val token = tryOrFail("Error tokenizing prepared query: ${q.showRaw()}") { q.token }
+    return token to q
   }
 
   fun processAction(xr: XR.Action): Token {
@@ -190,6 +197,7 @@ interface SqlIdiom : HasPhasePrinting {
       name.name == "min" -> "min".token
       name.name == "max" -> "max".token
       name.name == "avg" -> "avg".token
+      name.name == "stddev" -> "stddev".token
       name.name == "sum" -> "sum".token
       name.name == "size" -> "size".token
       else -> throw IllegalArgumentException("Unknown global method: ${name.toString()}")

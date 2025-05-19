@@ -299,7 +299,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
   }
 
 
-  private fun flattenContexts(query: XR.Query): Pair<List<Layer>, XR.U.QueryOrExpression> =
+  private fun flattenContexts(query: XR.Query): Pair<List<Layer>, XR.Query> =
     with(query) {
       when {
         // A flat-join query with no maps e.g: `qr1.flatMap(e1 => qr1.join(e2 => e1.i == e2.i))`
@@ -316,14 +316,14 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
         // people.flatMap(p -> groupBy(expr).flatMap(rest)) is:
         //   FlatMap(people, p, FlatMap(GroupBy(expr), rest)))
         this is XR.FlatMap && (head is FlatUnit) ->
-          trace("Flattening Flatmap with FlatGroupBy") andReturn {
+          trace("Flattening Flatmap with FlatUnit") andReturn {
             val (nestedContexts, finalFlatMapBody) = flattenContexts(body)
             listOf(Layer.fromFlatUnit(head)) + nestedContexts to finalFlatMapBody
           }
 
         this is XR.Map && head is FlatUnit ->
           trace("Flattening Flatmap with FlatGroupBy") andReturn {
-            listOf(Layer.fromFlatUnit(head)) to body
+            listOf(Layer.fromFlatUnit(head)) to XR.ExprToQuery(body)
           }
 
         this is XR.FlatMap &&
@@ -358,15 +358,7 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
       val contexts = sources.mapNotNull { if (it is Layer.Context) it.ctx else null }
       val (grouping, sorting, filtering) = sources.findComponentsOrNull()
 
-      val queryRaw =
-        when (finalFlatMapBody) {
-          // Certain things like Ident, FunctionApply, and GlobalCall/MethodCall are BOTH query and expression so BE SURE to flatten them if possible
-          // e.g. otherwise things like Query-level aggregations will cycle forever because SqlQuery.flatten will not remove them
-          is XR.Query ->
-            flatten(contexts, finalFlatMapBody, alias, nestNextMap = false)
-          is XR.Expression ->
-            FlattenSqlQuery(from = contexts, select = selectValues(finalFlatMapBody), type = query.type)
-        }
+      val queryRaw = flatten(contexts, finalFlatMapBody, alias, nestNextMap = false)
       val query =
         queryRaw
           .let { if (grouping != null) it.copy(groupBy = grouping.groupBy) else it }
@@ -679,8 +671,10 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
           is FlatGroupBy -> xrError("FlatGroupBy (and all FlatUnit) functions should have already been handled in the `base` phase: ${this}")
           is FlatSortBy -> xrError("FlatSortBy (and all FlatUnit) functions should have already been handled in the `base` phase: ${this}")
 
-          // The following have special handling in source function
-          is XR.ExprToQuery -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
+          // ===== The following have special handling in source function =====
+          // Constructs like Map(FlatFilter(...),id,output) rely on this because we treat `output` as ExprToQuery(output) in the
+          // `flatten` function above. Also constructs situations like `capture.select { 1 }`.
+          is XR.ExprToQuery -> FlattenSqlQuery(from = sources, select = listOf(SelectValue(head)), type = type)
           is XR.Free -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
           is XR.Nested -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)
           is FlatJoin -> FlattenSqlQuery(from = sources + source(this, alias.name), select = select(alias.name, type, loc), type = type)

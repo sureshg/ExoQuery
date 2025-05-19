@@ -3,7 +3,7 @@ package io.exoquery
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
 
-class ActionOnConflictReq: GoldenSpecDynamic(ActionOnConflictReqGoldenDynamic, Mode.ExoGoldenOverride(), {
+class ActionOnConflictReq: GoldenSpecDynamic(ActionOnConflictReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "onConflictUpdate" {
     val q = capture {
       insert<Person> {

@@ -3,7 +3,7 @@ package io.exoquery
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
 
-class ExpressionFunctionReq : GoldenSpecDynamic(ExpressionFunctionReqGoldenDynamic, Mode.ExoGoldenOverride(), {
+class ExpressionFunctionReq : GoldenSpecDynamic(ExpressionFunctionReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "String" - {
     "toInt" {
       val q = capture { Table<Person>().map { p -> p.name.toInt() } }

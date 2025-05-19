@@ -402,8 +402,12 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
       }
 
   val SelectClause.token: Token
-    get() =
-      stmt("select { ${allComponents().map { it.token }.mkStmt("; ")} }")
+    get() = run {
+      val components = allComponents().map { it.token }.mkStmt("; ")
+      val select =
+        if (allComponents().isNotEmpty()) stmt("; ${select.token}") else stmt("${select.token}")
+      stmt("select { ${components}${select} }")
+    }
 
   val SX.token: Token
     get() =

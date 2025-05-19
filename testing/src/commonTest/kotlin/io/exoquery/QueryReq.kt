@@ -26,6 +26,11 @@ class QueryReq: GoldenSpecDynamic(QueryReqGoldenDynamic, Mode.ExoGoldenTest(), {
     shouldBeGolden(people.xr, "XR")
     shouldBeGolden(people.build<PostgresDialect>())
   }
+  "map with stddev" {
+    val people = capture { Table<Person>().map { p -> stddev(p.age) } }
+    shouldBeGolden(people.xr, "XR")
+    shouldBeGolden(people.build<PostgresDialect>())
+  }
   "query with filter" {
     val people = capture { Table<Person>().filter { p -> p.age > 18 } }
     shouldBeGolden(people.xr, "XR")

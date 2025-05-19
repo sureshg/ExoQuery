@@ -124,13 +124,13 @@ object BooleanLiteralSupportSpecGoldenDynamic: GoldenQueryFile {
       "0" to "2", "1" to "1"
     ),
     "joins/for-comprehension with constant/XR" to kt(
-      "select { val t1 = from(Table(TestEntity)); val t2 = join(Table(TestEntity)) { true } }"
+      "select { val t1 = from(Table(TestEntity)); val t2 = join(Table(TestEntity)) { true }; Tuple(first = t1, second = t2) }"
     ),
     "joins/for-comprehension with constant/SQL" to cr(
       "SELECT t1.s, t1.i, t1.l, t1.o, t1.b, t.s, t.i, t.l, t.o, t.b FROM TestEntity t1 INNER JOIN TestEntity t ON 1 = 1"
     ),
     "joins/for-comprehension with field/XR" to kt(
-      "select { val t1 = from(Table(TestEntity)); val t2 = join(Table(TestEntity)) { t.b } }"
+      "select { val t1 = from(Table(TestEntity)); val t2 = join(Table(TestEntity)) { t.b }; Tuple(first = t1, second = t2) }"
     ),
     "joins/for-comprehension with field/SQL" to cr(
       "SELECT t1.s, t1.i, t1.l, t1.o, t1.b, t.s, t.i, t.l, t.o, t.b FROM TestEntity t1 INNER JOIN TestEntity t ON 1 = t.b"
@@ -152,14 +152,14 @@ object BooleanLiteralSupportSpecGoldenDynamic: GoldenQueryFile {
     ),
     "optionals/exists - lifted not contains/SQL" to cr(
       "SELECT t.b AS first, 1 AS second FROM TestEntity t WHERE 1 = CASE WHEN CASE WHEN t.o IS NULL THEN null ELSE {1:true} END IS NULL THEN 0 ELSE CASE WHEN t.o IS NULL THEN null ELSE {1:true} END END",
-      "0" to "true", "0" to "true"
+      "1" to "true", "1" to "true"
     ),
     "optionals/exists - lifted complex/XR" to kt(
       """Table(TestEntity).filter { t -> { val tmp1_elvis_lhs = { val tmp0_safe_receiver = t.o; if (tmp0_safe_receiver == null) null else { it -> if (TagP("1")) TagP("2") else TagP("0") }.apply(tmp0_safe_receiver) }; if (tmp1_elvis_lhs == null) false else tmp1_elvis_lhs } }.map { t -> Tuple(first = t.b, second = true) }"""
     ),
     "optionals/exists - lifted complex/SQL" to cr(
       "SELECT t.b AS first, 1 AS second FROM TestEntity t WHERE 1 = CASE WHEN CASE WHEN t.o IS NULL THEN null ELSE CASE WHEN {3:false} THEN {4:false} ELSE {5:true} END END IS NULL THEN 0 ELSE CASE WHEN t.o IS NULL THEN null ELSE CASE WHEN {3:false} THEN {4:false} ELSE {5:true} END END END",
-      "1" to "false", "2" to "false", "0" to "true", "1" to "false", "2" to "false", "0" to "true"
+      "3" to "false", "4" to "false", "5" to "true", "3" to "false", "4" to "false", "5" to "true"
     ),
   )
 }

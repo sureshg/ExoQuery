@@ -7,7 +7,7 @@ import io.exoquery.printing.kt
 object VariableReductionReqGoldenDynamic: GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "using it-variable should reduce to the letter `a` on the other side of the clause/XR" to kt(
-      "select { val p = from(Table(Person)); val a = join(Table(Address)) { p.id == a.ownerId } }"
+      "select { val p = from(Table(Person)); val a = join(Table(Address)) { p.id == a.ownerId }; Tuple(first = p, second = a) }"
     ),
     "using it-variable should reduce to the letter `a` on the other side of the clause/SQL" to cr(
       "SELECT p.id, p.name, p.age, a.ownerId, a.street, a.city FROM Person p INNER JOIN Address a ON p.id = a.ownerId"

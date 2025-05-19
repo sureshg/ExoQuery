@@ -4,7 +4,7 @@ import io.exoquery.printing.GoldenResult
 import io.exoquery.printing.cr
 import io.exoquery.printing.kt
 
-object BlockStatementReqGoldenDynamic : GoldenQueryFile {
+object BlockStatementReqGoldenDynamic: GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "blocks with map/XR" to kt(
       "Table(Person).map { it -> { val name = it.name; val age = it.age; Tuple(first = name, second = age) } }"
@@ -25,7 +25,7 @@ object BlockStatementReqGoldenDynamic : GoldenQueryFile {
       "SELECT it.id, it.name, it.age FROM Person it WHERE it.age > 30"
     ),
     "block with query clause/XR" to kt(
-      "{ val p = Table(Person).toExpr; select { val p = from(p); val a = join(Table(Address)) { p.id == a.ownerId } }.toExpr }.toQuery"
+      "{ val p = Table(Person).toExpr; select { val p = from(p); val a = join(Table(Address)) { p.id == a.ownerId }; Tuple(first = p, second = a) }.toExpr }.toQuery"
     ),
     "block with query clause/SQL" to cr(
       "SELECT p.id, p.name, p.age, a.ownerId, a.street, a.city FROM Person p INNER JOIN Address a ON p.id = a.ownerId"

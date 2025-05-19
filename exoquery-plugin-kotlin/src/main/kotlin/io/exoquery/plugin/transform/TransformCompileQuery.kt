@@ -55,6 +55,11 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions) : T
     BuildFunctionArgs(queryLabel)
   }
 
+  sealed interface ProcessResult<out T> {
+    data class Success<T>(val value: T): ProcessResult<T>
+    data class Failure(val error: Throwable): ProcessResult<Nothing>
+  }
+
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun transform(expr: IrCall): IrExpression {
 
@@ -116,21 +121,32 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions) : T
 
                 val (queryAndToken, compileTime) = measureTimedValue {
                   try {
-                    dialect.processQuery(xr)
+                    ProcessResult.Success(dialect.processQuery(xr))
+                  } catch(e: Throwable) {
+                    ProcessResult.Failure(e)
                   } finally {
                     // close file writing if it was happening
                     writeSource?.close()
                   }
                 }
-                val (queryTokenized, query) = queryAndToken
+                when (queryAndToken) {
+                  is ProcessResult.Success -> {
+                    val (queryTokenized, query) = queryAndToken.value
 
-                // Can include the sql-formatting library here since the compiler is always on the JVM!
-                val queryString = queryTokenized.renderQueryString(isPretty, xr)
-                accum.addQuery(PrintableQuery(queryString, compileLocation, parsedArgs.queryLabel))
+                    // Can include the sql-formatting library here since the compiler is always on the JVM!
+                    val queryString = queryTokenized.renderQueryString(isPretty, xr)
+                    accum.addQuery(PrintableQuery(queryString, compileLocation, parsedArgs.queryLabel))
 
-                val msgAdd = parsedArgs.queryLabel?.let { " ($it)" } ?: ""
-                this@Scope.logger.report("Compiled query in ${compileTime.inWholeMilliseconds}ms${msgAdd}: ${queryString}", expr)
-                SqlCompiledQueryExpr(sqlExpr, queryString, queryTokenized, false, parsedArgs.queryLabel, Phase.CompileTime, uprootable.packedXR, query.encode()).plant()
+                    val msgAdd = parsedArgs.queryLabel?.let { " ($it)" } ?: ""
+                    this@Scope.logger.report("Compiled query in ${compileTime.inWholeMilliseconds}ms${msgAdd}: ${queryString}", expr)
+                    SqlCompiledQueryExpr(sqlExpr, queryString, queryTokenized, false, parsedArgs.queryLabel, Phase.CompileTime, uprootable.packedXR, query.encode()).plant()
+
+                  }
+                  is ProcessResult.Failure -> {
+                    logger.warn("The query could not be transformed at compile-time but encountered an error. Falling back to runtime transformation.\n------------------- Error -------------------\n${queryAndToken.error.stackTraceToString()}", expr.location())
+                    callBuildRuntime(construct, traceConfig, parsedArgs.queryLabel, isPretty, sqlExpr)
+                  }
+                }
               }
             ) ?: run {
               logger.warn("The query could not be transformed at compile-time", expr.location())

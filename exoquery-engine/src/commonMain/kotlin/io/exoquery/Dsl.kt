@@ -404,6 +404,9 @@ interface CapturedBlock {
   fun <T : Comparable<T>> avg(value: T): Double = errorCap("The `min` expression of the Query was not inlined")
 
   @DslFunctionCall(DslFunctionCallType.Aggregator::class)
+  fun <T : Comparable<T>> stddev(value: T): Double = errorCap("The `stddev` expression of the Query was not inlined")
+
+  @DslFunctionCall(DslFunctionCallType.Aggregator::class)
   fun <T : Comparable<T>> sum(value: T): T = errorCap("The `min` expression of the Query was not inlined")
 
   @DslFunctionCall(DslFunctionCallType.Aggregator::class)

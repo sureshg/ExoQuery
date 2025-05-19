@@ -19,7 +19,7 @@ object SqlUdfReqGoldenDynamic: GoldenQueryFile {
       "SELECT p.name AS value FROM Test p"
     ),
     "can handle de-nulling - row/XR" to kt(
-      "select { val p = from(Table(Person)); val a = leftJoin(Table(Address)) { a.ownerId == p.id } }"
+      "select { val p = from(Table(Person)); val a = leftJoin(Table(Address)) { a.ownerId == p.id }; Tuple(first = p.name, second = a.city) }"
     ),
     "can handle de-nulling - row/SQL" to cr(
       "SELECT p.name AS first, a.city AS second FROM Person p LEFT JOIN Address a ON a.ownerId = p.id"
