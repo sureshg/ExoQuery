@@ -26,7 +26,7 @@ kotlin {
   sourceSets {
     val commonMain by getting {
       dependencies {
-        api("io.exoquery:controller-core:3.2.1")
+        api(libs.controller.core)
         api(libs.kotlinx.serialization.core)
         api(libs.kotlinx.serialization.protobuf)
       }
@@ -34,13 +34,13 @@ kotlin {
 
     val jvmMain by getting {
       dependencies {
-        api("io.exoquery:controller-jdbc:3.2.1")
+        api(libs.controller.jdbc)
       }
     }
 
     nativeMain.dependencies {
       dependencies {
-        api("io.exoquery:controller-native:3.2.1")
+        api(libs.controller.native)
       }
     }
 

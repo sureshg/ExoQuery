@@ -31,7 +31,7 @@ kotlin {
     val commonMain by getting {
       dependencies {
         api(project(":exoquery-runner-core"))
-        api("io.exoquery:controller-native:3.2.1")
+        api(libs.controller.native)
 
         api(libs.kotlinx.serialization.core)
         api(libs.kotlinx.serialization.json)

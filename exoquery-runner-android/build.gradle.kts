@@ -60,7 +60,7 @@ kotlin {
       dependencies {
         api(project(":exoquery-runner-core"))
 
-        api("io.exoquery:controller-android:3.2.1")
+        api(libs.controller.android)
 
         api(libs.kotlinx.serialization.core)
         api(libs.kotlinx.serialization.protobuf)

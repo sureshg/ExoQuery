@@ -16,7 +16,10 @@ import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.transform.CX
+import io.exoquery.plugin.transform.call
+import io.exoquery.plugin.transform.callWithParams
 import io.exoquery.plugin.transform.containsBatchParam
+import io.exoquery.plugin.trees.ParamBind.Type.*
 import io.exoquery.xr.BetaReduction
 import io.exoquery.xr.XR
 import io.exoquery.xr.XR.Ident.Companion.HiddenOnConflictRefName
@@ -176,13 +179,20 @@ object ParseAction {
             val tpe = epath.xrType
             val (bind, paramType) = run {
               val rawParam =
-                if (epath.knownSerializer != null) {
-                  // Don't know if it's always safe to make the assumption that an IrClassReference.symbol is an IrClassSymbol so return a specific error
-                  val symbol: IrClassSymbol = epath.knownSerializer.symbol as? IrClassSymbol ?: parseError("Error getting the class symbol of the class reference ${epath.knownSerializer.dumpKotlinLike()}. The reference was not an IrClassSymbol", epath.invocation)
-                  ParamBind.Type.ParamCustom(builder.irGetObject(symbol), epath.type)
+                when (epath.knownSerializer) {
+                  is KnownSerializer.Ref -> {
+                    // Don't know if it's always safe to make the assumption that an IrClassReference.symbol is an IrClassSymbol so return a specific error
+                    val symbol: IrClassSymbol = epath.knownSerializer.serializer.symbol as? IrClassSymbol ?: parseError("Error getting the class symbol of the class reference ${epath.knownSerializer.serializer.dumpKotlinLike()}. The reference was not an IrClassSymbol", epath.invocation)
+                    ParamCustom(builder.irGetObject(symbol), epath.type)
+                  }
+                  KnownSerializer.Implicit -> {
+                    // When there is a @Serializeable annotation on the class itself then just invoke `kotlinx.serialization.serializer<OfThatType>`
+                    val makeSerializer = callWithParams("kotlinx.serialization", "serializer", listOf(epath.type))()
+                    ParamCustom(makeSerializer, epath.type)
+                  }
+                  KnownSerializer.None ->
+                    ParamBind.Type.auto(epath.invocation)
                 }
-                else
-                  ParamBind.Type.auto(epath.invocation)
 
               // If it's a batch param need an additional layer of wrapping so that the expr-model knows to create a io.exoquery.ParamBatchRefiner instead of a regular io.exoquery.ParamSingle
               if (batchAlias != null && param.containsBatchParam())

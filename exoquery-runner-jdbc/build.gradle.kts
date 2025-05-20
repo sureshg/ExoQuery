@@ -69,7 +69,7 @@ kotlin {
       resources.srcDir("src/main/resources")
 
       dependencies {
-        api("io.exoquery:controller-jdbc:3.2.1")
+        api(libs.controller.jdbc)
         api(project(":exoquery-runner-core")) // .transaction and other syntaxes come from here
 
         api(libs.kotlinx.serialization.core)

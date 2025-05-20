@@ -42,10 +42,10 @@ class CallMethod(private val callerRaw: Caller, private val replacementFun: Repl
 
     val invokeMethod =
       when (caller) {
-        is Caller.Dispatch -> caller.reciver.type.findMethodOrFail(funName)
-        is Caller.Extension -> caller.reciver.type.findExtensionMethodOrFail(funName)
+        is Caller.Dispatch -> caller.reciver.type.findMethodOrFail(funName, args.size)
+        is Caller.Extension -> caller.reciver.type.findExtensionMethodOrFail(funName, args.size)
         is Caller.TopLevelMethod ->
-          pluginCtx.referenceFunctions(CallableId(FqName(caller.packageName), Name.identifier(funName))).firstOrNull()?.let { MethodType.Method(it) }
+          pluginCtx.referenceFunctions(CallableId(FqName(caller.packageName), Name.identifier(funName))).find { it.owner.valueParameters.size == args.size }?.let { MethodType.Method(it) }
             ?: throw IllegalArgumentException("Cannot find method `${funName}` in the package `${caller.packageName}`")
       }
 

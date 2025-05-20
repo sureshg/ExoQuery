@@ -7,10 +7,13 @@ import io.exoquery.plugin.dataClassProperties
 import io.exoquery.plugin.firstConstStringOrNull
 import io.exoquery.plugin.getAnnotation
 import io.exoquery.plugin.getAnnotationArgs
+import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.isDataClass
 import io.exoquery.plugin.transform.CX
+import io.exoquery.plugin.varargValues
 import io.exoquery.xr.XRType
 import kotlinx.serialization.Serializable
+import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irIfNull
 import org.jetbrains.kotlin.ir.builders.irNull
@@ -21,8 +24,14 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.isNullable
 
+sealed interface KnownSerializer {
+  data class Ref(val serializer: IrClassReference): KnownSerializer
+  data object Implicit: KnownSerializer
+  data object None: KnownSerializer
+}
+
 object Elaborate {
-  data class Path(val path: List<String>, val invocation: IrExpression, val type: IrType, val xrType: XRType, val knownSerializer: IrClassReference?) {
+  data class Path(val path: List<String>, val invocation: IrExpression, val type: IrType, val xrType: XRType, val knownSerializer: KnownSerializer) {
     override fun toString(): String = path.joinToString(".")
   }
 
@@ -31,7 +40,7 @@ object Elaborate {
     if (!expr.type.isDataClass())
       parseError("Expected a data class to elaborate, got ${expr.type}", expr)
 
-    invokeRecurse(emptyList(), expr, expr.type, rootType, null)
+    invokeRecurse(emptyList(), expr, expr.type, rootType, KnownSerializer.None) // Don't care about the top-level object serializer since elaboration is field-by-field
   }
 
   // data class Person(name, age), and an identifier p:Person ->
@@ -43,7 +52,7 @@ object Elaborate {
   //  ([name, first], if (p.name == null) null else p.first), ([name, last], if (p.name == null) null else p.last), ([age], p.age)
   // Same pattern for futher nested nullables
   context(CX.Scope, CX.Builder)
-  private fun invokeRecurse(currPath: List<String>, parent: IrExpression, type: IrType, currentXrType: XRType, knownFieldSerializer: IrClassReference?): List<Path> = run {
+  private fun invokeRecurse(currPath: List<String>, parent: IrExpression, type: IrType, currentXrType: XRType, knownFieldSerializer: KnownSerializer): List<Path> = run {
     if (currentXrType.isProduct()) {
       val cls = type.classOrNull ?: parseError("Expected a class to elaborate, got ${type} which is invalid", parent)
       val clsOwner = cls.owner
@@ -66,11 +75,29 @@ object Elaborate {
             ?: property.getAnnotationArgs<kotlinx.serialization.SerialName>().firstConstStringOrNull()
             ?: propertyName
 
-        val knownFieldSerializer =
-          (property.getAnnotationArgs<kotlinx.serialization.Serializable>().firstOrNull()
+        val knownFieldSerializer: KnownSerializer = run {
+          val propertyOnTheField =
+            // Was there a @Serializeable annotation on the field?
+            (property.getAnnotationArgs<kotlinx.serialization.Serializable>().firstOrNull()
+              // Was there a @Serializeable annotation on the type (e.g. if there is a type-alias with a @Serializable annotation being used)
               ?: propertyType.getAnnotationArgs<kotlinx.serialization.Serializable>().firstOrNull()
-              ?: propertyType.classOrNull?.owner?.getAnnotationArgs<kotlinx.serialization.Serializable>()?.firstOrNull()
-          ).let { it as? IrClassReference }
+            )
+              ?.let { it as? IrClassReference }?.let { KnownSerializer.Ref(it) }
+
+          val propertyOnFieldOrType =
+            propertyOnTheField
+              ?: propertyType.classOrNull?.owner?.getAnnotation<kotlinx.serialization.Serializable>()?.let { annotationCtor ->
+                // Note that the despite the fact that `kotlinx.serialization.Serializable` has a default 1st argument (i.e. the `with`)
+                // in the backend-IR when the argument is not explicitly specified on the type that is being annotated, there will be
+                // zero args that show up in the `valueArguments` field. I believe this is by design so that the compiler-writer can
+                // tell the serialization constructor (or any constructor for that matter) is being used with default values.
+                val serializerArg = annotationCtor.valueArguments.firstOrNull()
+                val serializerArgRef = serializerArg?.let { it as? IrClassReference }?.let { KnownSerializer.Ref(it) }
+                serializerArgRef ?: KnownSerializer.Implicit
+              }
+
+          propertyOnFieldOrType ?: KnownSerializer.None
+        }
 
         // Need to call the getting-symbol in order to get the field value, also make sure the backing field is bound
         val getterSymbol = property?.getter?.symbol ?: error("Getter for $propertyName not found")

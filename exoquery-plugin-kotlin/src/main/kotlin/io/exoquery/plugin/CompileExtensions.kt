@@ -73,7 +73,7 @@ sealed interface MethodType {
   data class Method(val sym: IrSimpleFunctionSymbol) : MethodType
 }
 
-fun IrType.findMethodOrFail(methodName: String): MethodType = run {
+fun IrType.findMethodOrFail(methodName: String, valueParamsSize: Int): MethodType = run {
   val cls =
     (this.classOrNull ?: error("Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} type is not a class."))
 
@@ -88,7 +88,7 @@ fun IrType.findMethodOrFail(methodName: String): MethodType = run {
         |""".trimMargin()
     )
 
-  cls.functions.find { it.safeName == methodName }?.let { MethodType.Method(it) }
+  cls.functions.find { it.safeName == methodName && it.owner.valueParameters.size == valueParamsSize }?.let { MethodType.Method(it) }
     ?: run {
       try {
         cls.getPropertyGetter(methodName)?.let { MethodType.Getter(it) }
@@ -102,7 +102,7 @@ fun IrType.findMethodOrFail(methodName: String): MethodType = run {
 // WARNING assuming (for now) that the extension methods are in the same package as the Class they're being called from.
 // can relax this assumption later by adding an optional package-field to ReplacementMethodToCall and propagating it here
 // TODO Need to filter by reciever type i.e. what if there are multiple extension functions named the same thing
-context(CX.Scope) fun IrType.findExtensionMethodOrFail(methodName: String) = run {
+context(CX.Scope) fun IrType.findExtensionMethodOrFail(methodName: String, valueParamsSize: Int) = run {
   (this
     .classOrNull ?: error("Cannot locate the method ${methodName} from the type: ${this.dumpKotlinLike()} type is not a class."))
     .let { classSym ->
@@ -299,6 +299,10 @@ inline fun <reified T> IrFile.fileHasAnnotation() =
 
 inline fun <reified T> IrAnnotationContainer.getAnnotation() =
   this.let { it.annotations.find { ctor -> ctor.type.isClassStrict<T>() } }
+
+
+//inline fun <reified T> IrAnnotationContainer.getAnnotation() =
+//  annotations.find { it.type.isClassStrict<T>() }
 
 // Cheaper that isClass because doesn't check subclasses
 inline fun <reified T> IrType.isClassStrict(): Boolean {
