@@ -96,11 +96,17 @@ object BooleanLiteralSupportSpecGoldenDynamic: GoldenQueryFile {
     "sql/valuefy normally/filter-clause/SQL" to cr(
       "SELECT e.name, e.i, e.b FROM Ent e WHERE 1 = SomeUdf(e.i)"
     ),
-    "sql/valuefy normally/map-clause/XR" to kt(
+    "sql/valuefy normally/map-clause - impure/XR" to kt(
       """Table(Ent).map { e -> free("SomeUdf(, ${'$'}{e.i}, )").invoke() }.map { x -> x + 1 }"""
     ),
-    "sql/valuefy normally/map-clause/SQL" to cr(
-      "SELECT e + 1 AS value FROM Ent e"
+    "sql/valuefy normally/map-clause - impure/SQL" to cr(
+      "SELECT e.value + 1 AS value FROM (SELECT SomeUdf(e.i) AS value FROM Ent e) AS e"
+    ),
+    "sql/valuefy normally/map-clause - pure/XR" to kt(
+      """Table(Ent).map { e -> free("SomeUdf(, ${'$'}{e.i}, )").asPure() }.map { x -> x + 1 }"""
+    ),
+    "sql/valuefy normally/map-clause - pure/SQL" to cr(
+      "SELECT SomeUdf(e.i) + 1 AS value FROM Ent e"
     ),
     "do not expressify string transforming operations/first parameter/XR" to kt(
       """Table(Product).filter { p -> TagP("0").toInt_MC() == p.sku }"""

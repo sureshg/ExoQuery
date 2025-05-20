@@ -1,6 +1,6 @@
 package io.exoquery
 
-class BooleanLiteralSupportSpec: GoldenSpecDynamic(BooleanLiteralSupportSpecGoldenDynamic, Mode.ExoGoldenTest(), {
+class BooleanLiteralSupportSpec: GoldenSpecDynamic(BooleanLiteralSupportSpecGoldenDynamic, Mode.ExoGoldenOverride(), {
   "value-fy boolean expression where needed" - {
     data class Ent(val name: String, val b: Boolean, val bb: Boolean, val bc: Boolean, val num: Int)
     data class Status(val name: String, val value: Boolean)
@@ -307,10 +307,20 @@ class BooleanLiteralSupportSpec: GoldenSpecDynamic(BooleanLiteralSupportSpecGold
         shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
       }
 
-      "map-clause" {
+      "map-clause - impure" {
         val q = capture {
           Table<Ent>()
             .map { e -> free("SomeUdf(${e.i})")<Int>() }
+            .map { x -> x + 1 }
+        }
+        shouldBeGolden(q.xr, "XR")
+        shouldBeGolden(q.buildRuntime(BooleanLiteralTestDialect(), "SQL"), "SQL")
+      }
+
+      "map-clause - pure" {
+        val q = capture {
+          Table<Ent>()
+            .map { e -> free("SomeUdf(${e.i})").asPure<Int>() }
             .map { x -> x + 1 }
         }
         shouldBeGolden(q.xr, "XR")
