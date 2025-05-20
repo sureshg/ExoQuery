@@ -62,8 +62,8 @@ kotlin {
 
         api("io.exoquery:controller-android:3.2.1")
 
-        api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
-        api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
+        api(libs.kotlinx.serialization.core)
+        api(libs.kotlinx.serialization.protobuf)
         api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
         implementation("androidx.sqlite:sqlite-framework:2.4.0")
       }

@@ -17,10 +17,12 @@ kotlin {
 }
 
 val decomatVersion = extra["decomatVersion"]
+val serializationVersion = libs.versions.serialization.get()
 
 buildConfig {
   buildConfigField("String", "VERSION", "\"${project.version}\"")
   buildConfigField("String", "DECOMAT_VERSION", "\"${decomatVersion}\"")
+  buildConfigField("String", "SERIALIZATION_VERSION", "\"${serializationVersion}\"")
 }
 
 dependencies {

@@ -34,8 +34,8 @@ kotlin {
       kotlin.srcDir("$buildDir/generated/ksp/metadata/commonMain/kotlin")
 
       dependencies {
-        api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
-        api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
+        api(libs.kotlinx.serialization.core)
+        api(libs.kotlinx.serialization.protobuf)
 
         // Actually this is going to be 0.0.5 - using an unpublished one now
         // No reflection in pprint-kmp
@@ -55,8 +55,6 @@ kotlin {
       dependencies {
         implementation("io.kotest:kotest-framework-engine:6.0.0.M1")
         implementation("io.kotest:kotest-assertions-core:6.0.0.M1")
-        // Used to ad-hoc some examples but not needed.
-        //api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
         //implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
         implementation(kotlin("test"))
         implementation(kotlin("test-common"))

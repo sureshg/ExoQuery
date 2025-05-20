@@ -72,8 +72,8 @@ kotlin {
         api("io.exoquery:controller-jdbc:3.2.1")
         api(project(":exoquery-runner-core")) // .transaction and other syntaxes come from here
 
-        api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
-        api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
+        api(libs.kotlinx.serialization.core)
+        api(libs.kotlinx.serialization.protobuf)
         api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
 
         // Hikari should be optional on a user-level. The contexts only need a DataSource instance.

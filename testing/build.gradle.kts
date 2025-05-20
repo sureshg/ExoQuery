@@ -25,15 +25,8 @@ kotlin {
       kotlin.srcDir("$buildDir/generated/ksp/metadata/commonMain/kotlin")
       dependencies {
         // TODO probably the gradle plugin should add these? They don't seem to be just inherited from the exoquery-engine project
-        api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
-        api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
-
-        // Used to ad-hoc some examples but not needed.
-        //api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
-        //implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
-        //implementation(kotlin("test"))
-        //implementation(kotlin("test-common"))
-        //implementation(kotlin("test-annotations-common"))
+        api(libs.kotlinx.serialization.core)
+        api(libs.kotlinx.serialization.protobuf)
 
         implementation("io.kotest:kotest-framework-engine:6.0.0.M1")
         implementation("io.kotest:kotest-assertions-core:6.0.0.M1")

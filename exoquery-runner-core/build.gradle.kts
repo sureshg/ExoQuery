@@ -27,8 +27,8 @@ kotlin {
     val commonMain by getting {
       dependencies {
         api("io.exoquery:controller-core:3.2.1")
-        api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
-        api("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
+        api(libs.kotlinx.serialization.core)
+        api(libs.kotlinx.serialization.protobuf)
       }
     }
 

@@ -33,8 +33,8 @@ kotlin {
         api(project(":exoquery-runner-core"))
         api("io.exoquery:controller-native:3.2.1")
 
-        api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
-        api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+        api(libs.kotlinx.serialization.core)
+        api(libs.kotlinx.serialization.json)
         api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
         //api("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
         implementation("app.cash.sqldelight:native-driver:2.0.2")

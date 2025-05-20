@@ -45,8 +45,8 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
       target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:pprint-kotlin:3.0.0")
       // in some places the compiler needs to print things, so the compiled plugin needs pprint
       target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:exoquery-engine:${BuildConfig.VERSION}")
-      target.dependencies.add("kotlinNativeCompilerPluginClasspath", "org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
-      target.dependencies.add("kotlinNativeCompilerPluginClasspath", "org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
+      target.dependencies.add("kotlinNativeCompilerPluginClasspath", "org.jetbrains.kotlinx:kotlinx-serialization-core:${BuildConfig.SERIALIZATION_VERSION}")
+      target.dependencies.add("kotlinNativeCompilerPluginClasspath", "org.jetbrains.kotlinx:kotlinx-serialization-protobuf:${BuildConfig.SERIALIZATION_VERSION}")
       // Since this is compiler-plugin it works in the compiler which is written in Java so we use JVM dependencies
       target.dependencies.add("kotlinNativeCompilerPluginClasspath", "io.exoquery:decomat-core-jvm:${BuildConfig.DECOMAT_VERSION}")
     }
