@@ -16,19 +16,14 @@ import io.exoquery.parseError
 import io.exoquery.plugin.*
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.transform.CX
-import io.exoquery.plugin.transform.call
-import io.exoquery.plugin.transform.callWithParams
 import io.exoquery.plugin.transform.containsBatchParam
-import io.exoquery.plugin.trees.ParamBind.Type.*
 import io.exoquery.xr.BetaReduction
 import io.exoquery.xr.XR
 import io.exoquery.xr.XR.Ident.Companion.HiddenOnConflictRefName
 import io.exoquery.xr.XRType
 import io.exoquery.xr.of
-import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
-import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -179,18 +174,12 @@ object ParseAction {
             val tpe = epath.xrType
             val (bind, paramType) = run {
               val rawParam =
-                when (epath.knownSerializer) {
-                  is KnownSerializer.Ref -> {
-                    // Don't know if it's always safe to make the assumption that an IrClassReference.symbol is an IrClassSymbol so return a specific error
-                    val symbol: IrClassSymbol = epath.knownSerializer.serializer.symbol as? IrClassSymbol ?: parseError("Error getting the class symbol of the class reference ${epath.knownSerializer.serializer.dumpKotlinLike()}. The reference was not an IrClassSymbol", epath.invocation)
-                    ParamCustom(builder.irGetObject(symbol), epath.type)
-                  }
-                  KnownSerializer.Implicit -> {
-                    // When there is a @Serializeable annotation on the class itself then just invoke `kotlinx.serialization.serializer<OfThatType>`
-                    val makeSerializer = callWithParams("kotlinx.serialization", "serializer", listOf(epath.type))()
-                    ParamCustom(makeSerializer, epath.type)
-                  }
-                  KnownSerializer.None ->
+                when (val ser = epath.knownSerializer) {
+                  is KnownSerializer.Ref ->
+                    ParamBind.Type.ParamCustom(ser.buildExpression(epath.type, epath.invocation.location()), expr.type)
+                  is KnownSerializer.Implicit ->
+                    ParamBind.Type.ParamCustom(ser.buildExpression(epath.type), expr.type)
+                  is KnownSerializer.None ->
                     ParamBind.Type.auto(epath.invocation)
                 }
 

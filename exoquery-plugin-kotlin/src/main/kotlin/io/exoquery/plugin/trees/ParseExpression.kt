@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 /**
@@ -168,10 +169,12 @@ object ParseExpression {
               ParamBind.Type.ParamCtx(paramValue.type)
             }
             this.ownerHasAnnotation<io.exoquery.annotation.ParamPrimitive>() -> {
-              getSerializerForType(expr.type)?.let { ParamBind.Type.ParamStatic(it) } ?: parseError(
-                "Could not find primitive-serializer for type: ${expr.type.dumpKotlinLike()}. Primitive serializers are only defined for: Int, Long, Float, Double, String, Boolean, and the kotlinx LocalDate, LocalTime, LocalDateTime, and Instant",
-                expr
-              )
+              getSerializerForType(expr.type)?.let { ParamBind.Type.ParamStatic(it) }
+                ?: getSerializerForValueClass(expr.type, expr.location())?.let { ParamBind.Type.ParamCustom(it, expr.type) }
+                ?: parseError(
+                  "Could not find primitive-serializer for type: ${expr.type.dumpKotlinLike()}. Primitive serializers are only defined for: Int, Long, Float, Double, String, Boolean, and the kotlinx LocalDate, LocalTime, LocalDateTime, and Instant as well as value-classes.",
+                  expr
+                )
             }
             else -> parseError("Could not find Param annotation on the param function of the call", this)
           }
@@ -235,12 +238,12 @@ object ParseExpression {
             }
             this.ownerHasAnnotation<io.exoquery.annotation.ParamPrimitive>() -> {
               val irType = this.typeArguments.firstOrNull() ?: parseError("params-call must have a single type argument", this)
-              val paramSerializerClassId = getSerializerForType(irType)
+              getSerializerForType(irType)?.let { ParamBind.Type.ParamListStatic(it) }
+                ?: getSerializerForValueClass(expr.type, expr.location())?.let { ParamBind.Type.ParamListCustom(it, expr.type) }
                 ?: parseError(
                   "Could not find primitive-serializer for type: ${irType.dumpKotlinLike()}. Primitive serializers are only defined for: Int, Long, Float, Double, String, Boolean, and the kotlinx LocalDate, LocalTime, LocalDateTime, and Instant",
                   this
                 )
-              ParamBind.Type.ParamListStatic(paramSerializerClassId)
             }
             this.ownerHasAnnotation<io.exoquery.annotation.ParamCustom>() -> {
               // serializer should be the 2nd arg i.e. paramCustom(value, serializer)

@@ -9,8 +9,8 @@ repositories {
 }
 
 val kotlinVersion = "2.1.20"
-val pluginVersion = "LD.1.2.4.PL"
-val extensionsVersion = "LD.1.2.4"
+val pluginVersion = "1.2.5.PL"
+val extensionsVersion = "1.2.5"
 
 // For exoquery-engine, exoquery-plugin-gradle, exoquery-plugin-kotlin
 extra["pluginProjectVersion"] = "${kotlinVersion}-${pluginVersion}"

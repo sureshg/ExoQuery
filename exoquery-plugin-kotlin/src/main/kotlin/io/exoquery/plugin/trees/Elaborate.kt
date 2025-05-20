@@ -1,32 +1,45 @@
 package io.exoquery.plugin.trees
 
-import io.decomat.Is
 import io.exoquery.annotation.ExoField
 import io.exoquery.parseError
 import io.exoquery.plugin.dataClassProperties
 import io.exoquery.plugin.firstConstStringOrNull
-import io.exoquery.plugin.getAnnotation
 import io.exoquery.plugin.getAnnotationArgs
-import io.exoquery.plugin.hasAnnotation
+import io.exoquery.plugin.inferSerializer
 import io.exoquery.plugin.isDataClass
 import io.exoquery.plugin.transform.CX
-import io.exoquery.plugin.varargValues
+import io.exoquery.plugin.transform.callWithParams
 import io.exoquery.xr.XRType
-import kotlinx.serialization.Serializable
-import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irIfNull
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.isNullable
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 sealed interface KnownSerializer {
-  data class Ref(val serializer: IrClassReference): KnownSerializer
-  data object Implicit: KnownSerializer
+  data class Ref(val serializer: IrClassReference): KnownSerializer {
+    context(CX.Scope, CX.Builder)
+    fun buildExpression(expectedType: IrType, location: CompilerMessageSourceLocation) = run {
+      // Don't know if it's always safe to make the assumption that an IrClassReference.symbol is an IrClassSymbol so return a specific error
+      val symbol: IrClassSymbol = serializer.symbol as? IrClassSymbol ?: parseError("Error getting the class symbol of the class reference ${serializer.dumpKotlinLike()}. The reference was not an IrClassSymbol", location)
+      builder.irGetObject(symbol)
+    }
+  }
+  data object Implicit: KnownSerializer {
+    context(CX.Scope, CX.Builder)
+    fun buildExpression(expectedType: IrType) = run {
+      // When there is a @Serializeable annotation on the class itself then just invoke `kotlinx.serialization.serializer<OfThatType>`
+      callWithParams("kotlinx.serialization", "serializer", listOf(expectedType))()
+    }
+  }
   data object None: KnownSerializer
 }
 
@@ -85,16 +98,7 @@ object Elaborate {
               ?.let { it as? IrClassReference }?.let { KnownSerializer.Ref(it) }
 
           val propertyOnFieldOrType =
-            propertyOnTheField
-              ?: propertyType.classOrNull?.owner?.getAnnotation<kotlinx.serialization.Serializable>()?.let { annotationCtor ->
-                // Note that the despite the fact that `kotlinx.serialization.Serializable` has a default 1st argument (i.e. the `with`)
-                // in the backend-IR when the argument is not explicitly specified on the type that is being annotated, there will be
-                // zero args that show up in the `valueArguments` field. I believe this is by design so that the compiler-writer can
-                // tell the serialization constructor (or any constructor for that matter) is being used with default values.
-                val serializerArg = annotationCtor.valueArguments.firstOrNull()
-                val serializerArgRef = serializerArg?.let { it as? IrClassReference }?.let { KnownSerializer.Ref(it) }
-                serializerArgRef ?: KnownSerializer.Implicit
-              }
+            propertyOnTheField ?: propertyType.inferSerializer()
 
           propertyOnFieldOrType ?: KnownSerializer.None
         }

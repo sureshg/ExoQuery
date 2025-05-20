@@ -17,6 +17,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import org.jetbrains.kotlin.builtins.PrimitiveType
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrDeclarationReference
@@ -107,6 +108,20 @@ fun IrDeclarationReference.showLineage(): String {
   rec(this.symbol.owner, 100)
   return collect.map { "[${it}]" }.joinToString("->")
 }
+
+context(CX.Scope)
+fun getSerializerForValueClass(type: IrType, location: CompilerMessageSourceLocation) =
+  if (type.classOrNull?.owner?.isValue ?: false) {
+    with (makeBuilderCtx()) {
+      when (val ser = type.inferSerializer()) {
+        is KnownSerializer.Ref -> ser.buildExpression(type, location)
+        is KnownSerializer.Implicit -> ser.buildExpression(type)
+        is KnownSerializer.None -> null
+      }
+    }
+  } else {
+    null
+  }
 
 context(CX.Scope)
 fun getSerializerForType(type: IrType): ClassId? = run {
