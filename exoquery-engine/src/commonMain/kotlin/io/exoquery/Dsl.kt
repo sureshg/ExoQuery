@@ -611,7 +611,7 @@ interface CapturedBlock {
   fun <T> T.setParams(value: T): setParams<T> = errorCap("The `setParams` expression of the Query was not inlined")
 
   @Dsl
-  fun <T> setParams<T>.excluding(vararg columns: Any): set<T> =
+  fun <T> setParams<T>.excluding(vararg columns: Any?): set<T> =
     errorCap("The `excluding` expression of the Query was not inlined")
 }
 
