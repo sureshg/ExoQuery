@@ -447,7 +447,7 @@ interface SqlIdiom : HasPhasePrinting {
   fun tokenOrderBy(criteria: List<OrderByCriteria>) = +"ORDER BY ${criteria.token { it.token }}"
 
   fun escapeIfNeeded(name: String): Token =
-    if (reservedKeywords.contains(name))
+    if (reservedKeywords.contains(name.lowercase()))
       "\"${name}\"".token
     else
       name.token
