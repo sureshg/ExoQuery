@@ -16,7 +16,11 @@ value class PersonId(val value: Int)
 //      goes too far. Need to update terpal driver to handle value classes.
 @Serializable
 @ExoEntity("Person")
-data class PersonWithId(@Contextual val id: PersonId, val firstName: String, val lastName: String, val age: Int)
+data class PersonWithIdCtx(@Contextual val id: PersonId, val firstName: String, val lastName: String, val age: Int)
+
+@Serializable
+@ExoEntity("Person")
+data class PersonWithId(val id: PersonId, val firstName: String, val lastName: String, val age: Int)
 
 @Serializable
 @ExoEntity("Person")
@@ -24,6 +28,14 @@ data class PersonNullable(val id: Int, val firstName: String?, val lastName: Str
 
 @Serializable
 data class Address(val ownerId: Int, val street: String, val zip: String)
+
+@Serializable
+@ExoEntity("Address")
+data class AddressWithId(val ownerId: PersonId, val street: String, val zip: String)
+
+@Serializable
+@ExoEntity("Address")
+data class AddressWithIdCtx(val ownerId: PersonId, val street: String, val zip: String)
 
 @Serializable
 data class Robot(val ownerId: Int, val model: String, val age: Int)

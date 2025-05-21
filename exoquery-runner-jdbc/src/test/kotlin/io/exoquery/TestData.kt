@@ -2,16 +2,17 @@ package io.exoquery
 
 import io.exoquery.testdata.Person
 import io.exoquery.sql.PostgresDialect
-import io.exoquery.capture
 import io.exoquery.controller.jdbc.JdbcController
-import io.exoquery.controller.runActions
 import io.exoquery.jdbc.runOn
 import io.exoquery.testdata.PersonNullable
 import io.exoquery.testdata.PersonWithId
+import io.exoquery.testdata.PersonWithIdCtx
 
 suspend fun JdbcController.people() = capture { Table<Person>() }.build<PostgresDialect>().runOn(this)
 
 suspend fun JdbcController.peopleNullable() = capture { Table<PersonNullable>() }.build<PostgresDialect>().runOn(this)
+
+suspend fun JdbcController.peopleWithIdCtx() = capture { Table<PersonWithIdCtx>() }.build<PostgresDialect>().runOn(this)
 
 suspend fun JdbcController.peopleWithId() = capture { Table<PersonWithId>() }.build<PostgresDialect>().runOn(this)
 

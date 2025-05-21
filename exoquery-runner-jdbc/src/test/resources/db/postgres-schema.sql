@@ -10,7 +10,7 @@ CREATE TABLE Address
 (
     ownerId INT,
     street  VARCHAR,
-    zip     INT
+    zip     VARCHAR
 );
 
 CREATE TABLE Robot
