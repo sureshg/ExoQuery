@@ -597,10 +597,10 @@ interface CapturedBlock {
     errorCap("The `where` expression of the Query was not inlined")
 
 
-  fun <T> set<T>.onConflictUpdate(vararg fields: Any, exclusions: (T) -> set<T>): set<T> =
+  fun <T> set<T>.onConflictUpdate(vararg fields: Any?, exclusions: (T) -> set<T>): set<T> =
     errorCap("The `onConflictUpdate` expression of the Query was not inlined")
 
-  fun <T> set<T>.onConflictIgnore(vararg fields: Any): set<T> =
+  fun <T> set<T>.onConflictIgnore(vararg fields: Any?): set<T> =
     errorCap("The `onConflictUpdate` expression of the Query was not inlined")
 
   /** Only for insert and update */
