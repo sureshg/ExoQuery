@@ -13,11 +13,6 @@ plugins {
 
 version = extra["controllerProjectVersion"].toString()
 
-// Exclude the jb-annotations-kmp in favor of the official jebrains one (in dependencies below)
-configurations.forEach {
-  it.exclude(group = "com.sschr15.annotations", module = "jb-annotations-kmp")
-}
-
 // Enable logging of wrappers
 //tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 //    compilerOptions {
@@ -79,8 +74,6 @@ kotlin {
         // Hikari should be optional on a user-level. The contexts only need a DataSource instance.
         implementation("com.zaxxer:HikariCP:5.0.1")
         implementation("com.typesafe:config:1.4.1")
-
-        implementation("org.jetbrains:annotations:24.1.0")
       }
     }
     jvmTest {
