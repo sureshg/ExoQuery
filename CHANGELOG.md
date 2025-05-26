@@ -1,6 +1,6 @@
 # ExoQuery Changelog
 
-### Version 1.2.8.PL-1.2.8 (May 26, 2025)
+### Version 1.3.0.PL-1.3.0 (May 26, 2025)
 - **Enhancement**: Implement window functions, fix impure + union-flattening cases ([#5](https://github.com/ExoQuery/ExoQuery/pull/5))
 
 ### Version 1.2.7.PL-1.2.7 (May 22, 2025)
