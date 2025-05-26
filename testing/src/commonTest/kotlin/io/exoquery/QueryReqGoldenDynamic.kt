@@ -49,10 +49,10 @@ object QueryReqGoldenDynamic: GoldenQueryFile {
       "SELECT count(p.age) AS value FROM Person p"
     ),
     "map with count star/XR" to kt(
-      "Table(Person).map { p -> COUNT(*)_GC() }"
+      "Table(Person).map { p -> COUNT_STAR_GC() }"
     ),
     "map with count star" to cr(
-      "SELECT COUNT(*)() AS value FROM Person p"
+      "SELECT count(*) AS value FROM Person p"
     ),
     "map with count distinct/XR" to kt(
       "Table(Person).map { p -> countDistinct_GC(p.name, p.age) }"
