@@ -21,6 +21,39 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
+
+object ParseWindow {
+  context(CX.Scope, CX.Parsing, CX.Symbology)
+  fun parse(expr: IrExpression): XR.Window =
+    on(expr).match(
+      case(Ir.Call.FunctionMem1[Is(), Is("partitionBy"), Ir.Vararg[Is()]]).thenThis { head, (partitionExprs) ->
+        val head = parse(head)
+        val partitions = partitionExprs.map { ParseExpression.parse(it) }
+        head.copy(partitionBy = partitions)
+      },
+      // Match the variadic one first since the others are expr and would need you to check the function-type otherwise
+      case(Ir.Call.FunctionMem1[Is(), Is.of("sortBy", "orderBy"), Ir.Vararg[Is()]]).thenThis { head, (orderXbyY) ->
+        val head = parse(head)
+        val orders = orderXbyY.map { ParseOrder.parseOrdTuple(it) }.map { (expr, ord) -> XR.OrderField.By(expr, ord) }
+        head.copy(orderBy = orders)
+      },
+      case(Ir.Call.FunctionMem1[Is(), Is.of("sortBy", "orderBy"), Is()]).thenThis { head, orderExpr ->
+        val head = parse(head)
+        val order = ParseExpression.parse(orderExpr)
+        head.copy(orderBy = listOf(XR.OrderField.Implicit(order)))
+      },
+      case(Ir.Call.FunctionMem1[Is(), Is.of("sortByDescending", "orderByDescending"), Is()]).thenThis { head, orderExpr ->
+        val head = parse(head)
+        val order = ParseExpression.parse(orderExpr)
+        head.copy(orderBy = listOf(XR.OrderField.Implicit(order)))
+      },
+      // This is the core of the window
+      case(Ir.Call.FunctionMem0[Ir.Expr.ClassOf<CapturedBlock>(), Is("over")]).thenThis { _, _ ->
+        XR.Window(listOf(), listOf(), XR.Ident.Unused, expr.loc)
+      },
+    ) ?: parseError("Could not parse Window from:\n${expr.dumpSimple()}")
+}
+
 /**
  * Parses the tree and collets dynamic binds as it goes. The parser should be exposed
  * as stateless to client functions so everything should go through the `Parser` object instead of this.
@@ -115,6 +148,7 @@ object ParseExpression {
           XR.MethodCall(parse(head), method, emptyList(), XR.CallType.PureFunction, classId.toXR(), isKotlinSynthetic, XRType.Value, expr.loc)
         },
 
+      // TODO cannot assume all whitelisted methods are pure functions. Need to introduce purity/impurity to the whitelist
       case(Ir.Call.FunctionMemN[Is { it.type.classId()?.let { MethodWhitelist.allowedHost(it) } ?: false }, Is(), Is()])
         .thenIfThis { _, _ -> MethodWhitelist.allowedMethodForHost(this.type.classId(), funName) }
         .thenThis { head, args ->
@@ -348,6 +382,38 @@ object ParseExpression {
 
         output
       },
+
+      // This is the thing that needs to have @WindowFun annotation
+      case(Ir.Call.FunctionMemN[Ir.Expr.ClassOf<WindowDsl>(), Is(), Is()])
+        .thenIfThis { _, _ -> ownerHasAnnotation<io.exoquery.annotation.WindowFun>() }
+        .thenThis { windowFunctionDslExpr, windowArgsExprs ->
+
+        val windowArgs = windowArgsExprs.map { ParseExpression.parse(it) }
+
+        val windowFunctionName = this.symbol.owner.getAnnotationArgs<WindowFun>().firstOrNull()?.let { param ->
+          (param as? IrConst)?.value as? String ?: parseError("Bad window function argument (${(param as? IrConst)?.value?.let { "$it:${it::class}" }})", this)
+        } ?: parseError("WindowFun annotation did not have a string-argument", this)
+
+        val call =
+          if (windowFunctionName != "CUSTOM")
+            XR.GlobalCall(
+              XR.FqName(windowFunctionName),
+              windowArgs,
+              XR.CallType.PureFunction,
+              false,
+              TypeParser.of(this),
+              this.locationXR()
+            )
+          else
+            windowArgs.first()
+
+        // Parse the entire window function call down to the window() part and return it here
+        val window = ParseWindow.parse(windowFunctionDslExpr)
+        // Set the `over` component since that is what is coming from the over() call which then returns
+        // control back to the regular expression DSL.
+        window.copy(over = call)
+      },
+
       // Unary Operators
       case(ExtractorsDomain.Call.`(op)x`[Is()]).thenThis { opCall ->
         val (x, op) = opCall

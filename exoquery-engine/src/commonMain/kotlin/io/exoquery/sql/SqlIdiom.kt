@@ -17,6 +17,14 @@ import io.exoquery.xr.XR.ParamType
 import io.exoquery.xrError
 
 interface SqlIdiom : HasPhasePrinting {
+  companion object {
+    val DefaultMethodMappings =
+      mapOf(
+        XR.FqName("lowercase") to "LOWER",
+        XR.FqName("uppercase") to "UPPER",
+        XR.FqName("length") to "LEN"
+      )
+  }
 
   override val traceType: TraceType get() = TraceType.SqlNormalizations
   abstract val useActionTableAliasAs: ActionTableAliasBehavior
@@ -154,7 +162,19 @@ interface SqlIdiom : HasPhasePrinting {
         }
       is XR.TagForSqlExpression ->
         xrError("Internal error. All instance of TagFOrSqlExpressio should have been spliced earlier.")
+      is XR.Window -> token
     }
+  }
+
+  val XR.Window.token get()  = xrWindowTokenImpl(this)
+  fun xrWindowTokenImpl(windowImpl: XR.Window) = with(windowImpl) {
+    val partitionBy = partitionBy.map { it.token }
+    val orderBy = orderBy.map { it.token }
+    val frameTok = over.token
+    val partitionTok = if (partitionBy.isNotEmpty()) +"PARTITION BY ${partitionBy.mkStmt()}" else +""
+    val orderTok = if (orderBy.isNotEmpty()) +"ORDER BY ${orderBy.mkStmt()}" else +""
+    val spaceTok = if (partitionBy.isNotEmpty() && orderBy.isNotEmpty()) +" " else +""
+    +"${frameTok} OVER(${partitionTok}${spaceTok}${orderTok})"
   }
 
   // All previous sanitization focused on doing things like removing "<" and ">" from variables like "<init>"
@@ -175,33 +195,6 @@ interface SqlIdiom : HasPhasePrinting {
    * Now on an SQL level we don't
    */
   val XR.QueryToExpr.token get(): Token = +"(${head.token})"
-
-  fun tokenizeMethodCallFqName(name: XR.FqName): Token =
-  // TODO this should be per dialect, maybe even configureable. I.e. every dialect should have it's supported MethodCall functions
-  //      this list of method-names should techinically be available to the parser when it is parsing so appropriate
-    //      cannot-parse exceptions will be thrown if it is not. We could also introduce a "Promiscuous-Parser" mode where that is disabled.
-    when {
-      name.name == "split" -> "split".token
-      name.name == "startsWith" -> "startsWith".token
-      name.name == "split" -> "split".token
-      name.name == "toUpperCase" -> "toUpperCase".token
-      name.name == "toLowerCase" -> "toLowerCase".token
-      name.name == "toLong" -> "toLong".token
-      name.name == "toInt" -> "toInt".token
-      else -> throw IllegalArgumentException("Unknown method: ${name.toString()}")
-    }
-
-  fun tokenizeGlobalCallFqName(name: XR.FqName): Token =
-    // TODO this should be per dialect, maybe even configureable. I.e. every dialect should have it's supported MethodCall functions
-    when {
-      name.name == "min" -> "min".token
-      name.name == "max" -> "max".token
-      name.name == "avg" -> "avg".token
-      name.name == "stddev" -> "stddev".token
-      name.name == "sum" -> "sum".token
-      name.name == "size" -> "size".token
-      else -> throw IllegalArgumentException("Unknown global method: ${name.toString()}")
-    }
 
   fun stringStartsWith(str: XR.U.QueryOrExpression, prefix: XR.U.QueryOrExpression): Token =
     +"starts_with(${str.token}, ${prefix.token})"
@@ -315,6 +308,7 @@ interface SqlIdiom : HasPhasePrinting {
     }
   }
 
+  val methodMappings: Map<XR.FqName, String> get() = DefaultMethodMappings
 
   val XR.GlobalCall.token
     get(): Token = run {
@@ -323,8 +317,14 @@ interface SqlIdiom : HasPhasePrinting {
       // In this case for now we want to just assume SQL will do an implicit cast. May want to change this in the future.
       if (this.name == XR.FqName.Cast && args.size == 1)
         argsToken
-      else
-        +"${name.name}(${argsToken})"
+      else if (this.name.name == "COUNT_STAR")
+        +"count(*)"
+      else if (this.name == XR.FqName.CountDistinct)
+        +"count(DISTINCT ${argsToken})"
+      else {
+        val functionName = methodMappings[this.name] ?: this.name.name
+        +"${functionName}(${argsToken})"
+      }
     }
 
 
@@ -444,7 +444,7 @@ interface SqlIdiom : HasPhasePrinting {
     }
 
   fun tokenizeGroupBy(values: XR.Expression): Token = values.token
-  fun tokenOrderBy(criteria: List<OrderByCriteria>) = +"ORDER BY ${criteria.token { it.token }}"
+  fun tokenOrderBy(criteria: List<XR.OrderField>) = +"ORDER BY ${criteria.token { it.token }}"
 
   fun escapeIfNeeded(name: String): Token =
     if (reservedKeywords.contains(name.lowercase()))
@@ -587,15 +587,18 @@ interface SqlIdiom : HasPhasePrinting {
     tokenizeTable(name)
   }
 
-  val OrderByCriteria.token get(): Token = xrOrderByCriteriaTokenImpl(this)
-  fun xrOrderByCriteriaTokenImpl(orderByCriteriaImpl: OrderByCriteria): Token = with(orderByCriteriaImpl) {
-    when (this.ordering) {
-      is Asc -> +"${scopedTokenizer(this.ast)} ASC"
-      is Desc -> +"${scopedTokenizer(this.ast)} DESC"
-      is AscNullsFirst -> +"${scopedTokenizer(this.ast)} ASC NULLS FIRST"
-      is DescNullsFirst -> +"${scopedTokenizer(this.ast)} DESC NULLS FIRST"
-      is AscNullsLast -> +"${scopedTokenizer(this.ast)} ASC NULLS LAST"
-      is DescNullsLast -> +"${scopedTokenizer(this.ast)} DESC NULLS LAST"
+  val XR.OrderField.token get(): Token = xrOrderByCriteriaTokenImpl(this)
+  fun xrOrderByCriteriaTokenImpl(orderByCriteriaImpl: XR.OrderField): Token = with(orderByCriteriaImpl) {
+    when {
+      // If the ordering is null it is effecitvely implicit and that should manifest on the SQL
+      orderingOpt == null -> +"${scopedTokenizer(field)}"
+      orderingOpt is Asc -> +"${scopedTokenizer(field)} ASC"
+      orderingOpt is Desc -> +"${scopedTokenizer(field)} DESC"
+      orderingOpt is AscNullsFirst -> +"${scopedTokenizer(field)} ASC NULLS FIRST"
+      orderingOpt is DescNullsFirst -> +"${scopedTokenizer(field)} DESC NULLS FIRST"
+      orderingOpt is AscNullsLast -> +"${scopedTokenizer(field)} ASC NULLS LAST"
+      orderingOpt is DescNullsLast -> +"${scopedTokenizer(field)} DESC NULLS LAST"
+      else -> xrError("Unknown ordering: ${this}")
     }
   }
 

@@ -15,6 +15,10 @@ import kotlin.reflect.KClass
 @Retention(AnnotationRetention.BINARY)
 annotation class CapturedFunction
 
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
+annotation class WindowFun(val name: String)
+
 @Target(AnnotationTarget.TYPE, AnnotationTarget.FUNCTION, AnnotationTarget.FIELD, AnnotationTarget.PROPERTY, AnnotationTarget.LOCAL_VARIABLE)
 @Retention(AnnotationRetention.BINARY)
 annotation class CapturedDynamic
@@ -54,7 +58,7 @@ sealed interface DslFunctionCallType {
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
-annotation class DslFunctionCall(val type: KClass<out DslFunctionCallType>)
+annotation class DslFunctionCall(val type: KClass<out DslFunctionCallType>, val name: String = "")
 
 @Target(AnnotationTarget.CLASS, AnnotationTarget.PROPERTY, AnnotationTarget.PROPERTY_GETTER)
 @Retention(AnnotationRetention.BINARY)

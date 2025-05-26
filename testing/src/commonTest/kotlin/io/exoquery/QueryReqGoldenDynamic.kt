@@ -18,11 +18,47 @@ object QueryReqGoldenDynamic: GoldenQueryFile {
     "query with map" to cr(
       "SELECT p.name AS value FROM Person p"
     ),
+    "union with impure free - should not collapse/XR" to kt(
+      """select { val u = from(Table(Person).filter { p -> p.name == Joe }.union(Table(Person).filter { p -> p.name == Jack })); val a = join(Table(Address)) { a.ownerId == u.id }; free("stuff(, ${'$'}{u.name}, )").invoke() }"""
+    ),
+    "union with impure free - should not collapse" to cr(
+      "SELECT stuff(u.name) AS value FROM ((SELECT p.id, p.name, p.age FROM Person p WHERE p.name = 'Joe') UNION (SELECT p1.id, p1.name, p1.age FROM Person p1 WHERE p1.name = 'Jack')) AS u INNER JOIN Address a ON a.ownerId = u.id"
+    ),
+    "union with pure function - should collapse/XR" to kt(
+      "select { val u = from(Table(Person).filter { p -> p.name == Joe }.union(Table(Person).filter { p -> p.name == Jack })); val a = join(Table(Address)) { a.ownerId == u.id }; u.name.uppercase_MC() }"
+    ),
+    "union with pure function - should collapse" to cr(
+      "(SELECT UPPER(p.name) AS value FROM Person p INNER JOIN Address a ON a.ownerId = p.id WHERE p.name = 'Joe') UNION (SELECT UPPER(p1.name) AS value FROM Person p1 INNER JOIN Address a ON a.ownerId = p1.id WHERE p1.name = 'Jack')"
+    ),
+    "union with aggregation - shuold not collapse/XR" to kt(
+      "select { val u = from(Table(Person).filter { p -> p.name == Joe }.union(Table(Person).filter { p -> p.name == Jack })); val a = join(Table(Address)) { a.ownerId == u.id }; avg_GC(u.age) }"
+    ),
+    "union with aggregation - shuold not collapse" to cr(
+      "SELECT avg(u.age) AS value FROM ((SELECT p.id, p.name, p.age FROM Person p WHERE p.name = 'Joe') UNION (SELECT p1.id, p1.name, p1.age FROM Person p1 WHERE p1.name = 'Jack')) AS u INNER JOIN Address a ON a.ownerId = u.id"
+    ),
     "map with aggregation/XR" to kt(
       "Table(Person).map { p -> avg_GC(p.age) }"
     ),
     "map with aggregation" to cr(
       "SELECT avg(p.age) AS value FROM Person p"
+    ),
+    "map with count/XR" to kt(
+      "Table(Person).map { p -> count_GC(p.age) }"
+    ),
+    "map with count" to cr(
+      "SELECT count(p.age) AS value FROM Person p"
+    ),
+    "map with count star/XR" to kt(
+      "Table(Person).map { p -> COUNT(*)_GC() }"
+    ),
+    "map with count star" to cr(
+      "SELECT COUNT(*)() AS value FROM Person p"
+    ),
+    "map with count distinct/XR" to kt(
+      "Table(Person).map { p -> countDistinct_GC(p.name, p.age) }"
+    ),
+    "map with count distinct" to cr(
+      "SELECT count(DISTINCT p.name, p.age) AS value FROM Person p"
     ),
     "map with stddev/XR" to kt(
       "Table(Person).map { p -> stddev_GC(p.age) }"

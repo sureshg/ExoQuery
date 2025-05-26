@@ -373,6 +373,9 @@ interface CapturedBlock {
   @Dsl
   fun <T> SqlQuery<T>.value(): T = errorCap("The `value` expression of the Query was not inlined")
 
+  @Dsl
+  fun over(): WindowDsl
+
   /* ------------------------------------------------------------------------------------------------ */
   /* ----------------------------------------- Composition ------------------------------------------ */
   /* ------------------------------------------------------------------------------------------------ */
@@ -411,6 +414,29 @@ interface CapturedBlock {
 
   @DslFunctionCall(DslFunctionCallType.Aggregator::class)
   fun <T> count(value: T): Int = errorCap("The `min` expression of the Query was not inlined")
+
+  @DslFunctionCall(DslFunctionCallType.Aggregator::class)
+  fun <T> countDistinct(vararg value: T): Int = errorCap("The `min` expression of the Query was not inlined")
+
+
+  /**
+   * Use this in the select or map clauses to do a `COUNT(*)` query. For example:
+   * ```
+   * val peopleCount = capture { people.map { count() } }
+   * // SQL: SELECT COUNT(*) FROM people p
+   * ```
+   * Or:
+   * ```
+   * val peopleCount =
+   *   capture.select {
+   *     val p = from(Table<Person>())
+   *     count()
+   *   }
+   * // SQL: SELECT COUNT(*) FROM people p
+   * ```
+   */
+  @DslFunctionCall(DslFunctionCallType.ImpureFunction::class, "COUNT_STAR")
+  fun count(): Int = errorCap("The `min` expression of the Query was not inlined")
 
   // Use this as an aggregator for a query e.g. people.map(p -> p.age).min()
   // this is useful for co-releated subqueries e.g. events.filter(ev -> people.map(p -> p.age).avg() > ev.minAllowedAge) i.e. events to which the average person can come to
@@ -640,28 +666,113 @@ sealed interface Ord {
 }
 
 interface SelectClauseCapturedBlock : CapturedBlock {
+  /**
+   * Use this to delcare a new `FROM MyTable t` SQL clause and return the `t`. For example:
+   * ```
+   * val people = capture.select {
+   *   val p = from(Table<Person>())
+   *   p
+   * }
+   * // SQL: SELECT p.id, p.name, p.age FROM people p
+   * ```
+   * You can use multiple `from` clauses in to do full joins. For example:
+   * ```
+   * val allPeopleAllAddresses =
+   *   capture.select {
+   *     val p = from(Table<Person>())
+   *     val a = from(Table<Address>())
+   *     p to a
+   *   }
+   * // SQL: SELECT p.id, p.name, p.age, a.id, a.ownerId, a.city FROM people p, addresses a
+   * ```
+   */
   @Dsl
   fun <T> from(query: SqlQuery<T>): T = errorCap("The `from` expression of the Query was not inlined")
 
+  /**
+   * Use this to join a table. For example:
+   * ```
+   * val peopleWithAddresses =
+   *   capture.select {
+   *     val p = from(Table<Person>())
+   *     val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+   *     p to a
+   *   }
+   * // SQL: SELECT p.id, p.name, p.age, a.id, a.ownerId, a.city FROM people p JOIN addresses a ON a.ownerId = p.id
+   * ```
+   */
   @Dsl
   fun <T> join(onTable: SqlQuery<T>, condition: (T) -> Boolean): T =
     errorCap("The `join` expression of the Query was not inlined")
 
+  /**
+   * Use this to left-join a table. For example:
+   * ```
+   * val peopleWithAddresses =
+   *   capture.select {
+   *     val p = from(Table<Person>())
+   *     val aa: Address? = joinLeft(Table<Address>()) { a: Address -> aa.ownerId == p.id }
+   *     p to aa
+   *   }
+   * // SQL: SELECT p.id, p.name, p.age, a.id, a.ownerId, a.city FROM people p LEFT JOIN addresses a ON a.ownerId = p.id
+   * ```
+   * Note that the returned address variable `aa` will be nullable while the variable `a` used in the join
+   * condition will not. These will be unified when the SQL query is synthesized.
+   */
   @Dsl
   fun <T> joinLeft(onTable: SqlQuery<T>, condition: (T) -> Boolean): T? =
     errorCap("The `joinLeft` expression of the Query was not inlined")
 
-  // TODO JoinFull ?
-
-  // TODO play around with this variant in the future
-  // fun <T?> joinRight(onTable: SqlQuery<T>, condition: (T?) -> Boolean): T? = error("The `joinRight` expression of the Query was not inlined")
-
+  /**
+   * Use this to filter the whole block. For example:
+   * ```
+   * val joesInNYC =
+   *   capture.select {
+   *     val p = from(Table<Person>())
+   *     val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+   *     where { p.name == "Joe" && a.city == "New York" }
+   *     p to a
+   *   }
+   * ```
+   */
   @Dsl
   fun where(condition: () -> Boolean): Unit = errorCap("The `where` expression of the Query was not inlined")
 
+  /**
+   * Use this to group by one or multiple columns. For example:
+   * ```
+   * val countPeopleByCity =
+   *   capture.select {
+   *     val p = from(Table<Person>())
+   *     val a = join(Table<Address>()) { a -> a.ownerId == p.id }
+   *     groupBy { a.city }
+   *     Stats(a.city, count(p.id))
+   *  }
+   * // SQL: SELECT a.city, COUNT(p.id) FROM people p JOIN addresses a ON a.ownerId = p.id GROUP BY a.city
+   * // Where Stats is defined as:
+   * // data class Stats(val city: String, val peopleCount: Int)
+   * ```
+   */
   @Dsl
   fun groupBy(vararg groupings: Any?): Unit = errorCap("The `groupBy` expression of the Query was not inlined")
 
+  /**
+   * Use this to sort by one or multiple columns. For example:
+   * ```
+   * val peopleSortedByAge =
+   *  capture.select {
+   *    val p = from(Table<Person>())
+   *    orderBy(p.age to Ord.Asc, p.name to Ord.Desc)
+   *    p
+   *  }
+   *  // SQL: SELECT p.id, p.name, p.age FROM people p ORDER BY p.age
+   * ```
+   */
+  @Dsl
+  fun orderBy(vararg orderings: Pair<*, Ord>): Unit = errorCap("The `sortBy` expression of the Query was not inlined")
+
+
+  /** Synonym for [orderBy] */
   @Dsl
   fun sortBy(vararg orderings: Pair<*, Ord>): Unit = errorCap("The `sortBy` expression of the Query was not inlined")
 }

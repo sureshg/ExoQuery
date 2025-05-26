@@ -4,7 +4,6 @@ import io.decomat.*
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
 import io.exoquery.util.Tracer
-import io.exoquery.xr.CollectXR
 import io.exoquery.xr.XR
 import io.exoquery.xr.XR.*
 import io.exoquery.xr.*
@@ -16,31 +15,12 @@ class ApplyMap(val traceConfig: TraceConfig) {
   val trace: Tracer =
     Tracer(TraceType.AvoidAliasConflict, traceConfig, 1)
 
-  companion object {
-    fun Expression.hasImpureInfix() = // TODO Optimize with ContainsXR
-      CollectXR.invoke(this) {
-        when {
-          this is Free && this.pure == false -> this
-          else -> null
-        }
-      }.isNotEmpty()
-
-    fun Expression.hasImpurities() = // TODO Optimize with ContainsXR
-      CollectXR.invoke(this) {
-        when {
-          this is Free && this.pure == false -> this
-          this is XR.U.Call && !this.isPure() -> this
-          else -> null
-        }
-      }.isNotEmpty()
-  }
-
-  object MapWithoutInfixes {
+  object MapWithoutImpurities {
     operator fun <AP : Pattern<XR.Query>, BP : Pattern<XR.Expression>> get(x: AP, y: BP) =
       customPattern2M("MapWithoutInfixes", x, y) { it: XR.Query ->
         with(it) {
           when {
-            this is XR.Map && body.hasImpureInfix() -> null
+            this is XR.Map && body.hasImpurities() -> null
             this is XR.Map -> Components2M(head, id, body)
             else -> null
           }
@@ -56,7 +36,7 @@ class ApplyMap(val traceConfig: TraceConfig) {
             body.hasImpurities() -> null
             head is DistinctOn -> null
             head is FlatJoin -> null
-            body.hasImpureInfix() -> null
+            body.hasImpurities() -> null
             else -> Components2M(head, id, body)
           }
         }
@@ -118,7 +98,7 @@ class ApplyMap(val traceConfig: TraceConfig) {
       // there is an infix with an impure element inside.
       // a.map(b => c).map(d => e) =>
       //    a.map(b => e[d := c])
-      case(XR.Map[MapWithoutInfixes[Is(), Is()], Is()]).thenThis { (a, b, c), d, e ->
+      case(XR.Map[MapWithoutImpurities[Is(), Is()], Is()]).thenThis { (a, b, c), d, e ->
         val er = BetaReduction(e, d to c).asExpr()
         trace("ApplyMap on double-map for $q") andReturn { Map.cs(a, b, er) }
       },
@@ -166,9 +146,9 @@ class ApplyMap(val traceConfig: TraceConfig) {
 
       // a.map(b => c).sortBy(d => e) =>
       //    a.sortBy(b => e[d := c]).map(b => c)
-      case(XR.SortBy[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
-        val er = BetaReduction(e, d to c).asExpr()
-        trace("ApplyMap inside sortBy for $q") andReturn { XR.Map.csf(XR.SortBy.csf(a, b, er, comp.ordering)(comp), b, c)(compLeft) }
+      case(XR.SortBy[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d, ords ->
+        val ordsA = ords.map { ord -> ord.transform { BetaReduction(it, d to c).asExpr() } }
+        trace("ApplyMap inside sortBy for $q") andReturn { XR.Map.csf(XR.SortBy.csf(a, b, ordsA)(comp), b, c)(compLeft) }
       },
 
       // TODO This is not in Quill. Is it valid?
@@ -187,9 +167,9 @@ class ApplyMap(val traceConfig: TraceConfig) {
 
       // a.map(b => c).sortBy(d => e).distinct =>
       //    a.sortBy(b => e[d := c]).map(b => c).distinct
-      case(XR.SortBy.DistinctHead[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d, e ->
-        val er = BetaReduction(e, d to c).asExpr()
-        trace("ApplyMap inside sortBy+distinct for $q") andReturn { XR.Distinct(XR.Map.csf(XR.SortBy.csf(a, b, er, comp.ordering)(comp), b, c)(compLeft)) }
+      case(XR.SortBy.DistinctHead[DetachableMap[Is(), Is()], Is()]).then { (a, b, c), d, ords ->
+        val ordsA = ords.map { ord -> ord.transform { BetaReduction(it, d to c).asExpr() } }
+        trace("ApplyMap inside sortBy+distinct for $q") andReturn { XR.Distinct(XR.Map.csf(XR.SortBy.csf(a, b, ordsA)(comp), b, c)(compLeft)) }
       },
 
 
