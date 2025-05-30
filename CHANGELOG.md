@@ -1,5 +1,9 @@
 # ExoQuery Changelog
 
+### Version 1.3.2.PL-1.3.2 (May 30, 2025)
+- **Bugfix**: Fix window Beta Reduction ([#9](https://github.com/ExoQuery/ExoQuery/pull/9))
+- **Enhancement**: Improve help message for param serialization errors ([470ab9f](https://github.com/ExoQuery/ExoQuery/commit/470ab9f))
+
 ### Version 1.3.1.PL-1.3.1 (May 29, 2025)
 - **Bugfix**: Fix pretty-builder for query.buildPrettyFor ([#8](https://github.com/ExoQuery/ExoQuery/pull/8))
 - **Bugfix**: `Fix param(kotlinx.datetime.*)`. ([#7](https://github.com/ExoQuery/ExoQuery/pull/7))
