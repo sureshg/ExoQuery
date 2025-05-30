@@ -29,7 +29,7 @@ fun usedParamWrongMessage(typeName: String) =
 If you trying to encode a java.time.* type, a java.sql.* Date type, a BigDecimal or some other type that can be directly
 encoded into/out of a PreparedStatement/ResultSet you should use the `paramCtx(...)` function instead of `param(...)`.
 
-For a comprehensive list of what is supported by paramCtx, you can double-check JdbcEncoding.kt in io.exoquery.controller.jdbc
+For a comprehensive list of what is supported by paramCtx, you can double-check JdbcEncoders.kt in io.exoquery.controller.jdbc
 (or AdditionalAndroidEncoding.kt in io.exoquery.controller.android if you are using Android). In order to use a custom type
 with paramCtx, you need to inject a custom encoder/decoder for that type into the database-controller.
 See the ExoQuery README.md for instructions here: https://github.com/ExoQuery/ExoQuery?tab=readme-ov-file#paramctx.
