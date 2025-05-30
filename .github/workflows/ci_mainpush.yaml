@@ -1,4 +1,4 @@
-name: CI
+name: CI Push to Main
 
 on:
   push:
