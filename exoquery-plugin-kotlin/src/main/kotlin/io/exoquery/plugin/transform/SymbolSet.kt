@@ -6,7 +6,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 
-data class PrintableQuery(val query: String, val location: Location, val label: String? = null) {
+data class PrintableQuery(val query: String, val location: Location, val queryOutputType: String, val label: String? = null) {
   override fun toString(): String = query
 }
 

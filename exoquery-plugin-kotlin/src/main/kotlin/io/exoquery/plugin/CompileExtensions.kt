@@ -9,6 +9,7 @@ import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.createLambda0
 import io.exoquery.plugin.trees.Ir
+import io.exoquery.plugin.trees.fullPathOfBasic
 import io.exoquery.plugin.trees.simpleValueArgs
 import io.exoquery.plugin.trees.simpleValueParams
 import io.exoquery.xr.XR
@@ -38,6 +39,7 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.utils.zipIfSizesAreEqual
 import kotlin.reflect.KClass
+import kotlin.reflect.typeOf
 
 fun KClass<*>.classId(): ClassId? = run {
   val cls = this
@@ -475,3 +477,9 @@ fun makeRunFunction(statements: List<IrStatement>, returnExpr: IrExpression): Ir
 
 fun IrElement.hasSameOffsetsAs(other: IrElement): Boolean =
   this.startOffset == other.startOffset && this.endOffset == other.endOffset
+
+context(CX.Scope)
+inline fun <reified T> typeOfClass(): IrType? = run {
+  val classId = typeOf<T>().fullPathOfBasic()
+  pluginCtx.referenceClass(classId)?.owner?.defaultType
+}

@@ -8,11 +8,9 @@ import io.exoquery.plugin.transform.BinaryOperators
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.ReceiverCaller
 import io.exoquery.plugin.transform.UnaryOperators
-import io.exoquery.plugin.trees.ParseAction.parseAssignment
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.OP
 import io.exoquery.xr.UnaryOperator
-import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -20,7 +18,9 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.isString
+import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+
 
 object ExtractorsDomain {
 
@@ -29,17 +29,18 @@ object ExtractorsDomain {
   object SqlBuildFunction {
     data class Data(val sqlQueryExpr: IrExpression, val dialectType: IrType, val isPretty: Boolean)
 
-    fun isNamedCorrectly(name: String) = name == "build" || name == "buildPretty"
+    fun isBuildFunction(name: String) = name == "build" || name == "buildPretty"
+    fun isBuildForFunction(name: String) = name == "buildFor" || name == "buildPrettyFor"
 
     context(CX.Scope)
     private fun isCompileableType(it: IrType) =
-      it.isClass<SqlQuery<*>>() || it.isClass<SqlAction<*, *>>() || it.isClass<SqlBatchAction<*, *, *>>()
+      it.isClass<SqlQuery<*>>() || it.isClass<SqlAction<*, *>>() || it.isClass<SqlBatchAction<*, *, *>>() || it.isUnit() // unit is for room-queries
 
     context(CX.Scope)
     fun matches(expr: IrCall) =
       // One form is `query.build()` and the other is `query.buildFor.Postgres()`
       (expr.dispatchReceiver?.type?.let { isCompileableType(it) }
-        ?: false) && isNamedCorrectly(expr.symbol.safeName) || expr.ownerHasAnnotation<ExoBuildDatabaseSpecific>()
+        ?: false) && isBuildFunction(expr.symbol.safeName) || expr.ownerHasAnnotation<ExoBuildDatabaseSpecific>() || expr.ownerHasAnnotation<ExoBuildRoomSpecific>()
 
     context(CX.Scope, CX.Symbology)
     operator fun <AP : Pattern<Data>> get(x: AP) =
@@ -47,7 +48,7 @@ object ExtractorsDomain {
         if (!matches(call))
           null
         else call.match(
-          case(Ir.Call.FunctionMemN[Is(), Is { isNamedCorrectly(it) }, Is(/*Args that we don't match on here*/)]).thenIf { sqlQueryExpr, _ -> isCompileableType(sqlQueryExpr.type) }.thenThis { sqlQueryExpr, _ ->
+          case(Ir.Call.FunctionMemN[Is(), Is { isBuildFunction(it) }, Is(/*Args that we don't match on here*/)]).thenIf { sqlQueryExpr, _ -> isCompileableType(sqlQueryExpr.type) }.thenThis { sqlQueryExpr, _ ->
             val isPretty = call.symbol.safeName == "buildPretty"
             val dialectType = this.typeArguments.first() ?: parseError(
               "Need to pass a constructable dialect to the build method but no argument was provided",
@@ -56,7 +57,7 @@ object ExtractorsDomain {
             Components1(Data(sqlQueryExpr, dialectType, isPretty))
           },
           // The query.buildFor.Postgres() variety
-          case(Ir.Call.FunctionMemN[Ir.Call.FunctionMemN[Is(), Is { it == "buildFor" || it == "buildPrettyFor" }, Is()], Is(), Is()]).thenIfThis { _, _ -> ownerHasAnnotation<ExoBuildDatabaseSpecific>() }
+          case(Ir.Call.FunctionMemN[Ir.Call.FunctionMemN[Is(), Is { isBuildForFunction(it) }, Is()], Is(), Is()]).thenIfThis { _, _ -> ownerHasAnnotation<ExoBuildDatabaseSpecific>() }
             .thenIf { (sqlQueryExpr, _), _ -> isCompileableType(sqlQueryExpr.type) }
             .thenThis { (sqlQueryExpr, _), _ ->
               // Get the ExoBuildDatabaseSpecific from the Postgers() function call, then get it's Dialect::class type
@@ -67,18 +68,27 @@ object ExtractorsDomain {
                   "ExoBuildDatabaseSpecific annotation must have a single argument that is a class-reference (e.g. PostgresDialect::class)",
                   this
                 )
-              val isPretty =
-                ((call.extensionReceiver ?: call.dispatchReceiver) as? IrCall)?.let {
-                  if (it.symbol.safeName == "buildPrettyFor") true
-                  else if (it.symbol.safeName == "buildFor") false
-                  else parseError("Invalid buildFor function name: ${it.symbol.safeName}", it)
-                } ?: parseError("Build function receiver was null, call", call)
 
+              val isPretty = isPrettyBuildForCall(call)
               val dialectType = dialectTypeRef.classType
               Components1(Data(sqlQueryExpr, dialectType, isPretty))
-            }
+            },
+          case(Ir.Call.FunctionMemN[Ir.Call.FunctionMemN[Is(), Is { isBuildForFunction(it) }, Is()], Is(), Is()]).thenIfThis { _, _ -> ownerHasAnnotation<ExoBuildRoomSpecific>() }
+            .thenIf { (sqlQueryExpr, _), _ -> isCompileableType(sqlQueryExpr.type) }
+            .thenThis { (sqlQueryExpr, _), _ ->
+              val isPretty = isPrettyBuildForCall(call)
+              Components1(Data(sqlQueryExpr, Types.sqliteDialect(), isPretty))
+            },
         )
       }
+
+    context(CX.Scope)
+    private fun isPrettyBuildForCall(call: IrCall): Boolean =
+      ((call.extensionReceiver ?: call.dispatchReceiver) as? IrCall)?.let {
+        if (it.symbol.safeName == "buildPrettyFor") true
+        else if (it.symbol.safeName == "buildFor") false
+        else parseError("Invalid buildFor function name: ${it.symbol.safeName}", it)
+      } ?: parseError("Build function receiver was null, call", call)
   }
 
 

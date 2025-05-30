@@ -13,6 +13,9 @@ plugins {
   id("io.exoquery.exoquery-plugin")
   // Already on the classpath
   //id("org.jetbrains.kotlin.android") version "1.9.23"
+
+  id("com.google.devtools.ksp") version "2.1.20-2.0.1"
+  id("androidx.room") version "2.7.1"
 }
 
 version = extra["controllerProjectVersion"].toString()
@@ -38,6 +41,24 @@ android {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
   }
+
+  packaging {
+    resources {
+      // keep the first copy, ignore the rest
+      pickFirsts += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+
+      // (optional) while you’re here, silence other common META-INF clashes
+      excludes += setOf(
+        "META-INF/LICENSE*", "META-INF/NOTICE*",
+        "META-INF/AL2.0",    "META-INF/LGPL2.1"
+      )
+    }
+  }
+}
+
+room {
+  schemaDirectory(layout.projectDirectory.dir("schemas"))
+  generateKotlin = true          // emit Kotlin instead of Java stubs
 }
 
 kotlin {
@@ -52,7 +73,11 @@ kotlin {
 
   sourceSets {
 
-    androidMain.dependencies {
+    val androidMain by getting {
+      // TODO Should NOT Keep this here (or even the androidx.room plugin even if we want a dynamic path for room, that stuff doesn't need androidx-room and only really needs to be in Terpal anyway).
+      //      Create a separate project for room testing e.g. `testing-room` to have these things
+      kotlin.srcDir("src/exoroom/kotlin")
+
       dependencies {
         api(project(":exoquery-runner-core"))
 
@@ -62,6 +87,10 @@ kotlin {
         api(libs.kotlinx.serialization.protobuf)
         api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
         implementation("androidx.sqlite:sqlite-framework:2.4.0")
+
+        val roomVersion = "2.7.1"
+        implementation("androidx.room:room-runtime:${roomVersion}")
+        implementation("androidx.room:room-ktx:${roomVersion}")
       }
     }
 

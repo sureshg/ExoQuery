@@ -432,6 +432,7 @@ object SqlQueryExpr {
       context(CX.Scope, CX.Builder) fun plantNewUprootable(xr: XR.Query, params: ParamsExpr): IrExpression {
         val packedXR = xr.encode()
         val strExpr = call(PT.io_exoquery_unpackQuery).invoke(builder.irString(packedXR))
+        // TODO cache the class types using the pattern in Types.kt so the class-id doesn't need to be looked up over and over again
         val make = makeClassFromString(PT.io_exoquery_SqlQuery, listOf(strExpr, RuntimeEmpty(), params.lift()))
         return make
       }
@@ -439,6 +440,7 @@ object SqlQueryExpr {
       context(CX.Scope, CX.Builder) fun plantNewPluckable(xr: XR.Query, runtimes: RuntimesExpr, params: ParamsExpr): IrExpression {
         val packedXR = xr.encode()
         val strExpr = call(PT.io_exoquery_unpackQuery).invoke(builder.irString(packedXR))
+        // TODO cache the class types using the pattern in Types.kt so the class-id doesn't need to be looked up over and over again
         val make = makeClassFromString(PT.io_exoquery_SqlQuery, listOf(strExpr, runtimes.lift(), params.lift()))
         return make
       }

@@ -10,6 +10,7 @@ import io.exoquery.plugin.trees.Lifter
 import io.exoquery.plugin.trees.SqlActionExpr
 import io.exoquery.plugin.trees.SqlBatchActionExpr
 import io.exoquery.plugin.trees.SqlQueryExpr
+import io.exoquery.plugin.trees.simpleTypeArgs
 import io.exoquery.sql.PostgresDialect
 import io.exoquery.sql.Renderer
 import io.exoquery.sql.SqlIdiom
@@ -113,7 +114,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions) : T
         }
 
         when (ContainerType.determine(containerType)) {
-          is ContainerType.Query -> {
+          is ContainerType.Query, is ContainerType.RoomQuery -> {
             sqlExpr.match(
               case(SqlQueryExpr.Uprootable[Is()]).then { uprootable ->
                 val xr = uprootable.unpackOrErrorXR().successOrParseError(sqlExpr)
@@ -132,9 +133,14 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions) : T
                   is ProcessResult.Success -> {
                     val (queryTokenized, query) = queryAndToken.value
 
+                    // E.g. the Person type of SqlQuery<Person>. For some reason if we do sqlExpr then we get an actual SqlQuery<T> type
+                    // (TODO need a way to override the type if user wants, the buildForRoomWithType<T>() function does this so should get it's type)
+                    // (TODO also should have a buildForRoomConstant which just returns a const-value of the query)
+                    val queryOutputType = "List<${sqlQueryExprRaw.type.simpleTypeArgs.first().dumpKotlinLike()}>"
+
                     // Can include the sql-formatting library here since the compiler is always on the JVM!
                     val queryString = queryTokenized.renderQueryString(isPretty, xr)
-                    accum.addQuery(PrintableQuery(queryString, compileLocation, parsedArgs.queryLabel))
+                    accum.addQuery(PrintableQuery(queryString, compileLocation, queryOutputType, parsedArgs.queryLabel))
 
                     val msgAdd = parsedArgs.queryLabel?.let { " ($it)" } ?: ""
                     this@Scope.logger.report("Compiled query in ${compileTime.inWholeMilliseconds}ms${msgAdd}: ${queryString}", expr)
@@ -148,6 +154,8 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions) : T
                 }
               }
             ) ?: run {
+              // TODO when is not static android query need to fail build and explain
+
               logger.warn("The query could not be transformed at compile-time", expr.location())
               callBuildRuntime(construct, traceConfig, parsedArgs.queryLabel, isPretty, sqlExpr)
             }
@@ -169,7 +177,8 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions) : T
                 val queryString = queryTokenized.renderQueryString(isPretty, xr)
                 val actionKind = xr.toActionKind()
                 val actionReturningKind = ActionReturningKind.fromActionXR(xr)
-                accum.addQuery(PrintableQuery(queryString, compileLocation, parsedArgs.queryLabel))
+                val outputTypeString = sqlQueryExprRaw.type.simpleTypeArgs[1].dumpKotlinLike() // 2nd arg is the output type of the action. Since the room-queries are only writes this value is not actually used yet
+                accum.addQuery(PrintableQuery(queryString, compileLocation, outputTypeString, parsedArgs.queryLabel))
 
                 val msgAdd = parsedArgs.queryLabel?.let { " ($it)" } ?: ""
                 logger.report("Compiled action in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)
@@ -203,7 +212,8 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions) : T
                 val queryString = queryTokenized.renderQueryString(isPretty, xr)
                 val actionKind = xr.action.toActionKind()
                 val actionReturningKind = ActionReturningKind.fromActionXR(xr.action)
-                accum.addQuery(PrintableQuery(queryString, compileLocation, parsedArgs.queryLabel))
+                val outputTypeString = sqlQueryExprRaw.type.simpleTypeArgs[2].dumpKotlinLike() // 3rd arg is the output type of the action. Since the room-queries are only writes this value is not actually used yet
+                accum.addQuery(PrintableQuery(queryString, compileLocation, outputTypeString, parsedArgs.queryLabel))
 
                 val msgAdd = parsedArgs.queryLabel?.let { " ($it)" } ?: ""
                 logger.report("Compiled batch-action in ${compileTime.inWholeMilliseconds}ms: ${queryString}", expr)
@@ -231,10 +241,12 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions) : T
     data object Query : ContainerType
     data object Action : ContainerType
     data object BatchAction : ContainerType
+    data object RoomQuery : ContainerType
     companion object {
       context(CX.Scope)
       fun determine(type: IrType) =
         when {
+          type.isClass<SqlQuery<*>>() -> RoomQuery // only for room-query generation
           type.isClass<SqlQuery<*>>() -> Query
           type.isClass<SqlAction<*, *>>() -> Action
           type.isClass<SqlBatchAction<*, *, *>>() -> BatchAction

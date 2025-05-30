@@ -380,7 +380,7 @@ interface SqlIdiom : HasPhasePrinting {
   }
 
 
-  private val ` AS`
+  private val `_AS`
     get() =
       when (useActionTableAliasAs) {
         ActionTableAliasBehavior.UseAs -> +" AS"
@@ -562,8 +562,8 @@ interface SqlIdiom : HasPhasePrinting {
     get(): Token =
       when (this) {
         is TableContext -> +"${entity.token} ${alias.sane().token}"
-        is QueryContext -> +"(${query.token})${` AS`} ${alias.sane().token}"
-        is ExpressionContext -> +"(${(infix as XR.Expression).token})${` AS`} ${alias.sane().token}"
+        is QueryContext -> +"(${query.token})${`_AS`} ${alias.sane().token}"
+        is ExpressionContext -> +"(${(infix as XR.Expression).token})${`_AS`} ${alias.sane().token}"
         is FlatJoinContext -> +"${joinType.token} ${from.token} ON ${on.token}"
       }
 

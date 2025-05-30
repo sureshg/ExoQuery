@@ -153,7 +153,7 @@ abstract class GoldenSpecDynamic(
         } ?: errorCap("""No golden query found for label: "$label"""")
 
       is Mode.ExoGoldenOverride ->
-        outputQueries.add(PrintableValue(this, printType, label, params))
+        outputQueries.add(PrintableValue(this, printType, label, "UNUSED", params))
     }
 
   fun complete() {
