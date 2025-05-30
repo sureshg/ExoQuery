@@ -1,5 +1,10 @@
 # ExoQuery Changelog
 
+### Version 1.3.1.PL-1.3.1 (May 29, 2025)
+- **Bugfix**: Fix pretty-builder for query.buildPrettyFor ([#8](https://github.com/ExoQuery/ExoQuery/pull/8))
+- **Bugfix**: `Fix param(kotlinx.datetime.*)`. ([#7](https://github.com/ExoQuery/ExoQuery/pull/7))
+- **Bugfix**: Fixing various edge-cases for boolean vendorization ([#6](https://github.com/ExoQuery/ExoQuery/pull/6))
+
 ### Version 1.3.0.PL-1.3.0 (May 26, 2025)
 - **Enhancement**: Implement window functions, fix impure + union-flattening cases ([#5](https://github.com/ExoQuery/ExoQuery/pull/5))
 
