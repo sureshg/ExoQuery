@@ -1076,6 +1076,44 @@ qq.build<SqlServerDialect>().runOn(ctx)
 //> SET IDENTITY_INSERT Person ON  INSERT INTO Person (id, name, age, companyId) VALUES (?, ?, ?, ?) SET IDENTITY_INSERT Person OFF
 ```
 
+## Window Functions
+
+ExoQuery supports a variety of SQL window functions of of the box as well as the ability to use custom ones.
+Use the `over().partitionBy()/orderBy()` functions to specify the partitioning and/or ordering of the window function
+and then specify the window function itself.
+
+```kotlin
+data class Customer(val name: String, val age: Int, val membership: String)
+
+val q = 
+  capture.select {
+    val c = from(Table<Customer>())
+    Pair(
+      c.name,
+      over().partitionBy(c.membership).orderBy(c.name).avg(c.age) // Average age of customers in the same membership group, ordered by name
+    )
+  }
+//> SELECT c.name, AVG(c.age) OVER (PARTITION BY c.membership ORDER BY c.name) FROM Customer c
+```
+Also note tha that the partitionBy and orderBy functions can take multiple columns as well
+e.g. `partitionBy(c.membership, c.age)` or `orderBy(c.name, c.age)`.
+
+Use the `.frame(...)` function to specify a custom window function, typically you will use this
+with the `free("...sql...")` function to specify the SQL for the window.
+
+```kotlin
+val q = 
+  capture.select {
+    val c = from(Table<Customer>())
+    Pair(
+      c.name,
+      over().partitionBy(c.membership).orderBy(c.age).frame(free("NTILE(5)").invoke<Int>())
+    )
+  }
+//> SELECT c.name, NTILE(5) OVER (PARTITION BY c.membership ORDER BY c.age) FROM Customer c
+```
+
+
 ## Parameters and Serialization
 
 ExoQuery builds on top of kotlinx.serialization in order to encode/decode information into SQL prepared-statements and
