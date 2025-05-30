@@ -275,7 +275,7 @@ object ParseExpression {
               getSerializerForType(irType)?.let { ParamBind.Type.ParamListStatic(it) }
                 ?: getSerializerForValueClass(expr.type, expr.location())?.let { ParamBind.Type.ParamListCustom(it, expr.type) }
                 ?: parseError(
-                  "Could not find primitive-serializer for type: ${irType.dumpKotlinLike()}. Primitive serializers are only defined for: Int, Long, Float, Double, String, Boolean, and the kotlinx/java.time LocalDate, LocalTime, LocalDateTime, and Instant",
+                  Messages.usedParamWrongMessage(irType.dumpKotlinLike()),
                   this
                 )
             }

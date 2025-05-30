@@ -22,6 +22,23 @@ fun batchParamError() = batchParamError(batchAlias?.name?.asString() ?: "<???>")
 
 fun batchParamError(batchParamName: String) = "Detected an invalid use of the batch-parameter `$batchParamName` in the query.\n" + UsingBatchParam
 
+fun usedParamWrongMessage(typeName: String) =
+"""
+"Could not find primitive-serializer for type: `${typeName}`. Primitive serializers are only defined for: Int, Long, Float, Double, String, Boolean, and the kotlinx/java.time LocalDate, LocalTime, LocalDateTime, and Instant"
+
+If you trying to encode a java.time.* type, a java.sql.* Date type, a BigDecimal or some other type that can be directly
+encoded into/out of a PreparedStatement/ResultSet you should use the `paramCtx(...)` function instead of `param(...)`.
+
+For a comprehensive list of what is supported by paramCtx, you can double-check JdbcEncoding.kt in io.exoquery.controller.jdbc
+(or AdditionalAndroidEncoding.kt in io.exoquery.controller.android if you are using Android). In order to use a custom type
+with paramCtx, you need to inject a custom encoder/decoder for that type into the database-controller.
+See the ExoQuery README.md for instructions here: https://github.com/ExoQuery/ExoQuery?tab=readme-ov-file#paramctx.
+
+If you are using a custom-type that can be directly converted into a primitive value (which is a NON data-class e.g. `class Email(val value: String)`)
+you can write a custom kotlinx.serialization serializer and use paramCustom to encode it.
+See the ExoQuery README.md for instructions here: https://github.com/ExoQuery/ExoQuery?tab=readme-ov-file#paramcustom
+"""
+
 val UsingBatchParam =
 """
 In order to use a batch-param or a field of a batch param use wrap it in a param(...) function.
