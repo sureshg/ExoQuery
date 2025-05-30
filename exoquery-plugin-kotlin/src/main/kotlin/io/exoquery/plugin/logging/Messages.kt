@@ -24,7 +24,7 @@ fun batchParamError(batchParamName: String) = "Detected an invalid use of the ba
 
 fun usedParamWrongMessage(typeName: String) =
 """
-"Could not find primitive-serializer for type: `${typeName}`. Primitive serializers are only defined for: Int, Long, Float, Double, String, Boolean, and the kotlinx/java.time LocalDate, LocalTime, LocalDateTime, and Instant"
+"Could not find primitive-serializer for type: `${typeName}`. Primitive serializers are only defined for: Int, Long, Float, Double, String, Boolean, and the kotlinx LocalDate, LocalTime, LocalDateTime, and Instant"
 
 If you trying to encode a java.time.* type, a java.sql.* Date type, a BigDecimal or some other type that can be directly
 encoded into/out of a PreparedStatement/ResultSet you should use the `paramCtx(...)` function instead of `param(...)`.
