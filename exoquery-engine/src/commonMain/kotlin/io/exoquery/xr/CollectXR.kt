@@ -17,10 +17,10 @@ class CollectXR<T>(private val collect: (XR) -> T?) : StatefulTransformerSingleR
       CollectXR<T> {
         when {
           // looks like we need the `as T?` here which looks like a bug
-          it is T -> it as T?
-          else -> null as T?
+          it is T -> it
+          else -> null
         }
-      }.root(xr).second.state
+      }.invoke(xr).second.state
 
     operator fun <T> invoke(xr: XR, collect: (XR) -> T?): List<T> where T : XR =
       CollectXR<T>(collect).invoke(xr).second.state

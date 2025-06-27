@@ -258,17 +258,20 @@ sealed interface XR {
   }
 
   @Serializable
-  data class ClassId(val packageFqName: FqName, val relativeClassName: FqName) {
+  data class ClassId(val packageFqName: FqName, val relativeClassName: FqName, val typeArgs: List<XR.ClassId> = emptyList(), val nullable: Boolean = false) {
     companion object {
+      fun kotlinListOf(arg: XR.ClassId): ClassId =
+        ClassId(FqName("kotlin.collections"), FqName("List"), listOf(arg), false)
+
       /**
        * Assumes the last in a path segment is the class name e.g. in foo.bar.baz assumes class is baz and package is foo.bar
        */
       operator fun invoke(str: String): ClassId {
         val split = str.split(".")
         return when {
-          split.size == 0 -> ClassId(FqName.Empty, FqName.Empty)
-          split.size == 1 -> ClassId(FqName.Empty, FqName(split))
-          split.size > 1 -> ClassId(FqName(split.dropLast(1)), FqName(split.takeLast(1)))
+          split.size == 0 -> ClassId(FqName.Empty, FqName.Empty, emptyList(), false)
+          split.size == 1 -> ClassId(FqName.Empty, FqName(split), emptyList(), false)
+          split.size > 1 -> ClassId(FqName(split.dropLast(1)), FqName(split.takeLast(1)), emptyList(), false)
           else -> error("Unreachable")
         }
       }
@@ -278,9 +281,9 @@ sealed interface XR {
        * e.g. foo.bar.Color.Red would be called with ClassId("foo.bar", "Color.Red")
        */
       operator fun invoke(packagePath: String, relativePath: String) =
-        ClassId(FqName(packagePath), FqName(relativePath))
+        ClassId(FqName(packagePath), FqName(relativePath), emptyList(), false)
 
-      val Empty = ClassId(FqName.Empty, FqName.Empty)
+      val Empty = ClassId(FqName.Empty, FqName.Empty, emptyList(), false)
     }
   }
 
@@ -918,19 +921,39 @@ sealed interface XR {
     data object Multi : ParamType
     @Serializable
     data object Batch : ParamType
+
     // TODO Custom
     // TODO BatchMulti
   }
 
+  /**
+   * Param that just serves as a placeholder for a parameter in a query or expression.
+   * Used for RoomDB parameters
+   */
   @Serializable
   @Mat
-  data class TagForParam(@Slot val id: BID, val paramType: ParamType, override val type: XRType, override val loc: Location = Location.Synth) : XR.Expression, PC<XR.TagForParam> {
+  data class PlaceholderParam(@Slot val name: String, val originalType: XR.ClassId, override val type: XRType, override val loc: Location = Location.Synth) : XR.Expression, PC<XR.PlaceholderParam> {
+    @Transient
+    override val productComponents = productOf(this, name)
+
+    override fun toString() = show()
+    @Transient
+    private val cid = id()
+    override fun hashCode(): Int = cid.hashCode()
+    override fun equals(other: Any?): Boolean = other is PlaceholderParam && other.id() == cid
+  }
+
+
+  @Serializable
+  @Mat
+  data class TagForParam(@Slot val id: BID, val paramType: ParamType, val humanName: String?, val originalType: XR.ClassId, override val type: XRType, override val loc: Location = Location.Synth) : XR.Expression, PC<XR.TagForParam> {
     @Transient
     override val productComponents = productOf(this, id)
 
+    // TODO this is only used in testing code, move it out
     companion object {
-      fun valueTag(id: String) = TagForParam(BID(id), ParamType.Single, XRType.Value)
-      fun valueTagMulti(id: String) = TagForParam(BID(id), ParamType.Multi, XRType.Value)
+      fun valueTag(id: String) = TagForParam(BID(id), ParamType.Single, null, ClassId.Empty, XRType.Value)
+      fun valueTagMulti(id: String) = TagForParam(BID(id), ParamType.Multi, null, ClassId.Empty, XRType.Value)
     }
 
     override fun toString() = show()

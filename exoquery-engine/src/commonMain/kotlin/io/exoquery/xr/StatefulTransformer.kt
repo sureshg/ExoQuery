@@ -124,6 +124,7 @@ interface StatefulTransformer<T> {
         is Const.Null -> this to this@StatefulTransformer
         is TagForParam -> this to this@StatefulTransformer
         is TagForSqlExpression -> this to this@StatefulTransformer
+        is PlaceholderParam -> this to this@StatefulTransformer
       }
     }
 

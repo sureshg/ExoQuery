@@ -5,7 +5,7 @@ import io.exoquery.fansi.nullableAsList
 import io.exoquery.parseError
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
-import io.exoquery.plugin.trees.simpleValueArgs
+import io.exoquery.plugin.trees.regularArgs
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irVararg
@@ -25,7 +25,7 @@ fun IrCall.zeroisedArgs(): IrCall {
     // The dispatch-receiver to a annotated function remains, the extension receiver gets dropped and used like a variable
     call.dispatchReceiver?.let { newCall.dispatchReceiver = it }
 
-    newCall.typeArguments.withIndex().forEach { (i, tpe) -> putTypeArgument(i, tpe) }
+    newCall.typeArguments.withIndex().forEach { (i, tpe) -> typeArguments[i] = tpe }
     // no value arguments, should not have any since they are added to the scaffolding
     newCall
   }
@@ -48,7 +48,7 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
 
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun transform(call: IrCall): IrExpression {
-    val originalArgs = call.simpleValueArgs
+    val originalArgs = call.regularArgs
     val extensionReceiverArg = call.extensionReceiver
     val zeroizedCallRaw = call.zeroisedArgs()
 

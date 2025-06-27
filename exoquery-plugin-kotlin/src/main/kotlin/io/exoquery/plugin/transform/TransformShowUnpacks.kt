@@ -2,7 +2,7 @@ package io.exoquery.plugin.transform
 
 import io.exoquery.plugin.fullName
 import io.exoquery.plugin.trees.PT
-import io.exoquery.plugin.trees.simpleValueArgs
+import io.exoquery.plugin.trees.regularArgs
 import io.exoquery.unpackAction
 import io.exoquery.unpackExpr
 import io.exoquery.unpackQuery
@@ -40,7 +40,7 @@ private class TransformShowUnpacks(val scopeContext: CX.Scope) : IrElementTransf
         val newCall = irCall(call.symbol)
         val newContent =
           try {
-            call.simpleValueArgs.firstOrNull()
+            call.regularArgs.firstOrNull()
               ?.let { it as? IrConst }
               ?.value.toString()
               ?.let { encodedValue ->

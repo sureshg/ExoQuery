@@ -95,7 +95,7 @@ class Lifter(val builderCtx: CX.Builder) {
     val variadics = irBuilder.irVararg(varargType, this)
     //builderCtx.logger.error("--------------- Expression Type -------------: ${expressionType.dumpKotlinLike()}")
     val listOfCall = irBuilder.irCall(listOfRef, context.symbols.list.typeWith(varargType)).apply {
-      putTypeArgument(0, varargType)
+      typeArguments[0] = varargType
       putValueArgument(0, variadics)
     }
     //builderCtx.logger.error("--------------- List Expression Type -------------: ${listOfCall.type.dumpKotlinLike()}\n=== ${builderCtx.currentFile.path} ===")
@@ -105,7 +105,7 @@ class Lifter(val builderCtx: CX.Builder) {
   fun List<IrExpression>.liftExprTyped(elementType: IrType): IrExpression {
     val variadics = irBuilder.irVararg(elementType, this)
     val listOfCall = irBuilder.irCall(listOfRef, context.symbols.list.typeWith(elementType)).apply {
-      putTypeArgument(0, elementType)
+      typeArguments[0] = elementType
       putValueArgument(0, variadics)
     }
     return listOfCall

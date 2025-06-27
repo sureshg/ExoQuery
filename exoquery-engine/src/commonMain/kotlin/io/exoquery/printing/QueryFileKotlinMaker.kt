@@ -1,21 +1,5 @@
 package io.exoquery.printing
 
-data class PrintableValue(val value: String, val type: Type, val label: String? = null, val params: List<PrintableValue.Param> = emptyList()) {
-  data class Param(val id: String, val value: String)
-
-  sealed interface Type {
-    val interpolatorPrefix: String
-
-    object SqlQuery : Type {
-      override val interpolatorPrefix = "cr"
-    }
-
-    object KotlinCode : Type {
-      override val interpolatorPrefix = "kt"
-    }
-  }
-}
-
 object QueryFileKotlinMaker {
   private fun String.indentBy(spaces: Int) = this.lines().joinToString("\n") { " ".repeat(spaces) + it }
   private fun String.isMultiline() = this.contains('\n') || this.contains('\r')

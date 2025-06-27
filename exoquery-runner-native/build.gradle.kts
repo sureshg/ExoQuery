@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.konan.target.HostManager
 plugins {
   id("conventions-multiplatform-nativeonly")
   kotlin("multiplatform")
-  kotlin("plugin.serialization") version "2.1.20"
+  kotlin("plugin.serialization") version "2.2.0"
   id("io.kotest.multiplatform") version "6.0.0.M1"
   id("io.exoquery.exoquery-plugin")
 }
@@ -118,6 +118,7 @@ kotlin {
     }
   }
 }
+
 
 dependencies {
   commonMainApi("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")

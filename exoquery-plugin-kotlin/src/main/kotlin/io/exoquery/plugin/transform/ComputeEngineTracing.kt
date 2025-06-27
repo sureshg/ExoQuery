@@ -13,7 +13,7 @@ import io.exoquery.util.FilePrintOutputSink
 import io.exoquery.util.TraceConfig
 import io.exoquery.util.TraceType
 import io.exoquery.util.Tracer
-import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
+import org.jetbrains.kotlin.ir.backend.js.utils.regularArgs
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -28,7 +28,7 @@ object ComputeEngineTracing {
 
   context(CX.Scope)
   private fun IrAnnotationContainer.getTraceAnnotationArgs() =
-    this.getAnnotation<TracesEnabled>()?.valueArguments?.firstOrNull()?.varargValues() ?: emptyList()
+    this.getAnnotation<TracesEnabled>()?.regularArgs?.firstOrNull()?.varargValues() ?: emptyList()
 
   context(CX.Scope, CX.Builder)
   private fun getTraceAnnotations(dialectType: IrType) = run {

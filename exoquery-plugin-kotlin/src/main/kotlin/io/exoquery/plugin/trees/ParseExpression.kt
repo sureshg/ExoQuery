@@ -14,11 +14,12 @@ import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.containsBatchParam
 import io.exoquery.plugin.transform.isBatchParam
 import io.exoquery.xr.*
+import org.jetbrains.kotlin.backend.common.serialization.proto.IrGetObject
 import org.jetbrains.kotlin.ir.IrStatement
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.types.isNullableString
+import org.jetbrains.kotlin.ir.types.isString
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 
@@ -176,12 +177,24 @@ object ParseExpression {
         XR.FunctionApply(parse(hostFunction), args.map { parse(it) }, expr.loc)
       },
 
+      case(Ir.Call.FunctionMemN[Is(), Is.of("paramRoom"), Is()]).thenThis { _, args ->
+        val paramValue = (args.first() as? IrConst)?.let { it.value.toString() } ?: parseError("Expected a constant value for the paramRoom function, but found: ${args.first().dumpKotlinLike()}", args.first())
+        XR.PlaceholderParam(
+          paramValue,
+          this.type.toClassIdXR(),
+          TypeParser.of(this),
+          expr.loc
+        )
+      },
+
       // TODO add the batch IrValueParameter to the ParseContext
       // TODO check if the component inside the Param contains the batch param (if it is used as a regular ident in the query we need to handle that too)
       // TODO if it is a batch param then add the ParamBind into a new ParamUsingBatchAlias and then add it to the binds
       // TODO also need to handle setParams case in parseAction where a batch-param is used
       case(Ir.Call.FunctionMemN[Is(), Is.of("param", "paramCtx", "paramCustom"), Is()]).thenThis { _, args ->
         val paramValue = args.first()
+        val humanName = paramCallHumanName()
+
         val paramBindTypeRaw =
           when {
             this.ownerHasAnnotation<io.exoquery.annotation.ParamStatic>() -> {
@@ -234,7 +247,7 @@ object ParseExpression {
           }
 
         binds.addParam(bid, paramValue, paramBind)
-        XR.TagForParam(bid, paramType, TypeParser.of(this), paramValue.loc)
+        XR.TagForParam(bid, paramType, humanName, this.type.toClassIdXR(), TypeParser.of(this), paramValue.loc)
       },
 
       // x.let { stuff(...it...) } -> Apply(stuff(...it...), x)
@@ -313,7 +326,7 @@ object ParseExpression {
 
         val bid = BID.Companion.new()
         binds.addParam(bid, paramValue, paramBindType)
-        XR.TagForParam(bid, XR.ParamType.Multi, TypeParser.ofFirstArgOfReturnTypeOf(this), paramValue.loc)
+        XR.TagForParam(bid, XR.ParamType.Multi, null, this.type.toClassIdXR(), TypeParser.ofFirstArgOfReturnTypeOf(this), paramValue.loc)
       },
 
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<Params<*>>(), Is("contains"), Is()]).thenThis { head, params ->

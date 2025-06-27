@@ -156,6 +156,14 @@ annotation class ExoBuildDatabaseSpecific(val dialect: KClass<out SqlIdiom>)
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
+annotation class ExoBuildRoomSpecific
+
+@Target(AnnotationTarget.FILE)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoRoomInterface
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
 annotation class ExoBuildDatabaseSpecificParent
 
 @Target(AnnotationTarget.FUNCTION)

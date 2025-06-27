@@ -16,17 +16,47 @@ import io.exoquery.xr.of
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
+import org.jetbrains.kotlin.backend.common.serialization.proto.IrGetObject
 import org.jetbrains.kotlin.builtins.PrimitiveType
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrDeclarationReference
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrGetField
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.types.*
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.name.ClassId
 
+context(CX.Scope)
+fun IrCall.paramCallHumanName() = run {
+  val args = this.regularArgs.filterNotNull()
+  val paramValue = args.first()
+  // for param/paramCtx going to be 2 args, for paramCustom going to be 3
+  if (args.size > 1) {
+    val lastArg = args.last()
+    // Only paramCustom has multiple args and the 2nd arg must be a serializer, if the last arg is a string we know it has to be a humanName i.e. const
+    if ((lastArg.type.isString() || lastArg.type.isNullableString()) && lastArg !is IrConst) {
+      parseError(
+        "The 'humanName' argument of the param function must be a constant string, but found: ${lastArg.dumpKotlinLike()}",
+        this
+      )
+    }
+    (args.last() as IrConst).value.toString()
+  }
+  else this.humanSymbolOrNull()
+}
+
+fun IrExpression.humanSymbolOrNull() =
+  when (this) {
+    is IrGetValue -> symbol.safeName
+    is IrGetField -> symbol.safeName
+    is IrGetObject -> type.classId()?.shortClassName?.sanitizedSymbolName()
+    else -> null
+  }
 
 context(CX.Symbology)
 fun IrDeclarationReference.isCapturedFunctionArgument(): Boolean = run {

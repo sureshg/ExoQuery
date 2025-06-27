@@ -4,6 +4,7 @@ import io.exoquery.config.ExoCompileOptions
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.printing.PrintableValue
 import io.exoquery.printing.QueryFileKotlinMaker
+import io.exoquery.printing.QueryFileKotlinMakerRoom
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import java.io.File
@@ -23,6 +24,31 @@ class QueryFile(
 ) {
   private val fs by lazy { FileSystems.getDefault() }
   private val logger by lazy { CompileLogger(compilerConfig, codeFile, codeFile) }
+
+  fun buildRoomFile() {
+
+    // e.g: /home/me/project/src/commonMain/com/someplace/Code.kt -> /home/me/project/src/commonMain/kotlin/com/someplace/
+    val codeFileParent = Path.of(codeFile.fileEntry.name).parent
+    // projectSrcPath: /home/me/project/src/
+    // exoRoomPath: /home/me/project/src/exoroom/kotlin (TODO this should be configureable in the gradle plugin and should automatically be added as a source directory if possible)
+    val exoRoomPath = Path.of(config.projectSrcDir, "exoroom", "kotlin")
+    val packageSubpath = codeFile.packageFqName.pathSegments().joinToString(fs.separator)
+    val fileNameWithoutExtension = Path.of(codeFile.fileEntry.name).nameWithoutExtension
+    val srcFileName = fileNameWithoutExtension + "RoomQueries"
+    val pathOfFile = exoRoomPath.resolve(packageSubpath)
+    val codeFilePath = pathOfFile.resolve(srcFileName + ".kt")
+    val dirOfFile = pathOfFile.toFile()
+
+    if (!dirOfFile.dirExistsOrCouldMake()) {
+      logger.error("Failed to create the directory for the Room queries: ${dirOfFile.absolutePath}")
+      return // failing the build, return without creating the file
+    }
+
+    val collectedQueries = codeFileAccum.currentQueries()
+
+    val dumpedQueryText = QueryFileKotlinMakerRoom.invoke(collectedQueries.map { it.toPrintableValue() }, srcFileName, codeFile.packageFqName.asString())
+    writeToFileIfExists(dumpedQueryText, codeFilePath, "(to override set the annotation to ExoGoldenOverride)")
+  }
 
   fun buildRegular() {
     // e.g: /home/me/project/src/commonMain/com/someplace/Code.kt -> /home/me/project/src/commonMain/kotlin/com/someplace/
@@ -58,8 +84,10 @@ class QueryFile(
 
     val collectedQueries = codeFileAccum.currentQueries()
     val dumpedQueryText = QueryFileTextMaker(collectedQueries, QueryAccumState.PathBehavior.IncludePaths, QueryAccumState.LabelBehavior.IncludeAll)
+    writeToFileIfExists(dumpedQueryText, srcFile, "(to override set the annotation to ExoGoldenOverride)")
+  }
 
-
+  private fun writeToFileIfExists(dumpedQueryText: String, srcFile: Path, addendum: String) {
     fun write() = writeToFile(dumpedQueryText, srcFile)
 
     val fileExists = Files.exists(srcFile)
@@ -72,7 +100,7 @@ class QueryFile(
         }
       }
       else ->
-        logger.warn("File already exists, not overriding it: ${srcFile} (to override set the annotation to ExoGoldenOverride).")
+        logger.warn("File already exists, not overriding it: ${srcFile}.${if (addendum.isNotEmpty()) " $addendum" else ""}")
     }
   }
 
@@ -97,8 +125,6 @@ class QueryFile(
       logger.warn("No queries found in file: ${codeFile.fileEntry.name}. Not writing queries to it.")
       return
     }
-
-    fun PrintableQuery.toPrintableValue() = io.exoquery.printing.PrintableValue(query, PrintableValue.Type.SqlQuery, label)
 
     val dumpedQueries = QueryFileKotlinMaker.invoke(
       currentQueries.map { it.toPrintableValue() }, codeFilePath.nameWithoutExtension + "Golden", codeFile.packageFqName.asString()
@@ -143,4 +169,6 @@ class QueryFile(
       )
     }
   }
+
+  private fun PrintableQuery.toPrintableValue() = PrintableValue(query, PrintableValue.Type.SqlQuery(xr), queryOutput, label)
 }

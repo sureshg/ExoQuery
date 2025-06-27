@@ -1,11 +1,11 @@
 plugins {
   id("conventions-multiplatform")
-  kotlin("multiplatform") version "2.1.20"
+  kotlin("multiplatform") version "2.2.0"
   id("io.kotest.multiplatform") version "6.0.0.M1"
   id("io.exoquery.exoquery-plugin")
 
   // NEED serialization to be able to read the encoded XR, in the future the GradlePlugin should probably add this to the classpath
-  kotlin("plugin.serialization") version "2.1.20"
+  kotlin("plugin.serialization") version "2.2.0"
 }
 
 kotlin {
@@ -64,7 +64,7 @@ kotlin {
 //}
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-  kotlinOptions {
+  compilerOptions {
     freeCompilerArgs = listOf(
       "-Xcontext-receivers",
       "-P",

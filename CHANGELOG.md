@@ -54,7 +54,7 @@
 - **Infrastructure**: Make controller API dependency since upstreams explicitly need to create it ([0b2935d](https://github.com/ExoQuery/ExoQuery/commit/0b2935d))
 
 ### Version 1.1.0.PL-1.1.0 (April 30, 2025)
-- **Enhancement**: Bump to Kotlin 2.1.20 ([0c2ff3a](https://github.com/ExoQuery/ExoQuery/commit/0c2ff3a))
+- **Enhancement**: Bump to Kotlin 2.2.0 ([0c2ff3a](https://github.com/ExoQuery/ExoQuery/commit/0c2ff3a))
 
 ### Version 1.0.1.PL-1.0.1 (April 29, 2025)
 - **Enhancement**: Move runOn(ctr) to common ([934209c](https://github.com/ExoQuery/ExoQuery/commit/934209c))

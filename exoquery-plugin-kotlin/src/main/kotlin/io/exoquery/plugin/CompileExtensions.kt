@@ -9,8 +9,12 @@ import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.createLambda0
 import io.exoquery.plugin.trees.Ir
-import io.exoquery.plugin.trees.simpleValueArgs
-import io.exoquery.plugin.trees.simpleValueParams
+import io.exoquery.plugin.trees.dispatchArg
+import io.exoquery.plugin.trees.extensionArg
+import io.exoquery.plugin.trees.fullPathOfBasic
+import io.exoquery.plugin.trees.simpleTypeArgs
+import io.exoquery.plugin.trees.regularArgs
+import io.exoquery.plugin.trees.regularParams
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
@@ -21,7 +25,6 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrFileEntry
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
-import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
@@ -38,6 +41,21 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.utils.zipIfSizesAreEqual
 import kotlin.reflect.KClass
+import kotlin.reflect.typeOf
+
+
+
+fun IrType.toClassIdXR(): XR.ClassId = run {
+  val classXR =
+    this.classId()?.toXR() ?: when (this) {
+      is IrSimpleType -> XR.ClassId(XR.FqName(this.classifier.safeName), XR.FqName.Empty)
+      is IrDynamicType -> XR.ClassId(XR.FqName("dynamic"), XR.FqName.Empty)
+      is IrErrorType -> XR.ClassId(XR.FqName("ErrorType"), XR.FqName.Empty)
+    }
+
+  val args = this.simpleTypeArgs.map { it.toClassIdXR() }
+  classXR.copy(nullable = this.isMarkedNullable(), typeArgs = args)
+}
 
 fun KClass<*>.classId(): ClassId? = run {
   val cls = this
@@ -88,7 +106,7 @@ fun IrType.findMethodOrFail(methodName: String, valueParamsSize: Int): MethodTyp
         |""".trimMargin()
     )
 
-  cls.functions.find { it.safeName == methodName && it.owner.valueParameters.size == valueParamsSize }?.let { MethodType.Method(it) }
+  cls.functions.find { it.safeName == methodName && it.owner.regularParams.size == valueParamsSize }?.let { MethodType.Method(it) }
     ?: run {
       try {
         cls.getPropertyGetter(methodName)?.let { MethodType.Getter(it) }
@@ -139,7 +157,7 @@ fun IrClassSymbol.dataClassProperties() =
   if (this.isDataClass()) {
     // NOTE: Does not support data-classes with multiple constructors.
     // Constructor params are in the right order. The properties of the class are not.
-    val constructorParams = this.constructors.firstOrNull()?.owner?.valueParameters ?: setOf()
+    val constructorParams = this.constructors.firstOrNull()?.owner?.regularParams ?: setOf()
     //this.owner.properties
     //  .filter { constructorParams.contains(it.name) && it.getter != null }
     //  .map { it.name.toString() to it.getter!!.returnType }
@@ -198,9 +216,9 @@ val IrCall.ownerFunction
 
 context(CX.Scope)
 fun IrCall.zipArgsWithParamsOrFail() =
-  ownerFunction.simpleValueParams.zipIfSizesAreEqual(simpleValueArgs)
+  ownerFunction.regularParams.zipIfSizesAreEqual(regularArgs)
     ?: parseError(
-      "Mismatched parts (${ownerFunction.simpleValueParams.size})  and params (${simpleValueArgs.size}) in function:\nParts: ${ownerFunction.simpleValueParams.map { it.source() }}\nParams: ${simpleValueArgs.map { it?.source() }}",
+      "Mismatched parts (${ownerFunction.regularParams.size})  and params (${regularArgs.size}) in function:\nParts: ${ownerFunction.simpleValueParams.map { it.source() }}\nParams: ${regularArgs.map { it?.source() }}",
       this
     )
 
@@ -324,12 +342,12 @@ fun FqName.toXR(): XR.FqName = XR.FqName(this.pathSegments().map { it.identifier
 
 inline fun <reified T> IrAnnotationContainer.getAnnotationArgs(): List<IrExpression> {
   val annotation = annotations.find { it.type.isClassStrict<T>() }
-  return annotation?.valueArguments?.filterNotNull() ?: emptyList()
+  return annotation?.regularArgs?.filterNotNull() ?: emptyList()
 }
 
 inline fun <reified T> IrCall.getPropertyAnnotationArgs(): List<IrExpression> {
   val annotation = (this.symbol.owner.correspondingPropertySymbol?.owner?.annotations ?: listOf()).find { it.type.isClassStrict<T>() }
-  return annotation?.valueArguments?.filterNotNull() ?: emptyList()
+  return annotation?.regularArgs?.filterNotNull() ?: emptyList()
 }
 
 context(CX.Scope) fun IrExpression.varargValues(): List<IrExpression> =
@@ -343,10 +361,10 @@ context(CX.Scope) fun IrExpression.varargValues(): List<IrExpression> =
   } ?: emptyList()
 
 inline fun <reified T> IrCall.reciverIs() =
-  (this.extensionReceiver ?: this.dispatchReceiver)?.isClass<T>() ?: false
+  (this.extensionArg ?: this.dispatchArg)?.isClass<T>() ?: false
 
 inline fun <reified T> IrCall.reciverIs(methodName: String) =
-  (this.extensionReceiver ?: this.dispatchReceiver)?.isClass<T>() ?: false && this.symbol.safeName == methodName
+  (this.extensionArg ?: this.dispatchArg)?.isClass<T>() ?: false && this.symbol.safeName == methodName
 
 context(CX.Scope) val IrElement.loc get() = this.locationXR()
 
@@ -459,19 +477,25 @@ fun IrExpression.isSqlAction() =
 context(CX.Scope, CX.Builder)
 fun makeRunFunction(statements: List<IrStatement>, returnExpr: IrExpression): IrExpression {
   val runFunction = pluginCtx.referenceFunctions(CallableId(FqName("kotlin"), Name.identifier("run")))
-    .first { it.owner.valueParameters.singleOrNull()?.type is IrSimpleType } // get the generic run<T> function
+    .first { it.owner.regularParams.singleOrNull()?.type is IrSimpleType } // get the generic run<T> function
 
-  val lambdaType = runFunction.owner.valueParameters[0].type
+  val lambdaType = runFunction.owner.regularParams[0].type
   val returnType = runFunction.owner.returnType
 
   val decl = currentDeclarationParent ?: parseError("Cannot get parent of the current declaration", returnExpr)
   val lambda = createLambda0(returnExpr, decl, statements)
 
   return builder.irCall(runFunction).apply {
-    putTypeArgument(0, returnExpr.type) // for example, T = String
-    putValueArgument(0, lambda)
+    typeArguments[0] = returnExpr.type // for example, T = String
+    arguments[0] = lambda
   }
 }
 
 fun IrElement.hasSameOffsetsAs(other: IrElement): Boolean =
   this.startOffset == other.startOffset && this.endOffset == other.endOffset
+
+context(CX.Scope)
+inline fun <reified T> typeOfClass(): IrType? = run {
+  val classId = typeOf<T>().fullPathOfBasic()
+  pluginCtx.referenceClass(classId)?.owner?.defaultType
+}

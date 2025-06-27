@@ -1,6 +1,6 @@
 package io.exoquery.plugin.transform
 
-import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
+import org.jetbrains.kotlin.ir.backend.js.utils.regularArgs
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -29,7 +29,7 @@ class TransformShowAnnotations(val superTransformer: VisitTransformExpressions) 
         sqlExpressionType.annotations.map { it.dumpKotlinLike() }.joinToString("\n", "[", "]")
       }"
     )
-    logger.warn("========= Found constructor annot with value: ${capturedAnnot.valueArguments[0]?.dumpKotlinLike()}\nThe full type is:\n${newExpression.type.dumpKotlinLike()}\nOf the expression:\n${newExpression.dumpKotlinLike()}")
+    logger.warn("========= Found constructor annot with value: ${capturedAnnot.regularArgs[0]?.dumpKotlinLike()}\nThe full type is:\n${newExpression.type.dumpKotlinLike()}\nOf the expression:\n${newExpression.dumpKotlinLike()}")
 
     return newExpression
   }

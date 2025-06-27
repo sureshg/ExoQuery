@@ -6,6 +6,90 @@ import io.exoquery.printing.PrintSkipLoc
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
+// TODO NEED TO TEST THIS
+class StatefulSelectClauseTransformer<S>(private val delegate: StatefulTransformer<S>){
+  private fun wrap(delegate: StatefulTransformer<S>) = StatefulSelectClauseTransformer<S>(delegate)
+
+  fun invoke(selectClause: SelectClause): Pair<SelectClause, StatefulTransformer<S>> =
+    with (selectClause) {
+      val (assignmentsA, stateA) = applyList(assignments) { t, asi -> t.invoke(asi) }
+      val (whereA, stateB) = where?.let { invoke(it) } ?: Pair(where, this@StatefulSelectClauseTransformer)
+      val (groupByA, stateC) = groupBy?.let { invoke(it) } ?: Pair(groupBy, this@StatefulSelectClauseTransformer)
+      val (sortByA, stateD) = sortBy?.let { invoke(it) } ?: Pair(sortBy, this@StatefulSelectClauseTransformer)
+      val (selectA, stateE) = delegate.invoke(select)
+      copy(
+        assignments = assignmentsA,
+        where = whereA,
+        groupBy = groupByA,
+        sortBy = sortByA,
+        select = selectA
+      ) to stateE
+    }
+
+  operator fun invoke(sx: SX.U.Assignment) =
+    with (sx) {
+      when (this) {
+        is SX.From -> {
+          val (aA, stateA) = delegate.invoke(xr)
+          copy(xr = aA) to wrap(stateA)
+        }
+        is SX.Join -> {
+          val (aA, stateA) = delegate.invoke(onQuery)
+          copy(onQuery = aA) to wrap(stateA)
+        }
+        is SX.ArbitraryAssignment -> {
+          val (aA, stateA) = delegate.invoke(expression)
+          copy(expression = aA) to wrap(stateA)
+        }
+      }
+    }
+
+  operator fun invoke(sx: SX.Where) =
+    with (sx) {
+      val (aA, stateA) = delegate.invoke(condition)
+      copy(condition = aA) to wrap(stateA)
+    }
+
+  operator fun invoke(sx: SX.GroupBy) =
+    with (sx) {
+      val (aA, stateA) = delegate.invoke(grouping)
+      copy(grouping = aA) to wrap(stateA)
+    }
+
+  operator fun invoke(sx: SX.SortBy) =
+    with (sx) {
+      val (newCri, state) = applyList(sx.criteria) { t, ord -> t.invoke(ord) }
+      copy(criteria = newCri) to state
+    }
+
+  operator fun invoke(ord: XR.OrderField) =
+    with(ord) {
+      when (this) {
+        is XR.OrderField.By -> {
+          val (newField, state) = delegate.invoke(field)
+          copy(field = newField) to wrap(state)
+        }
+        is XR.OrderField.Implicit -> {
+          val (newField, state) = delegate.invoke(field)
+          copy(field = newField) to wrap(state)
+        }
+      }
+    }
+
+
+  fun <U, R> applyList(list: List<U>, f: (StatefulSelectClauseTransformer<S>, U) -> Pair<R, StatefulSelectClauseTransformer<S>>): Pair<List<R>, StatefulSelectClauseTransformer<S>> {
+    val (newList, transformer) =
+      list.fold(Pair(mutableListOf<R>(), this)) { (values, t), v ->
+        val (vt, vtt) = f(t, v)
+        values += vt
+        Pair(values, vtt)
+      }
+
+    return Pair(newList.toList(), transformer)
+  }
+}
+
+
 // The structure should be:
 // val from: SX.From, val joins: List<SX.JoinClause>, val where: SX.Where?, val groupBy: SX.GroupBy?, val sortBy: SX.SortBy?
 @Serializable
@@ -50,8 +134,10 @@ data class SelectClause(
       t(select)
     )
 
-  // Do nothing for now, in the cuture recurse in queries and expressions inside the SX clauses
-  override fun <S> handleStatefulTransformer(transformer: StatefulTransformer<S>): Pair<XR.CustomQuery.Convertable, StatefulTransformer<S>> = this to transformer
+
+  override fun <S> handleStatefulTransformer(transformer: StatefulTransformer<S>): Pair<XR.CustomQuery.Convertable, StatefulTransformer<S>> =
+    StatefulSelectClauseTransformer(transformer).invoke(this)
+
   override fun showTree(config: PPrinterConfig): Tree = PrintSkipLoc<SelectClause>(serializer(), config).treeify(this, null, false, false)
 
   companion object {

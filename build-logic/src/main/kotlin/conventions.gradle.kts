@@ -8,9 +8,9 @@ repositories {
   mavenCentral()
 }
 
-val kotlinVersion = "2.1.20"
-val pluginVersion = "1.3.5.PL"
-val extensionsVersion = "1.3.5"
+val kotlinVersion = "2.2.0"
+val pluginVersion = "1.3.6.PL"
+val extensionsVersion = "1.3.2"
 
 // For exoquery-engine, exoquery-plugin-gradle, exoquery-plugin-kotlin
 extra["pluginProjectVersion"] = "${kotlinVersion}-${pluginVersion}"

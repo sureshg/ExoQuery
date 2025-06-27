@@ -7,6 +7,7 @@ import io.exoquery.plugin.hasAnnotation
 object QueryFileBuilder {
   sealed interface OutputMode {
     object Regular : OutputMode
+    object RoomQueryFile : OutputMode // TODO do we want a selearte mode for Room no-overwrite?
     object GoldenOverwrite : OutputMode
     object GoldenNoOverwrite : OutputMode
   }
@@ -21,8 +22,10 @@ object QueryFileBuilder {
       return
     }
 
-    val resourcesWrite =
-      if (queryFile.codeFile.hasAnnotation<ExoGoldenOverride>())
+    val specialFileWriteType =
+      if (queryFile.codeFile.hasAnnotation<io.exoquery.annotation.ExoRoomInterface>())
+        OutputMode.RoomQueryFile
+      else if (queryFile.codeFile.hasAnnotation<ExoGoldenOverride>())
         OutputMode.GoldenOverwrite
       else if (queryFile.codeFile.hasAnnotation<ExoGoldenTest>())
         OutputMode.GoldenNoOverwrite
@@ -34,8 +37,8 @@ object QueryFileBuilder {
       writeFile(OutputMode.Regular, queryFile)
     }
     // if the resourcesWrite is defined, write the queries out to the resources directory
-    if (resourcesWrite != null) {
-      writeFile(resourcesWrite, queryFile)
+    if (specialFileWriteType != null) {
+      writeFile(specialFileWriteType, queryFile)
     }
   }
 
@@ -44,5 +47,6 @@ object QueryFileBuilder {
       OutputMode.Regular -> queryFile.buildRegular()
       OutputMode.GoldenOverwrite -> queryFile.buildForGoldenFile(overrwriteExisting = true)
       OutputMode.GoldenNoOverwrite -> queryFile.buildForGoldenFile(overrwriteExisting = false)
+      OutputMode.RoomQueryFile -> queryFile.buildRoomFile()
     }
 }
