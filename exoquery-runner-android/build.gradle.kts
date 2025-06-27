@@ -8,13 +8,13 @@ plugins {
   id("conventions")
   kotlin("multiplatform")
   id("com.android.library")
-  kotlin("plugin.serialization") version "2.1.20"
+  kotlin("plugin.serialization") version "2.2.0"
   id("io.kotest.multiplatform") version "6.0.0.M1"
   id("io.exoquery.exoquery-plugin")
   // Already on the classpath
   //id("org.jetbrains.kotlin.android") version "1.9.23"
 
-  id("com.google.devtools.ksp") version "2.1.20-2.0.1"
+  id("com.google.devtools.ksp") version "2.2.0-2.0.2"
   id("androidx.room") version "2.7.1"
 }
 
@@ -64,8 +64,10 @@ room {
 kotlin {
   androidTarget {
     compilations.all {
-      kotlinOptions {
-        jvmTarget = "17"
+      compileTaskProvider {
+        compilerOptions {
+          jvmTarget.set(JvmTarget.JVM_17)
+        }
       }
     }
     publishLibraryVariants("release", "debug")

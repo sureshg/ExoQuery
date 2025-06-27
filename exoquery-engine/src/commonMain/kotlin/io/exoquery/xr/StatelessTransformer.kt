@@ -70,6 +70,7 @@ interface StatelessTransformer {
 
         is TagForParam -> this
         is TagForSqlExpression -> this
+        is PlaceholderParam -> this
       }
     }
 

@@ -7,18 +7,11 @@ import io.exoquery.annotation.ExoRoomInterface
 import io.exoquery.capture
 
 @Entity(tableName = "Person")
-data class PersonRoom(
-  @PrimaryKey(autoGenerate = true) val id: Int = 0,
-  val firstName: String,
-  val lastName: String,
-  val age: Int
-)
+data class PersonRoom(@PrimaryKey(autoGenerate = true) val id: Int = 0, val firstName: String, val lastName: String, val age: Int)
 
-interface MyRoomDao {
-  fun joes() {
-    capture.select {
-      val p = from(Table<PersonRoom>())
-      p
-    }.buildFor.Room("joes")
-  }
-}
+val joes =
+  capture.select {
+    val p = from(Table<PersonRoom>())
+    where { p.firstName == paramRoom<String>("myFirstName") }
+    p
+  }.buildFor.Room("joes")

@@ -170,5 +170,5 @@ class QueryFile(
     }
   }
 
-  private fun PrintableQuery.toPrintableValue() = PrintableValue(query, PrintableValue.Type.SqlQuery, queryOutputType, label)
+  private fun PrintableQuery.toPrintableValue() = PrintableValue(query, PrintableValue.Type.SqlQuery(xr), queryOutput, label)
 }

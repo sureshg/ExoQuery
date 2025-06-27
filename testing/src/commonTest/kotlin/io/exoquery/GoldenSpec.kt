@@ -74,7 +74,7 @@ abstract class GoldenSpecDynamic(
       val resolvedQuery = sql.determinizeDynamics().token.renderWith(Renderer())
       resolvedQuery.shouldBeGolden(
         path,
-        PrintableValue.Type.SqlQuery,
+        PrintableValue.Type.SqlQuery(sql.originalXR()),
         params
       )
     }
@@ -82,7 +82,7 @@ abstract class GoldenSpecDynamic(
       val sqlValue = sqlRaw.value
       sqlValue.shouldBeGolden(
         path,
-        PrintableValue.Type.SqlQuery,
+        PrintableValue.Type.SqlQuery(sql.originalXR()),
         params
       )
     }
@@ -95,7 +95,7 @@ abstract class GoldenSpecDynamic(
     val resolvedQuery = sql.determinizeDynamics().effectiveToken().renderWith(Renderer())
     resolvedQuery.shouldBeGolden(
       testPath() + if (suffix.isEmpty()) "" else "/$suffix",
-      PrintableValue.Type.SqlQuery,
+      PrintableValue.Type.SqlQuery(sql.originalXR()),
       sql.params.map { PrintableValue.Param(it.id.value, it.showValue()) }
     )
   }
@@ -116,7 +116,7 @@ abstract class GoldenSpecDynamic(
   fun TestScope.shouldBeGolden(
     value: String,
     suffix: String = "",
-    valuePrinting: PrintableValue.Type = PrintableValue.Type.SqlQuery
+    valuePrinting: PrintableValue.Type = PrintableValue.Type.SqlGeneric
   ) =
     value.shouldBeGolden(testPath() + if (suffix.isEmpty()) "" else "/$suffix", valuePrinting, listOf())
 
@@ -138,7 +138,7 @@ abstract class GoldenSpecDynamic(
   fun SqlCompiledQuery<*>.shouldBeGolden() =
     this.value.shouldBeGolden(
       this.label ?: errorCap("""The following query did not have a label: "$value""""),
-      PrintableValue.Type.SqlQuery,
+      PrintableValue.Type.SqlQuery(originalXR()),
       this.params.map { PrintableValue.Param(it.id.value, it.showValue()) }
     )
 
@@ -196,7 +196,7 @@ abstract class GoldenSpec(val goldenQueries: GoldenQueryFile, body: GoldenSpec.(
   fun SqlCompiledQuery<*>.shouldBeGolden() =
     this.value.shouldBeGolden(
       label ?: errorCap("""The following query did not have a label: "$value""""),
-      PrintableValue.Type.SqlQuery
+      PrintableValue.Type.SqlQuery(originalXR())
     )
 
   init {

@@ -8,7 +8,7 @@ import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.trees.ExtractorsDomain
 import io.exoquery.plugin.trees.Parser
 import io.exoquery.plugin.trees.SqlQueryExpr
-import io.exoquery.plugin.trees.simpleValueArgs
+import io.exoquery.plugin.trees.regularArgs
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -33,7 +33,7 @@ class TransformSelectClause(val superTransformer: VisitTransformExpressions) : T
         SqlQueryExpr.Uprootable.plantNewPluckable(xr, dynamics.makeRuntimes(), paramsExprModel)
       }
 
-    //logger.warn("=============== Modified value to: ${capturedAnnot.valueArguments[0]?.dumpKotlinLike()}\n======= Whole Type is now:\n${makeCasted.type.dumpKotlinLike()}")
+    //logger.warn("=============== Modified value to: ${capturedAnnot.regularArgs[0]?.dumpKotlinLike()}\n======= Whole Type is now:\n${makeCasted.type.dumpKotlinLike()}")
     //logger.warn("========== Query Output: ==========\n${newSqlQuery.dumpKotlinLike()}")
     return newSqlQuery
   }
@@ -47,7 +47,7 @@ class TransformSelectClause(val superTransformer: VisitTransformExpressions) : T
         selectExpressionRaw.match(
           case(ExtractorsDomain.Call.CaptureSelect[Is()]).then {
             val selectLambdaRaw =
-              it.simpleValueArgs.firstOrNull() ?: parseError("The select clause must have a lambda as the first argument but it was null or empty (${it.simpleValueArgs.firstOrNull()})", selectExpressionRaw)
+              it.regularArgs.firstOrNull() ?: parseError("The select clause must have a lambda as the first argument but it was null or empty (${it.regularArgs.firstOrNull()})", selectExpressionRaw)
             superTransformer.recurse(selectLambdaRaw)
           }
           // TODO use Messages.kt, use better example

@@ -233,6 +233,8 @@ class MirrorIdiom(val renderOpts: RenderOptions = RenderOptions()) {
           stmt("""TagP("${id.value.trimId()}")""")
         is XR.TagForSqlExpression ->
           stmt("""TagE("${id.value.trimId()}")""")
+        is XR.PlaceholderParam ->
+          stmt("Plc(${name.token})")
       }
 
   private val String.lastPart get() = this.split('.').last()

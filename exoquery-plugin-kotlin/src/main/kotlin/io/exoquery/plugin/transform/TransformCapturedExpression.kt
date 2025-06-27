@@ -32,7 +32,7 @@ class TransformCapturedExpression(val superTransformer: VisitTransformExpression
         SqlExpressionExpr.Uprootable.plantNewPluckable(xrExpr, dynamics.makeRuntimes(), paramsExprModel)
       }
 
-    //logger.warn("=============== Modified value to: ${capturedAnnot.valueArguments[0]?.dumpKotlinLike()}\n======= Whole Type is now:\n${makeCasted.type.dumpKotlinLike()}")
+    //logger.warn("=============== Modified value to: ${capturedAnnot.regularArgs[0]?.dumpKotlinLike()}\n======= Whole Type is now:\n${makeCasted.type.dumpKotlinLike()}")
     //logger.error("========== Output: ==========\n${newSqlExpression.dumpKotlinLike()}")
     return newSqlExpression
   }

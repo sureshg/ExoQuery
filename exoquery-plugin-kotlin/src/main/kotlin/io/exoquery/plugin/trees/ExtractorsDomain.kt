@@ -11,7 +11,7 @@ import io.exoquery.plugin.transform.UnaryOperators
 import io.exoquery.xr.BinaryOperator
 import io.exoquery.xr.OP
 import io.exoquery.xr.UnaryOperator
-import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
+import org.jetbrains.kotlin.ir.backend.js.utils.regularArgs
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.*
@@ -101,7 +101,7 @@ object ExtractorsDomain {
           // (allow un-annotated calls with zero-args to go through because frequently things like case-class fields will show up as args)
           case(Ir.Call[Is()]).thenIf { call ->
             call.isExternal() && expr.isSqlQuery() &&
-                (call.simpleValueArgsCount == 0 && call.symbol.owner is IrSimpleFunction) || call.someOwnerHasAnnotation<CapturedFunction>()
+                (call.regularArgsCount == 0 && call.symbol.owner is IrSimpleFunction) || call.someOwnerHasAnnotation<CapturedFunction>()
           }.then { _ -> true },
           case(Ir.GetField[Is()]).thenIfThis { this.isExternal() && expr.isSqlQuery() }.then { _ -> true },
           case(Ir.GetValue[Is()]).thenIfThis { this.isExternal() && expr.isSqlQuery() }.then { _ -> true }
@@ -121,7 +121,7 @@ object ExtractorsDomain {
           case(Ir.GetField[Is()]).thenIfThis { this.isExternal() && expr.isSqlExpression() }.then { _ -> true },
           case(Ir.GetValue[Is()]).thenIfThis { this.isExternal() && expr.isSqlExpression() }.then { _ -> true },
           case(Ir.Call[Is()]).thenIf { call ->
-            (call.simpleValueArgsCount == 0 && call.symbol.owner is IrSimpleFunction) || call.someOwnerHasAnnotation<CapturedDynamic>()
+            (call.regularArgsCount == 0 && call.symbol.owner is IrSimpleFunction) || call.someOwnerHasAnnotation<CapturedDynamic>()
           }.then { _ -> true }
         ) ?: false
         if (matches)
@@ -139,7 +139,7 @@ object ExtractorsDomain {
           case(Ir.GetField[Is()]).thenIfThis { this.isExternal() && expr.isSqlAction() }.then { _ -> true },
           case(Ir.GetValue[Is()]).thenIfThis { this.isExternal() && expr.isSqlAction() }.then { _ -> true },
           case(Ir.Call[Is()]).thenIf { call ->
-            (call.simpleValueArgsCount == 0 && call.symbol.owner is IrSimpleFunction) || call.someOwnerHasAnnotation<CapturedDynamic>()
+            (call.regularArgsCount == 0 && call.symbol.owner is IrSimpleFunction) || call.someOwnerHasAnnotation<CapturedDynamic>()
           }.then { _ -> true }
         ) ?: false
         if (matches)
@@ -167,7 +167,7 @@ object ExtractorsDomain {
               parseError("Detected construction of the class ${className} using a non-primary constructor. This is not allowed.")
 
             val params = call.symbol.owner.simpleValueParams.map { it.name.asString() }.toList()
-            val args = call.valueArguments.toList()
+            val args = call.regularArgs.toList()
             if (params.size != args.size)
               parseError("Cannot parse constructor of ${className} its params ${params} do not have the same cardinality as its arguments ${args.map { it?.dumpKotlinLike() }}")
             val fields = (params zip args).map { (name, value) -> Field(name, value) }
@@ -188,7 +188,7 @@ object ExtractorsDomain {
               parseError("Detected construction of the class ${className} using a non-primary constructor. This is not allowed.")
 
             val params = call.symbol.owner.simpleValueParams.map { it.name.asString() }.toList()
-            val args = call.valueArguments.toList()
+            val args = call.regularArgs.toList()
             if (params.size != args.size)
               parseError("Cannot parse constructor of ${className} its params ${params} do not have the same cardinality as its arguments ${args.map { it?.dumpKotlinLike() }}")
             Components2(className, args.first())
@@ -210,7 +210,7 @@ object ExtractorsDomain {
               parseError("Detected construction of the class ${className} using a non-primary constructor. This is not allowed.")
 
             val params = call.symbol.owner.simpleValueParams.map { it.name.asString() }.toList()
-            val args = call.valueArguments.toList()
+            val args = call.regularArgs.toList()
             if (params.size != args.size)
               parseError("Cannot parse constructor of ${className} its params ${params} do not have the same cardinality as its arguments ${args.map { it?.dumpKotlinLike() }}")
             Components2(className, args.first())
@@ -283,7 +283,7 @@ object ExtractorsDomain {
         context(CX.Scope) operator fun <AP : Pattern<IrBlockBody>> get(call: AP) =
           customPattern1("Call.CaptureQuery.LambdaBody", call) { it: IrCall ->
             if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlQuery<*>>()) {
-              val arg = it.simpleValueArgs.first() ?: parseError("CaptureQuery must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
+              val arg = it.regularArgs.first() ?: parseError("CaptureQuery must have a single argument but was: ${it.regularArgs.map { it?.dumpKotlinLike() }}", it)
               arg.match(
                 // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
                 case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { _, body ->
@@ -322,7 +322,7 @@ object ExtractorsDomain {
         context(CX.Scope) operator fun <AP : Pattern<IrExpression>> get(call: AP) =
           customPattern1("Call.CaptureAction.LambdaBody", call) { it: IrCall ->
             if (it.ownerHasAnnotation<ExoCapture>() && it.type.isClass<SqlAction<*, *>>()) {
-              val arg = it.simpleValueArgs.first() ?: parseError("CaptureAction must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
+              val arg = it.regularArgs.first() ?: parseError("CaptureAction must have a single argument but was: ${it.regularArgs.map { it?.dumpKotlinLike() }}", it)
               arg.match(
                 // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
                 case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { output ->
@@ -352,12 +352,12 @@ object ExtractorsDomain {
         context(CX.Scope) operator fun <AP : Pattern<Data>, BP : Pattern<IrExpression>> get(variable: AP, call: BP) =
           customPattern2("Call.CaptureBatchAction.LambdaBody", variable, call) { it: IrCall ->
             if (it.ownerHasAnnotation<ExoCaptureBatch>() && it.type.isClass<SqlBatchAction<*, *, *>>()) {
-              val batchCollection = it.simpleValueArgs[0] ?: parseError("First argument to CaptureBatchAction the batch-parameter: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
-              val arg = it.simpleValueArgs[1] ?: parseError("Second argument to CaptureBatchAction must be a lambda but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
+              val batchCollection = it.regularArgs[0] ?: parseError("First argument to CaptureBatchAction the batch-parameter: ${it.regularArgs.map { it?.dumpKotlinLike() }}", it)
+              val arg = it.regularArgs[1] ?: parseError("Second argument to CaptureBatchAction must be a lambda but was: ${it.regularArgs.map { it?.dumpKotlinLike() }}", it)
               arg.match(
                 // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
                 case(Ir.FunctionExpression.withReturnOnlyBlock[Is()]).thenThis { output ->
-                  val firstArg = this.function.simpleValueParams.firstOrNull() ?: parseError("CaptureBatchAction must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
+                  val firstArg = this.function.simpleValueParams.firstOrNull() ?: parseError("CaptureBatchAction must have a single argument but was: ${it.regularArgs.map { it?.dumpKotlinLike() }}", it)
                   Components2(Data(firstArg, batchCollection), output)
                 }
               )
@@ -417,7 +417,7 @@ object ExtractorsDomain {
         context(CX.Scope) operator fun <AP : Pattern<IrBlockBody>> get(call: AP) =
           customPattern1("Call.CaptureExpression.LambdaBody", call) { it: IrCall ->
             if (it.ownerHasAnnotation<ExoCaptureExpression>() && it.type.isClass<SqlExpression<*>>()) {
-              val arg = it.simpleValueArgs.first() ?: parseError("CaptureExpression must have a single argument but was: ${it.simpleValueArgs.map { it?.dumpKotlinLike() }}", it)
+              val arg = it.regularArgs.first() ?: parseError("CaptureExpression must have a single argument but was: ${it.regularArgs.map { it?.dumpKotlinLike() }}", it)
               arg.match(
                 // printExpr(.. { stuff }: IrFunctionExpression  ..): FunctionCall
                 case(Ir.FunctionExpression.withBlock[Is(), Is()]).thenThis { _, body ->
@@ -521,7 +521,7 @@ object ExtractorsDomain {
           // TODO see what other descriptors it has to make sure it's only a system-level a to b
           (it.symbol.safeName == "to").thenLet {
             it.extensionReceiver?.let { argA ->
-              it.simpleValueArgs.first()?.let { argB ->
+              it.regularArgs.first()?.let { argB ->
                 Components2(argA, argB)
               }
             }

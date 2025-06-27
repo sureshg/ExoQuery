@@ -72,10 +72,10 @@ fun IrValueParameter.makeIdent() =
 
 
 fun IrFunctionExpression.firstParam() =
-  this.function.simpleValueParams[0]
+  this.function.regularParams[0]
 
 fun IrCall.extensionOrDispatch() =
-  this.extensionReceiver ?: this.dispatchReceiver
+  this.extensionArg ?: this.dispatchReceiver
 
 // Parser for GlobalCall and MethodCall
 object CallParser {
@@ -117,7 +117,7 @@ object CallParser {
       reciever == null || reciever.type.isClass<CapturedBlock>() ->
         XR.GlobalCall(
           name = nameOverride?.let { XR.FqName(it) } ?:  expr.symbol.owner.kotlinFqName.toXR(),
-          args = extractArgs(expr.simpleValueArgs),
+          args = extractArgs(expr.regularArgs),
           callType = callType,
           type = tpe,
           isKotlinSynthetic = false,
@@ -127,7 +127,7 @@ object CallParser {
         XR.MethodCall(
           head = Parser.parseArg(reciever),
           name = nameOverride ?: expr.symbol.safeName,
-          args = extractArgs(expr.simpleValueArgs),
+          args = extractArgs(expr.regularArgs),
           originalHostType = expr.type.classId()?.toXR() ?: XR.ClassId.Empty,
           type = tpe,
           loc = expr.loc,

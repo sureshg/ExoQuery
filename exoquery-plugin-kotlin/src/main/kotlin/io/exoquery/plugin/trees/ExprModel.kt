@@ -10,7 +10,6 @@ import io.exoquery.xr.XR
 import io.exoquery.xr.encode
 import kotlinx.serialization.decodeFromHexString
 import org.jetbrains.kotlin.ir.IrElement
-import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irString
@@ -355,7 +354,7 @@ object SqlExpressionExpr {
             case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is(PT.io_exoquery_SqlExpression), Ir.Call.FunctionUntethered1[Is(PT.io_exoquery_unpackExpr), Is()]])
               .thenIf { _, _ ->
                 // Check that the 2nd argument to SqlExpression is Runtimes.Empty i.e. SqlExpression(xr=unpackExpr(str), runtimes=Runtimes.Empty, ...)
-                comp.valueArguments[1].isEmptyRuntimes()
+                comp.regularArgs[1].isEmptyRuntimes()
               }
               .then { _, (_, irStr) ->
                 // The 1st argument to SqlExpression in the unpackExpr ie. SqlExpression(unpackExpr(str), ...)
@@ -420,7 +419,7 @@ object SqlQueryExpr {
           it.match(
             case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is(PT.io_exoquery_SqlQuery), Ir.Call.FunctionUntethered1[Is(PT.io_exoquery_unpackQuery), Is()]])
               .thenIf { _, _ ->
-                comp.valueArguments[1].isEmptyRuntimes()
+                comp.regularArgs[1].isEmptyRuntimes()
               }
               .then { _, (_, irStr) ->
                 val constPackedXR = irStr as? IrConst ?: throw IllegalArgumentException("value passed to unpackQuery was not a constant-string in:\n${it.dumpKotlinLike()}")
@@ -473,7 +472,7 @@ object SqlActionExpr {
         customPattern1("SqlActionExpr.Uprootable", x) { it: IrExpression ->
           it.match(
             case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is(PT.io_exoquery_SqlAction), Ir.Call.FunctionUntethered1[Is(PT.io_exoquery_unpackAction), Is()]])
-              .thenIf { _, _ -> comp.valueArguments[1].isEmptyRuntimes() }
+              .thenIf { _, _ -> comp.regularArgs[1].isEmptyRuntimes() }
               .then { _, (_, irStr) ->
                 val constPackedXR = irStr as? IrConst ?: throw IllegalArgumentException("value passed to unpackAction was not a constant-string in:\n${it.dumpKotlinLike()}")
                 Components1(Uprootable(constPackedXR.value.toString()))
@@ -525,7 +524,7 @@ object SqlBatchActionExpr {
         customPattern1("SqlBatchActionExpr.Uprootable", x) { it: IrExpression ->
           it.match(
             case(ExtractorsDomain.CaseClassConstructorCall1Plus[Is(PT.io_exoquery_SqlBatchAction), Ir.Call.FunctionUntethered1[Is(PT.io_exoquery_unpackBatchAction), Is()]])
-              .thenIf { _, _ -> comp.valueArguments[2].isEmptyRuntimes() }
+              .thenIf { _, _ -> comp.regularArgs[2].isEmptyRuntimes() }
               .then { _, (_, irStr) ->
                 val constPackedXR = irStr as? IrConst ?: throw IllegalArgumentException("value passed to unpackBatchAction was not a constant-string in:\n${it.dumpKotlinLike()}")
                 Components1(Uprootable(constPackedXR.value.toString()))

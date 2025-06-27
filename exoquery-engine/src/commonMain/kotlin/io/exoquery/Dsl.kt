@@ -542,6 +542,9 @@ interface CapturedBlock {
   fun <T : Any> param(value: ValueWithSerializer<T>): @ExoValue T =
     errorCap("Compile time plugin did not transform the tree")
 
+  @Dsl
+  fun <T: Any?> paramRoom(name: String): @Contextual T = errorCap("Compile time plugin did not transform the tree")
+
   // I.e. the the list is lifted but as individual elements
   //@Dsl @ParamStatic(ParamSerializer.String::class) fun params(values: List<String>): Params<String> = errorCap("Compile time plugin did not transform the tree")
   //@Dsl @ParamStatic(ParamSerializer.Char::class) fun params(values: List<Char>): Params<Char> = errorCap("Compile time plugin did not transform the tree")

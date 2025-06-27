@@ -3,7 +3,8 @@ package io.exoquery.android
 import androidx.room.Dao
 import androidx.room.Query
 
+@Dao
 interface MyRoomDaoRoomQueries {
-  @Query("SELECT x.id, x.firstName, x.lastName, x.age FROM PersonRoom x")
-  fun joes(): List<PersonRoom>
+  @Query("SELECT p.id, p.firstName, p.lastName, p.age FROM PersonRoom p WHERE p.firstName = :myFirstName")
+  fun joes(myFirstName: String): List<io.exoquery.android.PersonRoom>
 }

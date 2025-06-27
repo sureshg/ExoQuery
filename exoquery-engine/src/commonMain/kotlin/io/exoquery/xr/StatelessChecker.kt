@@ -64,6 +64,7 @@ interface StatelessChecker {
 
         is XR.TagForParam -> check(this)
         is XR.TagForSqlExpression -> check(this)
+        is XR.PlaceholderParam -> check(this)
       }
     }
 

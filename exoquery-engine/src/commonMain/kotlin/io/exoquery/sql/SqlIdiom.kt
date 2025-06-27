@@ -163,6 +163,7 @@ interface SqlIdiom : HasPhasePrinting {
       is XR.TagForSqlExpression ->
         xrError("Internal error. All instance of TagFOrSqlExpressio should have been spliced earlier.")
       is XR.Window -> token
+      is XR.PlaceholderParam -> +":${this.name.token}"
     }
   }
 

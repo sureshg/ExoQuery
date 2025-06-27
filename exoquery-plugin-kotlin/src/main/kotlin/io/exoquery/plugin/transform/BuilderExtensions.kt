@@ -86,7 +86,7 @@ class CallMethod(private val callerRaw: Caller, private val replacementFun: Repl
             }
 
             for ((index, tpe) in types.withIndex()) {
-              putTypeArgument(index, tpe)
+              typeArguments[index] = tpe
             }
             for ((index, expr) in args.withIndex()) {
               putValueArgument(index, expr)

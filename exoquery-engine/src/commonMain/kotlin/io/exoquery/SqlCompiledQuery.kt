@@ -34,6 +34,7 @@ sealed interface ActionKind {
  */
 data class SqlCompiledQuery<T>(override val value: String, override val token: Token, val needsTokenization: Boolean, val label: String?, val debugData: SqlCompiledQuery.DebugData) : ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
+  override fun originalXR(): XR = debugData.originalXR()
 
   // Similar concept tot the SqlQuery/SqlExpression.determinizeDynamics but it does not need to consider any nesting constructs
   // because the Params in the `params` variable are already determined to be the complete set in the tokenization
@@ -54,6 +55,7 @@ data class SqlCompiledAction<Input, Output>(
   val debugData: SqlCompiledAction.DebugData
 ) : ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
+  override fun originalXR(): XR = debugData.originalXR()
 
   override fun determinizeDynamics(): SqlCompiledAction<Input, Output> =
     this.copy(token = determinizedToken())
@@ -65,11 +67,12 @@ data class SqlCompiledAction<Input, Output>(
 
 
 // Effective token refines tokens for that particular batch-input value, we only need it for debugging
-data class BatchParamGroup<BatchInput, Input : Any, Output>(val input: BatchInput, val params: List<Param<*>>, val effectiveToken: () -> Token) {
+data class BatchParamGroup<BatchInput, Input : Any, Output>(val input: BatchInput, val params: List<Param<*>>, val effectiveToken: () -> Token, val debugData: SqlCompiledBatchAction.DebugData) {
   fun determinizeDynamics(): BatchParamGroup<BatchInput, Input, Output> = run {
     val (token, params) = determinizeToken(effectiveToken(), params)
     this.copy(params = params, effectiveToken = { token })
   }
+  fun originalXR(): XR = debugData.originalXR()
 }
 
 // TODO since we're providing the batch-parameter at the last moment, we need a function that replaces ParamBatchRefiner to ParamSingle instances and create BatchGroups
@@ -84,6 +87,7 @@ data class SqlCompiledBatchAction<BatchInput, Input : Any, Output>(
   val debugData: SqlCompiledBatchAction.DebugData
 ) : ExoCompiled() {
   override val params: List<Param<*>> by lazy { token.extractParams() }
+  override fun originalXR(): XR = debugData.originalXR()
 
   val effectiveQuery by lazy { token.build() }
 
@@ -107,7 +111,7 @@ data class SqlCompiledBatchAction<BatchInput, Input : Any, Output>(
     }.invoke(token)
 
   fun produceBatchGroups(): Sequence<BatchParamGroup<BatchInput, Input, Output>> =
-    batchParam.map { BatchParamGroup(it, paramsForElement(it), { realizeToken(token, it) }) }
+    batchParam.map { BatchParamGroup(it, paramsForElement(it), { realizeToken(token, it) }, debugData) }
 
 
   override fun determinizeDynamics(): SqlCompiledBatchAction<BatchInput, Input, Output> =
@@ -124,6 +128,7 @@ abstract class ExoCompiled {
   abstract val value: String
   abstract val params: List<Param<*>>
   abstract val token: Token
+  abstract fun originalXR(): XR
 
   abstract fun determinizeDynamics(): ExoCompiled
 

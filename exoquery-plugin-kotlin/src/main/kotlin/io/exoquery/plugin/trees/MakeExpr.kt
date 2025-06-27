@@ -65,7 +65,7 @@ context(CX.Scope, CX.Builder) fun makeClassFromId(fullPath: ClassId, args: List<
         ctorCall.putValueArgument(i, arg)
       }
       types.withIndex().map { (i, arg) ->
-        ctorCall.putTypeArgument(i, arg)
+        ctorCall.typeArguments[i] = arg
       }
     }
 }
