@@ -31,33 +31,6 @@ import org.jetbrains.kotlin.name.FqName
 
 fun <T> List0() = Is(listOf<T>())
 
-val IrCall.extensionArg get() = run {
-  val firstExtArg = this.symbol.owner.parameters.firstOrNull { it.kind == IrParameterKind.ExtensionReceiver }
-  firstExtArg?.let { this.arguments[it] }
-}
-
-val IrCall.dispatchArg get() = run {
-  val firstDispatchArg = this.symbol.owner.parameters.firstOrNull { it.kind == IrParameterKind.DispatchReceiver }
-  firstDispatchArg?.let { this.arguments[it] }
-}
-
-val IrFunction.extensionParam get() =
-  parameters.firstOrNull { it.kind == IrParameterKind.ExtensionReceiver }
-
-val IrFunction.regularParams get() = 
-  this.parameters.filter { it.kind == IrParameterKind.Regular }
-
-val IrCall.regularArgs get() = run {
-  val params = this.symbol.owner.parameters
-  val args = this.arguments
-  params.filter { param -> param.kind == IrParameterKind.Regular }.map { args[it] }
-}
-val IrConstructorCall.regularArgs get() = run {
-  val params = this.symbol.owner.parameters
-  val args = this.arguments
-  params.filter { param -> param.kind == IrParameterKind.Regular }.map { args[it] }
-}
-
 object List1 {
   operator fun <AP : Pattern<A>, A> get(elem1: AP) =
     customPattern1("List1", elem1) { it: List<A> -> if (it.size == 1) Components1(it.first()) else null }

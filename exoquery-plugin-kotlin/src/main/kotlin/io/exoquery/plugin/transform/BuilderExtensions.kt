@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -45,7 +46,8 @@ class CallMethod(private val callerRaw: Caller, private val replacementFun: Repl
         is Caller.Dispatch -> caller.reciver.type.findMethodOrFail(funName, args.size)
         is Caller.Extension -> caller.reciver.type.findExtensionMethodOrFail(funName, args.size)
         is Caller.TopLevelMethod ->
-          pluginCtx.referenceFunctions(CallableId(FqName(caller.packageName), Name.identifier(funName))).find { it.owner.valueParameters.size == args.size }?.let { MethodType.Method(it) }
+          // If there are overloads check that the number of arguments matches what we expect, no other checks for now
+          pluginCtx.referenceFunctions(CallableId(FqName(caller.packageName), Name.identifier(funName))).find { it.owner.regularParams.size == args.size }?.let { MethodType.Method(it) }
             ?: throw IllegalArgumentException("Cannot find method `${funName}` in the package `${caller.packageName}`")
       }
 
@@ -75,21 +77,33 @@ class CallMethod(private val callerRaw: Caller, private val replacementFun: Repl
         with(builder) {
           val invocation = if (tpe != null) irCall(invoke, tpe) else irCall(invoke)
           invocation.apply {
-            when (caller) {
-              is Caller.Dispatch -> {
-                dispatchReceiver = caller.reciver
+
+
+            val callerPart =
+              when (caller) {
+                // If we are calling a function with a receiver it needs to be the first argument
+                // we don't support both dispatch and extension receivers at the same time
+                // and we also don't support context-parameters for now
+                is Caller.Dispatch -> {
+                  if (invokeMethod.sym.owner.parameters[0].kind != IrParameterKind.DispatchReceiver) {
+                    throw IllegalArgumentException("Expected a dispatch-receiver on the function ${invokeMethod.sym.safeName} for the argument ${caller.reciver.dumpKotlinLike()}")
+                  }
+                  listOf(caller.reciver)
+                }
+                is Caller.Extension -> {
+                  if (invokeMethod.sym.owner.parameters[0].kind != IrParameterKind.ExtensionReceiver) {
+                    throw IllegalArgumentException("Expected a extension-receiver on the function ${invokeMethod.sym.safeName} for the argument ${caller.reciver.dumpKotlinLike()}")
+                  }
+                  listOf(caller.reciver)
+                }
+                is Caller.TopLevelMethod -> emptyList()
               }
-              is Caller.Extension -> {
-                extensionReceiver = caller.reciver
-              }
-              is Caller.TopLevelMethod -> {}
-            }
 
             for ((index, tpe) in types.withIndex()) {
               typeArguments[index] = tpe
             }
-            for ((index, expr) in args.withIndex()) {
-              putValueArgument(index, expr)
+            for ((index, expr) in (callerPart + args).withIndex()) {
+              arguments[index] = expr
             }
           }
         }
@@ -209,8 +223,9 @@ context (CX.Scope, CX.Builder) fun createLambdaClosure(functionBody: IrExpressio
     }.apply {
       parent = functionParent
 
+      // No receivers or context-parameters supported for now
       if (params.size > 0) {
-        valueParameters = params
+        parameters = params
       }
       /*
       VERY important here to create a new irBuilder from the symbol i.e. createIrBuilder because

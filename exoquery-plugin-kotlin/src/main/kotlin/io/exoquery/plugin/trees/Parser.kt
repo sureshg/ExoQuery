@@ -83,7 +83,7 @@ object CallParser {
   fun parse(expr: IrCall): XR.U.QueryOrExpression {
 
     fun IrSimpleFunctionSymbol.toFqNameXR() = this.owner.kotlinFqName.toXR()
-    val reciever = expr.extensionReceiver ?: expr.dispatchReceiver
+    val reciever = expr.extensionArg ?: expr.dispatchReceiver
 
     return when {
       // for things like string.sql.left(...) ignore the "sql" part

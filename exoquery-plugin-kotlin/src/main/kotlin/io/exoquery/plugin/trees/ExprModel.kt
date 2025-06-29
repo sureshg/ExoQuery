@@ -4,6 +4,7 @@ import io.decomat.*
 import io.exoquery.*
 import io.exoquery.plugin.classId
 import io.exoquery.plugin.classIdOf
+import io.exoquery.plugin.regularArgs
 import io.exoquery.plugin.transform.*
 import io.exoquery.xr.EncodingXR
 import io.exoquery.xr.XR
@@ -13,6 +14,7 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -106,11 +108,14 @@ data class ParamBind(val bid: BID, val value: IrExpression, val paramSerializer:
             isCrossinline = false,
             type = batchVariable.type,
             isHidden = batchVariable.isHidden,
-            index = batchVariable.index,
+            // Not used anymore
+             //index = batchVariable.index,
             varargElementType = batchVariable.varargElementType,
             isAssignable = batchVariable.isAssignable,
             symbol = newSymbol,
-            isNoinline = batchVariable.isNoinline
+            isNoinline = batchVariable.isNoinline,
+            // batch variable is the `p` in capture.batch(people) { p -> ... } it always a Regular parameter
+            kind = IrParameterKind.Regular
           )
 
 

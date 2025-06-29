@@ -274,7 +274,8 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions) : T
   fun buildRuntimeDialect(construct: IrConstructorSymbol, traceConfig: TraceConfig) =
     builder.irCall(construct).apply {
       with(makeLifter()) {
-        putValueArgument(0, traceConfig.lift(options?.projectDir))
+        // build the dialect e.g. call `PostgresDialect(traceConfig)` at runtime. We assume there are no receivers or context params
+        arguments[0] = traceConfig.lift(options?.projectDir)
       }
     }
 }

@@ -42,7 +42,7 @@ kotlin {
         // No reflection in pprint-kmp
         api("io.exoquery:pprint-kotlin-kmp:3.0.0")
         // Actually this is going to be 0.0.5 - using an unpublished one now
-        api("io.exoquery:decomat-core:0.6.0")
+        api("io.exoquery:decomat-core:1.0.0")
         api("io.exoquery:terpal-runtime:2.2.0-2.0.0.PL")
         // This is a java-only library, I have no idea who it can even be here.
         // maybe if I actually attempt to use it in KMP mode in a non-java target it will actually fail

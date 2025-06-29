@@ -11,9 +11,9 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrScriptSymbol
-import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
+import org.jetbrains.kotlin.ir.visitors.IrTransformer
 
-abstract class IrElementTransformerWithContext<D> : IrElementTransformer<D> {
+abstract class IrElementTransformerWithContext<D> : IrTransformer<D>() {
 
   protected open val scopeStack = mutableListOf<ScopeWithIr>()
 

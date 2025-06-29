@@ -161,7 +161,7 @@ object ParseQuery {
         }
       },
       case(Ir.Call.FunctionMem1[Ir.Expr.ClassOf<SqlQuery<*>>(), Is("where"), Ir.FunctionExpression.withBlock[Is(), Is()]]).then { head, (_, body) ->
-        val ident = compRight.function.symbol.owner.extensionReceiverParameter?.makeIdent() ?: parseError("Could not parse the this-receiver for the where clause", expr)
+        val ident = compRight.function.symbol.owner.extensionParam?.makeIdent() ?: parseError("Could not parse the this-receiver for the where clause", expr)
         // Since the identifier for where clauses is typically going to be $this$where we want to replace with something more innocous e.g. 'x'
         val whereBodyRaw = ParseExpression.parseFunctionBlockBody(body)
         val identX = ident.copy(name = "x")

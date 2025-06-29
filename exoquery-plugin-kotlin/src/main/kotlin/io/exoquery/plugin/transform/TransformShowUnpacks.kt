@@ -1,8 +1,8 @@
 package io.exoquery.plugin.transform
 
 import io.exoquery.plugin.fullName
+import io.exoquery.plugin.regularArgs
 import io.exoquery.plugin.trees.PT
-import io.exoquery.plugin.trees.regularArgs
 import io.exoquery.unpackAction
 import io.exoquery.unpackExpr
 import io.exoquery.unpackQuery
@@ -14,7 +14,7 @@ import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
+import org.jetbrains.kotlin.ir.visitors.IrTransformer
 
 // Note that if you don't do `.deepCopyWithSymbols()` then the actual Transformer will modify the original tree adding the XR.show into the unpackQuery/unpackExpr calls
 // which will obviously fail. It is non-obvious where the DeclarationIrBuilder actually does this.
@@ -31,7 +31,7 @@ context(CX.Scope)
 fun IrElement.dumpKotlinLikePretty() = this.dumpKotlinLike() //prepareForPrinting().dumpKotlinLike()
 
 
-private class TransformShowUnpacks(val scopeContext: CX.Scope) : IrElementTransformer<Unit> {
+private class TransformShowUnpacks(val scopeContext: CX.Scope) : IrTransformer<Unit>() {
   override fun visitCall(call: IrCall, data: Unit): IrElement =
     if (call.symbol.fullName == PT.io_exoquery_unpackQuery || call.symbol.fullName == PT.io_exoquery_unpackExpr || call.symbol.fullName == PT.io_exoquery_unpackAction) {
       // I don't think this declaration builder has a real scope so it cannot create lambdas (need a proper scope-stack for that) everything else should be fine.
@@ -56,7 +56,9 @@ private class TransformShowUnpacks(val scopeContext: CX.Scope) : IrElementTransf
           } catch (e: Throwable) {
             "<ERROR_UNPACKING>"
           }
-        newCall.putValueArgument(0, irString(newContent))
+
+        // Assuming io_exoquery_unpackQuery/io_exoquery_unpackExpr/io_exoquery_unpackAction all take one arg and have no receivers or context-params
+        newCall.arguments[0] = irString(newContent)
         newCall
       }
     } else {

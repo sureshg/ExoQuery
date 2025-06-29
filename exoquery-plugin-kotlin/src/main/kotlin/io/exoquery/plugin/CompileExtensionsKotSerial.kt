@@ -1,7 +1,6 @@
 package io.exoquery.plugin
 
 import io.exoquery.plugin.trees.KnownSerializer
-import org.jetbrains.kotlin.ir.backend.js.utils.regularArgs
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull

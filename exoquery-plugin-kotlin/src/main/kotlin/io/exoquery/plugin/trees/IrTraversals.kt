@@ -3,10 +3,10 @@ package io.exoquery.plugin.trees
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
-import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
+import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 
 object IrTraversals {
-  class CollectGetValue : IrElementVisitorVoid {
+  class CollectGetValue : IrVisitorVoid() {
     val values = mutableListOf<IrGetValue>()
 
     // Need to override the visitor at the visitElement function because the visitor bubbles up instead of down

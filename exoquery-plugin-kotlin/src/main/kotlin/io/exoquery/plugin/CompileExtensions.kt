@@ -9,12 +9,8 @@ import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.Caller
 import io.exoquery.plugin.transform.createLambda0
 import io.exoquery.plugin.trees.Ir
-import io.exoquery.plugin.trees.dispatchArg
-import io.exoquery.plugin.trees.extensionArg
 import io.exoquery.plugin.trees.fullPathOfBasic
 import io.exoquery.plugin.trees.simpleTypeArgs
-import io.exoquery.plugin.trees.regularArgs
-import io.exoquery.plugin.trees.regularParams
 import io.exoquery.xr.XR
 import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
@@ -43,6 +39,55 @@ import org.jetbrains.kotlin.utils.zipIfSizesAreEqual
 import kotlin.reflect.KClass
 import kotlin.reflect.typeOf
 
+fun IrCall.filterParamsByKind(f: (IrParameterKind) -> Boolean): List<IrExpression?> = run {
+  this.symbol.owner.parameters.filter { f(it.kind) }.map { this.arguments.get(it) }
+}
+
+/**
+ * All value parameters.
+ *
+ * Parameters must follow this order:
+ *
+ * [[dispatch receiver, context parameters, extension receiver, regular parameters]].
+ */
+val IrCall.extensionArg get(): IrExpression? = run {
+  for (param in this.symbol.owner.parameters) {
+    if (param.kind == IrParameterKind.ExtensionReceiver) {
+      return@run this.arguments[param]
+    } else if (param.kind == IrParameterKind.DispatchReceiver) {
+      // If we find regular parameter, we can stop looking for extension receivers
+      // because there can only be regular parameters after the dispatch receiver.
+      return null
+    }
+  }
+  return null
+}
+
+val IrCall.dispatchArg get() =  this.dispatchReceiver
+
+val IrFunction.extensionParam get() =
+  parameters.firstOrNull { it.kind == IrParameterKind.ExtensionReceiver }
+
+val IrFunction.regularParams get() =
+  this.parameters.filter { it.kind == IrParameterKind.Regular }
+
+val IrCall.regularArgs get() = run {
+  // TODO optimize to return a iterator
+  val params = this.symbol.owner.parameters
+  val args = this.arguments
+  params.filter { param -> param.kind == IrParameterKind.Regular }.map { args[it] }
+}
+val IrConstructorCall.regularArgs get() = run {
+  val params = this.symbol.owner.parameters
+  val args = this.arguments
+  params.filter { param -> param.kind == IrParameterKind.Regular }.map { args[it] }
+}
+val IrConstantObject.regularArgs get() = run {
+  // TODO optimize to return a iterator
+  val params = this.constructor.owner.parameters
+  val args = this.valueArguments
+  params.filter { param -> param.kind == IrParameterKind.Regular }.map { args[it.indexInParameters] }
+}
 
 
 fun IrType.toClassIdXR(): XR.ClassId = run {
@@ -218,7 +263,7 @@ context(CX.Scope)
 fun IrCall.zipArgsWithParamsOrFail() =
   ownerFunction.regularParams.zipIfSizesAreEqual(regularArgs)
     ?: parseError(
-      "Mismatched parts (${ownerFunction.regularParams.size})  and params (${regularArgs.size}) in function:\nParts: ${ownerFunction.simpleValueParams.map { it.source() }}\nParams: ${regularArgs.map { it?.source() }}",
+      "Mismatched parts (${ownerFunction.regularParams.size})  and params (${regularArgs.size}) in function:\nParts: ${ownerFunction.regularParams.map { it.source() }}\nParams: ${regularArgs.map { it?.source() }}",
       this
     )
 
@@ -371,10 +416,10 @@ context(CX.Scope) val IrElement.loc get() = this.locationXR()
 data class ReplacementMethodToCall(val methodToCall: String, val callerType: ChangeReciever = ChangeReciever.DoNothing) {
   companion object {
     fun from(call: IrConstructorCall) =
-      call.getValueArgument(0)?.let { firstArg ->
+      call.regularArgs[0]?.let { firstArg ->
         if (firstArg is IrConst && firstArg.kind == IrConstKind.String) {
           val secondArg: ChangeReciever =
-            call.getValueArgument(1)?.let { secondArg ->
+            call.regularArgs[1]?.let { secondArg ->
               secondArg.match(
                 case(Ir.GetEnumValue[Is()]).then { it.safeName }
               )
@@ -392,7 +437,7 @@ data class ReplacementMethodToCall(val methodToCall: String, val callerType: Cha
 
 
 fun IrCall.caller() =
-  this.extensionReceiver?.let {
+  this.extensionArg?.let {
     Caller.Extension(it)
   } ?: this.dispatchReceiver?.let {
     Caller.Dispatch(it)

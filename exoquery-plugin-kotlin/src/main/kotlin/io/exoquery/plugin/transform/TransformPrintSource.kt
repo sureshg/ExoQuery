@@ -113,7 +113,8 @@ class TransformPrintSource(val superTransformer: VisitTransformExpressions) : Tr
 
     with(builder) {
       this.irCall(printSourceExpr).apply {
-        putValueArgument(0, irString(message))
+        // Call the printSourceExpr function. We assume there are no receivers or context-parameters
+        arguments[0] = irString(message)
       }
     }
   }

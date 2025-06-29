@@ -62,7 +62,8 @@ context(CX.Scope, CX.Builder) fun makeClassFromId(fullPath: ClassId, args: List<
     }
     .also { ctorCall ->
       args.withIndex().map { (i, arg) ->
-        ctorCall.putValueArgument(i, arg)
+        // This is a constructor so assume there are no receivers or context-params
+        ctorCall.arguments[i] = arg
       }
       types.withIndex().map { (i, arg) ->
         ctorCall.typeArguments[i] = arg

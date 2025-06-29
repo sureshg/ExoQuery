@@ -70,7 +70,7 @@ fun IrDeclarationReference.isCapturedVariable(): Boolean {
   tailrec fun rec(elem: IrElement, recurseCount: Int): Boolean =
     when {
       recurseCount == 0 -> false
-      elem is IrFunction && elem.extensionReceiverParameter?.type?.isClass<CapturedBlock>() ?: false -> true
+      elem is IrFunction && elem.extensionParam?.type?.isClass<CapturedBlock>() ?: false -> true
       elem is IrFunction -> rec(elem.symbol.owner.parent, recurseCount - 1)
       elem is IrValueParameter -> rec(elem.symbol.owner.parent, recurseCount - 1)
       elem is IrVariable -> rec(elem.symbol.owner.parent, recurseCount - 1)
@@ -116,7 +116,7 @@ fun IrDeclarationReference.showLineage(): String {
         collect.add("${prefix}->RECURSION LIMIT HIT")
         Unit
       }
-      elem is IrFunction && elem.extensionReceiverParameter?.type?.isClass<CapturedBlock>() ?: false -> {
+      elem is IrFunction && elem.extensionParam?.type?.isClass<CapturedBlock>() ?: false -> {
         collect.add("${prefix}->${elem.symbol.safeName}-in CapturedBlock")
         Unit
       }

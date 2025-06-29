@@ -8,12 +8,14 @@ import io.exoquery.SqlQuery
 import io.exoquery.annotation.CapturedFunction
 import io.exoquery.fansi.nullableAsList
 import io.exoquery.parseError
+import io.exoquery.plugin.extensionParam
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.location
 import io.exoquery.plugin.locationXR
 import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.printing.dumpSimple
+import io.exoquery.plugin.regularParams
 import io.exoquery.plugin.trees.DynamicsAccum
 import io.exoquery.plugin.trees.ExtractorsDomain.Call
 import io.exoquery.plugin.trees.Parser
@@ -29,6 +31,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrReturn
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.util.allParameters
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.statements
 
@@ -89,12 +92,12 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
   override fun transform(capFunRaw: IrFunction): IrFunction {
     val capFun = capFunRaw as? IrSimpleFunction ?: parseError("The function annotated with @CapturedFunction must be a simple function.", capFunRaw)
     val recieiverParam: XR.Ident? =
-      capFun.extensionReceiverParameter?.let { recieiverExpr ->
+      capFun.extensionParam?.let { recieiverExpr ->
         val tpe = TypeParser.of(recieiverExpr)
         XR.Ident("this", tpe)
       }
 
-    if (capFun.valueParameters.isEmpty() && capFun.extensionReceiverParameter == null)
+    if (capFun.regularParams.isEmpty() && capFun.extensionParam == null)
       parseError(
         "The function annotated with @CapturedFunction must have at least one parameter but none were found (and a extension-reciever parameter -that is treated as an argument- was not found either). In this case it is not necessary to mark the function with the @CapturedFunction annotation. Remove it and treat the function as a static query splice.",
         capFun.location()
@@ -110,7 +113,7 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
     }
     val funBody = capFun.body!!
 
-    val originalParams = capFun.valueParameters
+    val originalParams = capFun.regularParams
 
     val capFunReturn =
       capFun.getSingleReturnExpr() ?: parseError(Messages.CapturedFunctionFormWrong("Outer form of the captured-function was wrong."), capFun)
@@ -136,10 +139,13 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
       }
 
     // The function should not have any parameters since they will be captured in the XR
-    capFun.valueParameters = emptyList()
+    // i.e. they will be arguments of the XR.FunctionApply when the scaffold is parsed
+    // the extension reciever gets dropped and used like a variable
+    // Only the the dispatch-reciever to a annotated function remains so if it is there put it in,
+    // otherwise put in an empty list
 
-    // The dispatch-reciever to a annotated function remains, the extension reciever gets dropped and used like a variable
-    capFun.extensionReceiverParameter = null
+    capFun.parameters =
+      capFun.dispatchReceiverParameter?.let { listOf(it) } ?: emptyList()
 
     //capFun.typeParameters = emptyList()
 
