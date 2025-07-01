@@ -7,7 +7,7 @@ import io.exoquery.printing.kt
 object ForwardReferenceReqGoldenDynamic: GoldenQueryFile {
   override val queries = mapOf<String, GoldenResult>(
     "in object/using ahead object/XR" to kt(
-      """select { val p = from(TagQ("eaa2a")); p }"""
+      """select { val p = from(TagQ("0")); p }"""
     ),
     "in object/using ahead object/SQL" to cr(
       "SELECT x.id, x.name, x.age FROM Person x"
@@ -16,7 +16,7 @@ object ForwardReferenceReqGoldenDynamic: GoldenQueryFile {
       "Runtime"
     ),
     "in object/using ahead object with nested/XR" to kt(
-      """select { val p = from(TagQ("1e4ec")); p }"""
+      """select { val p = from(TagQ("0")); p }"""
     ),
     "in object/using ahead object with nested/SQL" to cr(
       "SELECT x.id, x.name, x.age FROM Person x"
@@ -25,7 +25,7 @@ object ForwardReferenceReqGoldenDynamic: GoldenQueryFile {
       "Runtime"
     ),
     "in object/using ahead object with nested 2x/XR" to kt(
-      """select { val p = from(TagQ("f0767")); p }"""
+      """select { val p = from(TagQ("1")); p }"""
     ),
     "in object/using ahead object with nested 2x/SQL" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:JoeJoe}",
@@ -35,7 +35,7 @@ object ForwardReferenceReqGoldenDynamic: GoldenQueryFile {
       "Runtime"
     ),
     "in class/using ahead class/XR" to kt(
-      """select { val p = from(TagQ("8d04c")); p }"""
+      """select { val p = from(TagQ("1")); p }"""
     ),
     "in class/using ahead class/SQL" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:Joe}",
@@ -45,7 +45,7 @@ object ForwardReferenceReqGoldenDynamic: GoldenQueryFile {
       "Runtime"
     ),
     "in class/using ahead class with nested/XR" to kt(
-      """select { val p = from(TagQ("41e10")); p }"""
+      """select { val p = from(TagQ("1")); p }"""
     ),
     "in class/using ahead class with nested/SQL" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:Joe}",
@@ -55,7 +55,7 @@ object ForwardReferenceReqGoldenDynamic: GoldenQueryFile {
       "Runtime"
     ),
     "in class/using ahead class with nested 1/XR" to kt(
-      """select { val p = from(TagQ("23e71")); p }"""
+      """select { val p = from(TagQ("2")); p }"""
     ),
     "in class/using ahead class with nested 1/SQL" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:Joe} AND p.name = {1:Joe}",
@@ -65,7 +65,7 @@ object ForwardReferenceReqGoldenDynamic: GoldenQueryFile {
       "Runtime"
     ),
     "in object/using ahead object/XR" to kt(
-      """select { val p = from(TagQ("eaa2a")); p }"""
+      """select { val p = from(TagQ("0")); p }"""
     ),
     "in object/using ahead object/SQL" to cr(
       "SELECT x.id, x.name, x.age FROM Person x"
@@ -74,7 +74,7 @@ object ForwardReferenceReqGoldenDynamic: GoldenQueryFile {
       "Runtime"
     ),
     "in object/using ahead object with nested/XR" to kt(
-      """select { val p = from(TagQ("1e4ec")); p }"""
+      """select { val p = from(TagQ("0")); p }"""
     ),
     "in object/using ahead object with nested/SQL" to cr(
       "SELECT x.id, x.name, x.age FROM Person x"
@@ -83,7 +83,7 @@ object ForwardReferenceReqGoldenDynamic: GoldenQueryFile {
       "Runtime"
     ),
     "in object/using ahead object with nested 2x/XR" to kt(
-      """select { val p = from(TagQ("f0767")); p }"""
+      """select { val p = from(TagQ("1")); p }"""
     ),
     "in object/using ahead object with nested 2x/SQL" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:JoeJoe}",
@@ -93,7 +93,7 @@ object ForwardReferenceReqGoldenDynamic: GoldenQueryFile {
       "Runtime"
     ),
     "in class/using ahead class/XR" to kt(
-      """select { val p = from(TagQ("8d04c")); p }"""
+      """select { val p = from(TagQ("1")); p }"""
     ),
     "in class/using ahead class/SQL" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:Joe}",
@@ -103,7 +103,7 @@ object ForwardReferenceReqGoldenDynamic: GoldenQueryFile {
       "Runtime"
     ),
     "in class/using ahead class with nested/XR" to kt(
-      """select { val p = from(TagQ("41e10")); p }"""
+      """select { val p = from(TagQ("1")); p }"""
     ),
     "in class/using ahead class with nested/SQL" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:Joe}",
@@ -113,7 +113,7 @@ object ForwardReferenceReqGoldenDynamic: GoldenQueryFile {
       "Runtime"
     ),
     "in class/using ahead class with nested 1/XR" to kt(
-      """select { val p = from(TagQ("23e71")); p }"""
+      """select { val p = from(TagQ("2")); p }"""
     ),
     "in class/using ahead class with nested 1/SQL" to cr(
       "SELECT p.id, p.name, p.age FROM Person p WHERE p.name = {0:Joe} AND p.name = {1:Joe}",

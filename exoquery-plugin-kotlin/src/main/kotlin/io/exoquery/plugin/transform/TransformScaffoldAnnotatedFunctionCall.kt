@@ -5,8 +5,11 @@ import io.exoquery.fansi.nullableAsList
 import io.exoquery.parseError
 import io.exoquery.plugin.extensionArgWithParamKinds
 import io.exoquery.plugin.hasAnnotation
+import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.regularArgsWithParamKinds
+import io.exoquery.plugin.safeName
+import io.exoquery.plugin.source
 import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
 import io.exoquery.plugin.trees.extractCapturedFunctionParamKinds
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -52,7 +55,11 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
 
   context(CX.Scope, CX.Builder, CX.Symbology, CX.QueryAccum)
   override fun transform(call: IrCall): IrExpression {
-    val paramKinds = call.extractCapturedFunctionParamKinds() ?: parseError("Could not extract the parameter kinds from the call, the annotation CapturedFunctionParamKinds was not attached internally. The owner function is defined as:\n${call.symbol.owner.dumpSimple()}", call)
+    val paramKinds = call.extractCapturedFunctionParamKinds() ?: parseError(
+      Messages.cannotUseForwardReferenceCapturedFunction(call.symbol.safeName, call.symbol.owner.source() ?: call.symbol.owner.dumpKotlinLike()),
+      call
+    )
+
     // CANNOT invoke call.regularArgs here because we have blanked-out the arguments in the TransformAnnotationFunction stage. That is why we saved
     // the original arguments a CapturedFunctionParamKinds annotation that we then use to infer the original argument types.
     val originalRegularArgs = call.regularArgsWithParamKinds(paramKinds)

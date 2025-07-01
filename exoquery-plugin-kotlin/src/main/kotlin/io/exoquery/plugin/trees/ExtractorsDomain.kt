@@ -566,24 +566,20 @@ sealed interface CallData {
 
 context(CX.Scope)
 fun IrCall.extractCapturedFunctionParamKinds(): List<ParamKind>? =
-  this.symbol.owner.getAnnotationArgs<CapturedFunctionParamKinds>().firstOrNull().let { arg ->
-    if (arg == null) {
-      parseError(
-        "CapturedFunctionArgTypes annotation was not found on the function ${this.symbol.owner.dumpSimple()}. This is a bug in the plugin, please report it.",
-        this
-      )
-    }
-    val vararg =
-      arg as? IrVararg ?: parseError(
-        "CapturedFunctionArgTypes annotation must have a single argument that is a vararg of ArgType. This is a bug in the plugin, please report it.",
-        this
-      )
-    vararg.elements.map { elem ->
-      val str = (elem as? IrConst ?: parseError("CapturedFunctionArgTypes Element ${elem.dumpKotlinLike()} was not a const string"))
-        .value.toString()
-      ParamKind.fromString(str) ?: parseError(
-        "CapturedFunctionArgTypes Element ${elem.dumpKotlinLike()} was not a valid ArgType, expected one of: ${ParamKind.values.joinToString(", ")}",
-        this
-      )
+  this.symbol.owner.getAnnotationArgsIfExists<CapturedFunctionParamKinds>()?.let { constructorArgs ->
+    constructorArgs.first().let { arg ->
+      val vararg =
+        arg as? IrVararg ?: parseError(
+          "CapturedFunctionArgTypes annotation must have a single argument that is a vararg of ArgType but instead it was: ${arg?.dumpSimple()}. This is a bug in the plugin, please report it.",
+          this
+        )
+      vararg.elements.map { elem ->
+        val str = (elem as? IrConst ?: parseError("CapturedFunctionArgTypes Element ${elem.dumpKotlinLike()} was not a const string"))
+          .value.toString()
+        ParamKind.fromString(str) ?: parseError(
+          "CapturedFunctionArgTypes Element ${elem.dumpKotlinLike()} was not a valid ArgType, expected one of: ${ParamKind.values.joinToString(", ")}",
+          this
+        )
+      }
     }
   }

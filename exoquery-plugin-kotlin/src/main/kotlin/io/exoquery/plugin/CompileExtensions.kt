@@ -425,6 +425,11 @@ inline fun <reified T> IrAnnotationContainer.getAnnotationArgs(): List<IrExpress
   return annotation?.regularArgs?.filterNotNull() ?: emptyList()
 }
 
+inline fun <reified T> IrAnnotationContainer.getAnnotationArgsIfExists(): List<IrExpression?>? {
+  val annotation = annotations.find { it.type.isClassStrict<T>() }
+  return annotation?.regularArgs
+}
+
 inline fun <reified T> IrCall.getPropertyAnnotationArgs(): List<IrExpression> {
   val annotation = (this.symbol.owner.correspondingPropertySymbol?.owner?.annotations ?: listOf()).find { it.type.isClassStrict<T>() }
   return annotation?.regularArgs?.filterNotNull() ?: emptyList()

@@ -4,16 +4,15 @@ import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
 
 
-class ForwardReferenceReq: GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGoldenOverride(), {
+class ForwardReferenceReq: GoldenSpecDynamic(ForwardReferenceReqGoldenDynamic, Mode.ExoGoldenTest(), {
   "in object" - {
     "using ahead object" {
       val q = capture.select {
         val p = from(ExampleAheadObject.people)
-        //ExampleCapObject.personName(p) to p.age
         p
       }
-      val result = q.build<PostgresDialect>()
-      shouldBeGolden(q.xr, "XR")
+      val result = q.build<PostgresDialect>().determinizeDynamics()
+      shouldBeGolden(q.determinizeDynamics().xr, "XR")
       shouldBeGolden(result, "SQL")
       shouldBeGolden(result.debugData.phase.toString(), "Phase")
     }
@@ -23,8 +22,8 @@ class ForwardReferenceReq: GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGold
         val p = from(ExampleAheadObjectNested.people)
         p
       }
-      val result = q.build<PostgresDialect>()
-      shouldBeGolden(q.xr, "XR")
+      val result = q.build<PostgresDialect>().determinizeDynamics()
+      shouldBeGolden(q.determinizeDynamics().xr, "XR")
       shouldBeGolden(result, "SQL")
       shouldBeGolden(result.debugData.phase.toString(), "Phase")
     }
@@ -34,8 +33,8 @@ class ForwardReferenceReq: GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGold
         val p = from(ExampleAheadObjectNested2x.people)
         p
       }
-      val result = q.build<PostgresDialect>()
-      shouldBeGolden(q.xr, "XR")
+      val result = q.build<PostgresDialect>().determinizeDynamics()
+      shouldBeGolden(q.determinizeDynamics().xr, "XR")
       shouldBeGolden(result, "SQL")
       shouldBeGolden(result.debugData.phase.toString(), "Phase")
     }
@@ -48,8 +47,8 @@ class ForwardReferenceReq: GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGold
         //ExampleCapObject.personName(p) to p.age
         p
       }
-      val result = q.build<PostgresDialect>()
-      shouldBeGolden(q.xr, "XR")
+      val result = q.build<PostgresDialect>().determinizeDynamics()
+      shouldBeGolden(q.determinizeDynamics().xr, "XR")
       shouldBeGolden(result, "SQL")
       shouldBeGolden(result.debugData.phase.toString(), "Phase")
     }
@@ -59,8 +58,8 @@ class ForwardReferenceReq: GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGold
         val p = from(ExampleAheadClassNested().people)
         p
       }
-      val result = q.build<PostgresDialect>()
-      shouldBeGolden(q.xr, "XR")
+      val result = q.build<PostgresDialect>().determinizeDynamics()
+      shouldBeGolden(q.determinizeDynamics().xr, "XR")
       shouldBeGolden(result, "SQL")
       shouldBeGolden(result.debugData.phase.toString(), "Phase")
     }
@@ -70,8 +69,8 @@ class ForwardReferenceReq: GoldenSpecDynamic(GoldenQueryFile.Empty, Mode.ExoGold
         val p = from(ExampleAheadClassNested1().people)
         p
       }
-      val result = q.build<PostgresDialect>()
-      shouldBeGolden(q.xr, "XR")
+      val result = q.build<PostgresDialect>().determinizeDynamics()
+      shouldBeGolden(q.determinizeDynamics().xr, "XR")
       shouldBeGolden(result, "SQL")
       shouldBeGolden(result.debugData.phase.toString(), "Phase")
     }

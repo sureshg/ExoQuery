@@ -22,6 +22,18 @@ fun batchParamError() = batchParamError(batchAlias?.name?.asString() ?: "<???>")
 
 fun batchParamError(batchParamName: String) = "Detected an invalid use of the batch-parameter `$batchParamName` in the query.\n" + UsingBatchParam
 
+fun cannotUseForwardReferenceCapturedFunction(functionName: String, dumpedFunction: String) =
+"""
+You have attempted to use a captured function that is defined after the place where it is being used.
+Kotlin allows this class and object functions but ExoQuery is more strict please define the `${functionName}` function.
+before the place where it is being used.
+(Internally this is known when Parameter-Kinds of a captured function scaffold are not found)
+
+---------------- The following function needs to be moved: ----------------
+${dumpedFunction}
+"""
+
+
 fun usedParamWrongMessage(typeName: String) =
 """
 "Could not find primitive-serializer for type: `${typeName}`. Primitive serializers are only defined for: Int, Long, Float, Double, String, Boolean, and the kotlinx LocalDate, LocalTime, LocalDateTime, and Instant"

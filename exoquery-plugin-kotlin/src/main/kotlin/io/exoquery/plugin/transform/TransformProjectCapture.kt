@@ -56,9 +56,6 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions) :
       //  capture { 2 + foo(123).use }
 
       case(Ir.Call[Is()]).thenIf { call -> expression.isContainerOfXR() && call.symbol.owner is IrSimpleFunction }.then { call ->
-        val newReciever = if (call.dispatchReceiver != null) { superTransformer.visitExpression(call.dispatchReceiver as IrExpression) } else call.dispatchReceiver
-        call.dispatchReceiver = newReciever
-
         // For example:
         //   fun foo(x: Int) = capture { 1 + lift(x) } // i.e. SqlExpression(Int(1) + ScalarTag(UUID), lifts=ScalarLift(UUID,x))
         //   capture { 2 + foo(123).use }
