@@ -168,7 +168,6 @@ subprojects {
       maven {
         name = "Oss"
         setUrl {
-          val repositoryId = System.getenv("SONATYPE_REPOSITORY_ID") ?: error("Missing env variable: SONATYPE_REPOSITORY_ID")
           "https://ossrh-staging-api.central.sonatype.com/service/local/staging/maven2/"
         }
         credentials {
