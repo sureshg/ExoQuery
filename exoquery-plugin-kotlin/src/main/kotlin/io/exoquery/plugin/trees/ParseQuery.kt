@@ -11,6 +11,7 @@ import io.exoquery.plugin.logging.Messages
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.isBatchParam
+import io.exoquery.plugin.transform.prepareForPrinting
 import io.exoquery.xr.BetaReduction
 import io.exoquery.xr.XR
 import io.exoquery.xr.XRType
@@ -81,7 +82,21 @@ object ParseQuery {
 
             //logger.warn("---------------- Processing Scaffold Whole Expression---------------\n${expr.dumpKotlinLike()}\n--------------------- Query Arg --------------------------\n${sqlQueryArg.dumpKotlinLike()}\n--------------------- Args ------------------\n${args.map { it.dumpKotlinLike() }.joinToString("\n------------\n")}", sqlQueryArg)
 
-            val parsedArgs = args.map { arg -> arg?.let { Parser.parseArg(it) } ?: XR.Const.Null(loc) }
+            val parsedArgs =
+              args.map { arg ->
+                arg.let {
+                  try {
+                    Parser.parseArg(it)
+                  } catch (e: ParseError) {
+                    parseErrorSimple(
+                      """|${e.message}
+                         |----------------- This Occurred in a Problematic Scaffold Expansion -----------------
+                         |${this.prepareForPrinting().dumpKotlinLike()}
+                         |-------------------------------------------------------------------------------------
+                      """.trimMargin(), it)
+                  }
+                }
+              }
 
             XR.FunctionApply(warppedQueryCall, parsedArgs, expr.loc)
           },

@@ -4,6 +4,7 @@ import io.decomat.*
 import io.exoquery.*
 import io.exoquery.annotation.*
 import io.exoquery.plugin.*
+import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.transform.BinaryOperators
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.ReceiverCaller
@@ -565,10 +566,16 @@ sealed interface CallData {
 
 context(CX.Scope)
 fun IrCall.extractCapturedFunctionParamKinds(): List<ParamKind>? =
-  this.symbol.owner.getAnnotationArgs<CapturedFunctionParamKinds>().first().let { arg ->
+  this.symbol.owner.getAnnotationArgs<CapturedFunctionParamKinds>().firstOrNull().let { arg ->
+    if (arg == null) {
+      parseError(
+        "CapturedFunctionArgTypes annotation was not found on the function ${this.symbol.owner.dumpSimple()}. This is a bug in the plugin, please report it.",
+        this
+      )
+    }
     val vararg =
       arg as? IrVararg ?: parseError(
-        "CapturedFunctionArgTypes annotation must have a single argument that is a vararg of ArgType",
+        "CapturedFunctionArgTypes annotation must have a single argument that is a vararg of ArgType. This is a bug in the plugin, please report it.",
         this
       )
     vararg.elements.map { elem ->

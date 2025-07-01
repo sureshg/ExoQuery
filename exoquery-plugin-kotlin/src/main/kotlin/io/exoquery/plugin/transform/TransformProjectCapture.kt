@@ -8,6 +8,7 @@ import io.exoquery.SqlAction
 import io.exoquery.SqlBatchAction
 import io.exoquery.SqlExpression
 import io.exoquery.SqlQuery
+import io.exoquery.plugin.dispatchArg
 import io.exoquery.plugin.isClass
 import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.trees.*
@@ -55,6 +56,9 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions) :
       //  capture { 2 + foo(123).use }
 
       case(Ir.Call[Is()]).thenIf { call -> expression.isContainerOfXR() && call.symbol.owner is IrSimpleFunction }.then { call ->
+        val newReciever = if (call.dispatchReceiver != null) { superTransformer.visitExpression(call.dispatchReceiver as IrExpression) } else call.dispatchReceiver
+        call.dispatchReceiver = newReciever
+
         // For example:
         //   fun foo(x: Int) = capture { 1 + lift(x) } // i.e. SqlExpression(Int(1) + ScalarTag(UUID), lifts=ScalarLift(UUID,x))
         //   capture { 2 + foo(123).use }
@@ -87,8 +91,9 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions) :
         )
       },
       // TODO the other clauses
-      case(Ir.GetField[Is()]).thenIf { expression.isContainerOfXR() }.then { symbol ->
-        symbol.owner.match(
+      case(Ir.GetField[Is()]).thenIf { expression.isContainerOfXR() }.thenThis { symbol ->
+        //val newRecieiver = superTransformer.visitExpression(this.receiver)
+        val newExpression = symbol.owner.match(
           // E.g. a class field used in a lift
           //   class Foo { val x = capture { 123 } } which should have become:
           //   val foo = Foo()
@@ -109,6 +114,7 @@ class TransformProjectCapture(val superTransformer: VisitTransformExpressions) :
             uprootableExpr.replant(expression)
           }
         )
+        newExpression
       },
       case(Ir.GetValue[Is()]).thenIf { expression.isContainerOfXR() }.then { symbol ->
         symbol.owner.match(

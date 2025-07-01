@@ -80,5 +80,7 @@ fun parseErrorFromType(msg: String, expr: IrElement): Nothing = throw throw Pars
 
 context(CX.Scope) fun parseError(msg: String, expr: IrElement): Nothing = throw ParseError.withFullMsg(msg, expr, currentFile, expr.location())
 
+context(CX.Scope) fun parseErrorSimple(msg: String, expr: IrElement): Nothing = throw ParseError(msg, expr.location())
+
 context(CX.Scope) fun parseErrorSym(expr: IrCall): Nothing =
   throw ParseError.withFullMsg("Invalid function name or symbol: ${expr.symName}", expr, currentFile, expr.location())

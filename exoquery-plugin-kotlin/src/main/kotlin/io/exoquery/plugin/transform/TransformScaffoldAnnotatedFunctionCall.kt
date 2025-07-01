@@ -3,14 +3,10 @@ package io.exoquery.plugin.transform
 import io.exoquery.annotation.CapturedFunction
 import io.exoquery.fansi.nullableAsList
 import io.exoquery.parseError
-import io.exoquery.plugin.argumentsWithParameters
-import io.exoquery.plugin.extensionArg
 import io.exoquery.plugin.extensionArgWithParamKinds
 import io.exoquery.plugin.hasAnnotation
 import io.exoquery.plugin.printing.dumpSimple
-import io.exoquery.plugin.regularArgs
 import io.exoquery.plugin.regularArgsWithParamKinds
-import io.exoquery.plugin.trees.ExtractorsDomain
 import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
 import io.exoquery.plugin.trees.extractCapturedFunctionParamKinds
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -59,7 +55,7 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
     val paramKinds = call.extractCapturedFunctionParamKinds() ?: parseError("Could not extract the parameter kinds from the call, the annotation CapturedFunctionParamKinds was not attached internally. The owner function is defined as:\n${call.symbol.owner.dumpSimple()}", call)
     // CANNOT invoke call.regularArgs here because we have blanked-out the arguments in the TransformAnnotationFunction stage. That is why we saved
     // the original arguments a CapturedFunctionParamKinds annotation that we then use to infer the original argument types.
-    val originalArgs = call.regularArgsWithParamKinds(paramKinds)
+    val originalRegularArgs = call.regularArgsWithParamKinds(paramKinds)
 
     //logger.warn("""
     //  |--------------------------- From Scaffolded call: ---------------------------
@@ -76,6 +72,7 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
     //""".trimMargin())
 
     val extensionReceiverArg = call.extensionArgWithParamKinds(paramKinds)
+
     val zeroizedCallRaw = call.zeroisedArgs()
 
     // Need to project the call to make it uprootable in the paresr in later stages.
@@ -131,7 +128,7 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
     //   val drivingJoes = scaffoldCapFunctionQuery(SqlQuery((people)=>people.filterJoe <- i.e. `joes`), args=[SqlQuery(xr=People.filterAge)])
     //   (and if there are any parameters it it the argument becomes:
     //    args=[SqlQuery(xr=People.filterAge), params=drivingPeople.params])
-    val projectedArgs = (extensionReceiverArg.nullableAsList() + originalArgs).map { arg -> arg?.let { superTransformer.recurse(it) ?: it } }
+    val projectedArgs = (extensionReceiverArg.nullableAsList() + originalRegularArgs).map { arg -> arg?.let { superTransformer.recurse(it) ?: it } }
 
     //val zeroizedCall = zeroizedCallRaw as IrCall
 

@@ -8,8 +8,8 @@ import io.exoquery.sql.Token
 import io.exoquery.xr.XR
 
 sealed interface Phase {
-  object CompileTime : Phase
-  object Runtime : Phase
+  data object CompileTime : Phase
+  data object Runtime : Phase
 }
 
 sealed interface ActionKind {

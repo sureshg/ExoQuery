@@ -75,7 +75,7 @@ fun IrFunctionExpression.firstParam() =
   this.function.regularParams[0]
 
 fun IrCall.extensionOrDispatch() =
-  this.extensionArg ?: this.dispatchReceiver
+  this.extensionArg ?: this.dispatchArg
 
 // Parser for GlobalCall and MethodCall
 object CallParser {
@@ -83,7 +83,7 @@ object CallParser {
   fun parse(expr: IrCall): XR.U.QueryOrExpression {
 
     fun IrSimpleFunctionSymbol.toFqNameXR() = this.owner.kotlinFqName.toXR()
-    val reciever = expr.extensionArg ?: expr.dispatchReceiver
+    val reciever = expr.extensionArg ?: expr.dispatchArg
 
     return when {
       // for things like string.sql.left(...) ignore the "sql" part

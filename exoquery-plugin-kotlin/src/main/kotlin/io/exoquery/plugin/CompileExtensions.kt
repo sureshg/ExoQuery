@@ -64,7 +64,7 @@ val IrCall.extensionArg get(): IrExpression? = run {
   return null
 }
 
-val IrCall.dispatchArg get() =  this.dispatchReceiver
+val IrCall.dispatchArg get() = this.dispatchReceiver
 
 val IrFunction.extensionParam get(): IrValueParameter? = run {
   for (param in this.symbol.owner.parameters) {

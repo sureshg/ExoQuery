@@ -142,7 +142,7 @@ class TransformAnnotatedFunction(val superTransformer: VisitTransformExpressions
     // Create a helper annotation so we know what the original Param-Kinds of the function so that later in
     // the TransformScaffoldAnnotatedFunctionCall we can reconstruct what the arguments of the function were
     // in order to know how to interpret the parameters.
-    val originalParamKindsAnnotation = Lifter(this@Builder).makeCapturedFunctionParamKinds(capFun.extensionParam.nullableAsList() + originalRegularParams)
+    val originalParamKindsAnnotation = Lifter(this@Builder).makeCapturedFunctionParamKinds(capFun.symbol.owner.parameters)
     capFun.annotations = capFun.annotations + listOf(originalParamKindsAnnotation)
 
     // The function should not have any parameters since they will be captured in the XR
