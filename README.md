@@ -275,35 +275,35 @@ dependency blocks.
 ```kotlin
 // First add the plugin:
 plugins {
-  id("io.exoquery.exoquery-plugin") version "2.1.0-1.3.1.PL"
+  id("io.exoquery.exoquery-plugin") version "2.2.0-1.4.0.PL.RC1"
   kotlin("plugin.serialization") version "2.2.0" // exoquery relies on this
 }
 
 // Then add a runner...
 // For Java:
 dependencies {
-  implementation("io.exoquery:exoquery-runner-jdbc:1.3.1.PL-1.3.1")
+  implementation("io.exoquery:exoquery-runner-jdbc:1.4.0.PL.RC1")
   implementation("org.postgresql:postgresql:42.7.0") // Remember to include the right JDBC Driver
 }
 
 // For: IOS, OSX, Native Linux, and Mingw using Kotlin Multiplatform
 dependencies {
-  implementation("io.exoquery:exoquery-runner-native:1.3.1.PL-1.3.1")
+  implementation("io.exoquery:exoquery-runner-native:1.4.0.PL.RC1")
   implementation("app.cash.sqldelight:native-driver:2.0.2")
 }
 
 // For Android:
 dependencies {
-  implementation("io.exoquery:exoquery-runner-android:1.3.1.PL-1.3.1")
+  implementation("io.exoquery:exoquery-runner-android:1.4.0.PL.RC1")
   implementation("androidx.sqlite:sqlite-framework:2.4.0")
 }
 ```
 > *Why the funny verision numbers?* <br /> 
-> ExoQuery's Compiler Plugin component has versions that look like this: `<KotlinVersion-ExoQueryPluginVersion.PL>`
+> ExoQuery's Compiler Plugin component has versions that look like this: `<KotlinVersion-ExoQueryPluginVersion.PL(.RC?)>`
 > <br />
-> The runners have a version that looks like this: `<ExoQueryPluginVersion.PL-ExoQueryRunnerVersion>`.
+> The runners have a version that looks like this: `<ExoQueryPluginVersion.PL(.RC?)>`.
 > <br />
-> That way the only the plugin-version needs to be bumped whever a new version of Kotlin is released, not all of the runners too.
+> That way the only the plugin-version needs to be bumped whenever a new version of Kotlin is released, not all of the runners too.
 
 You can get started writing queries like this:
 
