@@ -4,11 +4,45 @@ import io.exoquery.sql.PostgresDialect
 import io.exoquery.testdata.Person
 
 
-class ForwardReferenceReq: GoldenSpecDynamic(ForwardReferenceReqGoldenDynamic, Mode.ExoGoldenTest(), {
+object ExampleBehindObject {
+  val people = capture { Table<Person>() }
+}
+
+object ExampleBehindObjectNested {
+  val peopleNested = capture { Table<Person>() }
+  val people = capture { peopleNested }
+}
+
+object ExampleBehindObjectNested2x {
+  val people = capture {
+    ExampleBehindObjectNested.people.filter { p -> p.name == param("JoeJoe") }
+  }
+}
+
+class ExampleBehindClass {
+  val local = "Joe"
+  val people = capture { Table<Person>().filter { p -> p.name == param(local) } }
+}
+
+class ExampleBehindClassNested {
+  val local = "Joe"
+  val peopleNested = capture { Table<Person>().filter { p -> p.name == param(local) } }
+  val people = capture { peopleNested }
+}
+
+class ExampleBehindClassNested1 {
+  val localA = "Joe"
+  val localB = "Joe"
+  val peopleNested = capture { Table<Person>().filter { p -> p.name == param(localA) } }
+  val people = capture { peopleNested.filter { p -> p.name == param(localB) } }
+}
+
+
+class ReferenceReqBackward: GoldenSpecDynamic(ReferenceReqBackwardGoldenDynamic, Mode.ExoGoldenTest(), {
   "in object" - {
     "using ahead object" {
       val q = capture.select {
-        val p = from(ExampleAheadObject.people)
+        val p = from(ExampleBehindObject.people)
         p
       }
       val result = q.build<PostgresDialect>().determinizeDynamics()
@@ -19,7 +53,7 @@ class ForwardReferenceReq: GoldenSpecDynamic(ForwardReferenceReqGoldenDynamic, M
 
     "using ahead object with nested" {
       val q = capture.select {
-        val p = from(ExampleAheadObjectNested.people)
+        val p = from(ExampleBehindObjectNested.people)
         p
       }
       val result = q.build<PostgresDialect>().determinizeDynamics()
@@ -30,7 +64,7 @@ class ForwardReferenceReq: GoldenSpecDynamic(ForwardReferenceReqGoldenDynamic, M
 
     "using ahead object with nested 2x" {
       val q = capture.select {
-        val p = from(ExampleAheadObjectNested2x.people)
+        val p = from(ExampleBehindObjectNested2x.people)
         p
       }
       val result = q.build<PostgresDialect>().determinizeDynamics()
@@ -43,7 +77,7 @@ class ForwardReferenceReq: GoldenSpecDynamic(ForwardReferenceReqGoldenDynamic, M
   "in class" - {
     "using ahead class" {
       val q = capture.select {
-        val p = from(ExampleAheadClass().people)
+        val p = from(ExampleBehindClass().people)
         //ExampleCapObject.personName(p) to p.age
         p
       }
@@ -55,7 +89,7 @@ class ForwardReferenceReq: GoldenSpecDynamic(ForwardReferenceReqGoldenDynamic, M
 
     "using ahead class with nested" {
       val q = capture.select {
-        val p = from(ExampleAheadClassNested().people)
+        val p = from(ExampleBehindClassNested().people)
         p
       }
       val result = q.build<PostgresDialect>().determinizeDynamics()
@@ -66,7 +100,7 @@ class ForwardReferenceReq: GoldenSpecDynamic(ForwardReferenceReqGoldenDynamic, M
 
     "using ahead class with nested 1" {
       val q = capture.select {
-        val p = from(ExampleAheadClassNested1().people)
+        val p = from(ExampleBehindClassNested1().people)
         p
       }
       val result = q.build<PostgresDialect>().determinizeDynamics()
@@ -76,37 +110,3 @@ class ForwardReferenceReq: GoldenSpecDynamic(ForwardReferenceReqGoldenDynamic, M
     }
   }
 })
-
-
-object ExampleAheadObject {
-  val people = capture { Table<Person>() }
-}
-
-object ExampleAheadObjectNested {
-  val peopleNested = capture { Table<Person>() }
-  val people = capture { peopleNested }
-}
-
-object ExampleAheadObjectNested2x {
-  val people = capture {
-    ExampleAheadObjectNested.people.filter { p -> p.name == param("JoeJoe") }
-  }
-}
-
-class ExampleAheadClass {
-  val local = "Joe"
-  val people = capture { Table<Person>().filter { p -> p.name == param(local) } }
-}
-
-class ExampleAheadClassNested {
-  val local = "Joe"
-  val peopleNested = capture { Table<Person>().filter { p -> p.name == param(local) } }
-  val people = capture { peopleNested }
-}
-
-class ExampleAheadClassNested1 {
-  val localA = "Joe"
-  val localB = "Joe"
-  val peopleNested = capture { Table<Person>().filter { p -> p.name == param(localA) } }
-  val people = capture { peopleNested.filter { p -> p.name == param(localB) } }
-}
