@@ -67,10 +67,10 @@ val publishSonatypeStaging by tasks.registering {
     val matching = http.listStagingRepos(user, pass).repositoriesSorted.filter { it.portal_deployment_id == null }
 
     if (matching.isEmpty()) {
-      logger.lifecycle("No repositories found with description “$desc”.")
+      logger.lifecycle("No repositories found.")
       return@doLast
     } else {
-      println("---------------- Found ${matching.size} repositories matching description “$desc” ---------------\n${matching.joinToString("\n")}")
+      println("---------------- Found ${matching.size} matching repositories ---------------\n${matching.joinToString("\n")}")
     }
 
     var ok = 0
@@ -104,14 +104,6 @@ val publishSonatypeStaging by tasks.registering {
       throw GradleException("Some repositories failed to publish: $failed of ${matching.size}")
     } else {
       println("All $ok staging repositories successfully switched to user-managed.")
-    }
-
-    /* List the repos again with the deployment ID */
-    val updated = http.listStagingRepos(user, pass).repositoriesSorted.filter { it.description?.startsWith(desc) ?: false }
-    if (updated.isEmpty()) {
-      logger.lifecycle("No repositories found with description “$desc”.")
-    } else {
-      println("---------------- Completed Repositories (${updated.size}): ----------------\n${updated.withIndex().map { (i, it) -> "${i}) ${it.showName}\n   - ${it.portal_deployment_id}\n" }.joinToString("\n")}")
     }
   }
 }
