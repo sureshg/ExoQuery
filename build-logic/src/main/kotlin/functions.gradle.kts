@@ -60,12 +60,11 @@ val publishSonatypeStaging by tasks.registering {
     /* ---- gather inputs exactly as before ---- */
     val user  = System.getenv("SONATYPE_USERNAME")   ?: error("SONATYPE_USERNAME not set")
     val pass  = System.getenv("SONATYPE_PASSWORD")   ?: error("SONATYPE_PASSWORD not set")
-    val desc = "${System.getenv("GITHUB_REPOSITORY")}/${System.getenv("GITHUB_WORKFLOW")}#${System.getenv("GITHUB_RUN_NUMBER")}"
     val http = HttpClient.newHttpClient()
     val auth = Base64.getEncoder().encodeToString("$user:$pass".toByteArray())
 
     /* Pick the repositories whose description matches `desc` */
-    val matching = http.listStagingRepos(user, pass).repositoriesSorted.filter { it.description?.startsWith(desc) ?: false }
+    val matching = http.listStagingRepos(user, pass).repositoriesSorted.filter { it.portal_deployment_id == null }
 
     if (matching.isEmpty()) {
       logger.lifecycle("No repositories found with description “$desc”.")
