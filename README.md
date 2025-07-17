@@ -12,7 +12,7 @@ Language Integrated Query for Kotlin Multiplatform
 * Cross-Platform: JVM, iOS, Android, Linux, Windows, MacOS, JS-coming soon!
 * Functional, Composable, Powerful, and Fun!
 
-[ExoQuery](https://github.com/user-attachments/assets/c3089ca8-702c-406c-9e11-42fe0f38d074)
+[ExoQuery](https://github.com/user-attachments/assets/d2e3049c-10eb-4fb4-86d0-99aecb4107e6)
 
 ## Introduction
 
