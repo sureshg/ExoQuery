@@ -262,7 +262,7 @@ The ExoQuery infrastructure will know to inject the value of `runtimeName` into 
 placeholder in the prepared-statement of the database driver.
 
 This will work for primitives, and KMP and Java date-types (i.e. from `java.time.*`)
-ExoQuery uses kotlinx.serialization behind the scenes. In some cases you might
+ExoQuery uses kotlinx.serialization behind the scenes. In some cases you might1.4.
 want to use `paramCtx` to create a contextual parameter (Kotlin
 docs: [contextual-serialization](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/serializers.md#contextual-serialization))
 or `paramCustom`
@@ -278,26 +278,26 @@ dependency blocks.
 ```kotlin
 // First add the plugin:
 plugins {
-  id("io.exoquery.exoquery-plugin") version "2.2.0-1.4.0.PL.RC1"
+  id("io.exoquery.exoquery-plugin") version "2.2.0-1.4.0.PL.RC4"
   kotlin("plugin.serialization") version "2.2.0" // exoquery relies on this
 }
 
 // Then add a runner...
 // For Java:
 dependencies {
-  implementation("io.exoquery:exoquery-runner-jdbc:1.4.0.PL.RC1")
+  implementation("io.exoquery:exoquery-runner-jdbc:1.4.0.PL.RC4")
   implementation("org.postgresql:postgresql:42.7.0") // Remember to include the right JDBC Driver
 }
 
 // For: IOS, OSX, Native Linux, and Mingw using Kotlin Multiplatform
 dependencies {
-  implementation("io.exoquery:exoquery-runner-native:1.4.0.PL.RC1")
+  implementation("io.exoquery:exoquery-runner-native:1.4.0.PL.RC4")
   implementation("app.cash.sqldelight:native-driver:2.0.2")
 }
 
 // For Android:
 dependencies {
-  implementation("io.exoquery:exoquery-runner-android:1.4.0.PL.RC1")
+  implementation("io.exoquery:exoquery-runner-android:1.4.0.PL.RC4")
   implementation("androidx.sqlite:sqlite-framework:2.4.0")
 }
 ```
