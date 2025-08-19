@@ -13,6 +13,7 @@ import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.ReceiverCaller
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
+import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.jvm.ir.isValueClassType
 import org.jetbrains.kotlin.ir.BuiltInOperatorNames
 import org.jetbrains.kotlin.ir.IrStatement
@@ -23,6 +24,7 @@ import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.dump
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.isSubclassOf
 import org.jetbrains.kotlin.ir.util.isTypeParameter
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.superTypes
@@ -102,7 +104,7 @@ object Ir {
   }
 
   object Expr {
-    class ClassOf<R>(val classNameRaw: ClassId?) : Pattern0<IrExpression>(Typed<IrExpression>()) {
+    class ClassOf<R>(val classNameRaw: ClassId?, val pluginCtx: IrPluginContext) : Pattern0<IrExpression>(Typed<IrExpression>()) {
       override fun matches(r: ProductClass<IrExpression>): Boolean =
         classNameRaw?.let { className ->
           Typed<IrExpression>().typecheck(r.productClassValueUntyped) &&
@@ -111,9 +113,23 @@ object Ir {
               }
         } ?: false
 
+      // private val checkClass =
+      //   classNameRaw?.let {
+      //     pluginCtx.referenceClass(classNameRaw)
+      //   }
+      // Better implementation but need to be tested more
+      //override fun matches(r: ProductClass<IrExpression>): Boolean {
+      //  if (!Typed<IrExpression>().typecheck(r.productClassValueUntyped)) return false
+      //  if (checkClass == null) return false
+      //  val expressionType = r.productClassValue.type
+      //  val expressionClass = expressionType.getClass() ?: return false
+      //  return expressionClass.isSubclassOf(checkClass.owner)
+      //}
+
       companion object {
+        context(CX.Scope)
         inline operator fun <reified T> invoke() =
-          ClassOf<T>(T::class.classId())
+          ClassOf<T>(T::class.classId(), pluginCtx)
       }
     }
 
@@ -462,6 +478,22 @@ object Ir {
     }
   }
 
+  object ConstructorCall2 {
+    inline fun <reified T> of() =
+      Matcher(T::class.classId())
+
+    class Matcher(val classNameRaw: ClassId?) {
+      context (CX.Scope) operator fun <AP: Pattern<A>, BP: Pattern<B>, A: IrExpression, B: IrExpression> get(x: AP, y: BP): Pattern2<AP, BP, A, B, IrConstructorCall> =
+        customPattern2("Ir.Call.ConstructorCall2", x, y) { it: IrConstructorCall ->
+          if (it.regularArgs.size == 2 && it.regularArgs.all { it != null }) {
+            Components2(it.regularArgs[0], it.regularArgs[1])
+          } else {
+            null
+          }
+        }
+    }
+  }
+
   object ConstructorCallNullableN {
     inline fun <reified T> of() =
       Matcher(T::class.classId())
@@ -473,7 +505,16 @@ object Ir {
     class Matcher(val classNameRaw: ClassId?) {
       context (CX.Scope) operator fun <AP: Pattern<Args>> get(x: AP): Pattern1<AP, Args, IrConstructorCall> =
         customPattern1("Ir.Call.ConstructorCallNullableN", x) { it: IrConstructorCall ->
-          Components1(Args(it.regularArgs))
+          // Note: we could do pluginCtx.referenceClass(classNameRaw) and then
+          // do a proper subtype check but I think when someone wants a constructor
+          // it should be a very strict type-check and not consider super-classes.
+          // Can think about a different type of pattern-matching if subtype-matching is needed
+          val id = it.type.classId()
+          if (id != null && id == classNameRaw) {
+            Components1(Args(it.regularArgs))
+          } else {
+            null
+          }
         }
     }
   }
@@ -493,11 +534,7 @@ object Ir {
 
     context (CX.Scope) operator fun <AP : Pattern<IrCall>> get(x: AP): Pattern1<AP, IrCall, IrCall> =
       customPattern1("Ir.Call", x) { it: IrCall ->
-        if (it.regularArgs.all { it != null }) {
-          Components1(it)
-        } else {
-          null
-        }
+        Components1(it)
       }
 
     // TODO get rid of this in favor of FunctionMem

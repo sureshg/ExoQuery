@@ -9,6 +9,13 @@ enum class ExoCliOption(
   override val required: Boolean = false,
   override val allowMultipleOccurrences: Boolean = false
 ) : AbstractCliOption {
+  ENTITES_DIR_OPTION(
+    "entitiesBaseDir",
+    "<entitiesBaseDir>",
+    "Base directory for generated entities",
+    false
+  ),
+
   GENERATION_DIR_OPTION(
     "generationDir",
     "<generationDir>",
@@ -33,28 +40,14 @@ enum class ExoCliOption(
   TARGET_NAME_OPTION(
     "targetName",
     "<targetName>",
-    "Name of the target",
+    "Name of the kotlin compilation target",
     false
   ),
 
-  KOTLIN_OUTPUT_DIR_OPTION(
-    "kotlinOutputDir",
-    "<kotlinOutputDir>",
-    "Dir of generated Kotlin sources",
-    false
-  ),
-
-  RESOURCE_OUTPUT_DIR_OPTION(
-    "resourceOutputDir",
-    "<resourceOutputDir>",
-    "Dir of generated resources",
-    false
-  ),
-
-  PROJECT_BASE_DIR_OPTION(
-    "projectBaseDir",
-    "<projectBaseDir>",
-    "path to gradle project",
+  QUERIES_BASE_DIR_OPTION(
+    "queriesBaseDir",
+    "<queriesBaseDir>",
+    "path to sql queries base directory",
     false
   ),
 
@@ -83,6 +76,13 @@ enum class ExoCliOption(
     "queryPrintingEnabled",
     "<true|false>",
     "Enables/disables the printing of queries during compile-time",
+    false
+  ),
+
+  ENABLE_CODEGEN_AI(
+    "enableCodegenAI",
+    "<true|false>",
+    "Enables/disables the use of AI models for code generation",
     false
   )
 }

@@ -1,0 +1,115 @@
+package io.exoquery.codegen
+
+import io.exoquery.PostgresTestDB
+import io.exoquery.codegen.model.CodeFileWriter
+import io.exoquery.codegen.model.JdbcGenerator
+import io.exoquery.codegen.model.NameParser
+import io.exoquery.codegen.model.UnrecognizedTypeStrategy
+import io.exoquery.codegen.model.VersionFile
+import io.exoquery.codegen.model.VersionFileWriter
+import io.exoquery.codegen.util.JdbcSchemaReader
+import io.exoquery.generation.Code
+import io.exoquery.generation.CodeVersion
+import io.exoquery.generation.DatabaseDriver
+import io.exoquery.generation.toLowLevelConfig
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.shouldBe
+import java.sql.JDBCType
+
+class GenerationSpec: FreeSpec({
+
+  "should generate correct files from" - {
+    "A local database" {
+      val postgres = PostgresTestDB.embeddedPostgres
+      val connectionMaker = { postgres.getPostgresDatabase().connection }
+      val (config, propsData) =
+        Code.DataClasses(
+          tableFilter = "UserProfile",
+          codeVersion = CodeVersion.Fixed("1.0.0"), // TODO need a test-generator for this
+          driver = DatabaseDriver.Postgres(postgres.getJdbcUrl("postgres", "postgres") + "?search_path=purposely_inconsistent"),
+          packagePrefix = "foo.bar"
+        ).toLowLevelConfig("/my/drive", null) // todo specify a base-dir for properties
+
+      val generator =
+        JdbcGenerator.Test(
+          config,
+          JdbcSchemaReader({ JdbcSchemaReader.Conn(connectionMaker()) }, false),
+          false,
+        )
+      generator.run()
+      generator.fileWriter.getWrittenFiles().single().toContent() shouldBe
+          CodeFileContent(
+            "/my/drive/foo/bar/purposely_inconsistent/UserProfile.kt",
+            "foo.bar.purposely_inconsistent",
+            """
+              data class UserProfile(
+                val userId: Int,
+                val firstName: String,
+                val last_name: String,
+                val updated_at: kotlinx.datetime.LocalDateTime?
+              )
+            """.trimIndent()
+          )
+    }
+
+    "a simple mock schema" - {
+      val schema =
+        listOf(
+          TableMock(
+            name = "test_table",
+            schema = "myschema",
+            columns = listOf(
+              ColumnMock("id", JDBCType.BIGINT, false),
+              ColumnMock("first_name", JDBCType.VARCHAR, true)
+            )
+          )
+        ).toSchema()
+
+      "with various naming schemes" - {
+        "with literal naming" {
+          val (config, propsData) =
+            Code.DataClasses(
+              CodeVersion.Fixed("1.0.0"), // TODO need a test-generator for this
+              DatabaseDriver.Postgres(),
+              packagePrefix = "foo.bar",
+              tableFilter = "test_table"
+            ).toLowLevelConfig("/my/drive", null) // todo specify a base-dir for properties
+
+          val generator = JdbcGenerator.Test(config, schema)
+          generator.run()
+          generator.fileWriter.getWrittenFiles().single().toContent() shouldBe
+              CodeFileContent(
+                "/my/drive/foo/bar/myschema/test_table.kt",
+                "foo.bar.myschema",
+                "data class test_table(val id: Long, val first_name: String?)"
+              )
+        }
+        "with snake_case naming" {
+          val (config, propsData) =
+            Code.DataClasses(
+              CodeVersion.Fixed("1.0.0"), // TODO need a test-generator for this
+              DatabaseDriver.Postgres(),
+              packagePrefix = "foo.bar",
+              tableFilter = "test_table",
+              nameParser = NameParser.SnakeCase
+            ).toLowLevelConfig("/my/drive", null) // todo specify a base-dir for properties
+
+          val generator = JdbcGenerator.Test(config, schema)
+          generator.run()
+          generator.fileWriter.getWrittenFiles().single().toContent() shouldBe
+              CodeFileContent(
+                "/my/drive/foo/bar/myschema/TestTable.kt",
+                "foo.bar.myschema",
+                """
+                @SerialName("test_table")
+                data class TestTable(val id: Long, @SerialName("first_name") val firstName: String?)
+              """.trimIndent()
+              )
+        }
+      }
+    }
+  }
+
+})

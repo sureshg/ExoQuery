@@ -159,11 +159,15 @@ annotation class ExoCapture
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
-annotation class ExoCodegen
+annotation class ExoCodegenFunction
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
-annotation class ExoCodegenReturn
+annotation class ExoCodegenReturnFunction
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoCodegenJustReturnFunction
 
 @Target(AnnotationTarget.VALUE_PARAMETER)
 @Retention(AnnotationRetention.BINARY)
@@ -221,3 +225,10 @@ annotation class ExoUpdate
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
 annotation class ExoDelete
+
+@RequiresOptIn(
+  level = RequiresOptIn.Level.ERROR,
+  message = "This API is internal to ExoQuery."
+)
+@Retention(AnnotationRetention.BINARY)
+annotation class ExoInternal
