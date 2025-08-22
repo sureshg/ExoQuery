@@ -21,7 +21,7 @@ object Messages {
 fun AttemptingToUseLLMWhenDisabled(dbUrl: String, usingLlm: NameParser.UsingLLM) =
 """
 The code-generation configuration for the database `$dbUrl` is attempting to use AI-based naming but the plugin option 'enableCodegenAI' is set to false.
-========= Enable it in your build configuration like this =========
+========= Enable it in your build.gradle.kts like this =========
 exoquery {
     enableCodegenAI = true // add this!
 }
