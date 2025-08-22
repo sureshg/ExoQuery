@@ -22,7 +22,7 @@ class CodegenFileBuilder(val options: ExoCompileOptions) {
       // When the configuration uses an AI model, and we haven't enabled the AI model in the plugin options return an error
       // TODO double check this works as intended
       when (val aiConfig = dc.nameParser.findFirstConfigWithAI()) {
-        NameParser.UsingLLM if (!options.enableCodegenAI) -> {
+        is NameParser.UsingLLM if (!options.enableCodegenAI) -> {
           parseError(AttemptingToUseLLMWhenDisabled(dc.driver.jdbcUrl, aiConfig))
         }
       }
