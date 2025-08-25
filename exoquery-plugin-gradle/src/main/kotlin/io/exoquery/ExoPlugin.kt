@@ -38,7 +38,7 @@ class GeneratedEntitiesDirConventions(val ext: ExoQueryGradlePluginExtension, va
   }
 
   val codegenIntoPermanentLocation: Boolean =
-    ext.enableCodegenAI.convention(false).get() || ext.codegenIntoPermanentLocation.convention(false).get()
+    ext.enableCodegenAI.convention(true).get() || ext.codegenIntoPermanentLocation.convention(true).get()
 
   fun generatedEntitiesDir(project: Project) =
     if (ext.codegenCustomPath.isPresent) {

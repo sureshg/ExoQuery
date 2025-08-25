@@ -41,8 +41,8 @@ interface ExoQueryGradlePluginExtension {
     val autoCreateCodenDirectories: Property<Boolean>
 
     /**
-     * Move the location of generated entities from `MyProject/build/generated/entities` to `MyProject/src/main/entities`
-     * (whatever directory it is, it will be added to the source set). Alternatively, if you want to specify a custom path
+     * Use a permanent location for generated entities i.e. `MyProject/src/main/entities` as opposed to
+     * a temporary one under `MyProject/build/generated/entities` (default=true). Alternatively, if you want to specify a custom path
      * you can use `codegenCustomPath` property (a relative path will be based on the JVM working directory of the compilation.
      *
      * Due to the non-deterministic nature of the LLMs, the generated code may change
@@ -52,6 +52,13 @@ interface ExoQueryGradlePluginExtension {
      * When this option is enabled, the generated code will be placed in MyProject/src/main/entities
      * instead and the `entities` directory will be added to the source set.
      * Note that if you turn on `enableCodegenNamingAI` then this option is automatically enabled.
+     *
+     * Even when we are not using LLMs for assisting record-generation, in most cases we will want
+     * the records to be permanently checked into version control so as to be able to track when they are changed.
+     * Furthermore, since the (compile-time) record-generation process relies on be able to recompile kotlin code
+     * (see the exoquery-sample-codegen project for example of how to work around this issue)
+     * we do not want the records to ever be ephemeral. Therefore, the default value for this property is true
+     * and unless you are generating records in a different build then your main one you will want to keep it that way.
      *
      * @see GeneratedEntitiesDirConventions for more detail.
      */
