@@ -17,7 +17,7 @@ repositories {
 
 
 val kotlinVersion = "2.2.0"
-val pluginVersion = "1.5.3.PL"
+val pluginVersion = "1.6.0.PL"
 
 // For exoquery-engine, exoquery-plugin-gradle, exoquery-plugin-kotlin
 extra["pluginProjectVersion"] = "${kotlinVersion}-${pluginVersion}"
