@@ -1567,7 +1567,6 @@ fun myFunction() {
 ```
 Then compile `GeneratedEntitiesExample.kt` the following files will be generated in your `MyProject/entities/main/kotlin` directory:
 ```kotlin
-// TODO check the path
 // MyProject/entities/main/kotlin/my/example/app/<db-schema>/Person.kt
 package my.example.app.<db-schema>
 ...
@@ -1596,15 +1595,56 @@ fun myQuery() {
 }
 ```
 
+Typically you will want to store the database credentials in a `.codegen.properties` file in your project root.
+```
+# MyProject/.codegen.properties
+user=postgres
+password=postgres
+```
+(You can also tell the code-generator to look for credentials in the environment variables of your choice.)
+
 > NOTE: If you are using Postgres, it may be necessary to add the `<db-schema>` that you are using to the
 > search path. You can do this by adding `?currentSchema=public,...,<db-schema>` to the end of your JDBC URL.
 
+For more details, have a look at the Code Generation sample: [exoquery-sample-codegen](https://github.com/ExoQuery/exoquery-samples/tree/main/exoquery-sample-codegen).
 
+#### Pay Attention to CodeVersion
 
+Whenever you change the `CodeVersion.Fixed("1.0.0")` setting, the entities will be regenerated.
+This means that if you change your database schema, you can simply bump the version number!
+When you do that, be sure to actually recompile the file containing the `capture.generate(...)` call since
+that is what triggers the regeneration of the entities. If the file is not recompiled, the entities will not be regenerated.
 
-> TODO also need to remind the user to pass the driver into the exoquery 
+#### Using AI for Cleaner Entities
 
+If you want to use AI to clean up the generated entities, you can use the `NameParser.UsingLLM` option.
+Currently OpenAI and Ollama are supported.
 
+```kotlin
+// GeneratedEntitiesExample.kt
+package my.example.app
+
+fun myFunction() {
+  capture.generate(
+    Code.Entities(
+      CodeVersion.Fixed("1.0.0"),
+      DatabaseDriver.Postgres("jdbc:postgresql://<db-host>:<db-port>/<db-name>"),
+      "my.example.app",
+      nameParser = NameParser.UsingLLM(LLM.OpenAI())
+    )
+  )
+}
+```
+
+Be sure to set your OpenAI API key in the `.codegen.properties` for example:
+```
+# MyProject/.codegen.properties
+user=postgres                  # For the database
+password=postgres              # For the database
+api-key=jsnfdkjsnf24920924...  # For OpenAI
+```
+
+For more details, have a look at the Code Generation sample using AI: [exoquery-sample-codegen-ai](https://github.com/ExoQuery/exoquery-samples/tree/main/exoquery-sample-codegen-ai)
 
 # In the Nuts and Bolts
 
