@@ -1,5 +1,47 @@
 # ExoQuery Changelog
 
+### Version 2.2.20-1.6.1.PL (September 16, 2025)
+- **Infrastructure**: Upgrade Kotlin to 2.2.20 ([7f96a15](https://github.com/ExoQuery/ExoQuery/commit/7f96a15))
+
+### Version 2.2.0-1.6.0.PL (September 15, 2025)
+- **Enhancement**: Adding better checks for CapturedDynamic functions ([#44](https://github.com/ExoQuery/ExoQuery/pull/44))
+- **Refactor**: Completely get rid of Symbology ([#45](https://github.com/ExoQuery/ExoQuery/pull/45))
+
+### Version 2.2.0-1.5.3.PL (September 12, 2025)
+- **Bugfix**: Fixing cross-file compile-time queries ([#43](https://github.com/ExoQuery/ExoQuery/pull/43))
+
+### Version 2.2.0-1.5.1.PL (August 28, 2025)
+- **Bugfix**: Fix code-gen removal of annotations in wrong scenario ([#41](https://github.com/ExoQuery/ExoQuery/pull/41))
+- **Enhancement**: Make things with @ExoEntity/@ExoField/@SerialName automatically quoted ([#40](https://github.com/ExoQuery/ExoQuery/pull/40))
+
+### Version 2.2.0-1.5.0.PL (August 25, 2025)
+- **Enhancement**: Add @Serializeable, continue refining codegen ([#37](https://github.com/ExoQuery/ExoQuery/pull/37))
+- **Infrastructure**: Default to using permanent location for record generation ([113ff0d](https://github.com/ExoQuery/ExoQuery/commit/113ff0d))
+
+### Version 2.2.0-1.4.0.PL (August 21, 2025)
+- **Infrastructure**: Moving to Kotest 6.0.0 ([#36](https://github.com/ExoQuery/ExoQuery/pull/36))
+- **Bugfix**: Fixing codegen directory structure creation ([#35](https://github.com/ExoQuery/ExoQuery/pull/35))
+
+### Version 2.2.0-1.4.0.PL.RC5 (August 19, 2025)
+- **Enhancement**: Completing Codegen First Implementation ([#32](https://github.com/ExoQuery/ExoQuery/pull/32))
+- **Enhancement**: Additional case for codegen to cover ([#33](https://github.com/ExoQuery/ExoQuery/pull/33))
+- **Enhancement**: Fix avg/stddev API ([#34](https://github.com/ExoQuery/ExoQuery/pull/34))
+
+### Version 2.2.0-1.4.0.PL.RC4 (August 14, 2025)
+- **Bugfix**: Fix groupBy(product) and capture{select.filter} cases ([#31](https://github.com/ExoQuery/ExoQuery/pull/31))
+
+### Version 2.2.0-1.4.0.PL.RC3 (August 1, 2025)
+- **Bugfix**: Fix `.count()` type to int ([#30](https://github.com/ExoQuery/ExoQuery/pull/30))
+
+### Version 2.2.0-1.4.0.PL.RC2 (July 6, 2025)
+- **Enhancement**: Allow forward references in simple captures and captured functions ([#21](https://github.com/ExoQuery/ExoQuery/pull/21))
+- **Enhancement**: Add interpolated strings parsing ([#25](https://github.com/ExoQuery/ExoQuery/pull/25))
+- Bugfix: Fixing issue with captured-function in object ([4e5b43f](https://github.com/ExoQuery/ExoQuery/commit/4e5b43f))
+
+### Version 2.2.0-1.4.0.PL.RC1 (June 30, 2025)
+- Build: Remove Kotest from non-JVM targets due to Kotlin 2.2.0 plugin compatibility ([#16](https://github.com/ExoQuery/ExoQuery/pull/16))
+- **Enhancement**: Prepare for 2.2.0 ([#15](https://github.com/ExoQuery/ExoQuery/pull/15))
+
 ### Version 1.3.2.PL-1.3.2 (May 30, 2025)
 - **Bugfix**: Fix window Beta Reduction ([#9](https://github.com/ExoQuery/ExoQuery/pull/9))
 - **Enhancement**: Improve help message for param serialization errors ([470ab9f](https://github.com/ExoQuery/ExoQuery/commit/470ab9f))
