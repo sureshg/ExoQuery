@@ -4,6 +4,7 @@ import io.exoquery.config.ExoCompileOptions
 import io.exoquery.exoquery_plugin_gradle.BuildConfig
 import org.gradle.api.Project
 import org.gradle.api.file.Directory
+import org.gradle.api.logging.Logging
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
@@ -82,6 +83,9 @@ interface ExoQueryGradlePluginExtension {
 
 
 class GradlePlugin : KotlinCompilerPluginSupportPlugin {
+
+  val logger = Logging.getLogger(GradlePlugin::class.java)
+
   override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean = true
 
   override fun getCompilerPluginId(): String = "io.exoquery.exoquery-plugin"
@@ -167,7 +171,7 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
     }
 
     ext.codegenDrivers.get().forEach { dependency ->
-      println("[ExoQuery] adding driver dependency: $dependency")
+      logger.info("Adding driver dependency: $dependency")
       configurationName.let { project.dependencies.add(it, dependency) }
     }
 
@@ -178,7 +182,7 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
       val koogLibrary = ext.koogLibrary.convention(BuildConfig.KOOG_LIBRARY).get()
       val coroutinesLibrary = BuildConfig.COROUTINES_LIBRARY
 
-      println("[ExoQuery] LLM naming is enabled in ${kotlinCompilation.project.name}:${kotlinCompilation.name}! Adding Koog dependency for LLM naming: ${koogLibrary} (and also ${coroutinesLibrary})")
+      logger.info("LLM naming is enabled in ${kotlinCompilation.project.name}:${kotlinCompilation.name}! Adding Koog dependency for LLM naming: ${koogLibrary} (and also ${coroutinesLibrary})")
       // If LLM naming is enabled, we need to add the Koog dependency
       configurationName.let { configName ->
         project.dependencies.add(configName, koogLibrary)
@@ -308,7 +312,7 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
       if (deco.debugGeneratedDirConventions)
         deco.conventions.show(project, sourceSetName, targetName)
 
-      println("[ExoQuery] Auto-Adding directories${if (autoCreateDirs) "(with mkdirs)" else ""} to [${project.name}] ($targetName/$sourceSetName) (target/sourceSet) using a ${dirType} configuration (${generatedDir})")
+      logger.info("Auto-Adding directories${if (autoCreateDirs) "(with mkdirs)" else ""} to [${project.name}] ($targetName/$sourceSetName) (target/sourceSet) using a $dirType configuration ($generatedDir)")
 
       sourceSet.kotlin.srcDir(generatedDir)
       // Ensure the directory exists
