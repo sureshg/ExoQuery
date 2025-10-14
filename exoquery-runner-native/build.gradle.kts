@@ -93,11 +93,11 @@ kotlin {
       compilations.configureEach {
         if (name == "test") {
           cinterops {
-            val sqlite by creating {
+            val sqlite by registering {
               // use sqlite3 amalgamation on linux tests to prevent linking issues on new linux distros with dependency libraries which are too recent (for example glibc)
               // see: https://github.com/touchlab/SQLiter/pull/38#issuecomment-867171789
               println("------ Using sqlite3 amalgamation for linux tests: $rootDir/libs/linux/cinterop/sqlite3.def (exists: ${file("$rootDir/libs/linux/cinterop/sqlite3.def").exists()}) ------")
-              defFile = file("$rootDir/libs/linux/cinterop/sqlite3.def")
+              definitionFile = file("$rootDir/libs/linux/cinterop/sqlite3.def")
             }
           }
         }

@@ -33,26 +33,21 @@ buildConfig {
 
 dependencies {
   api("io.exoquery:exoquery-engine:${runtimeVersion}")
-
   implementation(kotlin("gradle-plugin-api"))
   implementation(kotlin("gradle-plugin"))
-  implementation(kotlin("compiler-embeddable"))
-
   compileOnly(gradleApi())
 }
 
 gradlePlugin {
-  website.set("https://github.com/exoquery/exoquery")
-  vcsUrl.set("https://github.com/exoquery/exoquery.git")
-
+  website = "https://github.com/exoquery/exoquery"
+  vcsUrl = "https://github.com/exoquery/exoquery.git"
   plugins {
     create("exoqueryPlugin") {
       id = "io.exoquery.exoquery-plugin"
       displayName = "ExoQuery Plugin"
       description = "Kotlin exoquery Compiler Plugin"
       implementationClass = "io.exoquery.GradlePlugin"
-
-      tags.set(listOf("kotlin", "exoquery", "jvm"))
+      tags = listOf("kotlin", "exoquery", "jvm")
     }
   }
 }

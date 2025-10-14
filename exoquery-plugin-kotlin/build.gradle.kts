@@ -18,19 +18,23 @@ kotlin {
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
   compilerOptions {
-    freeCompilerArgs.add("-Xcontext-receivers")
-    optIn.add("io.exoquery.annotation.ExoInternal")
+      freeCompilerArgs.add("-Xcontext-receivers")
+      optIn.addAll(
+          "io.exoquery.annotation.ExoInternal",
+          "kotlinx.serialization.ExperimentalSerializationApi",
+          "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI"
+      )
 
-    // Otherwise will have: Could not resolve io.exoquery:pprint-kotlin:2.0.1.
-    // Incompatible because this component declares a component, compatible with Java 11 and the consumer needed a component, compatible with Java 8
-    java {
-      sourceCompatibility = JavaVersion.VERSION_11
-      targetCompatibility = JavaVersion.VERSION_11
-    }
-    // If I remove this I get:
-    //  'compileJava' task (current target is 11) and 'kaptGenerateStubsKotlin' task (current target is 1.8) jvm target compatibility should be set to the same Java version.
-    // Not sure why
-    jvmTarget.set(JvmTarget.JVM_11)
+      // Otherwise will have: Could not resolve io.exoquery:pprint-kotlin:2.0.1.
+      // Incompatible because this component declares a component, compatible with Java 11 and the consumer needed a component, compatible with Java 8
+      java {
+          sourceCompatibility = JavaVersion.VERSION_11
+          targetCompatibility = JavaVersion.VERSION_11
+      }
+      // If I remove this I get:
+      //  'compileJava' task (current target is 11) and 'kaptGenerateStubsKotlin' task (current target is 1.8) jvm target compatibility should be set to the same Java version.
+      // Not sure why
+      jvmTarget.set(JvmTarget.JVM_11)
   }
 }
 
