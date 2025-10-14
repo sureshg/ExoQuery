@@ -17,18 +17,3 @@ dependencies {
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
   implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
 }
-
-//plugins {
-//    `kotlin-dsl`
-//}
-//
-//repositories {
-//    mavenCentral()
-//    mavenLocal()
-//    gradlePluginPortal()
-//}
-//
-//dependencies {
-//    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.0")
-//    implementation("com.palantir.gradle.gitversion:gradle-git-version:3.0.0")
-//}

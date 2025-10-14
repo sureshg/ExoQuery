@@ -10,15 +10,11 @@ val kspEnabled = true
 plugins {
   kotlin("multiplatform") version "2.2.20"
   id("maven-publish")
-
   id("io.exoquery.terpal-plugin") version "2.2.20-2.0.1.PL"
-
   id("conventions-multiplatform")
   id("publish")
-
   // can remove this if kspEnabled is false (this the variable kspEnabled cannot be used here)
   id("com.google.devtools.ksp") version "2.2.20-2.0.3"
-
   kotlin("plugin.serialization") version "2.2.20"
 }
 
@@ -28,7 +24,6 @@ dependencies {
   if (kspEnabled)
     add("kspCommonMainMetadata", "io.exoquery:decomat-ksp:1.0.0")
 
-
   // Double ksp entry causes strange overrides so do not use it
   //if (kspEnabled) add("kspJvm", "io.exoquery:decomat-ksp:1.0.0")
   commonMainApi("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
@@ -37,7 +32,10 @@ dependencies {
 kotlin {
   compilerOptions {
     freeCompilerArgs.add("-Xwhen-guards")
-    optIn.add("io.exoquery.annotation.ExoInternal")
+    optIn.addAll(
+        "io.exoquery.annotation.ExoInternal",
+        "kotlinx.serialization.ExperimentalSerializationApi"
+    )
   }
 
   jvm()
@@ -46,7 +44,7 @@ kotlin {
 
   sourceSets {
     val commonMain by getting {
-      kotlin.srcDir("$buildDir/generated/ksp/metadata/commonMain/kotlin")
+      kotlin.srcDir("${layout.buildDirectory.get().asFile}/generated/ksp/metadata/commonMain/kotlin")
 
       dependencies {
         api(libs.kotlinx.serialization.core)

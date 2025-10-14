@@ -1,5 +1,3 @@
-import org.jetbrains.dokka.gradle.AbstractDokkaTask
-
 plugins {
   kotlin("jvm") apply false
   id("conventions")
@@ -84,12 +82,12 @@ apply {
 
 val dokkaHtml by tasks.getting(org.jetbrains.dokka.gradle.DokkaTask::class)
 tasks {
-  val javadocJar by creating(Jar::class) {
+  val javadocJar by registering(Jar::class) {
     dependsOn(dokkaHtml)
     archiveClassifier.set("javadoc")
     from(dokkaHtml.get().outputDirectory)
   }
-  val sourcesJar by creating(Jar::class) {
+  val sourcesJar by registering(Jar::class) {
     archiveClassifier.set("sources")
     from(sourceSets["main"].allSource)
   }
@@ -174,8 +172,7 @@ val doNotSign = isLocal || noSign
 signing {
   // Sign if we're not doing a local build and we haven't specifically disabled it
   if (!doNotSign) {
-    val signingKeyRaw = System.getenv("NEW_SIGNING_KEY_ID_BASE64")
-    if (signingKeyRaw == null) error("ERROR: No Signing Key Found")
+     val signingKeyRaw = System.getenv("NEW_SIGNING_KEY_ID_BASE64") ?: error("ERROR: No Signing Key Found")
     // Seems like the right way was to have newlines after all the exported (ascii armored) lines
     // and you can put them into the github-var with newlines but if you
     // include the "-----BEGIN PGP PRIVATE KEY BLOCK-----" and "-----END PGP PRIVATE KEY BLOCK-----"

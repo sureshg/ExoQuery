@@ -1,7 +1,4 @@
-import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.gradle.api.tasks.testing.logging.TestLogEvent
-import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
-import org.jetbrains.kotlin.konan.target.HostManager
+import org.jetbrains.kotlin.gradle.targets.js.webpack.*
 
 // Includes everything from multiplatform-native + jvm builds
 
@@ -17,7 +14,7 @@ kotlin {
   }
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack>().configureEach {
+tasks.withType<KotlinWebpack>().configureEach {
   sourceMaps = true
-  mode = org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig.Mode.DEVELOPMENT
+  mode = KotlinWebpackConfig.Mode.DEVELOPMENT
 }
