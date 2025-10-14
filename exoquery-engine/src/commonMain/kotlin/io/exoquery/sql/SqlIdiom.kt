@@ -509,13 +509,12 @@ interface SqlIdiom : HasPhasePrinting {
   val XR.BinaryOp.token get(): Token = xrBinaryOpTokenImpl(this)
   fun xrBinaryOpTokenImpl(binaryOpImpl: XR.BinaryOp): Token = with(binaryOpImpl) {
     when {
-      op is EqEq && b is Null -> +"${scopedTokenizer(a)} IS NULL"
-      a is Null && op is EqEq -> +"${scopedTokenizer(b)} IS NULL"
-      op is NotEq && b is Null -> +"${scopedTokenizer(a)} IS NOT NULL"
-      a is Null && op is NotEq -> +"${scopedTokenizer(b)} IS NOT NULL"
+        a is Any && op is EqEq && b is Null -> +"${scopedTokenizer(a)} IS NULL"
+        a is Null && op is EqEq && b is Any -> +"${scopedTokenizer(b)} IS NULL"
+        a is Any && op is NotEq && b is Null -> +"${scopedTokenizer(a)} IS NOT NULL"
+        a is Null && op is NotEq && b is Any -> +"${scopedTokenizer(b)} IS NOT NULL"
 
-      op is And ->
-        when {
+        a is Any && op is And && b is Any -> when {
           // (a1 || a2) && (b1 || b2) i.e. need parens around the a and b
           a is BinaryOp && a.op is Or && b is BinaryOp && b.op is Or ->
             +"${scopedTokenizer(a)} ${op.token} ${scopedTokenizer(b)}"
@@ -526,11 +525,11 @@ interface SqlIdiom : HasPhasePrinting {
           // i.e. don't need parens around a or b
           else -> +"${a.token} ${op.token} ${b.token}"
         }
-      op is Or -> +"${a.token} ${op.token} ${b.token}"
-      // If you've got a chain of concats e.g. a||b||c don't need to add parens around the a||b which the scoped tokenizer will do
-      a.isStringConcat() && op is StrPlus ->
-        +"${a.token} ${op.token} ${b.token}"
-      else -> +"${scopedTokenizer(a)} ${op.token} ${scopedTokenizer(b)}"
+
+       a is Any && op is Or && b is Any  -> +"${a.token} ${op.token} ${b.token}"
+        // If you've got a chain of concats e.g. a||b||c don't need to add parens around the a||b which the scoped tokenizer will do
+       a.isStringConcat() && op is StrPlus -> +"${a.token} ${op.token} ${b.token}"
+       else -> +"${scopedTokenizer(a)} ${op.token} ${scopedTokenizer(b)}"
     }
   }
 
