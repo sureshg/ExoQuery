@@ -103,7 +103,7 @@ class Lifter(val builderCtx: CX.Builder) {
     val varargType = classSymbol.owner.defaultType
     val variadics = irBuilder.irVararg(varargType, this)
     //builderCtx.logger.error("--------------- Expression Type -------------: ${expressionType.dumpKotlinLike()}")
-    val listOfCall = irBuilder.irCall(listOfRef, context.symbols.list.typeWith(varargType)).apply {
+    val listOfCall = irBuilder.irCall(listOfRef, context.irBuiltIns.listClass.typeWith(varargType)).apply {
       // listOf(...) is a with no receivers (or context parameters)
       typeArguments[0] = varargType
       arguments[0] = variadics
@@ -114,7 +114,7 @@ class Lifter(val builderCtx: CX.Builder) {
 
   fun List<IrExpression>.liftExprTyped(elementType: IrType): IrExpression {
     val variadics = irBuilder.irVararg(elementType, this)
-    val listOfCall = irBuilder.irCall(listOfRef, context.symbols.list.typeWith(elementType)).apply {
+    val listOfCall = irBuilder.irCall(listOfRef, context.irBuiltIns.listClass.typeWith(elementType)).apply {
       // listOf(...) is a with no receivers (or context parameters)
       typeArguments[0] = elementType
       arguments[0] = variadics
@@ -235,7 +235,7 @@ class Lifter(val builderCtx: CX.Builder) {
       make<ParamSketch>(irBuilder.irString(paramKind.name), irBuilder.irString(typeIdentifier))
     }
 
-    val variadic = irBuilder.irVararg(context.symbols.string.defaultType, types)
+    val variadic = irBuilder.irVararg(context.irBuiltIns.stringType, types)
     return make<CapturedFunctionSketch>(variadic)
   }
 

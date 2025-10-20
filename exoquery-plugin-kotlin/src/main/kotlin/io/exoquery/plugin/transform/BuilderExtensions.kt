@@ -159,7 +159,7 @@ fun IrExpression.callDispatchWithParamsAndOutput(method: String, typeParams: Lis
 context (CX.Scope, CX.Builder) fun createLambda0(functionBody: IrExpression, functionParent: IrDeclarationParent, otherStatements: List<IrStatement> = listOf()): IrFunctionExpression =
   with(builder) {
     val functionClosure = createLambda0Closure(functionBody, functionParent, otherStatements)
-    val functionType = pluginCtx.symbols.functionN(0).typeWith(functionClosure.returnType)
+    val functionType = pluginCtx.irBuiltIns.functionN(0).typeWith(functionClosure.returnType)
     IrFunctionExpressionImpl(startOffset, endOffset, functionType, functionClosure, IrStatementOrigin.LAMBDA)
   }
 
@@ -174,7 +174,7 @@ context (CX.Scope, CX.Builder) fun createLambdaN(functionBody: IrExpression, par
 
     val typeWith = params.map { it.type } + functionClosure.returnType
     val functionType =
-      pluginCtx.symbols.functionN(params.size)
+        pluginCtx.irBuiltIns.functionN(params.size)
         // Remember this is FunctionN<InputA, InputB, ... Output> so these input/output args need to be both specified here
         .typeWith(typeWith)
 

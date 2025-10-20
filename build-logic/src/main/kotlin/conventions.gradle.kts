@@ -22,7 +22,7 @@ val pluginVersion = "1.7.1.PL"
 // For exoquery-engine, exoquery-plugin-gradle, exoquery-plugin-kotlin
 extra["pluginProjectVersion"] = "${kotlinVersion}-${pluginVersion}"
 // For exoquery-runner-core, exoquery-runner-jdbc, exoquery-runner-android, exoquery-runner-native
-extra["controllerProjectVersion"] = "${pluginVersion}"
+extra["controllerProjectVersion"] = pluginVersion
 
 group = "io.exoquery"
 // Default version is the plugin-project version. Overridden in the subprojects

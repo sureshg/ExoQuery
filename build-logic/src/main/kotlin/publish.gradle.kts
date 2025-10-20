@@ -102,8 +102,7 @@ val doNotSign = isLocal || noSign
 signing {
   // Sign if we're not doing a local build and we haven't specifically disabled it
   if (!doNotSign) {
-    val signingKeyRaw = System.getenv("NEW_SIGNING_KEY_ID_BASE64")
-    if (signingKeyRaw == null) error("ERROR: No Signing Key Found")
+    val signingKeyRaw = System.getenv("NEW_SIGNING_KEY_ID_BASE64") ?: error("ERROR: No Signing Key Found")
     // Seems like the right way was to have newlines after all the exported (ascii armored) lines
     // and you can put them into the github-var with newlines but if you
     // include the "-----BEGIN PGP PRIVATE KEY BLOCK-----" and "-----END PGP PRIVATE KEY BLOCK-----"
