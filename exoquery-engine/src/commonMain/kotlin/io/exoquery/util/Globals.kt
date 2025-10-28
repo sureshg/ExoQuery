@@ -10,8 +10,8 @@ object Globals {
   private fun variable(propName: String, envName: String, default: String) =
     getExoVariable(propName, envName, default)
 
-  val querySubexpand: Boolean = cache("exo.trace.color", variable("exo.trace.color", "exo_trace_color,", "true").toBoolean())
-  val traceColors get() = cache("exo.trace.color", variable("exo.trace.color", "exo_trace_color,", "true").toBoolean())
+  val querySubexpand get() = cache("exo.norm.subexpand", variable("exo.norm.subexpand", "exo_norm_subexpand,", "true").toBoolean())
+  val traceColors get() = cache("exo.trace.color", variable("exo.trace.color", "exo_trace_color", "true").toBoolean())
   val traceEnabled get() = cache("exo.trace.enabled", variable("exo.trace.enabled", "exo_trace_enabled", "false").toBoolean())
 
   fun resetCache(): Unit = cacheMap.clear()
