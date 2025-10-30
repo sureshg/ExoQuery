@@ -1,12 +1,9 @@
 package io.exoquery
 
-import io.exoquery.annotation.CapturedDynamic
-import io.exoquery.annotation.CapturedFunction
-import io.exoquery.testdata.Person
 import io.kotest.core.spec.style.FreeSpec
 
 //object CapturedFunctionParamError {
-//  @CapturedFunction
+//  @SqlFunction
 //  fun capFunc(value: Int) =
 //    sql.expression { param(value) } // Error: Captured function cannot have non-expression parameters
 //

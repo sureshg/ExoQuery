@@ -1,6 +1,6 @@
 package io.exoquery.plugin.transform
 
-import io.exoquery.annotation.CapturedFunction
+import io.exoquery.annotation.SqlFragment
 import io.exoquery.annotation.CapturedFunctionSketch
 import io.exoquery.annotation.paramKindParsed
 import io.exoquery.fansi.nullableAsList
@@ -13,7 +13,6 @@ import io.exoquery.plugin.refinedStableIdentifier
 import io.exoquery.plugin.regularArgsWithParamKinds
 import io.exoquery.plugin.safeName
 import io.exoquery.plugin.source
-import io.exoquery.plugin.stableIdentifier
 import io.exoquery.plugin.trees.CrossFile
 import io.exoquery.plugin.trees.OwnerChain
 import io.exoquery.plugin.trees.PT.io_exoquery_util_scaffoldCapFunctionQuery
@@ -24,7 +23,6 @@ import org.jetbrains.kotlin.ir.builders.irVararg
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
@@ -55,7 +53,7 @@ fun buildScaffolding(zeroisedCall: IrExpression, scaffoldType: IrType, originalA
 class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransformExpressions, val sourceLabel: String) : Transformer<IrCall>() {
   context(CX.Scope, CX.Builder)
   override fun matches(call: IrCall): Boolean =
-    call.symbol.owner.hasAnnotation<CapturedFunction>()
+    call.symbol.owner.hasAnnotation<SqlFragment>()
 
 
 
@@ -119,7 +117,7 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
 
     // Need to project the call to make it uprootable in the paresr in later stages.
     // For example
-    // @CapturedFunction fun joes(people: SqlQuery<Person>) = sql { people.filter { p -> p.name == "Joe" } }
+    // @SqlFunction fun joes(people: SqlQuery<Person>) = sql { people.filter { p -> p.name == "Joe" } }
     // IN the TransformAnnotatedFunction turns into:
     //     fun joes() = SqlQuery(xr = XR.Function(args=[people], body=(people.filter { p -> p.name == "Joe" })))
     //   Or more simply put:
@@ -149,7 +147,7 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
     // And the parser will know that `joes` is a pluckable function and create the following:
     //   val drivingJoes = SqlQuery(Apply(Tag(123), listOf(People.filterAge)), runtimes={Tag(123)->joes})
 
-    // Also note that if there is a receiver e.g. @CapturedFunction Person.joinAddress(street: String) = sql { flatJoin(Table<Address>().filter { street == ... }) { ... } }
+    // Also note that if there is a receiver e.g. @SqlFunction Person.joinAddress(street: String) = sql { flatJoin(Table<Address>().filter { street == ... }) { ... } }
     // and the it used as sql { val p = from(people); val a = from(a.joinAddresses("123 someplace"))
     // we need the scaffold to have the receiver-position element i.e. `a` to be the 1st argument
     // p.e. scaffoldCapFunctionQuery((Person, String) -> SqlQuery<Address> i.e. joinAddresses, args=[a, "123 someplace"])
@@ -217,7 +215,7 @@ class TransformScaffoldAnnotatedFunctionCall(val superTransformer: VisitTransfor
     // Note that the one case that we haven't considered aboive is where the argument to the function call i.e. People.filterAge
     // itself is a uprootable variable for example:
     //   val drivingPeople = captured { Table<Person>().filter { p -> p.age > 18 } }    // a.k.a. SqlQuery(xr=People.filterAge)
-    //   @CapturedFunction fun joes(people: SqlQuery<Person>) = sql { people.filter { p -> p.name == "Joe" } }
+    //   @SqlFunction fun joes(people: SqlQuery<Person>) = sql { people.filter { p -> p.name == "Joe" } }
     //   val drivingJoes = captured { joes(drivingPeople) }
     // IN that situation the scaffolding would look like so:
     //   val drivingJoes = scaffoldCapFunctionQuery(SqlQuery((people)=>people.filterJoe <- i.e. `joes`), args=[drivingPeople] <- NOTE Here!)
