@@ -150,6 +150,37 @@ class QueryReq: GoldenSpecDynamic(QueryReqGoldenDynamic, Mode.ExoGoldenTest(), {
     shouldBeGolden(people.build<PostgresDialect>())
   }
 
+  "correlated contains" - {
+    "correlated contains - simple" {
+      val people = sql {
+        Table<Person>().filter { p -> p.id in Table<Address>().map { p -> p.ownerId } }
+      }
+      shouldBeGolden(people.xr, "XR")
+      shouldBeGolden(people.build<PostgresDialect>())
+    }
+    "correlated contains - different var names 1" {
+      val people = sql {
+        Table<Person>().filter { p -> p.id in Table<Address>().map { it.ownerId } }
+      }
+      shouldBeGolden(people.xr, "XR")
+      shouldBeGolden(people.build<PostgresDialect>())
+    }
+    "correlated contains - different var names 2" {
+      val people = sql {
+        Table<Person>().filter { p -> p.id in Table<Address>().map { pp -> pp.ownerId } }
+      }
+      shouldBeGolden(people.xr, "XR")
+      shouldBeGolden(people.build<PostgresDialect>())
+    }
+    "correlated contains - only it vars" {
+      val people = sql {
+        Table<Person>().filter { it.id in Table<Address>().map { it.ownerId } }
+      }
+      shouldBeGolden(people.xr, "XR")
+      shouldBeGolden(people.build<PostgresDialect>())
+    }
+  }
+
   "query with flatMap" {
     val people = sql { Table<Person>().flatMap { p -> Table<Address>().filter { a -> a.ownerId == p.id } } }
     shouldBeGolden(people.xr, "XR")
