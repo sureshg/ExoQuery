@@ -113,4 +113,25 @@ enum class ExoCliOption(
     "Enables/disables compile-time queries across multiple files. SqlQuery/SqlExpression/SqlAction/SqlBatchAction instances used across files must be inline. They take advantage of a compile-time store called StoredXRs.db.",
     false
   ),
+
+  ENABLE_ERROR_DETAILS(
+    "enableErrorDetails",
+    "<true|false>",
+    "Enables/disables full API printout and compiler-stack trace on errors during lifting/parsing of ExoQuery expressions",
+    false
+  ),
+
+  ERROR_DETAILS_COLOR(
+    "errorDetailsColor",
+    "<true|false>",
+    "Enables/disables colored output for error details",
+    false
+  ),
+
+  ERROR_DETAILS_STACK_COUNT(
+    "errorDetailsStackCount",
+    "<number>",
+    "Number of stack frames to include in error details (-1 for all)",
+    false
+  ),
 }

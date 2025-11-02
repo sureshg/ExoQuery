@@ -8,9 +8,6 @@ import io.exoquery.generation.Code
 import io.exoquery.plugin.location
 import io.exoquery.plugin.logging.CompileLogger
 import io.exoquery.plugin.trees.ContainerExpr
-import io.exoquery.plugin.trees.CrossFile
-import io.exoquery.plugin.trees.OwnerChain
-import io.exoquery.plugin.trees.SqlQueryExpr
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -21,12 +18,10 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrReturn
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.statements
 
 typealias FileQueryAccum = FileAccum<PrintableQuery>
 typealias FileCodegenAccum = FileAccum<Code.Entities>
@@ -50,7 +45,7 @@ class VisitTransformExpressions(
   fun makeCompileLogger(currentExpr: IrElement) =
     CompileLogger.invoke(config, currentFile, currentExpr)
 
-  fun makeScope(currentExpr: IrElement, scopeOwner: IrSymbol, currentDeclarationParent: IrDeclarationParent?, storedXRsScope: CompileTimeStoredXRsScope) = CX.Scope(
+  fun makeScope(currentExpr: IrElement, scopeOwner: IrSymbol, currentDeclarationParent: IrDeclarationParent?, storedXRsScope: CompileTimeStoredXRsScope, perFileDebugConfig: CX.PerFileDebugConfig = CX.PerFileDebugConfig()) = CX.Scope(
     currentExpr = currentExpr,
     logger = makeCompileLogger(currentExpr),
     currentFile = currentFile,
@@ -60,6 +55,7 @@ class VisitTransformExpressions(
     scopeOwner = scopeOwner,
     currentDeclarationParent = currentDeclarationParent,
     storedXRsScope = storedXRsScope,
+    perFileDebugConfig = perFileDebugConfig
   )
 
   context (CX.QueryAccum)
@@ -123,7 +119,7 @@ class VisitTransformExpressions(
     // of the compilation phases).
     //if (file.hasAnnotation<ExoGoldenTest>())
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val scope = makeScope(file, scopeOwner, currentDeclarationParent, storedXRsScope)
+    val scope = makeScope(file, scopeOwner, currentDeclarationParent, storedXRsScope, CX.PerFileDebugConfig.fromFile(file))
 
     val sanityCheck = currentFile.path == file.path
     if (!sanityCheck) {
@@ -153,7 +149,7 @@ class VisitTransformExpressions(
 
   override fun visitFunctionNew(declaration: IrFunction, data: VisitorContext): IrStatement {
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val scopeContext = makeScope(declaration, scopeOwner, currentDeclarationParent, storedXRsScope)
+    val scopeContext = makeScope(declaration, scopeOwner, currentDeclarationParent, storedXRsScope, CX.PerFileDebugConfig.fromFile(currentFile))
     val builderContext = CX.Builder(scopeContext)
     val runner = ScopedRunner(scopeContext, builderContext, data)
 
@@ -173,29 +169,33 @@ class VisitTransformExpressions(
     }
   }
 
-  data class ScopedRunner(val scopeContext: CX.Scope, val builderContext: CX.Builder, val visitorContext: VisitorContext) {
-    fun <R : IrElement> run(expression: R, block: context (CX.Scope, CX.Builder, CX.QueryAccum) () -> R): R =
-      try {
-        block(scopeContext, builderContext, CX.QueryAccum(visitorContext.queriesAccum))
-      } catch (e: ParseError) {
-        // builderContext.logger.error(e.msg, e.location ?: expression.location(currentFile.fileEntry))
-        scopeContext.logger.error(
-          // e.msg + "\n---------------- Stack Trace ----------------\n" + // stackTraceToString includes the message
-          e.stackTraceToString(),
-        )
-        expression
-      } catch (e: TransformXrError) {
-        val location = expression.location(scopeContext.currentFile.fileEntry)
-        scopeContext.logger.error("An error occurred during the transformation of the expression: ${e.message}\n" + e.stackTraceToString(), location)
-        expression
-      }
+  data class ScopedRunner(val scopeContext: CX.Scope, val builderContext: CX.Builder, val visitorContext: VisitorContext, val catchError: Boolean = true) {
+    fun <R : IrElement> run(expression: R, block: context (CX.Scope, CX.Builder, CX.QueryAccum) () -> R): R = run {
+      fun runBlock() = block(scopeContext, builderContext, CX.QueryAccum(visitorContext.queriesAccum))
+      if (catchError)
+        try {
+          runBlock()
+        } catch (e: ParseError) {
+          // builderContext.logger.error(e.msg, e.location ?: expression.location(currentFile.fileEntry))
+          scopeContext.logger.error(
+            e.fullMessageWithStackTrace(),
+          )
+          expression
+        } catch (e: TransformXrError) {
+          val location = expression.location(scopeContext.currentFile.fileEntry)
+          scopeContext.logger.error("An error occurred during the transformation of the expression: ${e.message}\n" + e.stackTraceToString(), location)
+          expression
+        }
+      else
+        runBlock()
+    }
   }
 
 
   // TODO move this to visitGetValue? That would be more efficient but what other things might we wnat to transform?
   override fun visitExpression(expression: IrExpression, data: VisitorContext): IrExpression {
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val scopeContext = makeScope(expression, scopeOwner, currentDeclarationParent, storedXRsScope)
+    val scopeContext = makeScope(expression, scopeOwner, currentDeclarationParent, storedXRsScope, CX.PerFileDebugConfig.fromFile(currentFile))
 
     // We should not be transforming containers that have already been transformed. TODO make them all in to one check and don't check if they're case-class-constructor multiple times!
     with (scopeContext) {
@@ -228,10 +228,8 @@ class VisitTransformExpressions(
 
   override fun visitCall(expression: IrCall, data: VisitorContext): IrElement {
     val scopeOwner = currentScope!!.scope.scopeOwnerSymbol
-    val scopeCtx = makeScope(expression, scopeOwner, currentDeclarationParent, storedXRsScope)
+    val scopeCtx = makeScope(expression, scopeOwner, currentDeclarationParent, storedXRsScope, CX.PerFileDebugConfig.fromFile(currentFile))
     val stack = RuntimeException()
-
-
 
     with (scopeCtx) {
       // We should not be transforming containers that have already been transformed. TODO make them all in to one check and don't check if they're case-class-constructor multiple times!
@@ -254,18 +252,7 @@ class VisitTransformExpressions(
     val transformScaffoldAnnotatedFunctionCall = TransformScaffoldAnnotatedFunctionCall(this, "[ExoQuery: VisitTransformExpressions-VisitCall]")
     val transformReadCodegen = TransformCaptureCodegenRead(data.codegenAccum)
 
-    val runner = ScopedRunner(scopeCtx, builderContext, data)
-
-    // Can possibly call the TransformProjectCapture2 here
-    // val transformProjectCapture = TransformProjectCapture2(this)
-    //val possiblyProjected =
-    //  runner.run(expression) {
-    //    if (transformProjectCapture.matches(expression))
-    //      transformProjectCapture.transform(expression) ?: expression
-    //    else
-    //      expression
-    //  }
-
+    val runner = ScopedRunner(scopeCtx, builderContext, data, false)
     return runner.run(expression) {
       when {
         transformScaffoldAnnotatedFunctionCall.matches(expression) -> transformScaffoldAnnotatedFunctionCall.transform(expression)
@@ -282,9 +269,6 @@ class VisitTransformExpressions(
         // Is this an sqlQuery.build(PostgresDialect) call? if yes see if the it is a compile-time query and transform it
         transformCompileQuery.matches(expression) -> transformCompileQuery.transform(expression)
         transformReadCodegen.matches(expression) -> transformReadCodegen.transform(expression)
-
-
-        //showAnnotations.matches(expression) -> showAnnotations.transform(expression)
 
         // Want to run interpolator invoke before other things because the result of it is an SqlExpression that will
         // the be re-parsed in the parser if it is inside of a context(EnclosedContext) e.g. Query.map

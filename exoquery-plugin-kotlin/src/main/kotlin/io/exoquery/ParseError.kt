@@ -6,6 +6,7 @@ import io.exoquery.plugin.source
 import io.exoquery.plugin.symName
 import io.exoquery.plugin.transform.CX
 import io.exoquery.plugin.transform.prepareForPrintingAdHoc
+import io.exoquery.printing.StaticStrings
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFile
@@ -16,18 +17,11 @@ class LiftingError(val msg: String) : Exception(msg)
 
 fun liftingError(msg: String): Nothing = throw LiftingError(msg)
 
-class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) : Exception(msg) {
+class ParseError(val fullMessage: String, val location: CompilerMessageSourceLocation?, val addStackToPrint: Boolean, val stackCount: Int) : Exception(fullMessage) {
   companion object {
     context(CX.Scope)
     fun withFullMsg(msg: String, element: IrElement, file: IrFile, location: CompilerMessageSourceLocation, originalErrorTrace: Throwable? = null, showCrossFile: Boolean = false): ParseError {
       val fullMsg: String = run {
-        val expressionPart =
-          element.source()?.let { src ->
-            """|
-               |------------ Source ------------
-               |${src}""".trimMargin()
-          }
-
         val printingElement = element //.prepareForPrinting()
         val rawExpression =
           try {
@@ -39,12 +33,23 @@ class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) 
               e.stackTraceToString()
             }
           }
+
+        val expressionPart =
+          element.source()?.let { src ->
+            """|
+               |------------ Source ------------
+               |${src}
+               |------------ Raw Expression ------------
+               |${rawExpression}
+               |""".trimMargin().trimEnd()
+          }
+
         val rawExpressionTree =
           try {
-            printingElement.dumpSimple()
+            printingElement.dumpSimple(errorDetailsColor)
           } catch (e: Throwable) {
             try {
-              element.dumpSimple()
+              element.dumpSimple(errorDetailsColor)
             } catch (e: Throwable) {
               e.stackTraceToString()
             }
@@ -58,19 +63,45 @@ class ParseError(val msg: String, val location: CompilerMessageSourceLocation?) 
           }
 
         val originalErrorTrace =
-          originalErrorTrace?.let { "\n----------------- Original Cause: -----------------\n${it.stackTraceToString()}\n" } ?: ""
+          if (errorDetailsEnabled) {
+            originalErrorTrace?.let { "\n----------------- Original Cause: -----------------\n${it.stackTraceToString()}\n" } ?: ""
+          } else {
+            ""
+          }
 
-        """|[ExoQuery] Could not understand an expression or query due to an error: ${msg}.${expressionPart}
-           |------------ Raw Expression ------------
-           |${rawExpression}
-           |------------ Raw Expression Tree ------------
-           |${rawExpressionTree}
-           |""".trimMargin() + originalErrorTrace + crossFileContent
-      }
-      return ParseError(fullMsg, location)
+        val errorDetail =
+          if (errorDetailsEnabled) {
+            "\n" + """------------ Raw Expression Tree ------------
+            |${rawExpressionTree}
+            |""".trimMargin().trimEnd()
+          } else {
+            ""
+          }
+
+        """[ExoQuery] Could not understand an expression or query due to an error: ${msg}.${expressionPart}""" + errorDetail + originalErrorTrace + crossFileContent
+      }.trimEnd()
+
+      return ParseError(fullMsg, location, errorDetailsEnabled, stackCount)
     }
   }
+
+  fun fullMessageWithStackTrace(): String =
+    if (addStackToPrint) {
+      """${fullMessage}
+      |${StaticStrings.StackTraceHeader}
+      |${this.stackTrace.takeIfPositive(stackCount).joinToString("\n") { it.toString() } + if (this.stackTrace.size > stackCount) "\n${StaticStrings.TruncationLine}" else "" }
+      |""".trimMargin().trimEnd()
+    } else {
+      fullMessage
+    }
 }
+
+private fun <T> Array<T>.takeIfPositive(count: Int): List<T> =
+  if (count < 0) {
+    this.toList()
+  } else {
+    this.take(count)
+  }
 
 private fun tryDump(dump: () -> String): String = try {
   dump()
@@ -78,21 +109,19 @@ private fun tryDump(dump: () -> String): String = try {
   "Could not dump the expression due to an error: ${e.message}\n${e.stackTraceToString()}"
 }
 
-fun parseError(msg: String, location: CompilerMessageSourceLocation? = null): Nothing = throw ParseError(msg, location)
-
-fun parseErrorFromType(msg: String, location: CompilerMessageSourceLocation): Nothing =
-  throw ParseError(io.exoquery.plugin.logging.Messages.TypeParseErrorMsg(msg), location)
-
-fun parseErrorFromType(msg: String, e: Throwable, location: CompilerMessageSourceLocation): Nothing =
-  throw ParseError(io.exoquery.plugin.logging.Messages.TypeParseErrorMsg(msg + "\n----------------- Cause: -----------------\n" + e.stackTraceToString()), location)
+//fun parseError(msg: String, location: CompilerMessageSourceLocation? = null): Nothing = throw ParseError(msg, location)
 
 context(CX.Scope)
-fun parseErrorFromType(msg: String, expr: IrElement): Nothing = throw throw ParseError.withFullMsg(io.exoquery.plugin.logging.Messages.TypeParseErrorMsg(msg), expr, currentFile, expr.location())
+fun parseErrorFromType(msg: String, expr: IrElement, originalErrorTrace: Throwable? = null): Nothing =
+  throw ParseError.withFullMsg(io.exoquery.plugin.logging.Messages.TypeParseErrorMsg(msg), expr, currentFile, expr.location(), originalErrorTrace)
+
+context(CX.Scope) fun parseError(msg: String): Nothing =
+  throw ParseError.withFullMsg(msg, currentExpr, currentFile, currentExpr.location())
 
 context(CX.Scope) fun parseError(msg: String, expr: IrElement, originalErrorTrace: Throwable? = null, showCrossFile: Boolean = false): Nothing =
   throw ParseError.withFullMsg(msg, expr, currentFile, expr.location(), originalErrorTrace, showCrossFile)
 
-context(CX.Scope) fun parseErrorSimple(msg: String, expr: IrElement): Nothing = throw ParseError(msg, expr.location())
+context(CX.Scope) fun parseErrorSimple(msg: String, expr: IrElement): Nothing = throw ParseError(msg, expr.location(), errorDetailsEnabled, stackCount)
 
 context(CX.Scope) fun parseErrorSym(expr: IrCall): Nothing =
   throw ParseError.withFullMsg("Invalid function name or symbol: ${expr.symName}", expr, currentFile, expr.location())

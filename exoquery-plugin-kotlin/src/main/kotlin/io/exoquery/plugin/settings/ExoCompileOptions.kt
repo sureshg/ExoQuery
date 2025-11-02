@@ -22,6 +22,9 @@ class ExoCompileOptionsBuilder {
   var enableCodegenAI: Boolean? = false
   var forceRegen: Boolean? = false
   var enableCrossFileStore: Boolean? = ExoCompileOptions.EnableCrossFileStore
+  var enableErrorDetails: Boolean? = ExoCompileOptions.DefaultEnableErrorDetails
+  var errorDetailsColor: Boolean? = ExoCompileOptions.DefaultErrorDetailsColor
+  var errorDetailsStackCount: Int? = ExoCompileOptions.DefaultErrorDetailsStackCount
 
 
   fun build(): ExoCompileOptions {
@@ -41,6 +44,9 @@ class ExoCompileOptionsBuilder {
       enableCodegenAI ?: ExoCompileOptions.DefaultEnabledCodegenAI,
       forceRegen ?: ExoCompileOptions.DefaultForceRegen,
       enableCrossFileStore ?: ExoCompileOptions.EnableCrossFileStore,
+      enableErrorDetails ?: ExoCompileOptions.DefaultEnableErrorDetails,
+      errorDetailsColor ?: ExoCompileOptions.DefaultErrorDetailsColor,
+      errorDetailsStackCount ?: ExoCompileOptions.DefaultErrorDetailsStackCount
     )
   }
 }
@@ -64,4 +70,7 @@ fun ExoCompileOptionsBuilder.processOption(option: ExoCliOption, value: String) 
   ExoCliOption.ENABLE_CODEGEN_AI -> enableCodegenAI = value.toBoolean()
   ExoCliOption.FORCE_REGEN -> forceRegen = value.toBoolean()
   ExoCliOption.ENABLE_CROSS_FILE_STORE -> enableCrossFileStore = value.toBoolean()
+  ExoCliOption.ENABLE_ERROR_DETAILS -> enableErrorDetails = value.toBoolean()
+  ExoCliOption.ERROR_DETAILS_COLOR -> errorDetailsColor = value.toBoolean()
+  ExoCliOption.ERROR_DETAILS_STACK_COUNT -> errorDetailsStackCount = value.toInt()
 }
