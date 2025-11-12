@@ -5,7 +5,6 @@ import io.decomat.*
 import io.exoquery.*
 import io.exoquery.annotation.ExoBuildFunctionLabel
 import io.exoquery.plugin.*
-import io.exoquery.plugin.printing.dumpSimple
 import io.exoquery.plugin.trees.ExtractorsDomain.SqlBuildFunction
 import io.exoquery.plugin.trees.Lifter
 import io.exoquery.plugin.trees.SqlActionExpr
@@ -157,7 +156,7 @@ class TransformCompileQuery(val superTransformer: VisitTransformExpressions) : T
 
                     if (options?.queryPrintingEnabled ?: false)
                       this@Scope.logger.report(outputStringMaker.make(compileTime.inWholeMilliseconds, queryString, "query"), expr)
-                    SqlCompiledQueryExpr(sqlExpr, queryString, queryTokenized, false, parsedArgs.queryLabel, Phase.CompileTime, uprootable.packedXR, query.encode()).plant()
+                    SqlCompiledQueryExpr(sqlExpr, queryString, queryTokenized, queryTokenized.isStatic(), parsedArgs.queryLabel, Phase.CompileTime, uprootable.packedXR, query.encode()).plant()
 
                   }
                   is ProcessResult.Failure -> {
