@@ -110,6 +110,6 @@ kotest                            = { id = "io.kotest", version.ref = "kotest" }
 gradle-plugin-publish             = { id = "com.gradle.plugin-publish", version.ref = "gradle-publish" }
 buildconfig                       = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig" }
 androidx-room                     = { id = "androidx.room", version.ref = "androidx-room" }
-android-library                   = { id = "com.android.library", version.ref = "android-gradle" }  # 👈 NEW
-dokka                             = { id = "org.jetbrains.dokka", version.ref = "dokka" }  # 👈 NEW
-nexus-publish                     = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexus-publish" }  # 👈 NEW
+android-library                   = { id = "com.android.library", version.ref = "android-gradle" }
+dokka                             = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+nexus-publish                     = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexus-publish" }
