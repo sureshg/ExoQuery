@@ -1,12 +1,18 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-  kotlin("jvm") version "2.2.20"
+  alias(libs.plugins.kotlin.jvm)
   id("maven-publish")
   id("conventions")
   id("publish-jvm")
-  kotlin("plugin.serialization") version "2.2.20"
-  kotlin("kapt") version "2.2.20"
+  alias(libs.plugins.kotlinx.serialization)
+  alias(libs.plugins.kotlin.kapt)
+}
+
+repositories {
+  mavenCentral()
+  mavenLocal()
+  maven("https://s01.oss.sonatype.org/content/repositories/releases")
 }
 
 version = extra["pluginProjectVersion"].toString()
@@ -38,31 +44,20 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEa
   }
 }
 
-val thisVersion = version
-
 dependencies {
   api("io.exoquery:exoquery-engine:${runtimeVersion}")
-  implementation("org.mapdb:mapdb:3.1.0")
+  implementation(libs.mapdb)
 
-  compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable")
-
-  kapt("com.google.auto.service:auto-service:1.0.1")
-  compileOnly("com.google.auto.service:auto-service-annotations:1.0.1")
-
+  compileOnly(libs.kotlin.compiler.embeddable)
+  kapt(libs.auto.service)
+  compileOnly(libs.auto.service.annotations)
   compileOnly(libs.koog.agents)
 
   //implementation("com.facebook:ktfmt:0.43") <-- requires kotlin-test:1.6.10 so need to add to the GradlePlugin libs if we want to use this
 
-  // Actually this is going to be 0.0.5 - using an unpublished one now
-  api("io.exoquery:decomat-core:1.0.0")
-  api("io.exoquery:pprint-kotlin:3.0.0")
-  api("com.github.vertical-blank:sql-formatter:2.0.4")
+  api(libs.decomat.core)
+  api(libs.pprint.kotlin)
+  api(libs.sql.formatter)
   // For the plugin to use Reflect it should be fine because the plugin dependencies do not get packed into the runtime jar
   api(kotlin("reflect"))
-}
-
-repositories {
-  mavenCentral()
-  mavenLocal()
-  maven("https://s01.oss.sonatype.org/content/repositories/releases")
 }

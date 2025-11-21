@@ -8,25 +8,23 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 val kspEnabled = true
 
 plugins {
-  kotlin("multiplatform") version "2.2.20"
-  id("maven-publish")
-  id("io.exoquery.terpal-plugin") version "2.2.20-2.0.1.PL"
   id("conventions-multiplatform")
-  id("publish")
   // can remove this if kspEnabled is false (this the variable kspEnabled cannot be used here)
-  id("com.google.devtools.ksp") version "2.2.20-2.0.3"
-  kotlin("plugin.serialization") version "2.2.20"
+  alias(libs.plugins.ksp)
+  alias(libs.plugins.kotlinx.serialization)
+  alias(libs.plugins.terpal)
+  id("publish")
 }
 
 version = extra["pluginProjectVersion"].toString()
 
 dependencies {
   if (kspEnabled)
-    add("kspCommonMainMetadata", "io.exoquery:decomat-ksp:1.0.0")
+    add("kspCommonMainMetadata", libs.decomat.ksp)
 
   // Double ksp entry causes strange overrides so do not use it
-  //if (kspEnabled) add("kspJvm", "io.exoquery:decomat-ksp:1.0.0")
-  commonMainApi("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
+  //if (kspEnabled) add("kspJvm", libs.decomat.ksp)
+  commonMainApi(libs.kotlinx.datetime)
 }
 
 kotlin {
@@ -52,16 +50,16 @@ kotlin {
 
         // Actually this is going to be 0.0.5 - using an unpublished one now
         // No reflection in pprint-kmp
-        api("io.exoquery:pprint-kotlin-kmp:3.0.0")
+        api(libs.pprint.kotlin.kmp)
         // Actually this is going to be 0.0.5 - using an unpublished one now
-        api("io.exoquery:decomat-core:1.0.0")
-        api("io.exoquery:terpal-runtime:2.2.20-2.0.1.PL")
+        api(libs.decomat.core)
+        api(libs.terpal.runtime)
         // This is a java-only library, I have no idea who it can even be here.
         // maybe if I actually attempt to use it in KMP mode in a non-java target it will actually fail
-        api("com.github.vertical-blank:sql-formatter:2.0.4")
+        api(libs.sql.formatter)
 
         // JB Annotations are now multiplatform
-        implementation("org.jetbrains:annotations:26.0.2")
+        implementation(libs.jb.annotations)
       }
     }
 
@@ -69,18 +67,18 @@ kotlin {
       dependencies {
         implementation(libs.kotest.framework)
         implementation(libs.kotest.assertions)
-        //implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
+        //implementation(libs.kotlinx.datetime)
         implementation(kotlin("test"))
         implementation(kotlin("test-common"))
         implementation(kotlin("test-annotations-common"))
         //jvm-only setup for kotest, need to find the KMP way
-        //implementation("io.kotest:kotest-runner-junit5:5.8.0")
+        //implementation(libs.kotest.runner.junit5)
       }
     }
 
     val jvmMain by getting {
       dependencies {
-        api("com.github.vertical-blank:sql-formatter:2.0.4")
+        api(libs.sql.formatter)
         compileOnly(libs.koog.agents)
       }
     }

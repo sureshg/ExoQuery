@@ -1,15 +1,20 @@
 plugins {
   id("conventions-multiplatform")
-  kotlin("multiplatform") version "2.2.20"
-  id("com.google.devtools.ksp") version "2.2.20-2.0.3"
+  alias(libs.plugins.ksp)
   alias(libs.plugins.kotest) apply false
   id("io.exoquery.exoquery-plugin")
 
   // NEED serialization to be able to read the encoded XR, in the future the GradlePlugin should probably add this to the classpath
-  kotlin("plugin.serialization") version "2.2.20"
+  alias(libs.plugins.kotlinx.serialization)
 }
+
 pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
   pluginManager.apply("io.kotest")
+}
+
+repositories {
+  mavenCentral()
+  mavenLocal()
 }
 
 kotlin {
@@ -49,17 +54,17 @@ kotlin {
     val jvmMain by getting {
       dependencies {
         // Want to have the full pprint in the JVM to do reflective deep-object diffs
-        implementation("io.exoquery:pprint-kotlin:3.0.0")
+        implementation(libs.pprint.kotlin)
 
-        implementation("ai.koog:koog-agents:0.3.0")
+        implementation(libs.koog.agents)
 
-        implementation("org.jetbrains.exposed:exposed-core:0.60.0")
-        implementation("org.jetbrains.exposed:exposed-dao:0.60.0")
-        implementation("org.jetbrains.exposed:exposed-jdbc:0.60.0")
+        implementation(libs.exposed.core)
+        implementation(libs.exposed.dao)
+        implementation(libs.exposed.jdbc)
 
-        implementation("org.postgresql:postgresql:42.7.3")
-        implementation("io.zonky.test:embedded-postgres:2.0.7")
-        implementation("io.zonky.test.postgres:embedded-postgres-binaries-linux-amd64:16.2.0")
+        implementation(libs.postgresql)
+        implementation(libs.embedded.postgres)
+        implementation(libs.embedded.postgres.binaries)
       }
     }
 
@@ -94,15 +99,10 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
   }
 }
 
-repositories {
-  mavenCentral()
-  mavenLocal()
-}
-
 exoQuery {
 //  // CANNOT HAVE LINEBREAKS, will throw `Wrong plugin option format: null, should be plugin:<pluginId>:<optionName>=<value>`
 //  outputString.set("%{br}==== Compiled %{kind} in %{total}ms: ====%{br}%{sql}")
-  codegenDrivers.add("org.postgresql:postgresql:42.7.3")
+  codegenDrivers.add(libs.postgresql.get().toString())
   this.enableCodegenAI = true
   //enableCrossFileStore = false // uncomment to disable cross-file storage (enabled by default)
 }

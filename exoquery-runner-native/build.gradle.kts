@@ -1,14 +1,10 @@
-import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.gradle.api.tasks.testing.logging.TestLogEvent
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeOutputKind
 import org.jetbrains.kotlin.konan.target.HostManager
 
 plugins {
   id("conventions-multiplatform-nativeonly")
-  kotlin("multiplatform")
-  kotlin("plugin.serialization") version "2.2.20"
+  alias(libs.plugins.kotlinx.serialization)
   id("io.exoquery.exoquery-plugin")
 }
 
@@ -35,8 +31,8 @@ kotlin {
         api(libs.kotlinx.serialization.core)
         api(libs.kotlinx.serialization.json)
         api(libs.kotlinx.coroutines.core)
-        //api("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
-        implementation("app.cash.sqldelight:native-driver:2.0.2")
+        //api(libs.kotlinx.datetime)
+        implementation(libs.sqldelight.native.driver)
       }
     }
 
@@ -119,5 +115,5 @@ kotlin {
 
 
 dependencies {
-  commonMainApi("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
+  commonMainApi(libs.kotlinx.datetime)
 }

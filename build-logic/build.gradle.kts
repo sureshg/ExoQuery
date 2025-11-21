@@ -1,19 +1,15 @@
 plugins {
-  `kotlin-dsl`
-}
-
-repositories {
-  mavenCentral()
-  mavenLocal()
-  gradlePluginPortal()
+    `kotlin-dsl`
 }
 
 dependencies {
-  implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.20")
-  implementation("io.github.gradle-nexus:publish-plugin:1.1.0")
-  implementation("org.jetbrains.dokka:dokka-gradle-plugin:1.9.20")
+    implementation(libs.kotlin.gradle.plugin)
+    implementation(libs.nexus.publish.plugin)
+    implementation(libs.dokka.gradle.plugin)
+    // Override the 1.6.1 dependency coming from kotlin-gradle-plugin
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.jackson.module.kotlin)
 
-  // Override the 1.6.1 dependency coming from kotlin-gradle-plugin
-  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
-  implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
+    // https://github.com/gradle/gradle/issues/15383#issuecomment-779893192
+    implementation(files(libs.javaClass.superclass.protectionDomain.codeSource.location))
 }

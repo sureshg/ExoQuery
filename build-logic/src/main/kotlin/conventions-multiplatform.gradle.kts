@@ -8,12 +8,6 @@ plugins {
   kotlin("multiplatform")
 }
 
-
-kotlin {
-  jvm {
-  }
-}
-
 tasks.withType<KotlinWebpack>().configureEach {
   sourceMaps = true
   mode = KotlinWebpackConfig.Mode.DEVELOPMENT

@@ -19,7 +19,7 @@ include("exoquery-runner-core")
 
 val isCI: Boolean = settings.extra.has("isCI")
 val isLocal = !isCI
-val isLinux = System.getProperty("os.name").toLowerCase().contains("linux")
+val isLinux = System.getProperty("os.name").lowercase().contains("linux")
 
 // If it's a local build or we're building the CI onl linux include the android project
 if (isLocal || isLinux) {

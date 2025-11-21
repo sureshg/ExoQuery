@@ -1,8 +1,13 @@
 plugins {
   id("conventions")
-  kotlin("multiplatform") version "2.2.20"
+  alias(libs.plugins.kotlin.multiplatform)
   alias(libs.plugins.kotest)
   id("io.exoquery.exoquery-plugin")
+}
+
+repositories {
+  mavenCentral()
+  mavenLocal()
 }
 
 version = extra["controllerProjectVersion"].toString()
@@ -16,11 +21,6 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEa
       targetCompatibility = JavaVersion.VERSION_11
     }
   }
-}
-
-repositories {
-  mavenCentral()
-  mavenLocal()
 }
 
 kotlin {
@@ -50,11 +50,11 @@ kotlin {
         implementation(kotlin("test-common"))
         implementation(kotlin("test-annotations-common"))
         // Kotlin Compile Testing library (use the maintained fork compatible with Kotlin 2.x)
-        implementation("dev.zacsweers.kctfork:core:0.11.0")
+        implementation(libs.kctfork.core)
         // Use the compiler plugin from local maven if available (matches repo's pluginProjectVersion)
         implementation("io.exoquery:exoquery-plugin-kotlin:${version}")
         // Kotlin compiler embeddable needed by compile-testing in some environments
-        implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:${libs.versions.kotlin.get()}")
+        implementation(libs.kotlin.compiler.embeddable)
       }
     }
   }

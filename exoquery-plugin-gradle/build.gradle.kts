@@ -1,13 +1,17 @@
 plugins {
-  kotlin("jvm") version "2.2.20"
-
+  alias(libs.plugins.kotlin.jvm)
   // No inclusion of `publish` here because this project is not published to maven directly
   id("maven-publish")
   id("conventions")
   id("publish-jvm")
   id("java-gradle-plugin")
-  id("com.gradle.plugin-publish") version "1.1.0"
-  id("com.github.gmazzo.buildconfig") version "3.1.0"
+  alias(libs.plugins.gradle.plugin.publish)
+  alias(libs.plugins.buildconfig)
+}
+
+repositories {
+  mavenCentral()
+  mavenLocal()
 }
 
 version = extra["pluginProjectVersion"].toString()
@@ -50,9 +54,4 @@ gradlePlugin {
       tags = listOf("kotlin", "exoquery", "jvm")
     }
   }
-}
-
-repositories {
-  mavenCentral()
-  mavenLocal()
 }
