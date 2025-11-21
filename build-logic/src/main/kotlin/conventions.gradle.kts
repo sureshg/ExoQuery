@@ -8,7 +8,7 @@ internal val Project.libs
 // For exoquery-engine, exoquery-plugin-gradle, exoquery-plugin-kotlin
 extra["pluginProjectVersion"] = "${libs.versions.kotlin.get()}-${libs.versions.pluginVersion.get()}"
 // For exoquery-runner-core, exoquery-runner-jdbc, exoquery-runner-android, exoquery-runner-native
-extra["controllerProjectVersion"] = libs.versions.kotlin.get()
+extra["controllerProjectVersion"] = libs.versions.pluginVersion.get()
 extra["decomatVersion"] = libs.versions.decomat.get()
 
 group = "io.exoquery"
