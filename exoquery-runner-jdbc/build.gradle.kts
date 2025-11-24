@@ -1,15 +1,18 @@
-import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-
 plugins {
   // Only uses the base conventions-project because this builds only for jvm and all of those define native targets
   id("conventions")
-  kotlin("multiplatform") version "2.2.20"
-  id("com.google.devtools.ksp") version "2.2.20-2.0.3"
+  alias(libs.plugins.kotlin.multiplatform)
+  alias(libs.plugins.ksp)
   alias(libs.plugins.kotest)
   id("io.exoquery.exoquery-plugin")
 
   // NEED serialization to be able to read the encoded XR, in the future the GradlePlugin should probably add this to the classpath
-  kotlin("plugin.serialization") version "2.2.20"
+  alias(libs.plugins.kotlinx.serialization)
+}
+
+repositories {
+  mavenCentral()
+  mavenLocal()
 }
 
 version = extra["controllerProjectVersion"].toString()
@@ -43,11 +46,6 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEa
   }
 }
 
-repositories {
-  mavenCentral()
-  mavenLocal()
-}
-
 kotlin {
   compilerOptions {
     optIn.add("io.exoquery.annotation.ExoInternal")
@@ -76,8 +74,8 @@ kotlin {
         api(libs.kotlinx.coroutines.core)
 
         // Hikari should be optional on a user-level. The contexts only need a DataSource instance.
-        implementation("com.zaxxer:HikariCP:5.0.1")
-        implementation("com.typesafe:config:1.4.1")
+        implementation(libs.hikaricp)
+        implementation(libs.typesafe.config)
       }
     }
     jvmTest {
@@ -86,13 +84,13 @@ kotlin {
 
       dependencies {
         // This brings in reflection so make sure it is only there in test
-        implementation("io.exoquery:pprint-kotlin:3.0.0")
-        implementation("io.zonky.test:embedded-postgres:2.0.7")
-        implementation("mysql:mysql-connector-java:8.0.29")
-        implementation("com.microsoft.sqlserver:mssql-jdbc:7.4.1.jre11")
-        implementation("com.h2database:h2:2.2.224")
-        implementation("com.oracle.ojdbc:ojdbc8:19.3.0.0")
-        implementation("org.xerial:sqlite-jdbc:3.42.0.1")
+        implementation(libs.pprint.kotlin)
+        implementation(libs.embedded.postgres)
+        implementation(libs.mysql.connector.java)
+        implementation(libs.mssql.jdbc)
+        implementation(libs.h2)
+        implementation(libs.oracle.ojdbc8)
+        implementation(libs.sqlite.jdbc)
         implementation(libs.kotest.runner.junit5)
 
         implementation(kotlin("test-common"))
@@ -101,10 +99,10 @@ kotlin {
         // When running tests directly from intellij seems that this library needs to be referenced directly and not the bom-version
         // The other `platform` one causes an error: Caused by: java.lang.IllegalStateException: Missing embedded postgres binaries
         // (only when running directly from intellij using the GUI (i.e. Kotest plugin targets))
-        implementation("io.zonky.test.postgres:embedded-postgres-binaries-linux-amd64:16.2.0")
+        implementation(libs.embedded.postgres.binaries)
         //implementation(project.dependencies.platform("io.zonky.test.postgres:embedded-postgres-binaries-bom:16.2.0"))
 
-        implementation("org.flywaydb:flyway-core:7.15.0") // corresponding to embedded-postgres
+        implementation(libs.flyway.core) // corresponding to embedded-postgres
         //implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
       }
     }

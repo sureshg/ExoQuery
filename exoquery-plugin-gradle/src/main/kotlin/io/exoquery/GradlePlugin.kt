@@ -207,9 +207,11 @@ class GradlePlugin : KotlinCompilerPluginSupportPlugin {
       }
     }
 
-    // ALSO needed for the plugin classpath
-    kotlinCompilation.dependencies {
-      api("io.exoquery:exoquery-engine:${BuildConfig.VERSION}")
+    // Skip API deps for test compilation
+    if (!kotlinCompilation.name.contains("test", ignoreCase = true)) {
+      kotlinCompilation.dependencies {
+          api("io.exoquery:exoquery-engine:${BuildConfig.VERSION}")
+      }
     }
 
     val conventions = GeneratedEntitiesDirConventions(ext, project)

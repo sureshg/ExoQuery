@@ -1,35 +1,19 @@
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
+import org.gradle.accessors.dm.LibrariesForLibs
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.util.Base64
 
-repositories {
-  // Do NOT enable this otherwise all kinds of horror ensues. Not exactly sure why. Maybe something in the local repo interferes with the build. with builds.
-  // Note that this is also used in the publish plugin althought it is not strictly necessary for it to be there.
-  //mavenLocal()
-  mavenCentral()
-}
-
-
-val kotlinVersion = "2.2.20"
-val pluginVersion = "2.0.0.PL.RC1.3"
+internal val Project.libs
+    get() = the<LibrariesForLibs>()
 
 // For exoquery-engine, exoquery-plugin-gradle, exoquery-plugin-kotlin
-extra["pluginProjectVersion"] = "${kotlinVersion}-${pluginVersion}"
+extra["pluginProjectVersion"] = "${libs.versions.kotlin.get()}-${libs.versions.pluginVersion.get()}"
 // For exoquery-runner-core, exoquery-runner-jdbc, exoquery-runner-android, exoquery-runner-native
-extra["controllerProjectVersion"] = pluginVersion
+extra["controllerProjectVersion"] = libs.versions.pluginVersion.get()
+extra["decomatVersion"] = libs.versions.decomat.get()
 
 group = "io.exoquery"
 // Default version is the plugin-project version. Overridden in the subprojects
 version = extra["pluginProjectVersion"].toString()
-
-val decomatVersion = "1.0.0"
-extra["decomatVersion"] = decomatVersion
 
 check("$version".isNotBlank() && version != "unspecified")
 { "invalid version $version" }
@@ -86,7 +70,7 @@ tasks.withType<AbstractTestTask> {
       forEach { test -> logger.lifecycle("\t\t${test.displayName()}") }
     }
 
-    private fun TestDescriptor.displayName() = parent?.let { "${it.name} - $name" } ?: "$name"
+    private fun TestDescriptor.displayName() = parent?.let { "${it.name} - $name" } ?: name
 
   })
 }

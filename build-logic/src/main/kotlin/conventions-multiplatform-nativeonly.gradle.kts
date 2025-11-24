@@ -5,13 +5,6 @@ plugins {
   kotlin("multiplatform")
 }
 
-
-repositories {
-  mavenCentral()
-  mavenLocal() // Always needs to be AFTER central
-}
-
-
 /*
 This thing is necessary because we can't use conventions-multiplatform with exoquery-runner-native because conventions-multiplatform
 enables JVM by default (I need this for testing an exoquery-engine functionality) which we can't do for exoquery-runner-native as it

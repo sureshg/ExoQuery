@@ -1,22 +1,23 @@
-import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.gradle.api.tasks.testing.logging.TestLogEvent
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.konan.target.HostManager
 
 plugins {
   id("conventions")
   kotlin("multiplatform")
   id("com.android.library")
-  kotlin("plugin.serialization") version "2.2.20"
+  alias(libs.plugins.kotlinx.serialization)
   alias(libs.plugins.kotest)
   id("io.exoquery.exoquery-plugin")
 
   // Already on the classpath
   //id("org.jetbrains.kotlin.android") version "2.2.20"
 
-  id("com.google.devtools.ksp") version "2.2.20-2.0.3"
-  id("androidx.room") version "2.7.1"
+  alias(libs.plugins.ksp)
+  alias(libs.plugins.androidx.room)
+}
+
+repositories {
+  mavenCentral()
+  mavenLocal()
 }
 
 version = extra["controllerProjectVersion"].toString()
@@ -83,65 +84,42 @@ kotlin {
 
       dependencies {
         api(project(":exoquery-runner-core"))
-
         api(libs.controller.android)
 
         api(libs.kotlinx.serialization.core)
         api(libs.kotlinx.serialization.protobuf)
         api(libs.kotlinx.coroutines.core)
-        implementation("androidx.sqlite:sqlite-framework:2.4.0")
+        implementation(libs.androidx.sqlite.framework)
 
-        val roomVersion = "2.7.1"
-        implementation("androidx.room:room-runtime:${roomVersion}")
-        implementation("androidx.room:room-ktx:${roomVersion}")
+        implementation(libs.androidx.room.runtime)
+        implementation(libs.androidx.room.ktx)
       }
     }
 
-    val androidInstrumentedTest by getting {
-      dependencies {
+    // Common test dependencies to avoid duplication
+    val androidTestDependencies: DependencyHandler.() -> Unit = {
         implementation(project(":exoquery-runner-core"))
-
-        //implementation(kotlin("test-junit"))
-        //implementation("junit:junit:4.13.2")
-        implementation(kotlin("test-common"))
-        implementation(kotlin("test-annotations-common"))
-
-        implementation("org.robolectric:robolectric:4.13")
-        implementation("androidx.test:core:1.6.1")
-        implementation("androidx.test:runner:1.6.1")
-        implementation("app.cash.sqldelight:android-driver:2.0.2")
-        implementation("androidx.test.ext:junit:1.1.3")
-        implementation("androidx.test.espresso:espresso-core:3.4.0")
-      }
-    }
-
-    val androidUnitTest by getting {
-      dependencies {
-        implementation(project(":exoquery-runner-core"))
-
-        //implementation(kotlin("test-junit"))
-        //implementation("junit:junit:4.13.2")
         implementation(kotlin("test"))
         implementation(kotlin("test-common"))
         implementation(kotlin("test-annotations-common"))
+        implementation(libs.robolectric)
+        implementation(libs.androidx.test.core)
+        implementation(libs.androidx.test.runner)
+        implementation(libs.sqldelight.android.driver)
+        implementation(libs.androidx.test.junit)
+        implementation(libs.androidx.test.espresso.core)
+      }
 
-        implementation("org.robolectric:robolectric:4.13")
-        implementation("androidx.test:core:1.6.1")
-        implementation("androidx.test:runner:1.6.1")
-        implementation("app.cash.sqldelight:android-driver:2.0.2")
-        implementation("androidx.test.ext:junit:1.1.3")
-        implementation("androidx.test.espresso:espresso-core:3.4.0")
+    val androidInstrumentedTest by getting {
+      dependencies(androidTestDependencies)
+    }
+
+    val androidUnitTest by getting {
+      dependencies(androidTestDependencies)
       }
     }
   }
 
-}
-
 dependencies {
-  commonMainApi("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
-}
-
-repositories {
-  mavenCentral()
-  mavenLocal()
+  commonMainApi(libs.kotlinx.datetime)
 }

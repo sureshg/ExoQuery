@@ -1,11 +1,14 @@
 plugins {
   id("conventions-multiplatform-nativeonly")
-  kotlin("multiplatform") version "2.2.20"
-  id("com.google.devtools.ksp") version "2.2.20-2.0.3"
+  alias(libs.plugins.ksp)
   id("io.exoquery.exoquery-plugin")
-
   // NEED serialization to be able to read the encoded XR, in the future the GradlePlugin should probably add this to the classpath
-  kotlin("plugin.serialization") version "2.2.20"
+  alias(libs.plugins.kotlinx.serialization)
+}
+
+repositories {
+  mavenCentral()
+  mavenLocal()
 }
 
 version = extra["controllerProjectVersion"].toString()
@@ -60,11 +63,6 @@ kotlin {
     //    }
     //}
   }
-}
-
-repositories {
-  mavenCentral()
-  mavenLocal()
 }
 
 dependencies {
