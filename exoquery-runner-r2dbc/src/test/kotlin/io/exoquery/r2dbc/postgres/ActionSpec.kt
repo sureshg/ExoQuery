@@ -10,8 +10,8 @@ import io.exoquery.controller.runActions
 import io.exoquery.r2dbc.joe
 import io.exoquery.r2dbc.people
 import io.exoquery.r2dbc.peopleNullable
-import io.exoquery.jdbc.runOn
 import io.exoquery.r2dbc.jdbc.TestDatabasesR2dbc
+import io.exoquery.r2dbc.runOn
 import io.exoquery.testdata.PersonNullable
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
