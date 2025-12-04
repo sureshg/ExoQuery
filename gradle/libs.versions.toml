@@ -1,6 +1,6 @@
 [versions]
 # ---- The ExoQuery plugin version that will be released! ----
-pluginVersion    = "2.0.0.PL.RC3"
+pluginVersion    = "2.0.0.PL"
 # ---- All the other versions used ----
 kotlin           = "2.2.20"
 ksp              = "2.2.20-2.0.3"
