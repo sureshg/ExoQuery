@@ -113,4 +113,58 @@ class JsonColumnsSpec : FreeSpec({
       }
     }
   }
+
+  "simple json/jsonb - annotation on member" - {
+    @Serializable
+    data class Person(val name: String, val age: Int)
+    @Serializable
+    data class JsonExample(val id: Int, @SqlJsonValue val value: Person)
+
+    val joe = Person("Joe", 123)
+    val jim = Person("Jim", 456)
+
+    "json" - {
+      "select product" {
+        sql { Table<JsonExample>() }.buildFor.Postgres().runOn(ctx) shouldBe listOf(
+          JsonExample(1, Person("Joe", 123))
+        )
+      }
+      "select field" {
+        sql { Table<JsonExample>().map { it.value } }.buildFor.Postgres().runOn(ctx) shouldBe listOf(
+          Person("Joe", 123)
+        )
+      }
+      "insert" {
+        val q = sql {
+          insert<JsonExample> { set(id to 2, value to param(jim)) }
+        }
+        q.build<PostgresDialect>().runOn(ctx) shouldBe 1
+        sql { Table<JsonExample>() }.buildFor.Postgres().runOn(ctx) shouldBe listOf(
+          JsonExample(1, Person("Joe", 123)),
+          JsonExample(2, Person("Jim", 456)),
+        )
+      }
+      "insert - paramCustom" {
+        val q = sql {
+          insert<JsonExample> { set(id to 2, value to paramCustom(jim)) }
+        }
+        q.build<PostgresDialect>().runOn(ctx) shouldBe 1
+        sql { Table<JsonExample>() }.buildFor.Postgres().runOn(ctx) shouldBe listOf(
+          JsonExample(1, Person("Joe", 123)),
+          JsonExample(2, Person("Jim", 456)),
+        )
+      }
+      "insert - setParams" {
+        val jsonValue = JsonExample(2, jim)
+        val q = sql {
+          insert<JsonExample> { setParams(jsonValue) }
+        }
+        q.build<PostgresDialect>().runOn(ctx) shouldBe 1
+        sql { Table<JsonExample>() }.buildFor.Postgres().runOn(ctx) shouldBe listOf(
+          JsonExample(1, Person("Joe", 123)),
+          JsonExample(2, Person("Jim", 456)),
+        )
+      }
+    }
+  }
 })
