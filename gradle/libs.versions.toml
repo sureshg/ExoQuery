@@ -1,7 +1,10 @@
 [versions]
 # ---- The ExoQuery plugin version that will be released! ----
 pluginVersion    = "2.0.0.PL"
+# ---- The Terpal Controller Version ----
+controller       = "4.4.0"
 # ---- All the other versions used ----
+terpal           = "2.2.20-2.0.1.PL"
 kotlin           = "2.2.20"
 ksp              = "2.2.20-2.0.3"
 serialization    = "1.7.3"
@@ -11,9 +14,7 @@ gradle           = "9.2.1"
 nexus-publish    = "1.1.0"
 dokka            = "1.9.20"
 android-gradle   = "8.2.0"
-controller       = "4.3.0"
 decomat          = "1.0.0"
-terpal           = "2.2.20-2.0.1.PL"
 pprint           = "3.0.0"
 kotest           = "6.0.3"
 jackson          = "2.17.0"
