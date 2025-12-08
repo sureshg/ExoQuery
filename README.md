@@ -1720,6 +1720,81 @@ val canadianOrders = sql {
 
 This implicit JSON-field selection lets you keep writing idiomatic Kotlin property access without hand-writing JSON operators. ExoQuery figures out the proper SQL JSON extraction for your target database — even for deeply nested structures.
 
+#### Selecting JSON fields inside JSON objects (explicit JSON extraction)
+
+In addition to implicit extraction via Kotlin property access, you can explicitly extract JSON fields using the json DSL:
+
+- json.extract(column, fieldName): returns the JSON node/object at the given field path
+- json.extractAsText(column, fieldName): returns the scalar value of the field as text
+
+Explicit extraction is useful when you want to be explicit about JSON operations, need to compose nested extractions, or are working in places where property access is less convenient. See the JsonOpSpec for more examples.
+
+The following examples mirror the implicit versions above but use explicit extraction calls.
+
+##### Example A (explicit): row -> JSON Object -> field
+
+Suppose you have a contacts JSON column with ContactInfo(email: String, phone: String) and @SqlJsonValue is applied to ContactInfo:
+
+```kotlin
+@SqlJsonValue
+@Serializable
+data class ContactInfo(val email: String, val phone: String)
+
+@Serializable
+data class User(val id: Int, val name: String, val contacts: ContactInfo)
+
+val emails = sql {
+  Table<User>().map { json.extractAsText(it.contacts, "email") }
+}.buildFor.Postgres().runOn(ctx)
+// Postgres: SELECT contacts ->> 'email' AS value FROM Users
+// SQLite:   SELECT contacts ->> 'email' AS value FROM Users
+// MySQL:    SELECT JSON_UNQUOTE(JSON_EXTRACT(contacts, '$.email')) AS value FROM Users
+// SQLSrv:   SELECT JSON_VALUE(contacts, '$.email') AS value FROM Users
+```
+
+You can also filter by JSON fields using explicit extraction:
+
+```kotlin
+val q = sql { Table<User>().filter { json.extractAsText(it.contacts, "phone") == "555-1234" } }
+// Postgres/SQLite: WHERE contacts ->> 'phone' = '555-1234'
+// MySQL:           WHERE JSON_UNQUOTE(JSON_EXTRACT(contacts, '$.phone')) = '555-1234'
+// SQL Server:      WHERE JSON_VALUE(contacts, '$.phone') = '555-1234'
+```
+
+##### Example B (explicit): row -> JSON Object -> JSON Object -> field
+
+Now imagine an orders table with a shipping JSON column where ShippingInfo contains an Address JSON object, and all JSON types are annotated with @SqlJsonValue:
+
+```kotlin
+@SqlJsonValue
+@Serializable
+data class Address(val street: String, val city: String, val country: String)
+
+@SqlJsonValue
+@Serializable
+data class ShippingInfo(val carrier: String, val address: Address)
+
+@Serializable
+data class Order(val id: Int, val amount: Double, val shipping: ShippingInfo)
+
+val cities = sql {
+  Table<Order>().map { ex -> json.extractAsText(json.extract(ex.shipping, "address"), "city") }
+}.buildFor.Postgres().runOn(ctx)
+// Postgres: SELECT shipping -> 'address' ->> 'city' AS value FROM Orders
+// SQLite:   SELECT shipping -> 'address' ->> 'city' AS value FROM Orders
+// MySQL:    SELECT JSON_UNQUOTE(JSON_EXTRACT(JSON_EXTRACT(shipping, '$.address'), '$.city')) AS value FROM Orders
+// SQLSrv:   SELECT JSON_VALUE(JSON_QUERY(shipping, '$.address'), '$.city') AS value FROM Orders
+
+val canadianOrders = sql {
+  Table<Order>().filter { json.extractAsText(json.extract(it.shipping, "address"), "country") == "CA" }
+}
+// Postgres/SQLite: WHERE shipping -> 'address' ->> 'country' = 'CA'
+// MySQL:           WHERE JSON_UNQUOTE(JSON_EXTRACT(JSON_EXTRACT(shipping, '$.address'), '$.country')) = 'CA'
+// SQL Server:      WHERE JSON_VALUE(JSON_QUERY(shipping, '$.address'), '$.country') = 'CA'
+```
+
+These explicit JSON operations provide fine-grained control and can be composed for arbitrarily deep paths while maintaining clear intent.
+
 ### Inserting JSON Data
 
 Use `param()` to insert JSON data just like any other value:
