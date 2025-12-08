@@ -1,6 +1,16 @@
 # ExoQuery Changelog
 
 
+### Version 2.0.0.PL (December 8, 2025)
+ ```kotlin
+plugins { id("io.exoquery.exoquery-plugin") version "2.2.20-2.0.0.PL" }
+dependencies { implementation("io.exoquery:exoquery-runner-jdbc:2.0.0.PL") }
+ ```
+
+- **Enhancement**: Implement implicit JSON dereferencing ([#74](https://github.com/ExoQuery/ExoQuery/pull/74))
+- **Enhancement**: Improved JVM BigDecimal handling ([#72](https://github.com/ExoQuery/ExoQuery/pull/72))
+- **Infrastructure**: Update Terpal Controller to 4.4.0 ([#73](https://github.com/ExoQuery/ExoQuery/pull/73))
+
 ### Version 2.0.0.PL.RC3 (November 23, 2025)
  ```kotlin
 plugins { id("io.exoquery.exoquery-plugin") version "2.2.20-2.0.0.PL.RC3" }
