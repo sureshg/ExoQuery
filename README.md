@@ -289,7 +289,7 @@ dependencies {
 // For Java (R2DBC - Reactive):
 dependencies {
   implementation("io.exoquery:exoquery-runner-r2dbc:1.7.1.PL")
-  implementation("io.r2dbc:r2dbc-postgresql:1.0.5.RELEASE") // Remember to include the right R2DBC Driver
+  implementation("org.postgresql:r2dbc-postgresql:1.0.5.RELEASE") // Remember to include the right R2DBC Driver
 }
 
 // For: IOS, OSX, Native Linux, and Mingw using Kotlin Multiplatform
@@ -344,7 +344,7 @@ dependencies {
   implementation("io.exoquery:exoquery-runner-r2dbc:1.7.1.PL")
 
   // Choose your database driver:
-  implementation("io.r2dbc:r2dbc-postgresql:1.0.5.RELEASE")  // PostgreSQL
+  implementation("org.postgresql:r2dbc-postgresql:1.0.5.RELEASE")  // PostgreSQL
   // implementation("io.asyncer:r2dbc-mysql:1.0.5")          // MySQL
   // implementation("io.r2dbc:r2dbc-mssql:1.0.2.RELEASE")    // SQL Server
   // implementation("io.r2dbc:r2dbc-h2:1.0.0.RELEASE")       // H2
