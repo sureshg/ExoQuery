@@ -1591,8 +1591,6 @@ section for more details.
 
 ## JSON Columns
 
-> **Note:** JSON column support is currently only available for PostgreSQL.
-
 ExoQuery provides support for working with JSON and JSONB columns in PostgreSQL, MySQL, Sqlite, and SQL Server. You can select entire JSON objects, query specific fields, and insert JSON data using regular Kotlin data classes.
 
 ### Setup
