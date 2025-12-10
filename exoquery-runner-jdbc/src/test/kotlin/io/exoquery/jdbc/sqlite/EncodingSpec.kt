@@ -1,4 +1,4 @@
-package io.exoquery.jdbc.postgres
+package io.exoquery.jdbc.sqlite
 
 import io.exoquery.*
 import io.exoquery.controller.TerpalSqlInternal
@@ -11,7 +11,7 @@ import io.exoquery.jdbc.encodingdata.verify
 import io.kotest.core.spec.style.FreeSpec
 
 class EncodingSpec: FreeSpec({
-  val ctx = TestDatabases.postgres
+  val ctx = TestDatabases.sqlite
 
   @OptIn(TerpalSqlUnsafe::class)
   beforeEach {
@@ -37,15 +37,15 @@ class EncodingSpec: FreeSpec({
             uuidOpt to param(ent.uuidOpt)
           )
         }
-      }.buildFor.Postgres().runOn(ctx)
-      val res = sql { Table<JavaTestEntity>() }.buildFor.Postgres().runOn(ctx).let { it.firstOrNull() ?: error("Expected one element list but got: ${it}") }
+      }.buildFor.Sqlite().runOn(ctx)
+      val res = sql { Table<JavaTestEntity>() }.buildFor.Sqlite().runOn(ctx).let { it.firstOrNull() ?: error("Expected one element list but got: ${it}") }
       verify(res, ent)
     }
     "insert - setParams" {
       sql {
         insert<JavaTestEntity> { setParams(ent) }
-      }.buildFor.Postgres().runOn(ctx)
-      val res = sql { Table<JavaTestEntity>() }.buildFor.Postgres().runOn(ctx).let { it.firstOrNull() ?: error("Expected one element list but got: ${it}") }
+      }.buildFor.Sqlite().runOn(ctx)
+      val res = sql { Table<JavaTestEntity>() }.buildFor.Sqlite().runOn(ctx).let { it.firstOrNull() ?: error("Expected one element list but got: ${it}") }
       verify(res, ent)
     }
   }
@@ -77,8 +77,8 @@ class EncodingSpec: FreeSpec({
             customOpt to param(ent.customOpt)
           )
         }
-      }.buildFor.Postgres().runOn(ctx)
-      val res = sql { Table<EncodingTestEntity>() }.buildFor.Postgres().runOn(ctx).let { it.firstOrNull() ?: error("Expected one element list but got: ${it}") }
+      }.buildFor.Sqlite().runOn(ctx)
+      val res = sql { Table<EncodingTestEntity>() }.buildFor.Sqlite().runOn(ctx).let { it.firstOrNull() ?: error("Expected one element list but got: ${it}") }
       verify(res, ent)
     }
     "insert - ctx" {
@@ -107,15 +107,15 @@ class EncodingSpec: FreeSpec({
             customOpt to param(ent.customOpt)
           )
         }
-      }.buildFor.Postgres().runOn(ctx)
-      val res = sql { Table<EncodingTestEntity>() }.buildFor.Postgres().runOn(ctx).let { it.firstOrNull() ?: error("Expected one element list but got: ${it}") }
+      }.buildFor.Sqlite().runOn(ctx)
+      val res = sql { Table<EncodingTestEntity>() }.buildFor.Sqlite().runOn(ctx).let { it.firstOrNull() ?: error("Expected one element list but got: ${it}") }
       verify(res, ent)
     }
     "insert - setParams" {
       sql {
         insert<EncodingTestEntity> { setParams(ent) }
-      }.buildFor.Postgres().runOn(ctx)
-      val res = sql { Table<EncodingTestEntity>() }.buildFor.Postgres().runOn(ctx).let { it.firstOrNull() ?: error("Expected one element list but got: ${it}") }
+      }.buildFor.Sqlite().runOn(ctx)
+      val res = sql { Table<EncodingTestEntity>() }.buildFor.Sqlite().runOn(ctx).let { it.firstOrNull() ?: error("Expected one element list but got: ${it}") }
       verify(res, ent)
     }
   }
