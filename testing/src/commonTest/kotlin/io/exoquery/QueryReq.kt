@@ -456,4 +456,198 @@ class QueryReq: GoldenSpecDynamic(QueryReqGoldenDynamic, Mode.ExoGoldenTest(), {
     shouldBeGolden(query.build<PostgresDialect>())
   }
 
+  /**
+   * BUG REPRODUCTION: Lambda parameter names ignored in composeFrom.join subquery aliases
+   *
+   * When using composeFrom.join with filtered subqueries, both subqueries get the same
+   * alias ("it") despite having explicit lambda parameter names ("b", "c").
+   *
+   * EXPECTED: Subqueries get distinct aliases matching lambda parameters (AS b, AS c)
+   * ACTUAL:   Both subqueries get alias "it" causing SQL naming conflict
+   *
+   * The lambda parameter name only affects the ON clause reference, not the subquery alias.
+   */
+  "composeFrom.join - duplicate subquery alias bug" {
+    data class A(val id: Long, val bId: Long, val cId: Long)
+    data class B(val id: Long, val status: String)
+    data class C(val id: Long, val status: String)
+    data class Result(val aId: Long, val bId: Long, val cId: Long)
+
+    @SqlFragment
+    fun A.activeB() = sql {
+      composeFrom.join(Table<B>().filter { it.status == "active" }) { b -> b.id == this@activeB.bId }
+    }
+
+    @SqlFragment
+    fun A.activeC() = sql {
+      composeFrom.join(Table<C>().filter { it.status == "active" }) { c -> c.id == this@activeC.cId }
+    }
+
+    val query = sql.select {
+      val a = from(Table<A>())
+      val b = from(a.activeB())
+      val c = from(a.activeC())
+      Result(a.id, b.id, c.id)
+    }
+
+    shouldBeGolden(query.xr, "XR")
+    shouldBeGolden(query.build<PostgresDialect>())
+  }
+
+  "PushAlias tests for composeFrom.join" - {
+    data class A(val id: Long, val bId: Long, val cId: Long)
+    data class B(val id: Long, val status: String, val value: Int)
+    data class C(val id: Long, val bId: Long, val name: String)
+
+    "flatJoin with nested select query" {
+      @SqlFragment
+      fun A.joinWithSelect() = sql {
+        composeFrom.join(
+          select {
+            val bb = from(Table<B>())
+            where { bb.status == "active" }
+            bb
+          }
+        ) { selectedB -> selectedB.id == this@joinWithSelect.bId }
+      }
+
+      val query = sql.select {
+        val a = from(Table<A>())
+        val b = from(a.joinWithSelect())
+        a.id to b.value
+      }
+
+      shouldBeGolden(query.xr, "XR")
+      shouldBeGolden(query.build<PostgresDialect>())
+    }
+
+    "flatJoin with map and filter chain" {
+      @SqlFragment
+      fun A.joinWithMapFilter() = sql {
+        composeFrom.join(
+          Table<B>()
+            .filter { it.status == "active" }
+            .map { it }
+        ) { filteredB -> filteredB.id == this@joinWithMapFilter.bId }
+      }
+
+      val query = sql.select {
+        val a = from(Table<A>())
+        val b = from(a.joinWithMapFilter())
+        a.id to b.value
+      }
+
+      shouldBeGolden(query.xr, "XR")
+      shouldBeGolden(query.build<PostgresDialect>())
+    }
+
+    "flatJoin with flatMap" {
+      @SqlFragment
+      fun A.joinWithFlatMap() = sql {
+        composeFrom.join(
+          Table<B>().flatMap { bb ->
+            Table<C>()
+              .filter { c -> c.bId == bb.id }
+              .map { c -> bb }
+          }
+        ) { mappedB -> mappedB.id == this@joinWithFlatMap.bId }
+      }
+
+      val query = sql.select {
+        val a = from(Table<A>())
+        val b = from(a.joinWithFlatMap())
+        a.id to b.value
+      }
+
+      shouldBeGolden(query.xr, "XR")
+      shouldBeGolden(query.build<PostgresDialect>())
+    }
+
+    "multiple flatJoins with different query types" {
+      @SqlFragment
+      fun A.joinSelect() = sql {
+        composeFrom.join(
+          select {
+            val bb = from(Table<B>())
+            where { bb.status == "active" }
+            bb
+          }
+        ) { selectedB -> selectedB.id == this@joinSelect.bId }
+      }
+
+      @SqlFragment
+      fun A.joinFiltered() = sql {
+        composeFrom.join(
+          Table<C>().filter { it.name == "test" }
+        ) { filteredC -> filteredC.bId == this@joinFiltered.cId }
+      }
+
+      val query = sql.select {
+        val a = from(Table<A>())
+        val b = from(a.joinSelect())
+        val c = from(a.joinFiltered())
+        Triple(a.id, b.value, c.name)
+      }
+
+      shouldBeGolden(query.xr, "XR")
+      shouldBeGolden(query.build<PostgresDialect>())
+    }
+
+    "multiple flatJoins with different query types - and a duplicate" {
+      @SqlFragment
+      fun A.joinSelect() = sql {
+        composeFrom.join(
+          select {
+            val bb = from(Table<B>())
+            where { bb.status == "active" }
+            bb
+          }
+        ) { selectedB -> selectedB.id == this@joinSelect.bId }
+      }
+
+      @SqlFragment
+      fun A.joinFiltered() = sql {
+        composeFrom.join(
+          Table<C>().filter { it.name == "test" }
+        ) { filteredC -> filteredC.bId == this@joinFiltered.cId }
+      }
+
+      val query = sql.select {
+        val a = from(Table<A>())
+        val b = from(a.joinSelect())
+        val b1 = from(a.joinSelect())
+        val c = from(a.joinFiltered())
+        Triple(a.id, b.value + b1.value, c.name)
+      }
+
+      shouldBeGolden(query.xr, "XR")
+      shouldBeGolden(query.build<PostgresDialect>())
+    }
+
+    "flatJoin with complex nested select" {
+      @SqlFragment
+      fun A.complexJoin() = sql {
+        composeFrom.join(
+          select {
+            val bb = from(Table<B>())
+            where { bb.status == "active" }
+            groupBy(bb.status)
+            having { avg(bb.value) > 10 }
+            sortBy(bb.status to Ord.Asc)
+            bb
+          }
+        ) { complexB -> complexB.id == this@complexJoin.bId }
+      }
+
+      val query = sql.select {
+        val a = from(Table<A>())
+        val b = from(a.complexJoin())
+        a.id to b.value
+      }
+
+      shouldBeGolden(query.xr, "XR")
+      shouldBeGolden(query.build<PostgresDialect>())
+    }
+  }
+
 })
