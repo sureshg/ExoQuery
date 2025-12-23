@@ -343,9 +343,17 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
           }
 
         this is XR.Map && head is FlatUnit ->
-          trace("Flattening Flatmap with FlatGroupBy") andReturn {
+          trace("Flattening Map with FlatGroupBy") andReturn {
             listOf(Layer.fromFlatUnit(head)) to XR.ExprToQuery(body)
           }
+
+        //this is XR.Map && head is FlatUnit ->
+        //  trace("Flattening Map with FlatJoin") andReturn {
+        //    QueryContext(invoke(head), id.name).let { qc ->
+        //      listOf(Layer.Context(qc)) to XR.ExprToQuery(qc.query)
+        //    }
+        //    TODO()// back here
+        //  }
 
         this is XR.FlatMap &&
             head is XR.U.HasHead && head.head is XR.FlatJoin &&
@@ -455,6 +463,12 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
 
             this is XR.Filter -> trace("base| Flattening Filter $query") andReturn { flatten(sources, query, alias, nestNextMap) }
             this is XR.Entity -> trace("base| Flattening Entity $query") andReturn { flatten(sources, query, alias, nestNextMap) }
+
+            // If we have a Map(FlatJoin(...)) and there are existing sources, we must nest it
+            // Otherwise we'll try to flatten the FlatJoin into the existing FROM clause which creates invalid SQL
+            // e.g. FROM table1, (SELECT ... FROM INNER JOIN table2 ...) which is missing the left-hand side of the join
+            //this is XR.Map && sources.isNotEmpty() && ContainsXR.byType<XR.FlatJoin>(this.head) ->
+            //  trace("base| Map(FlatJoin) with existing sources - nesting") andReturn { nest(source(this, alias.name)) }
 
             this is XR.Map && nestNextMap ->
               trace("base| Map + nest $query") andReturn { nest(source(this, alias.name)) }
@@ -567,8 +581,85 @@ class SqlQueryApply(val traceConfig: TraceConfig) {
           }
 
           is XR.Filter -> {
-            // If it's a filter, pass on the value of nestNextMap in case there is a future map we need to nest
-            val b = base(head, id, nestNextMap)
+            // Check if the head is a FlatMap that contains joins (FlatJoin).
+            // This is a critical check to prevent a specific SQL generation bug that occurs when
+            // a filtered joined query is used within another query's FROM clause.
+            //
+            // THE PROBLEM SCENARIO:
+            // Consider these fragment definitions:
+            //   @SqlFragment fun joined() = sql.select {
+            //     val a = from(Table<A>())
+            //     val b = join(Table<B>()) { it.aId == a.id }
+            //     Composite(a, b)
+            //   }
+            //
+            //   @SqlFragment fun SqlQuery<Composite>.filtered() = sql {
+            //     this@filtered.filter { it.a.id > 0 }
+            //   }
+            //
+            // When these are composed in an outer query:
+            //   val query = sql.select {
+            //     val r = from(joined().filtered())
+            //     where { r.b.id > 0 }
+            //     r.a.id
+            //   }
+            //
+            // The XR structure becomes:
+            //   FlatMap(Entity(A), a,
+            //     FlatMap(Map(FlatJoin(Entity(B), ...)), r,
+            //       Map(FlatFilter(...), ...)))
+            //
+            // Without nesting, flattenContexts processes this as:
+            // 1. Outer FlatMap head = Entity(A) → creates TableContext(Entity(A), "a")
+            // 2. Inner FlatMap processes the Map(FlatJoin(...)) → creates QueryContext with:
+            //    FlattenSqlQuery(from = [FlatJoinContext(Inner, TableContext(Entity(B), "b"), on = b.aId == a.id)])
+            // 3. The contexts list becomes: [TableContext(A, "a"), QueryContext(...), Filtering(...)]
+            //
+            // This produces INVALID SQL:
+            //   FROM A a, (SELECT ... FROM INNER JOIN B b ON b.aId = a.id) AS r
+            //   WHERE r.a_id > 0 AND r.b_id > 0
+            //
+            // The problem: The QueryContext's FROM clause only contains [FlatJoinContext(...)],
+            // which generates "FROM INNER JOIN B" with no left-hand table!
+            //
+            // THE SOLUTION:
+            // By detecting that the Filter's head contains a FlatMap with joins and forcing nesting,
+            // we wrap the entire joined structure as a subquery:
+            //   FROM (SELECT a.id AS a_id, b.id AS b_id
+            //         FROM A a INNER JOIN B b ON b.aId = a.id) AS r
+            //   WHERE r.a_id > 0 AND r.b_id > 0
+            //
+            // This is equivalent to the user explicitly calling .nested() in the fragment:
+            //   @SqlFragment fun SqlQuery<Composite>.filtered() = sql {
+            //     this@filtered.nested().filter { it.a.id > 0 }
+            //   }
+            //
+            // NOTE: The case we are inner-nesting here is only the Filter(FlatMap(FlatJoin)) case.
+            // We rely on the symbolic reduction `The Filter(Map(FlatJoin(...))) case` in SymbolicReduction.kt
+            // to take care of the situation that there could be a map inside.
+            //
+            // PHILOSOPHY:
+            // SqlQueryModel's job is to construct CORRECT SQL, not OPTIMAL SQL. We err on the side
+            // of nesting when there's any ambiguity or potential for incorrect SQL generation.
+            // Query optimization (including flattening unnecessary nesting) is the responsibility
+            // of SqlNormalize, which runs after SqlQueryModel and can safely flatten subqueries
+            // when it's proven to be semantically equivalent.
+            val headContainsJoin = head.eventuallyIs<XR.FlatMap>() && ContainsXR.byType<XR.FlatJoin>(head)
+
+            // If it's a filter with a join in the head, force nesting
+            val b = if (headContainsJoin) {
+              trace("base| Nesting Filter with FlatJoin in head") andReturn {
+                FlattenSqlQuery(
+                  from = sources + QueryContext(invoke(head), id.name),
+                  select = select(id.name, head.type, id.loc),
+                  type = head.type
+                )
+              }
+            } else {
+              // Otherwise, pass on the value of nestNextMap in case there is a future map we need to nest
+              base(head, id, nestNextMap)
+            }
+
             // If the filter body uses the filter id, make sure it matches one of the aliases in the fromContexts
             val filterVariableIsUsed = CollectXR.byType<XR.Ident>(body).map { it.name }.contains(id.name)
             val filterVariableIsUnused = !filterVariableIsUsed

@@ -33,15 +33,92 @@ class SymbolicReduction(val traceConfig: TraceConfig, val queryContainsFlatUnits
       when {
 
         /**
+         * The Filter(FlatFilter, _, _) case
+         *
          * This is my own transformation as opposed to being from Wadler's paper. It represents
          * a situation where a Filter clause is pushed deeper and deeper in the query (see the next transformation)
          * until eventually it reaches a FlatUnit and you get something like Filter(FlatUnit, x, ...). In this kind
          * of situation the `x` is meaningless because FlatUnit returns a unit-type so it can be ignored.
          * Therefore we can just merge the Filter into a FlatFilter.
          *
+         * Note: We use (head.by _And_ body) to preserve the original filter order, so that:
+         * Filter(FlatFilter(a), _, b) becomes FlatFilter(a AND b), not FlatFilter(b AND a)
          */
-        this is XR.Filter && head is XR.U.FlatUnit && head is XR.FlatFilter -> {
-          XR.FlatFilter(body _And_ head.by)
+        this is XR.Filter && head is XR.U.FlatUnit && head is XR.FlatFilter -> { // TODO && head is XR.U.FlatUnit &&  is redundant because FlatFilter extends FlatUnit
+          XR.FlatFilter(head.by _And_ body)
+        }
+
+        /*
+         * The Filter(Map(FlatJoin(...))) case
+         *
+         * This is my own transformation as opposed to being from Wadler's paper. It addresses a specific scenario that arises
+         * in ExoQuery when dealing Filters around Maps that have FlatJoins inside them.
+         *
+         * FULL CONTEXT:
+         *   FlatMap(
+         *     Entity(Person, ...),
+         *     p,
+         *     Filter(                           <-- This nested structure gets transformed
+         *       Map(
+         *         FlatJoin(Entity(Address, ...), a, joinCondition),
+         *         a,
+         *         body
+         *       ),
+         *       pair,
+         *       filterCondition
+         *     )
+         *   )
+         *
+         * WHY THIS MATTERS:
+         * The outer FlatMap over Entity(Person) cannot flatten into a single SQL query when its
+         * body contains a Filter-Map-FlatJoin chain. By restructuring the nested part into
+         * FlatMap-FlatFilter, the entire query can collapse into one SQL statement with proper
+         * JOIN and WHERE clauses instead of nested subqueries and what will result
+         * is a invalid query that will have a `FROM INNER JOIN ...` pattern similar to
+         * what happens in the SqlQueryModel Filter(FLatMap(FlatJoin)) case.
+         *
+         * TRANSFORMATION:
+         *
+         *   BEFORE (the nested part):
+         *     Filter(
+         *       Map(FlatJoin(Entity(Address, ...), a, joinCondition), a, body),
+         *       pair,
+         *       filterCondition  // e.g., pair.first.name == "Joe"
+         *     )
+         *
+         *   AFTER (the nested part):
+         *     FlatMap(
+         *       FlatJoin(Entity(Address, ...), a, joinCondition),
+         *       a,
+         *       Map(FlatFilter(reducedCondition), a, body)  // e.g., p.name == "Joe"
+         *     )
+         *
+         * The transformation beta-reduces the filter condition, replacing the intermediate tuple
+         * binding (pair) with direct references to the actual entities (p, a).
+         */
+        this is XR.Filter && head is XR.Map && head.head is XR.FlatJoin -> {
+          val flatJoin = head.head        // FlatJoin(Inner, Entity(AddressCrs...), Id(a), onCondition)
+          val mapId = head.id             // Id(a, AddressCrs(...))
+          val mapBody = head.body         // Product(Tuple, List(...))
+          val filterId = id               // Id(pair, Pair(...))
+          val filterBody = body           // BinaryOp(Property(Property(Id(pair...), first), name), ==, String(JoeOuter))
+
+          // Beta-reduce the filter condition: replace filterId with mapBody
+          // This transforms: pair.first.name == "JoeOuter" into: Product(...).first.name == "JoeOuter"
+          // which will further reduce to the actual field reference
+          val reducedFilterBody = BetaReduction(filterBody, filterId to mapBody).asExpr()
+
+          // Create the new structure:
+          // FlatMap(FlatJoin(...), mapId, Map(FlatFilter(reducedFilterBody), mapId, mapBody))
+          XR.FlatMap(
+            flatJoin,
+            mapId,
+            XR.Map(
+              XR.FlatFilter(reducedFilterBody),
+              mapId,
+              mapBody
+            )
+          )
         }
 
         /*
@@ -66,6 +143,8 @@ class SymbolicReduction(val traceConfig: TraceConfig, val queryContainsFlatUnits
          *
          * case FlatMap(Filter(a, b, c), d, e: Query)
          *
+         * Note: When ApplyMap pushes Filter through Map, it produces Filter(FlatFilter(original), _, new).
+         * We use (head.by _And_ body) to preserve chronological order: FlatFilter(original AND new)
          */
         this is XR.FlatMap && head is XR.Filter && !queryContainsFlatUnits -> {  // TODO for the sake of performance can do containsNonFilterFlatUnit on the entire query first
           val (a, b, c) = Triple(head.head, head.id, head.body)
